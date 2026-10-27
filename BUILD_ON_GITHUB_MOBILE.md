@@ -1,17 +1,19 @@
-# NEON BREACH — compilar e baixar pelo Android
+# NEON BREACH 0.6.0 — baixar o APK pelo Android
 
-O repositório já contém os arquivos-base do projeto e o workflow de build.
-
-## Baixar o APK
+## Baixar
 1. Abra [Actions do NEON BREACH](https://github.com/Coca69643/Neon-Breach/actions).
-2. Entre na execução **Build NEON BREACH APK** mais recente.
-3. Aguarde o job terminar. Se estiver verde, abra **Artifacts**.
-4. Baixe `neon-breach-debug-apk`, extraia o ZIP do artefato e instale o APK no Android. O Android pode pedir autorização para instalar a partir da fonte escolhida.
+2. Abra a execução mais recente de **Build NEON BREACH APK** com status verde.
+3. Em **Artifacts**, baixe `neon-breach-debug-apk`.
+4. Extraia o ZIP e instale o APK. Caso o Android solicite, autorize a instalação a partir do aplicativo usado para abrir o arquivo.
 
-## Se o build falhar
-- Abra a execução vermelha e encontre a primeira etapa com erro.
-- Copie o trecho do log que contém a causa original; a última linha pode ser apenas um resumo.
-- A verificação estática só confere arquivos e algumas condições do código. A compilação é a confirmação de que o APK foi empacotado.
+## Esta versão
+A 0.6.0 troca a cena procedural plana por um renderer com perspectiva 3D, profundidade, piso/parede com volume, obstáculos elevados, unidades tridimensionais, colisão e suporte a dois dedos em controles separados.
 
-## Estado e limitações do jogo
-Esta versão é um protótipo técnico nativo. A cena OpenGL é procedural e tem movimento de toque básico, setor, cobertura e inimigos animados. Ainda não representa o jogo completo: faltam sistemas completos de combate, armas, IA, objetivos, áudio, menus e persistência. Mesmo com build verde, ainda é necessário testar instalação, resposta ao toque, aquecimento e estabilidade no Realme C53.
+## Se ainda aparecer uma tela preta
+O build verde confirma apenas que o APK foi compilado. No aparelho:
+- confirme que instalou o artefato da execução mais recente;
+- se a tela continuar preta, abra uma issue no repositório incluindo modelo do aparelho, versão Android e logs de `NeonBreach` do Logcat;
+- não use um artefato antigo após uma correção mais recente.
+
+## Testes pendentes
+Esta versão ainda é protótipo. Precisa ser testada no Realme C53, incluindo iniciação da cena, movimento e mira simultâneos, colisão, missão concluída/derrota, retomada após minimizar e aquecimento em sessão prolongada. A verificação estática e o build do GitHub não substituem esses testes.
