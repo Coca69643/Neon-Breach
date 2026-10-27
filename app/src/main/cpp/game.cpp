@@ -18,7 +18,7 @@ struct Obstacle { float x,z,sx,sz,h; };
 struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
 struct Shot { float x,y,z,vx,vz,life; };
 
-GLuint program=0, fallbackProgram=0;
+GLuint program=0, fallbackProgram=0, fallbackVao=0;
 GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
 GLint fallbackResLoc=-1;
 Mesh cubeMesh, sphereMesh;
@@ -26,7 +26,7 @@ int screenW=1, screenH=1;
 float playerX=-3.55f, playerZ=-2.15f, playerHealth=1.0f;
 float moveOriginX=0, moveOriginY=0, moveX=0, moveY=0;
 bool moving=false, aiming=false;
-float aimX=2.0f, aimZ=0.0f, shotCooldown=0.0f;
+float aimX=2.0f, aimZ=0.0f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0.0f;
 float elapsed=0.0f, accumulator=0.0f;
 bool won=false, lost=false;
 int defeated=0;
@@ -347,11 +347,11 @@ void fixedUpdate(float dt){
 
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
   // EGL can recreate the context after resume: rebuild every GL object.
-  program=0;fallbackProgram=0;cubeMesh={};sphereMesh={};
+  program=0;fallbackProgram=0;fallbackVao=0;cubeMesh={};sphereMesh={};
   program=make3DProgram();
   if(!program){__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","3D renderer failed, showing diagnostic fallback");fallbackProgram=makeFallbackProgram();}
   if(program){mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");cameraLoc=glGetUniformLocation(program,"uCamera");createMeshes();}
-  else if(fallbackProgram)fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");
+  else if(fallbackProgram){fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");glGenVertexArrays(1,&fallbackVao);}
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
   glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
@@ -368,7 +368,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   if(!program){
-    if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glDrawArrays(GL_TRIANGLES,0,3);}
+    if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
     return;
   }
   V3 camera{0.0f,10.7f,8.2f};
@@ -389,8 +389,16 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
     case 0: moving=true;moveOriginX=moveX=x;moveOriginY=moveY=y;break;
     case 1: if(moving){moveX=x;moveY=y;}break;
     case 2: moving=false;break;
-    case 3: aiming=true;aimX=(x/(float)screenW)*10.0f-5.0f;aimZ=3.6f-(y/(float)screenH)*7.2f;break;
-    case 4: if(aiming){aimX=(x/(float)screenW)*10.0f-5.0f;aimZ=3.6f-(y/(float)screenH)*7.2f;}break;
+    case 3:
+      aiming=true;aimOriginX=x;aimOriginY=y;
+      break;
+    case 4:
+      if(aiming){
+        float dx=(x-aimOriginX)/(float)screenH,dz=-(y-aimOriginY)/(float)screenH;
+        float mag=std::sqrt(dx*dx+dz*dz);
+        if(mag>0.035f){aimX=playerX+dx/mag*5.0f;aimZ=playerZ+dz/mag*5.0f;}
+      }
+      break;
     case 5: aiming=false;break;
     case 6: moving=false;aiming=false;break;
   }
