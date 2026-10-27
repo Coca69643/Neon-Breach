@@ -80,7 +80,7 @@ GLuint makeProgram(){
       vec4 b=uBullets[i]; float visibleMask=step(0.0,b.z);
       float shot=disc(p,b.xy,0.022)*visibleMask;
       col+=shot*vec3(0.25,0.95,1.0);
-      col+=disc(p,b.xy-vec2(b.w*0.018,0.0),0.035)*active*vec3(0.0,0.18,0.24);
+      col+=disc(p,b.xy-vec2(b.w*0.018,0.0),0.035)*visibleMask*vec3(0.0,0.18,0.24);
     }
     // Compact combat HUD: health, remaining hostiles, extraction state.
     vec2 hpPos=vec2(-aspect+0.42,0.83);
