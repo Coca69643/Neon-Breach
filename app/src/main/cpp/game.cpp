@@ -2,225 +2,396 @@
 #include <GLES3/gl3.h>
 #include <android/log.h>
 #include <algorithm>
+#include <array>
+#include <chrono>
 #include <cmath>
+#include <cstddef>
+#include <vector>
 
 namespace {
-GLuint program=0, vao=0;
-GLint resLoc=-1,timeLoc=-1,playerLoc=-1;
-int width=1,height=1;
-float px=-0.55f, py=0.0f, elapsed=0.0f;
-float downX=0.0f,downY=0.0f,moveX=0.0f,moveY=0.0f;
-bool dragging=false, firing=false;
-struct Unit { float x,y,hp; };
-struct Shot { float x,y,vx,vy,life; };
-Unit enemies[4]={{0.95f,0.48f,1.0f},{0.98f,-0.42f,1.0f},{-0.95f,0.48f,1.0f},{0.35f,0.62f,1.0f}};
-Shot shots[8]{};
-float targetX=1.1f,targetY=0.0f,fireCooldown=0.0f;
-float health=1.0f;
-int kills=0;
-bool missionComplete=false;
+constexpr float PI = 3.14159265358979323846f;
+struct V3 { float x, y, z; };
+struct Mat4 { float v[16]; };
+struct Vertex { float px, py, pz, nx, ny, nz; };
+struct Mesh { GLuint vao=0, vbo=0; GLsizei count=0; };
+struct Obstacle { float x,z,sx,sz,h; };
+struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
+struct Shot { float x,y,z,vx,vz,life; };
 
-GLuint compileShader(GLenum type,const char* source){
-  GLuint shader=glCreateShader(type); glShaderSource(shader,1,&source,nullptr); glCompileShader(shader);
-  GLint ok=GL_FALSE; glGetShaderiv(shader,GL_COMPILE_STATUS,&ok);
-  if(!ok){ GLint n=0; glGetShaderiv(shader,GL_INFO_LOG_LENGTH,&n); if(n>1){char log[1024];GLsizei written=0;glGetShaderInfoLog(shader,std::min(n,1023),&written,log);__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Shader compile: %s",log);} glDeleteShader(shader); return 0; }
-  return shader;
+GLuint program=0, fallbackProgram=0;
+GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
+GLint fallbackResLoc=-1;
+Mesh cubeMesh, sphereMesh;
+int screenW=1, screenH=1;
+float playerX=-3.55f, playerZ=-2.15f, playerHealth=1.0f;
+float moveOriginX=0, moveOriginY=0, moveX=0, moveY=0;
+bool moving=false, aiming=false;
+float aimX=2.0f, aimZ=0.0f, shotCooldown=0.0f;
+float elapsed=0.0f, accumulator=0.0f;
+bool won=false, lost=false;
+int defeated=0;
+std::chrono::steady_clock::time_point previousFrame=std::chrono::steady_clock::now();
+std::array<Shot,12> shots{};
+std::array<Enemy,4> enemies{{
+  {3.55f, 2.15f, 1.0f, 1.0f, 1.05f, 0.34f, 0, PI},
+  {3.35f,-1.75f, 2.0f, 2.0f, 0.70f, 0.43f, 1, PI},
+  {-0.35f,2.55f, 1.0f, 1.0f, 1.45f, 0.28f, 2, PI},
+  {1.05f,-2.45f,1.0f,1.0f,0.92f,0.32f,0,PI}
+}};
+const std::array<Obstacle,4> obstacles{{
+  {-2.65f, 1.45f, 0.95f, 0.50f, 0.70f},
+  {-0.10f, 2.55f, 0.90f, 0.46f, 0.65f},
+  { 1.50f,-1.25f, 0.92f, 0.52f, 0.62f},
+  { 3.12f, 0.20f, 0.88f, 0.46f, 0.72f}
+}};
+
+V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
+V3 sub(V3 a,V3 b){return {a.x-b.x,a.y-b.y,a.z-b.z};}
+V3 mul(V3 a,float s){return {a.x*s,a.y*s,a.z*s};}
+float dot(V3 a,V3 b){return a.x*b.x+a.y*b.y+a.z*b.z;}
+V3 cross(V3 a,V3 b){return {a.y*b.z-a.z*b.y,a.z*b.x-a.x*b.z,a.x*b.y-a.y*b.x};}
+V3 norm(V3 a){float d=std::sqrt(std::max(1e-9f,dot(a,a)));return mul(a,1.0f/d);}
+Mat4 identity(){Mat4 m{};m.v[0]=m.v[5]=m.v[10]=m.v[15]=1.0f;return m;}
+Mat4 multiply(const Mat4&a,const Mat4&b){
+  Mat4 o{};
+  for(int c=0;c<4;c++)for(int r=0;r<4;r++)
+    for(int k=0;k<4;k++)o.v[c*4+r]+=a.v[k*4+r]*b.v[c*4+k];
+  return o;
 }
-GLuint makeProgram(){
-  const char* vs=R"(#version 300 es
-  void main(){vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));gl_Position=vec4(p[gl_VertexID],0.0,1.0);})";
-  const char* fs=R"(#version 300 es
-  precision mediump float;
-  uniform vec2 uRes; uniform float uTime; uniform vec2 uPlayer; uniform vec4 uEnemies[4]; uniform vec4 uBullets[8]; uniform vec4 uHud;
-  out vec4 outColor;
-  float disc(vec2 p,vec2 c,float r){return 1.0-smoothstep(r-0.008,r+0.008,length(p-c));}
-  float line(float d,float w){return 1.0-smoothstep(w,w+0.008,abs(d));}
+Mat4 translate(float x,float y,float z){Mat4 m=identity();m.v[12]=x;m.v[13]=y;m.v[14]=z;return m;}
+Mat4 scale(float x,float y,float z){Mat4 m=identity();m.v[0]=x;m.v[5]=y;m.v[10]=z;return m;}
+Mat4 rotateY(float a){Mat4 m=identity();float c=std::cos(a),s=std::sin(a);m.v[0]=c;m.v[2]=-s;m.v[8]=s;m.v[10]=c;return m;}
+Mat4 perspective(float fov,float aspect,float nearP,float farP){
+  Mat4 m{};float f=1.0f/std::tan(fov*0.5f);
+  m.v[0]=f/std::max(0.1f,aspect);m.v[5]=f;
+  m.v[10]=(farP+nearP)/(nearP-farP);m.v[11]=-1.0f;
+  m.v[14]=(2.0f*farP*nearP)/(nearP-farP);return m;
+}
+Mat4 lookAt(V3 eye,V3 center,V3 up){
+  V3 f=norm(sub(center,eye)),s=norm(cross(f,up)),u=cross(s,f);Mat4 m=identity();
+  m.v[0]=s.x;m.v[4]=s.y;m.v[8]=s.z;
+  m.v[1]=u.x;m.v[5]=u.y;m.v[9]=u.z;
+  m.v[2]=-f.x;m.v[6]=-f.y;m.v[10]=-f.z;
+  m.v[12]=-dot(s,eye);m.v[13]=-dot(u,eye);m.v[14]=dot(f,eye);
+  return m;
+}
+void addVertex(std::vector<Vertex>&v,V3 p,V3 n){v.push_back({p.x,p.y,p.z,n.x,n.y,n.z});}
+void addTri(std::vector<Vertex>&v,V3 a,V3 b,V3 c,V3 n){addVertex(v,a,n);addVertex(v,b,n);addVertex(v,c,n);}
+void face(std::vector<Vertex>&v,V3 a,V3 b,V3 c,V3 d,V3 n){
+  addTri(v,a,b,c,n);addTri(v,a,c,d,n);
+}
+void uploadMesh(Mesh&m,const std::vector<Vertex>&vertices){
+  m.count=(GLsizei)vertices.size();
+  glGenVertexArrays(1,&m.vao);glGenBuffers(1,&m.vbo);
+  glBindVertexArray(m.vao);glBindBuffer(GL_ARRAY_BUFFER,m.vbo);
+  glBufferData(GL_ARRAY_BUFFER,(GLsizeiptr)(vertices.size()*sizeof(Vertex)),vertices.data(),GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,px));
+  glEnableVertexAttribArray(1);glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,nx));
+  glBindVertexArray(0);
+}
+void createMeshes(){
+  std::vector<Vertex> c;
+  const float a=-0.5f,b=0.5f;
+  face(c,{b,a,a},{b,b,a},{b,b,b},{b,a,b},{1,0,0});
+  face(c,{a,a,b},{a,b,b},{a,b,a},{a,a,a},{-1,0,0});
+  face(c,{a,b,a},{a,b,b},{b,b,b},{b,b,a},{0,1,0});
+  face(c,{a,a,b},{a,a,a},{b,a,a},{b,a,b},{0,-1,0});
+  face(c,{b,a,b},{b,b,b},{a,b,b},{a,a,b},{0,0,1});
+  face(c,{a,a,a},{a,b,a},{b,b,a},{b,a,a},{0,0,-1});
+  uploadMesh(cubeMesh,c);
+  std::vector<Vertex>s;const int rings=12,sectors=18;
+  auto point=[](float t,float p){return V3{0.5f*std::sin(t)*std::cos(p),0.5f*std::cos(t),0.5f*std::sin(t)*std::sin(p)};};
+  auto normal=[](V3 p){return norm(p);};
+  for(int i=0;i<rings;i++){
+    float t1=PI*(float)i/rings,t2=PI*(float)(i+1)/rings;
+    for(int j=0;j<sectors;j++){
+      float p1=2*PI*(float)j/sectors,p2=2*PI*(float)(j+1)/sectors;
+      V3 a1=point(t1,p1),b1=point(t2,p1),c1=point(t2,p2),d1=point(t1,p2);
+      addTri(s,a1,b1,c1,normal(a1));addTri(s,a1,c1,d1,normal(a1));
+    }
+  }
+  uploadMesh(sphereMesh,s);
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","3D meshes ready: cube=%d sphere=%d",cubeMesh.count,sphereMesh.count);
+}
+GLuint compileShader(GLenum type,const char*source){
+  GLuint sh=glCreateShader(type);glShaderSource(sh,1,&source,nullptr);glCompileShader(sh);
+  GLint ok=GL_FALSE;glGetShaderiv(sh,GL_COMPILE_STATUS,&ok);
+  if(!ok){GLint n=0;glGetShaderiv(sh,GL_INFO_LOG_LENGTH,&n);if(n>1){char log[2048];GLsizei w=0;glGetShaderInfoLog(sh,std::min(n,2047),&w,log);__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Shader compile failed: %s",log);}glDeleteShader(sh);return 0;}return sh;
+}
+GLuint linkProgram(const char*vs,const char*fs,const char*label){
+  GLuint v=compileShader(GL_VERTEX_SHADER,vs),f=compileShader(GL_FRAGMENT_SHADER,fs);
+  if(!v||!f){if(v)glDeleteShader(v);if(f)glDeleteShader(f);return 0;}
+  GLuint p=glCreateProgram();glAttachShader(p,v);glAttachShader(p,f);glBindAttribLocation(p,0,"aPosition");glBindAttribLocation(p,1,"aNormal");glLinkProgram(p);glDeleteShader(v);glDeleteShader(f);
+  GLint ok=GL_FALSE;glGetProgramiv(p,GL_LINK_STATUS,&ok);
+  if(!ok){GLint n=0;glGetProgramiv(p,GL_INFO_LOG_LENGTH,&n);if(n>1){char log[2048];GLsizei w=0;glGetProgramInfoLog(p,std::min(n,2047),&w,log);__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","%s link failed: %s",label,log);}glDeleteProgram(p);return 0;}return p;
+}
+GLuint make3DProgram(){
+  const char*vs=R"(#version 300 es
+  layout(location=0) in vec3 aPosition;
+  layout(location=1) in vec3 aNormal;
+  uniform mat4 uMVP;uniform mat4 uModel;
+  out vec3 vWorld;out vec3 vNormal;
   void main(){
-    vec2 uv=gl_FragCoord.xy/uRes;
-    float aspect=uRes.x/uRes.y;
-    vec2 p=vec2((uv.x*2.0-1.0)*aspect,uv.y*2.0-1.0);
-    vec3 col=vec3(0.012,0.022,0.047);
-    float vignette=1.0-smoothstep(0.35,1.9,length(p*vec2(0.65,1.0)));
-    col+=vec3(0.008,0.026,0.05)*vignette;
-    // Sector floor: modular metal panels and luminous seams.
-    vec2 tile=abs(fract((p+vec2(1.8,1.0))*vec2(4.2,5.0))-0.5);
-    float seams=max(step(0.485,tile.x),step(0.485,tile.y));
-    col+=seams*vec3(0.012,0.055,0.078);
-    float arena=step(abs(p.x),1.62)*step(abs(p.y),0.78);
-    float border=max(line(abs(p.x)-1.62,0.012),line(abs(p.y)-0.78,0.012));
-    col+=border*vec3(0.02,0.72,0.98);
-    col=mix(col,col*0.48,1.0-arena);
-    // Cover blocks and terminal stations.
-    for(int i=0;i<4;i++){
-      float fi=float(i);
-      vec2 b=vec2(-1.12+fi*0.73,0.42*sin(fi*2.0));
-      vec2 d=abs(p-b);
-      float block=step(d.x,0.13)*step(d.y,0.075);
-      float trim=block*max(line(d.x-0.13,0.008),line(d.y-0.075,0.008));
-      col=mix(col,vec3(0.035,0.095,0.13),block);
-      col+=trim*vec3(0.02,0.38,0.52);
-    }
-    vec2 term1=vec2(1.35,0.47),term2=vec2(0.92,-0.52),term3=vec2(-1.35,-0.48);
-    float terminals=disc(p,term1,0.065)+disc(p,term2,0.065)+disc(p,term3,0.065);
-    col+=terminals*vec3(0.0,0.55,0.9);
-    // Hostile drones orbit the room; their positions are animated.
-    for(int i=0;i<4;i++){
-      vec4 data=uEnemies[i]; vec2 e=data.xy;
-      float alive=step(0.1,data.z);
-      float halo=disc(p,e,0.105)*0.22*alive;
-      float enemy=disc(p,e,0.052)*alive;
-      float core=disc(p,e,0.019)*alive;
-      float hpbar=line(p.y-(e.y+0.075),0.006)*step(abs(p.x-e.x),0.055)*alive;
-      col+=halo*vec3(1.0,0.025,0.16);
-      col=mix(col,vec3(0.72,0.035,0.15),enemy);
-      col=mix(col,vec3(1.0,0.45,0.38),core);
-      col=mix(col,vec3(1.0,0.12,0.2),hpbar);
-    }
-    for(int i=0;i<8;i++){
-      vec4 b=uBullets[i]; float visibleMask=step(0.0,b.z);
-      float shot=disc(p,b.xy,0.022)*visibleMask;
-      col+=shot*vec3(0.25,0.95,1.0);
-      col+=disc(p,b.xy-vec2(b.w*0.018,0.0),0.035)*visibleMask*vec3(0.0,0.18,0.24);
-    }
-    // Compact combat HUD: health, remaining hostiles, extraction state.
-    vec2 hpPos=vec2(-aspect+0.42,0.83);
-    float hpFrame=step(abs(p.x-hpPos.x),0.31)*step(abs(p.y-hpPos.y),0.035);
-    float hpFill=step(abs(p.x-(hpPos.x-0.31+0.31*uHud.x)),0.31*uHud.x)*step(abs(p.y-hpPos.y),0.022);
-    col=mix(col,vec3(0.04,0.10,0.15),hpFrame);
-    col=mix(col,vec3(0.0,0.88,0.95),hpFill);
-    for(int i=0;i<4;i++){
-      vec2 pip=vec2(-aspect+0.10+float(i)*0.10,0.72);
-      float visibleMask=step(float(i)+0.5,uHud.y);
-      col+=disc(p,pip,0.025)*mix(vec3(0.25,0.04,0.08),vec3(1.0,0.12,0.2),visibleMask);
-    }
-    // Player unit with a direction chevron and cyan energy ring.
-    float ring=1.0-smoothstep(0.008,0.018,abs(length(p-uPlayer)-0.105));
-    float player=disc(p,uPlayer,0.062);
-    col+=ring*vec3(0.0,0.48,0.72);
-    col=mix(col,vec3(0.12,0.92,1.0),player);
-    col+=disc(p,uPlayer+vec2(0.012,0.008),0.018)*vec3(0.8,1.0,1.0);
-    // Extraction pad pulses in the upper-right sector.
-    vec2 exitPos=vec2(1.37,-0.57);
-    float exitRing=1.0-smoothstep(0.012,0.025,abs(length(p-exitPos)-0.105));
-    col+=exitRing*(0.45+0.25*sin(uTime*3.0))*vec3(0.0,0.8,0.65);
-    col+=disc(p,exitPos,0.025)*vec3(0.0,0.8,0.55);
-    // Touch-stick visual.
-    vec2 stickCenter=vec2(-aspect+0.38,-0.63);
-    float stickOuter=disc(p,stickCenter,0.19);
-    float stickInner=disc(p,stickCenter,0.09);
-    col+=stickOuter*vec3(0.025,0.11,0.16);
-    col+=stickInner*vec3(0.02,0.27,0.36);
-    col+=max(0.0,stickOuter-stickInner)*vec3(0.0,0.3,0.42);
+    vec4 world=uModel*vec4(aPosition,1.0);vWorld=world.xyz;
+    vec3 sc=vec3(length(uModel[0].xyz),length(uModel[1].xyz),length(uModel[2].xyz));
+    vNormal=normalize(mat3(uModel)*(aNormal/max(sc,vec3(0.0001))));
+    gl_Position=uMVP*vec4(aPosition,1.0);
+  })";
+  const char*fs=R"(#version 300 es
+  precision highp float;
+  in vec3 vWorld;in vec3 vNormal;
+  uniform vec3 uColor;uniform vec3 uGlow;uniform vec3 uCamera;
+  out vec4 outColor;
+  void main(){
+    vec3 n=normalize(vNormal);vec3 light=normalize(vec3(-0.42,0.88,0.34));
+    float diffuse=max(dot(n,light),0.0);
+    vec3 viewDir=normalize(uCamera-vWorld);
+    float spec=pow(max(dot(reflect(-light,n),viewDir),0.0),20.0)*0.16;
+    vec3 col=uColor*(0.25+0.75*diffuse)+spec;
+    col+=uGlow;
+    float fog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
+    col=mix(col,vec3(0.006,0.012,0.026),fog);
     outColor=vec4(col,1.0);
   })";
-  GLuint v=compileShader(GL_VERTEX_SHADER,vs), f=compileShader(GL_FRAGMENT_SHADER,fs);
-  if(!v||!f){if(v)glDeleteShader(v);if(f)glDeleteShader(f);return 0;}
-  GLuint p=glCreateProgram();glAttachShader(p,v);glAttachShader(p,f);glLinkProgram(p);glDeleteShader(v);glDeleteShader(f);
-  GLint ok=GL_FALSE;glGetProgramiv(p,GL_LINK_STATUS,&ok);
-  if(!ok){GLint n=0;glGetProgramiv(p,GL_INFO_LOG_LENGTH,&n);if(n>1){char log[1024];GLsizei written=0;glGetProgramInfoLog(p,std::min(n,1023),&written,log);__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Program link: %s",log);}glDeleteProgram(p);return 0;}
-  return p;
-}
+  return linkProgram(vs,fs,"3D scene");
 }
 GLuint makeFallbackProgram(){
-  const char* vs=R"(#version 300 es
+  const char*vs=R"(#version 300 es
   void main(){vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));gl_Position=vec4(p[gl_VertexID],0.0,1.0);})";
-  const char* fs=R"(#version 300 es
-  precision mediump float;
-  uniform vec2 uRes;
-  out vec4 outColor;
-  void main(){
-    vec2 uv=gl_FragCoord.xy/max(uRes,vec2(1.0));
-    vec2 cell=fract(uv*vec2(14.0,8.0));
-    float grid=max(step(0.96,cell.x),step(0.96,cell.y));
-    vec3 col=mix(vec3(0.008,0.018,0.04),vec3(0.015,0.08,0.12),uv.y);
-    col+=grid*vec3(0.0,0.20,0.30);
-    float marker=1.0-smoothstep(0.02,0.035,length(uv-vec2(0.5,0.5)));
-    col+=marker*vec3(0.0,0.7,1.0);
-    outColor=vec4(col,1.0);
-  })";
-  GLuint v=compileShader(GL_VERTEX_SHADER,vs), f=compileShader(GL_FRAGMENT_SHADER,fs);
-  if(!v||!f){if(v)glDeleteShader(v);if(f)glDeleteShader(f);return 0;}
-  GLuint p=glCreateProgram();glAttachShader(p,v);glAttachShader(p,f);glLinkProgram(p);glDeleteShader(v);glDeleteShader(f);
-  GLint ok=GL_FALSE;glGetProgramiv(p,GL_LINK_STATUS,&ok);
-  if(!ok){GLint n=0;glGetProgramiv(p,GL_INFO_LOG_LENGTH,&n);if(n>1){char log[1024];GLsizei written=0;glGetProgramInfoLog(p,std::min(n,1023),&written,log);__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Fallback link: %s",log);}glDeleteProgram(p);return 0;}
-  return p;
+  const char*fs=R"(#version 300 es
+  precision mediump float;uniform vec2 uRes;out vec4 outColor;
+  void main(){vec2 uv=gl_FragCoord.xy/max(uRes,vec2(1.0));vec2 q=fract(uv*vec2(18.0,10.0));float g=max(step(0.97,q.x),step(0.97,q.y));vec3 c=vec3(0.006,0.014,0.03)+g*vec3(0.0,0.22,0.34);float d=1.0-smoothstep(0.015,0.04,length(uv-vec2(0.5)));c+=d*vec3(0.0,0.6,0.9);outColor=vec4(c,1.0);})";
+  return linkProgram(vs,fs,"fallback");
 }
-extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
-  if(program)glDeleteProgram(program);
-  program=makeProgram();
-  if(!program){
-    __android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Main shader failed; using visible fallback renderer");
-    program=makeFallbackProgram();
+void resetMission(){
+  playerX=-3.55f;playerZ=-2.15f;playerHealth=1.0f;elapsed=0;accumulator=0;
+  moving=false;aiming=false;shotCooldown=0;won=false;lost=false;defeated=0;
+  shots.fill({});
+  enemies={{{3.55f,2.15f,1,1,1.05f,0.34f,0,PI},{3.35f,-1.75f,2,2,0.70f,0.43f,1,PI},{-0.35f,2.55f,1,1,1.45f,0.28f,2,PI},{1.05f,-2.45f,1,1,0.92f,0.32f,0,PI}}};
+}
+void resolveCollision(float&x,float&z,float radius){
+  x=std::clamp(x,-4.55f+radius,4.55f-radius);z=std::clamp(z,-3.05f+radius,3.05f-radius);
+  for(const auto&o:obstacles){
+    float qx=std::clamp(x,o.x-o.sx*0.5f,o.x+o.sx*0.5f),qz=std::clamp(z,o.z-o.sz*0.5f,o.z+o.sz*0.5f);
+    float dx=x-qx,dz=z-qz,d2=dx*dx+dz*dz;
+    if(d2<radius*radius){
+      if(d2>1e-6f){float d=std::sqrt(d2),push=radius-d+0.002f;x+=dx/d*push;z+=dz/d*push;}
+      else{
+        float left=std::abs(x-(o.x-o.sx*0.5f)),right=std::abs((o.x+o.sx*0.5f)-x);
+        float top=std::abs(z-(o.z-o.sz*0.5f)),bottom=std::abs((o.z+o.sz*0.5f)-z);
+        float mn=std::min(std::min(left,right),std::min(top,bottom));
+        if(mn==left)x=o.x-o.sx*0.5f-radius-0.002f;
+        else if(mn==right)x=o.x+o.sx*0.5f+radius+0.002f;
+        else if(mn==top)z=o.z-o.sz*0.5f-radius-0.002f;
+        else z=o.z+o.sz*0.5f+radius+0.002f;
+      }
+    }
   }
-  if(vao)glDeleteVertexArrays(1,&vao);
-  vao=0;glGenVertexArrays(1,&vao);glBindVertexArray(vao);
-  const GLubyte* version=glGetString(GL_VERSION);
-  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","OpenGL initialized: %s",version?(const char*)version:"unknown");
-  glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);
-  glClearColor(program?0.012f:0.25f,program?0.022f:0.015f,program?0.047f:0.015f,1.0f);
+}
+void draw(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,const Mat4&view,const Mat4&proj,V3 camera){
+  if(!program||!m.vao)return;
+  Mat4 model=multiply(translate(pos.x,pos.y,pos.z),multiply(rotateY(yaw),scale(size.x,size.y,size.z)));
+  Mat4 mvp=multiply(proj,multiply(view,model));
+  glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,model.v);
+  glUniform3f(colorLoc,color.x,color.y,color.z);glUniform3f(glowLoc,glow.x,glow.y,glow.z);
+  glUniform3f(cameraLoc,camera.x,camera.y,camera.z);
+  glBindVertexArray(m.vao);glDrawArrays(GL_TRIANGLES,0,m.count);
+}
+void box(V3 p,V3 s,V3 c,V3 glow,float yaw,const Mat4&v,const Mat4&pjt,V3 cam){draw(cubeMesh,p,s,c,glow,yaw,v,pjt,cam);}
+void orb(V3 p,V3 s,V3 c,V3 glow,const Mat4&v,const Mat4&pjt,V3 cam){draw(sphereMesh,p,s,c,glow,0,v,pjt,cam);}
+bool allEnemiesDefeated(){for(const auto&e:enemies)if(e.hp>0.0f)return false;return true;}
+void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
+  // Solid floor with real depth and modular metal seams.
+  box({0,-0.18f,0},{10.0f,0.34f,7.2f},{0.025f,0.045f,0.075f},{0.0f,0.006f,0.012f},0,view,proj,cam);
+  for(int i=-6;i<=6;i++){
+    box({(float)i*0.76f,0.006f,0},{0.018f,0.014f,7.0f},{0.025f,0.10f,0.14f},{0.0f,0.09f,0.13f},0,view,proj,cam);
+  }
+  for(int i=-4;i<=4;i++){
+    box({0,0.007f,(float)i*0.76f},{9.8f,0.014f,0.018f},{0.025f,0.10f,0.14f},{0.0f,0.075f,0.12f},0,view,proj,cam);
+  }
+  // Raised walls, illuminated trim and corner posts make the arena genuinely volumetric.
+  box({-4.94f,0.40f,0},{0.22f,0.82f,7.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
+  box({ 4.94f,0.40f,0},{0.22f,0.82f,7.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
+  box({0,0.40f,-3.54f},{9.85f,0.82f,0.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
+  box({0,0.40f, 3.54f},{9.85f,0.82f,0.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
+  box({-4.94f,0.86f,0},{0.28f,0.08f,7.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
+  box({ 4.94f,0.86f,0},{0.28f,0.08f,7.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
+  box({0,0.86f,-3.54f},{9.9f,0.08f,0.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
+  box({0,0.86f, 3.54f},{9.9f,0.08f,0.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
+  // Cover blocks are physical colliders as well as 3D objects.
+  for(const auto&o:obstacles){
+    box({o.x,o.h*0.5f,o.z},{o.sx,o.h,o.sz},{0.065f,0.13f,0.19f},{0.0f,0.10f,0.18f},0,view,proj,cam);
+    box({o.x,o.h+0.025f,o.z},{o.sx+0.05f,0.05f,o.sz+0.05f},{0.0f,0.35f,0.50f},{0.0f,0.22f,0.32f},0,view,proj,cam);
+    box({o.x,o.h+0.065f,o.z},{o.sx*0.52f,0.025f,o.sz*0.58f},{0.12f,0.20f,0.25f},{0.0f,0.025f,0.04f},0,view,proj,cam);
+  }
+  // Powered relay stations at the rear wall.
+  for(int i=0;i<3;i++){
+    float x=-3.65f+(float)i*1.0f;
+    box({x,0.35f,2.98f},{0.48f,0.64f,0.36f},{0.07f,0.10f,0.15f},{0.0f,0.04f,0.08f},0,view,proj,cam);
+    box({x,0.50f,2.78f},{0.31f,0.20f,0.045f},{0.0f,0.38f,0.60f},{0.0f,0.35f,0.65f},0,view,proj,cam);
+    orb({x,0.78f,2.76f},{0.10f,0.10f,0.10f},{0.05f,0.45f,0.75f},{0.0f,0.35f,0.7f},view,proj,cam);
+  }
+  // Extraction platform; its ring changes state only after all hostiles are cleared.
+  V3 exitColor=allEnemiesDefeated()?V3{0.02f,0.85f,0.42f}:V3{0.02f,0.35f,0.50f};
+  V3 exitGlow=allEnemiesDefeated()?V3{0.0f,0.5f,0.20f}:V3{0.0f,0.12f,0.23f};
+  for(int i=0;i<24;i++){
+    float a=2*PI*(float)i/24.0f;
+    box({4.02f+std::cos(a)*0.57f,0.065f,-2.48f+std::sin(a)*0.57f},{0.14f,0.055f,0.10f},exitColor,exitGlow,a,view,proj,cam);
+  }
+  box({4.02f,0.18f,-2.48f},{0.78f,0.12f,0.78f},{0.025f,0.12f,0.15f},{0.0f,0.07f,0.1f},0,view,proj,cam);
+  box({4.02f,0.58f,-2.48f},{0.10f,0.80f,0.10f},exitColor,exitGlow,0,view,proj,cam);
+  orb({4.02f,1.08f+0.08f*std::sin(elapsed*2.2f),-2.48f},{0.24f,0.24f,0.24f},exitColor,exitGlow,view,proj,cam);
+  // Player unit: layered armor, visible core, shoulder plates and soft shadow.
+  orb({playerX,0.025f,playerZ},{0.84f,0.035f,0.78f},{0.008f,0.014f,0.022f},{0,0,0},view,proj,cam);
+  float playerYaw=std::atan2(aimX-playerX,aimZ-playerZ);
+  orb({playerX,0.27f,playerZ},{0.72f,0.38f,0.72f},{0.035f,0.24f,0.34f},{0.0f,0.08f,0.14f},view,proj,cam);
+  box({playerX,0.38f,playerZ},{0.54f,0.23f,0.62f},{0.055f,0.36f,0.46f},{0.0f,0.08f,0.14f},playerYaw,view,proj,cam);
+  box({playerX-0.31f,0.31f,playerZ},{0.22f,0.18f,0.40f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
+  box({playerX+0.31f,0.31f,playerZ},{0.22f,0.18f,0.40f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
+  orb({playerX,0.51f,playerZ},{0.24f,0.20f,0.24f},{0.18f,0.83f,0.94f},{0.02f,0.24f,0.34f},view,proj,cam);
+  orb({playerX+std::sin(playerYaw)*0.20f,0.43f,playerZ+std::cos(playerYaw)*0.20f},{0.16f,0.09f,0.16f},{0.52f,0.96f,1.0f},{0.12f,0.22f,0.28f},view,proj,cam);
+  // Health is a 3D bar hovering above the player.
+  box({playerX,0.91f,playerZ},{0.78f,0.065f,0.09f},{0.10f,0.035f,0.06f},{0.02f,0.0f,0.0f},0,view,proj,cam);
+  if(playerHealth>0.001f)box({playerX-0.39f+0.39f*playerHealth,0.915f,playerZ},{0.78f*playerHealth,0.075f,0.095f},{0.0f,0.78f,0.84f},{0.0f,0.18f,0.24f},0,view,proj,cam);
+  // Distinct hostile silhouettes: swift sphere, heavy armored block, standard drone.
+  for(const auto&e:enemies){
+    if(e.hp<=0.0f)continue;
+    float bob=0.035f*std::sin(elapsed*4.0f+e.x*2.0f);
+    orb({e.x,0.025f,e.z},{e.radius*2.4f,0.035f,e.radius*2.4f},{0.035f,0.006f,0.02f},{0,0,0},view,proj,cam);
+    if(e.type==1){
+      box({e.x,0.28f+bob,e.z},{0.61f,0.49f,0.58f},{0.28f,0.045f,0.075f},{0.16f,0.005f,0.02f},e.yaw,view,proj,cam);
+      box({e.x,0.55f+bob,e.z},{0.43f,0.20f,0.40f},{0.38f,0.07f,0.10f},{0.18f,0.01f,0.02f},e.yaw,view,proj,cam);
+      box({e.x-0.34f,0.30f+bob,e.z},{0.18f,0.27f,0.23f},{0.14f,0.035f,0.06f},{0.06f,0.0f,0.01f},e.yaw,view,proj,cam);
+      box({e.x+0.34f,0.30f+bob,e.z},{0.18f,0.27f,0.23f},{0.14f,0.035f,0.06f},{0.06f,0.0f,0.01f},e.yaw,view,proj,cam);
+    }else if(e.type==2){
+      orb({e.x,0.31f+bob,e.z},{0.42f,0.36f,0.42f},{0.28f,0.055f,0.09f},{0.10f,0.0f,0.015f},view,proj,cam);
+      orb({e.x,0.51f+bob,e.z},{0.24f,0.21f,0.24f},{0.46f,0.08f,0.12f},{0.16f,0.0f,0.02f},view,proj,cam);
+      box({e.x-0.25f,0.32f+bob,e.z},{0.12f,0.12f,0.36f},{0.18f,0.035f,0.06f},{0.08f,0.0f,0.01f},e.yaw,view,proj,cam);
+      box({e.x+0.25f,0.32f+bob,e.z},{0.12f,0.12f,0.36f},{0.18f,0.035f,0.06f},{0.08f,0.0f,0.01f},e.yaw,view,proj,cam);
+    }else{
+      orb({e.x,0.30f+bob,e.z},{0.48f,0.35f,0.46f},{0.28f,0.035f,0.075f},{0.10f,0.0f,0.015f},view,proj,cam);
+      orb({e.x,0.50f+bob,e.z},{0.29f,0.22f,0.29f},{0.40f,0.06f,0.09f},{0.13f,0.0f,0.02f},view,proj,cam);
+      box({e.x,0.53f+bob,e.z+0.15f},{0.22f,0.09f,0.08f},{1.0f,0.15f,0.21f},{0.28f,0.01f,0.02f},e.yaw,view,proj,cam);
+    }
+    box({e.x,0.87f+bob,e.z},{0.60f,0.055f,0.075f},{0.16f,0.025f,0.04f},{0.02f,0.0f,0.0f},0,view,proj,cam);
+    box({e.x-0.30f+(0.60f*e.hp/e.maxHp)*0.5f,0.88f+bob,e.z},{0.60f*e.hp/e.maxHp,0.062f,0.08f},{1.0f,0.10f,0.18f},{0.19f,0.0f,0.02f},0,view,proj,cam);
+  }
+  // Bright energy pellets use real depth and move through the world.
+  for(const auto&s:shots)if(s.life>0.0f){
+    orb({s.x,0.34f,s.z},{0.19f,0.19f,0.19f},{0.10f,0.85f,1.0f},{0.0f,0.30f,0.48f},view,proj,cam);
+  }
+  // Small status beacons show remaining targets without a flat HUD overlay.
+  for(int i=0;i<4;i++){
+    bool alive=enemies[i].hp>0.0f;
+    orb({-4.25f+0.25f*(float)i,0.93f,-2.94f},{0.13f,0.13f,0.13f},
+      alive?V3{1.0f,0.10f,0.17f}:V3{0.05f,0.42f,0.30f},
+      alive?V3{0.24f,0.0f,0.02f}:V3{0.0f,0.12f,0.07f},view,proj,cam);
+  }
+}
+void fixedUpdate(float dt){
+  elapsed+=dt;
+  if(!won&&!lost){
+    if(moving){
+      float dx=(moveX-moveOriginX)/(float)screenH;
+      float dy=(moveY-moveOriginY)/(float)screenH;
+      float mag=std::sqrt(dx*dx+dy*dy);
+      if(mag>0.02f){
+        float nx=dx/std::max(0.15f,mag),ny=dy/std::max(0.15f,mag);
+        float strength=std::min(1.0f,mag/0.15f);
+        playerX+=nx*3.35f*strength*dt;
+        playerZ-=ny*3.35f*strength*dt;
+        resolveCollision(playerX,playerZ,0.30f);
+      }
+    }
+    shotCooldown=std::max(0.0f,shotCooldown-dt);
+    if(aiming&&shotCooldown<=0.0f&&playerHealth>0.0f){
+      int slot=-1;for(int i=0;i<(int)shots.size();i++)if(shots[i].life<=0.0f){slot=i;break;}
+      if(slot>=0){
+        float dx=aimX-playerX,dz=aimZ-playerZ,d=std::sqrt(dx*dx+dz*dz);
+        if(d<0.01f){dx=1.0f;dz=0.0f;d=1.0f;}
+        shots[slot]={playerX,0.34f,playerZ,dx/d*7.0f,dz/d*7.0f,1.15f};shotCooldown=0.20f;
+      }
+    }
+    for(auto&e:enemies){
+      if(e.hp<=0.0f)continue;
+      float dx=playerX-e.x,dz=playerZ-e.z,d=std::sqrt(dx*dx+dz*dz);
+      if(d>e.radius+0.38f){
+        float step=std::min(e.speed*dt,d-e.radius-0.36f);
+        if(d>0.001f){e.x+=dx/d*step;e.z+=dz/d*step;}
+        e.yaw=std::atan2(dx,dz);
+        resolveCollision(e.x,e.z,e.radius);
+      }else playerHealth=std::max(0.0f,playerHealth-0.14f*dt);
+    }
+    for(auto&s:shots){
+      if(s.life<=0.0f)continue;
+      s.x+=s.vx*dt;s.z+=s.vz*dt;s.life-=dt;
+      if(s.x<-5||s.x>5||s.z<-3.7f||s.z>3.7f){s.life=0;continue;}
+      for(auto&e:enemies){
+        if(e.hp<=0.0f)continue;
+        float dx=s.x-e.x,dz=s.z-e.z;
+        if(dx*dx+dz*dz<(e.radius+0.11f)*(e.radius+0.11f)){
+          e.hp=std::max(0.0f,e.hp-1.0f);s.life=0.0f;
+          if(e.hp<=0.0f)defeated++;
+          break;
+        }
+      }
+    }
+    if(playerHealth<=0.0f){lost=true;moving=false;aiming=false;}
+    if(allEnemiesDefeated()){
+      float dx=playerX-4.02f,dz=playerZ+2.48f;
+      if(dx*dx+dz*dz<0.72f*0.72f){won=true;moving=false;aiming=false;}
+    }
+  }
+}
+} // namespace
+
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
+  // EGL can recreate the context after resume: rebuild every GL object.
+  program=0;fallbackProgram=0;cubeMesh={};sphereMesh={};
+  program=make3DProgram();
+  if(!program){__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","3D renderer failed, showing diagnostic fallback");fallbackProgram=makeFallbackProgram();}
+  if(program){mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");cameraLoc=glGetUniformLocation(program,"uCamera");createMeshes();}
+  else if(fallbackProgram)fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");
+  const GLubyte*version=glGetString(GL_VERSION);
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
+  glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
+  glClearColor(0.004f,0.008f,0.018f,1.0f);previousFrame=std::chrono::steady_clock::now();
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
-  width=std::max(1,(int)w);height=std::max(1,(int)h);glViewport(0,0,width,height);
+  screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);glViewport(0,0,screenW,screenH);
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeDrawFrame(JNIEnv*,jobject){
-  const float dt=1.0f/60.0f; elapsed+=dt;
-  if(dragging){
-    float dx=(moveX-downX)/std::max(1.0f,(float)height);
-    float dy=(moveY-downY)/std::max(1.0f,(float)height);
-    px+=std::clamp(dx*2.8f,-0.075f,0.075f);
-    py-=std::clamp(dy*2.8f,-0.075f,0.075f);
-    downX=moveX;downY=moveY;
+  auto now=std::chrono::steady_clock::now();
+  float frame=std::chrono::duration<float>(now-previousFrame).count();previousFrame=now;
+  frame=std::clamp(frame,0.0f,0.05f);accumulator+=frame;
+  const float step=1.0f/60.0f;
+  while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
+  glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+  if(!program){
+    if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glDrawArrays(GL_TRIANGLES,0,3);}
+    return;
   }
-  px=std::clamp(px,-1.48f,1.48f);py=std::clamp(py,-0.66f,0.66f);
-  fireCooldown=std::max(0.0f,fireCooldown-dt);
-  int alive=0;
-  for(int i=0;i<4;i++){
-    if(enemies[i].hp<=0.0f) continue;
-    alive++;
-    float dx=px-enemies[i].x,dy=py-enemies[i].y;
-    float d=std::sqrt(dx*dx+dy*dy);
-    if(d>0.15f){enemies[i].x+=dx/d*0.20f*dt;enemies[i].y+=dy/d*0.20f*dt;}
-    if(d<0.105f){health=std::max(0.0f,health-0.12f*dt);}
+  V3 camera{0.0f,10.7f,8.2f};
+  Mat4 view=lookAt(camera,{0.0f,0.0f,0.0f},{0.0f,1.0f,0.0f});
+  Mat4 proj=perspective(48.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
+  glUseProgram(program);drawScene(view,proj,camera);
+  if(lost||won){
+    // Volumetric outcome signal: a large bright ring above the arena center.
+    V3 color=won?V3{0.0f,0.9f,0.38f}:V3{1.0f,0.04f,0.10f};
+    V3 glow=won?V3{0.0f,0.48f,0.12f}:V3{0.35f,0.0f,0.015f};
+    for(int i=0;i<28;i++){float a=2*PI*(float)i/28.0f;orb({std::cos(a)*0.75f,1.05f+0.05f*std::sin(elapsed*3),std::sin(a)*0.75f},{0.12f,0.12f,0.12f},color,glow,view,proj,camera);}
   }
-  if(firing && fireCooldown<=0.0f && health>0.0f && !missionComplete){
-    int slot=-1;for(int i=0;i<8;i++)if(shots[i].life<=0.0f){slot=i;break;}
-    if(slot>=0){
-      float dx=targetX-px,dy=targetY-py,d=std::sqrt(dx*dx+dy*dy);
-      if(d<0.01f){dx=1.0f;dy=0.0f;d=1.0f;}
-      shots[slot]={px,py,dx/d*2.7f,dy/d*2.7f,0.8f};fireCooldown=0.16f;
-    }
-  }
-  for(auto &s:shots){
-    if(s.life<=0.0f)continue;
-    s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;
-    for(int i=0;i<4;i++){
-      if(enemies[i].hp<=0.0f)continue;
-      float dx=s.x-enemies[i].x,dy=s.y-enemies[i].y;
-      if(dx*dx+dy*dy<0.008f){enemies[i].hp=0.0f;s.life=0.0f;kills++;break;}
-    }
-  }
-  if(alive==0)missionComplete=true;
-  glClear(GL_COLOR_BUFFER_BIT);if(!program)return;
-  glUseProgram(program);
-  glUniform2f(glGetUniformLocation(program,"uRes"),(float)width,(float)height);
-  glUniform1f(glGetUniformLocation(program,"uTime"),elapsed);
-  glUniform2f(glGetUniformLocation(program,"uPlayer"),px,py);
-  GLint el=glGetUniformLocation(program,"uEnemies[0]");
-  float enemyData[16];for(int i=0;i<4;i++){enemyData[i*4]=enemies[i].x;enemyData[i*4+1]=enemies[i].y;enemyData[i*4+2]=enemies[i].hp;enemyData[i*4+3]=0.0f;}
-  glUniform4fv(el,4,enemyData);
-  GLint bl=glGetUniformLocation(program,"uBullets[0]");
-  float bulletData[32];for(int i=0;i<8;i++){bulletData[i*4]=shots[i].x;bulletData[i*4+1]=shots[i].y;bulletData[i*4+2]=shots[i].life>0.0f?1.0f:0.0f;bulletData[i*4+3]=shots[i].vx>0?1.0f:-1.0f;}
-  glUniform4fv(bl,8,bulletData);
-  glUniform4f(glGetUniformLocation(program,"uHud"),health,(float)(4-kills),missionComplete?1.0f:0.0f,0.0f);
-  glBindVertexArray(vao);glDrawArrays(GL_TRIANGLES,0,3);
 }
-extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeTouch(JNIEnv*,jobject,jint action,jfloat x,jfloat y,jfloat,jfloat){
-  const bool rightSide=x>width*0.48f;
-  if(action==0){
-    if(rightSide){firing=true;targetX=(x/(float)width*2.0f-1.0f)*(float)width/(float)height;targetY=1.0f-y/(float)height*2.0f;}
-    else{dragging=true;downX=moveX=x;downY=moveY=y;}
-  } else if(action==1){
-    if(firing && rightSide){targetX=(x/(float)width*2.0f-1.0f)*(float)width/(float)height;targetY=1.0f-y/(float)height*2.0f;}
-    if(dragging && !rightSide){moveX=x;moveY=y;}
-  } else if(action==2){dragging=false;firing=false;moveX=moveY=downX=downY=0.0f;}
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeTouch(JNIEnv*,jobject,jint action,jfloat x,jfloat y,jfloat w,jfloat h){
+  screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);
+  if((won||lost)&&action==0){resetMission();return;}
+  switch(action){
+    case 0: moving=true;moveOriginX=moveX=x;moveOriginY=moveY=y;break;
+    case 1: if(moving){moveX=x;moveY=y;}break;
+    case 2: moving=false;break;
+    case 3: aiming=true;aimX=(x/(float)screenW)*10.0f-5.0f;aimZ=3.6f-(y/(float)screenH)*7.2f;break;
+    case 4: if(aiming){aimX=(x/(float)screenW)*10.0f-5.0f;aimZ=3.6f-(y/(float)screenH)*7.2f;}break;
+    case 5: aiming=false;break;
+    case 6: moving=false;aiming=false;break;
+  }
 }
