@@ -1,24 +1,30 @@
-# NEON BREACH — Android nativo
+# NEON BREACH 0.5.0 — Android nativo
 
-Protótipo Android nativo para Duck Dream Studios: Kotlin para ciclo de vida/entrada, C++17/NDK e OpenGL ES 3.0. Orientação fixa em landscape; o renderizador usa uma cena procedural de setor industrial neon e unidades inimigas animadas.
+Protótipo nativo de Duck Dream Studios para Android: Kotlin controla o ciclo de vida e o toque; C++17/NDK e OpenGL ES 3.0 renderizam a arena em landscape. O alvo inicial de teste é Android de entrada, incluindo o Realme C53.
 
-## Estado atual
+## O que entrou na versão 0.5.0
 
-- Código Android e renderizador nativo publicados.
-- GitHub Actions compila automaticamente em alterações relevantes na branch `main`; também pode ser executado manualmente em **Actions**.
-- O workflow valida os caminhos essenciais, executa `gradle assembleDebug` e publica o artefato `neon-breach-debug-apk` por 14 dias quando o build passa.
+- Movimento por arrasto no lado esquerdo da tela.
+- Disparo contínuo enquanto mantém o toque no lado direito, mirando no ponto tocado.
+- Quatro inimigos perseguem o jogador e causam dano ao contato.
+- Projéteis, colisão de acerto, inimigos derrotados, indicador de vida e contagem visual de hostis restantes.
+- Workflow GitHub Actions com validação, build do APK debug e upload de artefato.
 
-**Limites importantes:** isto ainda é um protótipo técnico jogável, não uma versão completa de NEON BREACH. O cenário e os inimigos são desenhados proceduralmente; ainda faltam combate completo, armas/projéteis, IA de combate, objetivos reais, áudio, menus, salvamento e testes de desempenho em aparelho físico. A verificação estática não substitui a compilação nem o teste no Realme C53.
+## Compilar e instalar
 
-## Estrutura
+1. Abra [GitHub Actions](https://github.com/Coca69643/Neon-Breach/actions).
+2. Abra a execução mais recente de **Build NEON BREACH APK** que esteja verde.
+3. Em **Artifacts**, baixe `neon-breach-debug-apk`.
+4. Extraia o ZIP e instale o APK no Android.
 
-- `settings.gradle`, `build.gradle`, `gradle.properties`
-- `app/build.gradle`
-- `app/src/main/AndroidManifest.xml`
+## Estado real e próximos passos
+
+Esta versão é uma fatia de gameplay inicial, não um jogo completo nem um lançamento de produção. A arte continua procedural e a interface não tem tipografia de missão completa. Ainda faltam menus, objetivos de extração com estado visual/textual claro, áudio, persistência, mais variedade de inimigos/armas, tratamento completo de pausa/fim de missão e testes em aparelho físico. A compilação verde confirma que o APK foi empacotado; não confirma sozinha a qualidade visual, equilíbrio, consumo térmico ou estabilidade no Realme C53.
+
+## Estrutura principal
+
 - `app/src/main/java/com/duckdream/neonbreach/MainActivity.kt`
-- `app/src/main/cpp/CMakeLists.txt`
 - `app/src/main/cpp/game.cpp`
-- `tools/verify_project.py`
+- `app/src/main/cpp/CMakeLists.txt`
 - `.github/workflows/android.yml`
-
-Consulte [BUILD_ON_GITHUB_MOBILE.md](BUILD_ON_GITHUB_MOBILE.md) para baixar o APK pelo celular.
+- `tools/verify_project.py`
