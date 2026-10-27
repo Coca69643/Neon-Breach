@@ -1,33 +1,17 @@
-# Publicar y compilar NEON BREACH desde Android
+# NEON BREACH — compilar e baixar pelo Android
 
-## Estado importante
-El repositorio puede tener este workflow, pero el APK solo se compila cuando se publiquen también los archivos fuente del proyecto. No subas el ZIP como único archivo esperando que Actions lo extraiga.
+O repositório já contém os arquivos-base do projeto e o workflow de build.
 
-## Arquivos que precisam existir na raiz
-- `settings.gradle`
-- `build.gradle`
-- `gradle.properties`
-- `app/build.gradle`
-- `app/src/main/AndroidManifest.xml`
-- `app/src/main/java/com/duckdream/neonbreach/MainActivity.kt`
-- `app/src/main/cpp/CMakeLists.txt`
-- `app/src/main/cpp/game.cpp`
-- `tools/verify_project.py`
-- os recursos de `app/src/main/res/`
+## Baixar o APK
+1. Abra [Actions do NEON BREACH](https://github.com/Coca69643/Neon-Breach/actions).
+2. Entre na execução **Build NEON BREACH APK** mais recente.
+3. Aguarde o job terminar. Se estiver verde, abra **Artifacts**.
+4. Baixe `neon-breach-debug-apk`, extraia o ZIP do artefato e instale o APK no Android. O Android pode pedir autorização para instalar a partir da fonte escolhida.
 
-A pasta `.github/workflows/android.yml` já é gerenciada pelo repositório; não crie uma segunda cópia com outro nome.
+## Se o build falhar
+- Abra a execução vermelha e encontre a primeira etapa com erro.
+- Copie o trecho do log que contém a causa original; a última linha pode ser apenas um resumo.
+- A verificação estática só confere arquivos e algumas condições do código. A compilação é a confirmação de que o APK foi empacotado.
 
-## Pelo celular
-1. Extraia o arquivo ZIP no gerenciador de arquivos.
-2. No GitHub, abra o repositório e use **Add file → Upload files**.
-3. Se o navegador não permitir selecionar pastas, use o app GitHub ou um cliente Git Android que permita adicionar diretórios. Preserve a estrutura relativa acima.
-4. Faça commit dos arquivos na branch `main`.
-5. Abra **Actions → Build NEON BREACH APK → Run workflow**.
-6. Abra a execução. Se o job ficar verde, baixe `neon-breach-debug-apk` na seção **Artifacts**.
-
-## Diagnóstico
-- Se falhar em `tools/verify_project.py`, falta arquivo ou caminho.
-- Se falhar no Gradle/CMake/Kotlin, abra o log da etapa vermelha e compartilhe o texto do erro.
-- Se compilar, isso comprova que o APK foi empacotado; não comprova desempenho, estabilidade nem controles em hardware real.
-
-O workflow é manual para evitar execuções vermelhas antes de o código-fonte completo ser enviado.
+## Estado e limitações do jogo
+Esta versão é um protótipo técnico nativo. A cena OpenGL é procedural e tem movimento de toque básico, setor, cobertura e inimigos animados. Ainda não representa o jogo completo: faltam sistemas completos de combate, armas, IA, objetivos, áudio, menus e persistência. Mesmo com build verde, ainda é necessário testar instalação, resposta ao toque, aquecimento e estabilidade no Realme C53.
