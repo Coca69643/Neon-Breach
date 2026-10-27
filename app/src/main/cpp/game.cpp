@@ -160,11 +160,11 @@ GLuint makeFallbackProgram(){
   void main(){vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));gl_Position=vec4(p[gl_VertexID],0.0,1.0);})";
   const char*fs=R"(#version 300 es
   precision mediump float;uniform vec2 uRes;out vec4 outColor;
-  void main(){vec2 uv=gl_FragCoord.xy/max(uRes,vec2(1.0));vec2 q=fract(uv*vec2(18.0,10.0));float g=max(step(0.97,q.x),step(0.97,q.y));vec3 c=vec3(0.006,0.014,0.03)+g*vec3(0.0,0.22,0.34);float d=1.0-smoothstep(0.015,0.04,length(uv-vec2(0.5)));c+=d*vec3(0.0,0.6,0.9);outColor=vec4(c,1.0);})";
+  void main(){vec2 uv=gl_FragCoord.xy/max(uRes,vec2(1.0));vec2 cellCoord=fract(uv*vec2(18.0,10.0));float g=max(step(0.97,cellCoord.x),step(0.97,cellCoord.y));vec3 c=vec3(0.006,0.014,0.03)+g*vec3(0.0,0.22,0.34);float d=1.0-smoothstep(0.015,0.04,length(uv-vec2(0.5)));c+=d*vec3(0.0,0.6,0.9);outColor=vec4(c,1.0);})";
   return linkProgram(vs,fs,"fallback");
 }
 void resetMission(){
-  playerX=-3.55f;playerZ=-2.15f;playerHealth=1.0f;elapsed=0;accumulator=0;
+  playerX=-3.55f;playerZ=-2.15f;playerHealth=1.0f;aimX=playerX+5.0f;aimZ=playerZ;elapsed=0;accumulator=0;
   moving=false;aiming=false;shotCooldown=0;won=false;lost=false;defeated=0;
   shots.fill({});
   enemies={{{3.55f,2.15f,1,1,1.05f,0.34f,0,PI},{3.35f,-1.75f,2,2,0.70f,0.43f,1,PI},{-0.35f,2.55f,1,1,1.45f,0.28f,2,PI},{1.05f,-2.45f,1,1,0.92f,0.32f,0,PI}}};
@@ -275,6 +275,11 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     }
     box({e.x,0.87f+bob,e.z},{0.60f,0.055f,0.075f},{0.16f,0.025f,0.04f},{0.02f,0.0f,0.0f},0,view,proj,cam);
     box({e.x-0.30f+(0.60f*e.hp/e.maxHp)*0.5f,0.88f+bob,e.z},{0.60f*e.hp/e.maxHp,0.062f,0.08f},{1.0f,0.10f,0.18f},{0.19f,0.0f,0.02f},0,view,proj,cam);
+  }
+  // Aim indicator follows the right-hand touch direction in world space.
+  if(aiming&&!won&&!lost){
+    orb({aimX,0.055f,aimZ},{0.18f,0.045f,0.18f},{0.04f,0.72f,0.90f},{0.0f,0.24f,0.34f},view,proj,cam);
+    for(int i=0;i<12;i++){float a=2*PI*(float)i/12.0f;box({aimX+std::cos(a)*0.26f,0.055f,aimZ+std::sin(a)*0.26f},{0.08f,0.035f,0.045f},{0.12f,0.76f,0.9f},{0.0f,0.18f,0.27f},a,view,proj,cam);}
   }
   // Bright energy pellets use real depth and move through the world.
   for(const auto&s:shots)if(s.life>0.0f){
