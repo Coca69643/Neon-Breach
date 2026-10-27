@@ -244,15 +244,15 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   // Player unit: layered armor, visible core, shoulder plates and soft shadow.
   orb({playerX,0.025f,playerZ},{0.84f,0.035f,0.78f},{0.008f,0.014f,0.022f},{0,0,0},view,proj,cam);
   float playerYaw=std::atan2(aimX-playerX,aimZ-playerZ);
-  orb({playerX,0.27f,playerZ},{0.72f,0.38f,0.72f},{0.035f,0.24f,0.34f},{0.0f,0.08f,0.14f},view,proj,cam);
-  box({playerX,0.38f,playerZ},{0.54f,0.23f,0.62f},{0.055f,0.36f,0.46f},{0.0f,0.08f,0.14f},playerYaw,view,proj,cam);
-  box({playerX-0.31f,0.31f,playerZ},{0.22f,0.18f,0.40f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
-  box({playerX+0.31f,0.31f,playerZ},{0.22f,0.18f,0.40f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
-  orb({playerX,0.51f,playerZ},{0.24f,0.20f,0.24f},{0.18f,0.83f,0.94f},{0.02f,0.24f,0.34f},view,proj,cam);
-  orb({playerX+std::sin(playerYaw)*0.20f,0.43f,playerZ+std::cos(playerYaw)*0.20f},{0.16f,0.09f,0.16f},{0.52f,0.96f,1.0f},{0.12f,0.22f,0.28f},view,proj,cam);
+  orb({playerX,0.43f,playerZ},{0.66f,0.72f,0.62f},{0.035f,0.24f,0.34f},{0.0f,0.08f,0.14f},view,proj,cam);
+  box({playerX,0.48f,playerZ},{0.48f,0.38f,0.54f},{0.055f,0.36f,0.46f},{0.0f,0.08f,0.14f},playerYaw,view,proj,cam);
+  box({playerX-0.30f,0.40f,playerZ},{0.20f,0.30f,0.34f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
+  box({playerX+0.30f,0.40f,playerZ},{0.20f,0.30f,0.34f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
+  orb({playerX,0.91f,playerZ},{0.25f,0.25f,0.25f},{0.18f,0.83f,0.94f},{0.02f,0.24f,0.34f},view,proj,cam);
+  orb({playerX+std::sin(playerYaw)*0.22f,0.79f,playerZ+std::cos(playerYaw)*0.22f},{0.16f,0.09f,0.16f},{0.52f,0.96f,1.0f},{0.12f,0.22f,0.28f},view,proj,cam);
   // Health is a 3D bar hovering above the player.
-  box({playerX,0.91f,playerZ},{0.78f,0.065f,0.09f},{0.10f,0.035f,0.06f},{0.02f,0.0f,0.0f},0,view,proj,cam);
-  if(playerHealth>0.001f)box({playerX-0.39f+0.39f*playerHealth,0.915f,playerZ},{0.78f*playerHealth,0.075f,0.095f},{0.0f,0.78f,0.84f},{0.0f,0.18f,0.24f},0,view,proj,cam);
+  box({playerX,1.32f,playerZ},{0.78f,0.065f,0.09f},{0.10f,0.035f,0.06f},{0.02f,0.0f,0.0f},0,view,proj,cam);
+  if(playerHealth>0.001f)box({playerX-0.39f+0.39f*playerHealth,1.325f,playerZ},{0.78f*playerHealth,0.075f,0.095f},{0.0f,0.78f,0.84f},{0.0f,0.18f,0.24f},0,view,proj,cam);
   // Distinct hostile silhouettes: swift sphere, heavy armored block, standard drone.
   for(const auto&e:enemies){
     if(e.hp<=0.0f)continue;
@@ -264,13 +264,13 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
       box({e.x-0.34f,0.30f+bob,e.z},{0.18f,0.27f,0.23f},{0.14f,0.035f,0.06f},{0.06f,0.0f,0.01f},e.yaw,view,proj,cam);
       box({e.x+0.34f,0.30f+bob,e.z},{0.18f,0.27f,0.23f},{0.14f,0.035f,0.06f},{0.06f,0.0f,0.01f},e.yaw,view,proj,cam);
     }else if(e.type==2){
-      orb({e.x,0.31f+bob,e.z},{0.42f,0.36f,0.42f},{0.28f,0.055f,0.09f},{0.10f,0.0f,0.015f},view,proj,cam);
-      orb({e.x,0.51f+bob,e.z},{0.24f,0.21f,0.24f},{0.46f,0.08f,0.12f},{0.16f,0.0f,0.02f},view,proj,cam);
+      orb({e.x,0.38f+bob,e.z},{0.42f,0.56f,0.42f},{0.28f,0.055f,0.09f},{0.10f,0.0f,0.015f},view,proj,cam);
+      orb({e.x,0.72f+bob,e.z},{0.24f,0.24f,0.24f},{0.46f,0.08f,0.12f},{0.16f,0.0f,0.02f},view,proj,cam);
       box({e.x-0.25f,0.32f+bob,e.z},{0.12f,0.12f,0.36f},{0.18f,0.035f,0.06f},{0.08f,0.0f,0.01f},e.yaw,view,proj,cam);
       box({e.x+0.25f,0.32f+bob,e.z},{0.12f,0.12f,0.36f},{0.18f,0.035f,0.06f},{0.08f,0.0f,0.01f},e.yaw,view,proj,cam);
     }else{
-      orb({e.x,0.30f+bob,e.z},{0.48f,0.35f,0.46f},{0.28f,0.035f,0.075f},{0.10f,0.0f,0.015f},view,proj,cam);
-      orb({e.x,0.50f+bob,e.z},{0.29f,0.22f,0.29f},{0.40f,0.06f,0.09f},{0.13f,0.0f,0.02f},view,proj,cam);
+      orb({e.x,0.34f+bob,e.z},{0.42f,0.48f,0.42f},{0.28f,0.035f,0.075f},{0.10f,0.0f,0.015f},view,proj,cam);
+      orb({e.x,0.67f+bob,e.z},{0.25f,0.24f,0.25f},{0.40f,0.06f,0.09f},{0.13f,0.0f,0.02f},view,proj,cam);
       box({e.x,0.53f+bob,e.z+0.15f},{0.22f,0.09f,0.08f},{1.0f,0.15f,0.21f},{0.28f,0.01f,0.02f},e.yaw,view,proj,cam);
     }
     box({e.x,0.87f+bob,e.z},{0.60f,0.055f,0.075f},{0.16f,0.025f,0.04f},{0.02f,0.0f,0.0f},0,view,proj,cam);
@@ -376,9 +376,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
     return;
   }
-  V3 camera{0.0f,10.7f,8.2f};
+  V3 camera{0.0f,8.6f,11.2f};
   Mat4 view=lookAt(camera,{0.0f,0.0f,0.0f},{0.0f,1.0f,0.0f});
-  Mat4 proj=perspective(48.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
+  Mat4 proj=perspective(44.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
   glUseProgram(program);drawScene(view,proj,camera);
   if(lost||won){
     // Volumetric outcome signal: a large bright ring above the arena center.
