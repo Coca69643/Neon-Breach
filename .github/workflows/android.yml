@@ -36,6 +36,27 @@ jobs:
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
+      - name: Prepare persistent APK signing key when configured
+        env:
+          NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
+          NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
+          NEON_BREACH_KEY_ALIAS: ${{ secrets.NEON_BREACH_KEY_ALIAS }}
+          NEON_BREACH_KEY_PASSWORD: ${{ secrets.NEON_BREACH_KEY_PASSWORD }}
+        run: |
+          if [ -n "${NEON_BREACH_KEYSTORE_BASE64:-}" ]; then
+            KEYSTORE_PATH="$RUNNER_TEMP/neon-breach-signing.jks"
+            printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+            test -s "$KEYSTORE_PATH"
+            {
+              echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
+              echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
+              echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
+              echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
+            } >> "$GITHUB_ENV"
+            echo "Persistent signing key configured."
+          else
+            echo "::warning::Persistent signing is not configured. This APK uses the runner's temporary debug key and will not be suitable for in-place updates across separate CI runs."
+          fi
       - name: Install Android SDK, NDK and CMake
         run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
       - name: Validate required source files

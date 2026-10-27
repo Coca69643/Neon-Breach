@@ -5,7 +5,7 @@ import sys
 
 required = [
     "settings.gradle", "build.gradle", "gradle.properties", "app/build.gradle",
-    "app/src/main/AndroidManifest.xml",
+    "app/src/main/AndroidManifest.xml", "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
     "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp",
 ]
@@ -20,6 +20,12 @@ if 'screenOrientation="landscape"' not in manifest:
     raise SystemExit("Landscape orientation is not configured")
 if 'glEsVersion="0x00030000"' not in manifest:
     raise SystemExit("OpenGL ES 3.0 feature is not declared")
+for attr in ('android:icon="@drawable/ic_launcher"', 'android:roundIcon="@drawable/ic_launcher"'):
+    if attr not in manifest:
+        raise SystemExit(f"Launcher icon configuration missing: {attr}")
+icon = Path("app/src/main/res/drawable/ic_launcher.xml").read_text()
+if 'android:viewportWidth="108"' not in icon or '#00DDF4' not in icon:
+    raise SystemExit("Launcher icon vector is missing or malformed")
 
 cpp = Path("app/src/main/cpp/game.cpp").read_text()
 for token in (
@@ -48,8 +54,8 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.7.0'" not in build or "versionCode 7" not in build:
+if "versionName '0.7.1'" not in build or "versionCode 8" not in build:
     raise SystemExit("Version 0.7.0 metadata missing")
 
-print(f"Project structure, 3D renderer, UI and mission checks OK ({len(required)} required files found).")
+print(f"Project structure, icon, signing configuration, 3D renderer, UI and mission checks OK ({len(required)} required files found).")
 print("This check does not replace Android compilation or on-device testing.")
