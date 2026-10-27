@@ -20,7 +20,7 @@ if 'screenOrientation="landscape"' not in manifest:
     raise SystemExit("Landscape orientation is not configured")
 
 cpp = Path("app/src/main/cpp/game.cpp").read_text()
-for token in ("#version 300 es", "gl_VertexID", "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch"):
+for token in ("#version 300 es", "gl_VertexID", "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch", "uEnemies[4]", "uBullets[8]", "firing && fireCooldown", "enemies[i].x+=dx/d*0.20f", "health=std::max", "uHud") :
     if token not in cpp:
         raise SystemExit(f"Native renderer check failed: {token} missing")
 if re.search(r"uResolutionY|vec2\s+q\s*=", cpp):
