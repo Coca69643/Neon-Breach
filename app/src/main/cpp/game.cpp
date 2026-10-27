@@ -3,6 +3,7 @@
 #include <android/log.h>
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
@@ -30,6 +31,9 @@ float aimX=2.0f, aimZ=0.0f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0.0f;
 float elapsed=0.0f, accumulator=0.0f;
 bool won=false, lost=false;
 int defeated=0;
+int gameMode=0; // 0 menu, 1 playing, 2 pause, 3 settings, 4 victory, 5 defeat, 6 suspended menu
+int relayMask=0;
+std::atomic<int> publishedSnapshot{0};
 std::chrono::steady_clock::time_point previousFrame=std::chrono::steady_clock::now();
 std::array<Shot,12> shots{};
 std::array<Enemy,4> enemies{{
@@ -44,6 +48,8 @@ const std::array<Obstacle,4> obstacles{{
   { 1.50f,-1.25f, 0.92f, 0.52f, 0.62f},
   { 3.12f, 0.20f, 0.88f, 0.46f, 0.72f}
 }};
+constexpr float RELAY_X[3]={-3.72f,0.0f,3.70f};
+constexpr float RELAY_Z[3]={2.58f,-0.58f,1.82f};
 
 V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
 V3 sub(V3 a,V3 b){return {a.x-b.x,a.y-b.y,a.z-b.z};}
@@ -165,7 +171,7 @@ GLuint makeFallbackProgram(){
 }
 void resetMission(){
   playerX=-3.55f;playerZ=-2.15f;playerHealth=1.0f;aimX=playerX+5.0f;aimZ=playerZ;elapsed=0;accumulator=0;
-  moving=false;aiming=false;shotCooldown=0;won=false;lost=false;defeated=0;
+  moving=false;aiming=false;shotCooldown=0;won=false;lost=false;defeated=0;relayMask=0;
   shots.fill({});
   enemies={{{3.55f,2.15f,1,1,1.05f,0.34f,0,PI},{3.35f,-1.75f,2,2,0.70f,0.43f,1,PI},{-0.35f,2.55f,1,1,1.45f,0.28f,2,PI},{1.05f,-2.45f,1,1,0.92f,0.32f,0,PI}}};
 }
@@ -200,6 +206,20 @@ void draw(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,const Mat4&view,const
 void box(V3 p,V3 s,V3 c,V3 glow,float yaw,const Mat4&v,const Mat4&pjt,V3 cam){draw(cubeMesh,p,s,c,glow,yaw,v,pjt,cam);}
 void orb(V3 p,V3 s,V3 c,V3 glow,const Mat4&v,const Mat4&pjt,V3 cam){draw(sphereMesh,p,s,c,glow,0,v,pjt,cam);}
 bool allEnemiesDefeated(){for(const auto&e:enemies)if(e.hp>0.0f)return false;return true;}
+int activeEnemyCount(){int count=0;for(const auto&e:enemies)if(e.hp>0.0f)count++;return count;}
+bool nearActiveRelay(){
+  for(int i=0;i<3;i++){
+    if(relayMask&(1<<i))continue;
+    float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];
+    if(dx*dx+dz*dz<1.05f*1.05f)return true;
+  }
+  return false;
+}
+void publishSnapshot(){
+  int hp=(int)std::round(std::clamp(playerHealth,0.0f,1.0f)*100.0f);
+  int packed=(gameMode&7)|((hp&127)<<3)|((relayMask&7)<<10)|((activeEnemyCount()&7)<<13)|(nearActiveRelay()?1<<16:0);
+  publishedSnapshot.store(packed,std::memory_order_relaxed);
+}
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   // Solid floor with real depth and modular metal seams.
   box({0,-0.18f,0},{10.0f,0.34f,7.2f},{0.025f,0.045f,0.075f},{0.0f,0.006f,0.012f},0,view,proj,cam);
@@ -224,16 +244,23 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     box({o.x,o.h+0.025f,o.z},{o.sx+0.05f,0.05f,o.sz+0.05f},{0.0f,0.35f,0.50f},{0.0f,0.22f,0.32f},0,view,proj,cam);
     box({o.x,o.h+0.065f,o.z},{o.sx*0.52f,0.025f,o.sz*0.58f},{0.12f,0.20f,0.25f},{0.0f,0.025f,0.04f},0,view,proj,cam);
   }
-  // Powered relay stations at the rear wall.
+  // Distributed relay consoles change both the mission state and visible network lighting.
   for(int i=0;i<3;i++){
-    float x=-3.65f+(float)i*1.0f;
-    box({x,0.35f,2.98f},{0.48f,0.64f,0.36f},{0.07f,0.10f,0.15f},{0.0f,0.04f,0.08f},0,view,proj,cam);
-    box({x,0.50f,2.78f},{0.31f,0.20f,0.045f},{0.0f,0.38f,0.60f},{0.0f,0.35f,0.65f},0,view,proj,cam);
-    orb({x,0.78f,2.76f},{0.10f,0.10f,0.10f},{0.05f,0.45f,0.75f},{0.0f,0.35f,0.7f},view,proj,cam);
+    const float x=RELAY_X[i],z=RELAY_Z[i];
+    const bool disabled=(relayMask&(1<<i))!=0;
+    const V3 body=disabled?V3{0.035f,0.15f,0.11f}:V3{0.055f,0.10f,0.16f};
+    const V3 panel=disabled?V3{0.04f,0.72f,0.36f}:V3{0.95f,0.16f,0.045f};
+    const V3 glow=disabled?V3{0.0f,0.16f,0.06f}:V3{0.32f,0.025f,0.0f};
+    box({x,0.018f,0},{0.038f,0.022f,6.62f},disabled?V3{0.025f,0.22f,0.12f}:V3{0.20f,0.04f,0.055f},disabled?V3{0.0f,0.10f,0.04f}:V3{0.18f,0.015f,0.025f},0,view,proj,cam);
+    box({x,0.34f,z},{0.58f,0.62f,0.42f},body,glow,0,view,proj,cam);
+    box({x,0.47f,z-0.23f},{0.36f,0.23f,0.045f},panel,glow,0,view,proj,cam);
+    orb({x,0.77f,z-0.23f},{0.13f,0.13f,0.13f},panel,glow,view,proj,cam);
+    box({x,0.83f,z},{0.48f,0.055f,0.055f},panel,glow,0,view,proj,cam);
   }
-  // Extraction platform; its ring changes state only after all hostiles are cleared.
-  V3 exitColor=allEnemiesDefeated()?V3{0.02f,0.85f,0.42f}:V3{0.02f,0.35f,0.50f};
-  V3 exitGlow=allEnemiesDefeated()?V3{0.0f,0.5f,0.20f}:V3{0.0f,0.12f,0.23f};
+  // Extraction opens only after all three relays are offline and the hostiles are neutralized.
+  const bool objectiveComplete=allEnemiesDefeated()&&relayMask==0x7;
+  V3 exitColor=objectiveComplete?V3{0.02f,0.85f,0.42f}:V3{0.02f,0.20f,0.28f};
+  V3 exitGlow=objectiveComplete?V3{0.0f,0.5f,0.20f}:V3{0.0f,0.035f,0.06f};
   for(int i=0;i<24;i++){
     float a=2*PI*(float)i/24.0f;
     box({4.02f+std::cos(a)*0.57f,0.065f,-2.48f+std::sin(a)*0.57f},{0.14f,0.055f,0.10f},exitColor,exitGlow,a,view,proj,cam);
@@ -294,6 +321,7 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   }
 }
 void fixedUpdate(float dt){
+  if(gameMode!=1){publishSnapshot();return;}
   elapsed+=dt;
   if(!won&&!lost){
     if(moving){
@@ -341,12 +369,13 @@ void fixedUpdate(float dt){
         }
       }
     }
-    if(playerHealth<=0.0f){lost=true;moving=false;aiming=false;}
-    if(allEnemiesDefeated()){
+    if(playerHealth<=0.0f){lost=true;moving=false;aiming=false;gameMode=5;}
+    if(allEnemiesDefeated()&&relayMask==0x7){
       float dx=playerX-4.02f,dz=playerZ+2.48f;
-      if(dx*dx+dz*dz<0.72f*0.72f){won=true;moving=false;aiming=false;}
+      if(dx*dx+dz*dz<0.72f*0.72f){won=true;moving=false;aiming=false;gameMode=4;}
     }
   }
+  publishSnapshot();
 }
 } // namespace
 
@@ -360,7 +389,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
   glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
-  glClearColor(0.004f,0.008f,0.018f,1.0f);previousFrame=std::chrono::steady_clock::now();
+  glClearColor(0.004f,0.008f,0.018f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
   screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);glViewport(0,0,screenW,screenH);
@@ -387,9 +416,31 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     for(int i=0;i<28;i++){float a=2*PI*(float)i/28.0f;orb({std::cos(a)*0.75f,1.05f+0.05f*std::sin(elapsed*3),std::sin(a)*0.75f},{0.12f,0.12f,0.12f},color,glow,view,proj,camera);}
   }
 }
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSetMode(JNIEnv*,jobject,jint mode){
+  if(mode>=0&&mode<=6){
+    gameMode=mode;
+    if(mode!=1){moving=false;aiming=false;}
+    previousFrame=std::chrono::steady_clock::now();
+    publishSnapshot();
+  }
+}
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeStartNewMission(JNIEnv*,jobject){
+  resetMission();gameMode=1;previousFrame=std::chrono::steady_clock::now();publishSnapshot();
+}
+extern "C" JNIEXPORT jint JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeGetSnapshot(JNIEnv*,jobject){
+  return (jint)publishedSnapshot.load(std::memory_order_relaxed);
+}
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeTouch(JNIEnv*,jobject,jint action,jfloat x,jfloat y,jfloat w,jfloat h){
   screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);
-  if((won||lost)&&action==0){resetMission();return;}
+  if(gameMode!=1)return;
+  if(action==7){
+    for(int i=0;i<3;i++){
+      if(relayMask&(1<<i))continue;
+      float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];
+      if(dx*dx+dz*dz<1.25f*1.25f){relayMask|=(1<<i);__android_log_print(ANDROID_LOG_INFO,"NeonBreach","Relay %d disabled; mask=%d",i+1,relayMask);publishSnapshot();return;}
+    }
+    publishSnapshot();return;
+  }
   switch(action){
     case 0: moving=true;moveOriginX=moveX=x;moveOriginY=moveY=y;break;
     case 1: if(moving){moveX=x;moveY=y;}break;
@@ -407,4 +458,5 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
     case 5: aiming=false;break;
     case 6: moving=false;aiming=false;break;
   }
+  publishSnapshot();
 }

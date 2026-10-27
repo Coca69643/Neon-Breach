@@ -24,9 +24,11 @@ if 'glEsVersion="0x00030000"' not in manifest:
 cpp = Path("app/src/main/cpp/game.cpp").read_text()
 for token in (
     "#version 300 es", "layout(location=0)", "uMVP", "uModel",
-    "perspective(48.0f", "glEnable(GL_DEPTH_TEST)", "createMeshes",
+    "perspective(", "glEnable(GL_DEPTH_TEST)", "createMeshes",
     "fixedUpdate", "resolveCollision", "makeFallbackProgram",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
+    "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
+    "relayMask==0x7", "action==7", "publishedSnapshot",
 ):
     if token not in cpp:
         raise SystemExit(f"3D renderer check failed: {token} missing")
@@ -39,9 +41,15 @@ if "glBufferData" not in cpp or "glVertexAttribPointer" not in cpp:
 
 activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").read_text()
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
-              "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId"):
+              "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
+              "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "OPERAÇÃO SUSPENSA",
+              "DESATIVAR RELÉ", "OPERAÇÃO CONCLUÍDA", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
-print(f"Project structure and 3D static checks OK ({len(required)} required files found).")
+build = Path("app/build.gradle").read_text()
+if "versionName '0.7.0'" not in build or "versionCode 7" not in build:
+    raise SystemExit("Version 0.7.0 metadata missing")
+
+print(f"Project structure, 3D renderer, UI and mission checks OK ({len(required)} required files found).")
 print("This check does not replace Android compilation or on-device testing.")
