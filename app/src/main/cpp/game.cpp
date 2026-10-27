@@ -77,8 +77,8 @@ GLuint makeProgram(){
       col=mix(col,vec3(1.0,0.12,0.2),hpbar);
     }
     for(int i=0;i<8;i++){
-      vec4 b=uBullets[i]; float active=step(0.0,b.z);
-      float shot=disc(p,b.xy,0.022)*active;
+      vec4 b=uBullets[i]; float visibleMask=step(0.0,b.z);
+      float shot=disc(p,b.xy,0.022)*visibleMask;
       col+=shot*vec3(0.25,0.95,1.0);
       col+=disc(p,b.xy-vec2(b.w*0.018,0.0),0.035)*active*vec3(0.0,0.18,0.24);
     }
@@ -90,8 +90,8 @@ GLuint makeProgram(){
     col=mix(col,vec3(0.0,0.88,0.95),hpFill);
     for(int i=0;i<4;i++){
       vec2 pip=vec2(-aspect+0.10+float(i)*0.10,0.72);
-      float active=step(float(i)+0.5,uHud.y);
-      col+=disc(p,pip,0.025)*mix(vec3(0.25,0.04,0.08),vec3(1.0,0.12,0.2),active);
+      float visibleMask=step(float(i)+0.5,uHud.y);
+      col+=disc(p,pip,0.025)*mix(vec3(0.25,0.04,0.08),vec3(1.0,0.12,0.2),visibleMask);
     }
     // Player unit with a direction chevron and cyan energy ring.
     float ring=1.0-smoothstep(0.008,0.018,abs(length(p-uPlayer)-0.105));
@@ -121,10 +121,43 @@ GLuint makeProgram(){
   return p;
 }
 }
+GLuint makeFallbackProgram(){
+  const char* vs=R"(#version 300 es
+  void main(){vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));gl_Position=vec4(p[gl_VertexID],0.0,1.0);})";
+  const char* fs=R"(#version 300 es
+  precision mediump float;
+  uniform vec2 uRes;
+  out vec4 outColor;
+  void main(){
+    vec2 uv=gl_FragCoord.xy/max(uRes,vec2(1.0));
+    vec2 cell=fract(uv*vec2(14.0,8.0));
+    float grid=max(step(0.96,cell.x),step(0.96,cell.y));
+    vec3 col=mix(vec3(0.008,0.018,0.04),vec3(0.015,0.08,0.12),uv.y);
+    col+=grid*vec3(0.0,0.20,0.30);
+    float marker=1.0-smoothstep(0.02,0.035,length(uv-vec2(0.5,0.5)));
+    col+=marker*vec3(0.0,0.7,1.0);
+    outColor=vec4(col,1.0);
+  })";
+  GLuint v=compileShader(GL_VERTEX_SHADER,vs), f=compileShader(GL_FRAGMENT_SHADER,fs);
+  if(!v||!f){if(v)glDeleteShader(v);if(f)glDeleteShader(f);return 0;}
+  GLuint p=glCreateProgram();glAttachShader(p,v);glAttachShader(p,f);glLinkProgram(p);glDeleteShader(v);glDeleteShader(f);
+  GLint ok=GL_FALSE;glGetProgramiv(p,GL_LINK_STATUS,&ok);
+  if(!ok){GLint n=0;glGetProgramiv(p,GL_INFO_LOG_LENGTH,&n);if(n>1){char log[1024];GLsizei written=0;glGetProgramInfoLog(p,std::min(n,1023),&written,log);__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Fallback link: %s",log);}glDeleteProgram(p);return 0;}
+  return p;
+}
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
-  if(program)glDeleteProgram(program); program=makeProgram();
-  if(!vao)glGenVertexArrays(1,&vao); glBindVertexArray(vao);
-  glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);glClearColor(0.012f,0.022f,0.047f,1.0f);
+  if(program)glDeleteProgram(program);
+  program=makeProgram();
+  if(!program){
+    __android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Main shader failed; using visible fallback renderer");
+    program=makeFallbackProgram();
+  }
+  if(vao)glDeleteVertexArrays(1,&vao);
+  vao=0;glGenVertexArrays(1,&vao);glBindVertexArray(vao);
+  const GLubyte* version=glGetString(GL_VERSION);
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","OpenGL initialized: %s",version?(const char*)version:"unknown");
+  glDisable(GL_DEPTH_TEST);glDisable(GL_CULL_FACE);
+  glClearColor(program?0.012f:0.25f,program?0.022f:0.015f,program?0.047f:0.015f,1.0f);
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
   width=std::max(1,(int)w);height=std::max(1,(int)h);glViewport(0,0,width,height);
