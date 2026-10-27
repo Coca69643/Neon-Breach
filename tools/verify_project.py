@@ -25,7 +25,7 @@ for token in ("#version 300 es", "gl_VertexID", "nativeSurfaceCreated", "nativeS
         raise SystemExit(f"Native renderer check failed: {token} missing")
 if re.search(r"uResolutionY|vec2\s+q\s*=", cpp):
     raise SystemExit("Stale/incomplete shader code detected")
-if re.search(r"\\bactive\\b", cpp):
+if re.search(r"\bactive\b", cpp):
     raise SystemExit("GLSL ES reserved identifier 'active' detected; rename it before building")
 if "makeFallbackProgram" not in cpp:
     raise SystemExit("Visible fallback renderer missing; shader failures must not silently leave a black screen")
