@@ -10,7 +10,15 @@ GLint resLoc=-1,timeLoc=-1,playerLoc=-1;
 int width=1,height=1;
 float px=-0.55f, py=0.0f, elapsed=0.0f;
 float downX=0.0f,downY=0.0f,moveX=0.0f,moveY=0.0f;
-bool dragging=false;
+bool dragging=false, firing=false;
+struct Unit { float x,y,hp; };
+struct Shot { float x,y,vx,vy,life; };
+Unit enemies[4]={{0.95f,0.48f,1.0f},{0.98f,-0.42f,1.0f},{-0.95f,0.48f,1.0f},{0.35f,0.62f,1.0f}};
+Shot shots[8]{};
+float targetX=1.1f,targetY=0.0f,fireCooldown=0.0f;
+float health=1.0f;
+int kills=0;
+bool missionComplete=false;
 
 GLuint compileShader(GLenum type,const char* source){
   GLuint shader=glCreateShader(type); glShaderSource(shader,1,&source,nullptr); glCompileShader(shader);
@@ -23,7 +31,7 @@ GLuint makeProgram(){
   void main(){vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));gl_Position=vec4(p[gl_VertexID],0.0,1.0);})";
   const char* fs=R"(#version 300 es
   precision mediump float;
-  uniform vec2 uRes; uniform float uTime; uniform vec2 uPlayer;
+  uniform vec2 uRes; uniform float uTime; uniform vec2 uPlayer; uniform vec4 uEnemies[4]; uniform vec4 uBullets[8]; uniform vec4 uHud;
   out vec4 outColor;
   float disc(vec2 p,vec2 c,float r){return 1.0-smoothstep(r-0.008,r+0.008,length(p-c));}
   float line(float d,float w){return 1.0-smoothstep(w,w+0.008,abs(d));}
@@ -57,14 +65,33 @@ GLuint makeProgram(){
     col+=terminals*vec3(0.0,0.55,0.9);
     // Hostile drones orbit the room; their positions are animated.
     for(int i=0;i<4;i++){
-      float fi=float(i);
-      vec2 e=vec2(sin(uTime*(0.22+fi*0.025)+fi*2.1)*1.18,cos(uTime*0.31+fi*1.65)*0.54);
-      float halo=disc(p,e,0.095)*0.20;
-      float enemy=disc(p,e,0.047);
-      float core=disc(p,e,0.018);
+      vec4 data=uEnemies[i]; vec2 e=data.xy;
+      float alive=step(0.1,data.z);
+      float halo=disc(p,e,0.105)*0.22*alive;
+      float enemy=disc(p,e,0.052)*alive;
+      float core=disc(p,e,0.019)*alive;
+      float hpbar=line(p.y-(e.y+0.075),0.006)*step(abs(p.x-e.x),0.055)*alive;
       col+=halo*vec3(1.0,0.025,0.16);
       col=mix(col,vec3(0.72,0.035,0.15),enemy);
       col=mix(col,vec3(1.0,0.45,0.38),core);
+      col=mix(col,vec3(1.0,0.12,0.2),hpbar);
+    }
+    for(int i=0;i<8;i++){
+      vec4 b=uBullets[i]; float active=step(0.0,b.z);
+      float shot=disc(p,b.xy,0.022)*active;
+      col+=shot*vec3(0.25,0.95,1.0);
+      col+=disc(p,b.xy-vec2(b.w*0.018,0.0),0.035)*active*vec3(0.0,0.18,0.24);
+    }
+    // Compact combat HUD: health, remaining hostiles, extraction state.
+    vec2 hpPos=vec2(-aspect+0.42,0.83);
+    float hpFrame=step(abs(p.x-hpPos.x),0.31)*step(abs(p.y-hpPos.y),0.035);
+    float hpFill=step(abs(p.x-(hpPos.x-0.31+0.31*uHud.x)),0.31*uHud.x)*step(abs(p.y-hpPos.y),0.022);
+    col=mix(col,vec3(0.04,0.10,0.15),hpFrame);
+    col=mix(col,vec3(0.0,0.88,0.95),hpFill);
+    for(int i=0;i<4;i++){
+      vec2 pip=vec2(-aspect+0.10+float(i)*0.10,0.72);
+      float active=step(float(i)+0.5,uHud.y);
+      col+=disc(p,pip,0.025)*mix(vec3(0.25,0.04,0.08),vec3(1.0,0.12,0.2),active);
     }
     // Player unit with a direction chevron and cyan energy ring.
     float ring=1.0-smoothstep(0.008,0.018,abs(length(p-uPlayer)-0.105));
@@ -103,24 +130,64 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   width=std::max(1,(int)w);height=std::max(1,(int)h);glViewport(0,0,width,height);
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeDrawFrame(JNIEnv*,jobject){
-  elapsed+=1.0f/60.0f;
+  const float dt=1.0f/60.0f; elapsed+=dt;
   if(dragging){
-    float dx=(moveX-downX)/std::max(1.0f,(float)width);
+    float dx=(moveX-downX)/std::max(1.0f,(float)height);
     float dy=(moveY-downY)/std::max(1.0f,(float)height);
-    px+=std::clamp(dx*3.8f,-0.055f,0.055f);
-    py-=std::clamp(dy*3.8f,-0.055f,0.055f);
+    px+=std::clamp(dx*2.8f,-0.075f,0.075f);
+    py-=std::clamp(dy*2.8f,-0.075f,0.075f);
     downX=moveX;downY=moveY;
   }
   px=std::clamp(px,-1.48f,1.48f);py=std::clamp(py,-0.66f,0.66f);
+  fireCooldown=std::max(0.0f,fireCooldown-dt);
+  int alive=0;
+  for(int i=0;i<4;i++){
+    if(enemies[i].hp<=0.0f) continue;
+    alive++;
+    float dx=px-enemies[i].x,dy=py-enemies[i].y;
+    float d=std::sqrt(dx*dx+dy*dy);
+    if(d>0.15f){enemies[i].x+=dx/d*0.20f*dt;enemies[i].y+=dy/d*0.20f*dt;}
+    if(d<0.105f){health=std::max(0.0f,health-0.12f*dt);}
+  }
+  if(firing && fireCooldown<=0.0f && health>0.0f && !missionComplete){
+    int slot=-1;for(int i=0;i<8;i++)if(shots[i].life<=0.0f){slot=i;break;}
+    if(slot>=0){
+      float dx=targetX-px,dy=targetY-py,d=std::sqrt(dx*dx+dy*dy);
+      if(d<0.01f){dx=1.0f;dy=0.0f;d=1.0f;}
+      shots[slot]={px,py,dx/d*2.7f,dy/d*2.7f,0.8f};fireCooldown=0.16f;
+    }
+  }
+  for(auto &s:shots){
+    if(s.life<=0.0f)continue;
+    s.x+=s.vx*dt;s.y+=s.vy*dt;s.life-=dt;
+    for(int i=0;i<4;i++){
+      if(enemies[i].hp<=0.0f)continue;
+      float dx=s.x-enemies[i].x,dy=s.y-enemies[i].y;
+      if(dx*dx+dy*dy<0.008f){enemies[i].hp=0.0f;s.life=0.0f;kills++;break;}
+    }
+  }
+  if(alive==0)missionComplete=true;
   glClear(GL_COLOR_BUFFER_BIT);if(!program)return;
   glUseProgram(program);
   glUniform2f(glGetUniformLocation(program,"uRes"),(float)width,(float)height);
   glUniform1f(glGetUniformLocation(program,"uTime"),elapsed);
   glUniform2f(glGetUniformLocation(program,"uPlayer"),px,py);
+  GLint el=glGetUniformLocation(program,"uEnemies[0]");
+  float enemyData[16];for(int i=0;i<4;i++){enemyData[i*4]=enemies[i].x;enemyData[i*4+1]=enemies[i].y;enemyData[i*4+2]=enemies[i].hp;enemyData[i*4+3]=0.0f;}
+  glUniform4fv(el,4,enemyData);
+  GLint bl=glGetUniformLocation(program,"uBullets[0]");
+  float bulletData[32];for(int i=0;i<8;i++){bulletData[i*4]=shots[i].x;bulletData[i*4+1]=shots[i].y;bulletData[i*4+2]=shots[i].life>0.0f?1.0f:0.0f;bulletData[i*4+3]=shots[i].vx>0?1.0f:-1.0f;}
+  glUniform4fv(bl,8,bulletData);
+  glUniform4f(glGetUniformLocation(program,"uHud"),health,(float)(4-kills),missionComplete?1.0f:0.0f,0.0f);
   glBindVertexArray(vao);glDrawArrays(GL_TRIANGLES,0,3);
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeTouch(JNIEnv*,jobject,jint action,jfloat x,jfloat y,jfloat,jfloat){
-  if(action==0){dragging=true;downX=moveX=x;downY=moveY=y;}
-  else if(action==1&&dragging){moveX=x;moveY=y;}
-  else if(action==2){dragging=false;moveX=moveY=downX=downY=0.0f;}
+  const bool rightSide=x>width*0.48f;
+  if(action==0){
+    if(rightSide){firing=true;targetX=(x/(float)width*2.0f-1.0f)*(float)width/(float)height;targetY=1.0f-y/(float)height*2.0f;}
+    else{dragging=true;downX=moveX=x;downY=moveY=y;}
+  } else if(action==1){
+    if(firing && rightSide){targetX=(x/(float)width*2.0f-1.0f)*(float)width/(float)height;targetY=1.0f-y/(float)height*2.0f;}
+    if(dragging && !rightSide){moveX=x;moveY=y;}
+  } else if(action==2){dragging=false;firing=false;moveX=moveY=downX=downY=0.0f;}
 }
