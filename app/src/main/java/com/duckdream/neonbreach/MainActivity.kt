@@ -491,7 +491,9 @@ class MainActivity : Activity() {
         }
     }
 
-    private class NativeRenderer : GLSurfaceView.Renderer {
+}
+
+private class NativeRenderer : GLSurfaceView.Renderer {
         override fun onSurfaceCreated(
             gl: javax.microedition.khronos.opengles.GL10?,
             config: javax.microedition.khronos.egl.EGLConfig?
@@ -519,5 +521,4 @@ class MainActivity : Activity() {
         companion object {
             init { System.loadLibrary("neonbreach") }
         }
-    }
 }
