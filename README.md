@@ -32,6 +32,14 @@ O foco neste momento é consolidar os controles, o combate, os cenários e o rit
 - Definido um ícone próprio para o aplicativo Android.
 - Preservados o menu, o HUD, a pausa, as configurações e as telas de resultado introduzidas na versão anterior.
 
+## Como baixar e instalar
+
+1. Abra a página [GitHub Actions](https://github.com/Coca69643/Neon-Breach/actions).
+2. Entre na execução mais recente que terminou com sucesso (marca verde).
+3. Na seção **Artifacts**, baixe o arquivo `neon-breach-debug-apk`.
+4. Abra o ZIP baixado e extraia o APK para o celular.
+5. Toque no arquivo APK para instalar. Se o Android pedir autorização para instalar aplicativos dessa origem, permita apenas para o aplicativo que você usou para abrir o arquivo e continue se confiar no APK.
+
 ---
 
 *NEON BREACH está em desenvolvimento. As mudanças descritas registram o estado do projeto; a compilação de uma versão, por si só, não significa que todos os recursos tenham sido validados em um dispositivo físico.*
