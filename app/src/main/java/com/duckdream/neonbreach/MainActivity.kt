@@ -452,6 +452,7 @@ class MainActivity : Activity() {
         val enemiesLeft = (snapshot ushr 13) and 7
         val nearRelay = (snapshot and (1 shl 16)) != 0
         val nearPod = (snapshot and (1 shl 18)) != 0
+        val nearHazard = (snapshot and (1 shl 19)) != 0
         val dodgeReady = (snapshot and (1 shl 17)) != 0
         val relaysDone = Integer.bitCount(relayMask)
         healthBar.progress = health.coerceIn(0, 100)
@@ -460,6 +461,7 @@ class MainActivity : Activity() {
         relayStatus.text = "MARCADORES  $relaysDone / 3"
         threatStatus.text = "CRIATURAS  ${4 - enemiesLeft} / 4 CONTIDAS"
         objectiveText.text = when {
+            nearHazard -> "ESPOROS ATIVOS  /  SAIA DA MANCHA ÂMBAR"
             relaysDone < 3 -> "EXPLORE A ÁREA  /  ATIVE OS MARCADORES"
             enemiesLeft > 0 -> "A TRILHA ESTÁ BLOQUEADA  /  CRIATURAS NA ÁREA"
             else -> "CAMINHO ABERTO  /  SIGA AS PEDRAS CLARAS"
