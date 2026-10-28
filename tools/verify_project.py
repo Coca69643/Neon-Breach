@@ -34,7 +34,7 @@ for token in (
     "fixedUpdate", "resolveCollision", "makeFallbackProgram",
     "drawPose", "drawHumanoid", "rotateX", "rotateZ",
     "projectileBlocked", "ARENA_LAYOUT_B", "ARENA_LAYOUT_C",
-    "dodgeCooldown", "enemyShotCooldown", "enemyWindup",
+    "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "drawPlant", "drawTree", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "publishedSnapshot",
@@ -51,17 +51,17 @@ if "glBufferData" not in cpp or "glVertexAttribPointer" not in cpp:
 activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").read_text()
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
-              "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "OPERAÇÃO SUSPENSA",
-              "DESATIVAR RELÉ", "DISPARAR", "ESQUIVA", "Joystick de movimento",
-              "OPERAÇÃO CONCLUÍDA", "VIBRAÇÃO DE INTERFACE"):
+              "INICIAR EXPEDIÇÃO", "CONFIGURAÇÕES", "PAUSA",
+              "ATIVAR MARCADOR", "INTERAGIR", "ESPOROS ATIVOS", "DISPARAR", "ESQUIVA", "Joystick de movimento",
+              "EXPEDIÇÃO CONCLUÍDA", "COLHER SEIVA", "CRIATURAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.9.0'" not in build or "versionCode 11" not in build:
-    raise SystemExit("Version 0.9.0 metadata missing")
+if "versionName '0.10.0'" not in build or "versionCode 12" not in build:
+    raise SystemExit("Version 0.10.0 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
-print(f"Project structure, icon, signing configuration, procedural 3D renderer, virtual controls and combat checks OK ({len(required)} required files found).")
+print(f"Project structure, icon, organic procedural world, corrected joystick axes, interactables and Android UI checks OK ({len(required)} required files found).")
 print("This check does not replace Android compilation or on-device testing.")
