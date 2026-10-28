@@ -412,107 +412,151 @@ void publishSnapshot(){
     |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
+// Low-cost procedural flora and lumpy stone forms keep the setting alive without external assets.
+void drawPlant(float x,float z,float size,float phase,const Mat4&view,const Mat4&proj,V3 cam){
+  orb({x,0.012f,z},{size*1.35f,0.025f,size*1.05f},{0.055f,0.071f,0.034f},{0.003f,0.005f,0.001f},view,proj,cam);
+  const V3 greens[4]={{0.17f,0.25f,0.095f},{0.22f,0.30f,0.11f},{0.12f,0.20f,0.075f},{0.28f,0.31f,0.13f}};
+  for(int i=0;i<4;i++){
+    const float a=phase*0.06f+(2.0f*PI*(float)i/4.0f);
+    const float sway=std::sin(visualTime*0.8f+phase+(float)i)*0.025f;
+    poseOrganic({x+std::cos(a)*size*0.25f,0.09f+std::abs(sway),z+std::sin(a)*size*0.25f},
+      {size*0.76f,size*0.13f,size*0.28f},greens[i],{0.004f,0.007f,0.001f},a,0.0f,sway,view,proj,cam);
+  }
+  poseOrganic({x,0.10f,z},{size*0.30f,size*0.24f,size*0.30f},{0.32f,0.35f,0.15f},{0.01f,0.015f,0.003f},phase,0,0,view,proj,cam);
+}
+void drawTree(float x,float z,float size,float phase,const Mat4&view,const Mat4&proj,V3 cam){
+  poseOrb({x,size*0.56f,z},{size*0.24f,size*1.18f,size*0.24f},{0.20f,0.13f,0.075f},{0.005f,0.003f,0.001f},phase*0.015f,0,0,view,proj,cam);
+  poseOrganic({x+std::sin(phase)*size*0.18f,size*1.12f,z},{size*0.92f,size*0.68f,size*0.85f},{0.11f,0.19f,0.075f},{0.003f,0.008f,0.001f},phase*0.02f,0,0,view,proj,cam);
+  poseOrganic({x-size*0.32f,size*1.35f,z+size*0.20f},{size*0.70f,size*0.58f,size*0.70f},{0.17f,0.24f,0.09f},{0.005f,0.01f,0.001f},phase*0.03f,0,0,view,proj,cam);
+  poseOrganic({x+size*0.30f,size*1.32f,z-size*0.18f},{size*0.72f,size*0.57f,size*0.72f},{0.20f,0.27f,0.10f},{0.005f,0.01f,0.001f},phase*0.025f,0,0,view,proj,cam);
+}
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
-  // Solid floor with real depth and modular metal seams.
-  box({0,-0.18f,0},{10.0f,0.34f,7.2f},{0.025f,0.045f,0.075f},{0.0f,0.006f,0.012f},0,view,proj,cam);
-  for(int i=-6;i<=6;i++){
-    const bool hazard=(i==-4||i==4);
-    box({(float)i*0.76f,0.006f,0},{0.018f,0.014f,7.0f},hazard?V3{0.36f,0.16f,0.055f}:V3{0.045f,0.075f,0.09f},hazard?V3{0.10f,0.025f,0.0f}:V3{0.0f,0.022f,0.032f},0,view,proj,cam);
+  // The arena is a clearing in a broad, uneven forest floor, not a walled blue box.
+  orb({0.0f,-0.25f,0.0f},{18.0f,0.44f,14.0f},{0.16f,0.145f,0.095f},{0.008f,0.009f,0.003f},view,proj,cam);
+  orb({0.0f,-0.024f,0.0f},{14.8f,0.035f,10.9f},{0.18f,0.17f,0.115f},{0.003f,0.004f,0.001f},view,proj,cam);
+  // Soil, moss and weathered stone patches use deterministic placement so layouts stay stable.
+  for(int i=0;i<18;i++){
+    const float a=(float)i*2.39996f;
+    const float x=std::sin(a)*5.35f;
+    const float z=std::cos(a*0.79f)*3.62f;
+    const float sx=0.80f+0.30f*(float)(i%4);
+    const bool moss=(i%3)!=0;
+    poseOrganic({x,-0.006f,z},{sx,0.018f,0.46f+0.12f*(float)(i%3)},
+      moss?V3{0.12f,0.16f,0.075f}:V3{0.25f,0.22f,0.15f},
+      {0.002f,0.003f,0.001f},a,0,0,view,proj,cam);
   }
-  for(int i=-4;i<=4;i++)box({0,0.007f,(float)i*0.76f},{9.8f,0.014f,0.018f},V3{0.045f,0.075f,0.09f},V3{0.0f,0.020f,0.028f},0,view,proj,cam);
-  for(int row=0;row<3;row++)for(int col=0;col<4;col++){
-    const float x=-3.62f+(float)col*2.42f,z=-2.20f+(float)row*2.20f;
-    const bool alternate=((row+col+arenaVariant)%2)==0;
-    box({x,0.013f,z},{2.18f,0.018f,1.96f},alternate?V3{0.038f,0.060f,0.075f}:V3{0.052f,0.070f,0.078f},{0.0f,0.004f,0.008f},0,view,proj,cam);
-    box({x,0.025f,z-0.75f},{0.46f,0.008f,0.025f},{0.22f,0.13f,0.055f},{0.045f,0.012f,0.0f},0,view,proj,cam);
+  const std::array<V3,8> treePositions{{
+    {-6.65f,0,-4.80f},{-6.85f,0,-0.75f},{-6.55f,0,3.85f},{-2.20f,0,5.00f},
+    {2.40f,0,5.00f},{6.55f,0,3.95f},{6.80f,0,-0.35f},{6.35f,0,-4.70f}
+  }};
+  for(size_t i=0;i<treePositions.size();i++)drawTree(treePositions[i].x,treePositions[i].z,0.90f+0.24f*(float)(i%3),visualTime+(float)i*4.3f,view,proj,cam);
+  const std::array<V3,12> plantPositions{{
+    {-5.80f,0,-3.30f},{-5.90f,0,-0.80f},{-5.45f,0,1.10f},{-5.20f,0,3.60f},
+    {-3.45f,0,3.85f},{-1.60f,0,3.95f},{1.65f,0,4.00f},{3.25f,0,3.95f},
+    {5.50f,0,3.70f},{5.70f,0,1.20f},{5.65f,0,-1.35f},{4.95f,0,-4.05f}
+  }};
+  for(size_t i=0;i<plantPositions.size();i++)drawPlant(plantPositions[i].x,plantPositions[i].z,0.42f+0.12f*(float)(i%3),visualTime+(float)i*1.7f,view,proj,cam);
+  // A few fallen limbs and stones break up the floor while keeping the central routes readable.
+  poseOrganic({-4.75f,0.12f,0.10f},{1.05f,0.22f,0.28f},{0.24f,0.16f,0.085f},{0.004f,0.003f,0.001f},0.25f,0.0f,0.0f,view,proj,cam);
+  poseOrganic({4.85f,0.11f,1.15f},{0.85f,0.20f,0.31f},{0.25f,0.17f,0.09f},{0.004f,0.003f,0.001f},-0.55f,0.0f,0.0f,view,proj,cam);
+  // Cover keeps its gameplay collider but now reads as irregular boulders with moss, not crates.
+  for(size_t i=0;i<obstacles.size();i++){
+    const auto&o=obstacles[i];
+    poseOrganic({o.x,o.h*0.31f,o.z},{o.sx*1.22f,o.h*0.86f,o.sz*1.20f},
+      {0.26f,0.25f,0.18f},{0.004f,0.005f,0.001f},(float)i*0.7f,0.0f,0.0f,view,proj,cam);
+    poseOrganic({o.x-o.sx*0.20f,o.h*0.72f,o.z-o.sz*0.12f},{o.sx*0.48f,0.10f,o.sz*0.45f},
+      {0.13f,0.19f,0.07f},{0.003f,0.006f,0.001f},(float)i*1.1f,0.0f,0.0f,view,proj,cam);
+    poseOrb({o.x+o.sx*0.32f,0.065f,o.z+o.sz*0.31f},{0.18f,0.12f,0.18f},
+      {0.36f,0.31f,0.19f},{0.001f,0.001f,0.0f},0,0,0,view,proj,cam);
   }
-  for(int sx : {-1,1})for(int sz : {-1,1}){
-    const float x=(float)sx*4.62f,z=(float)sz*3.18f;
-    box({x,0.48f,z},{0.20f,0.92f,0.24f},{0.075f,0.095f,0.11f},{0.0f,0.018f,0.025f},0,view,proj,cam);
-    box({x,0.96f,z},{0.24f,0.06f,0.26f},{0.60f,0.22f,0.045f},{0.20f,0.04f,0.0f},0,view,proj,cam);
-  }
-  // Raised walls, illuminated trim and corner posts make the arena genuinely volumetric.
-  box({-4.94f,0.40f,0},{0.22f,0.82f,7.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
-  box({ 4.94f,0.40f,0},{0.22f,0.82f,7.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
-  box({0,0.40f,-3.54f},{9.85f,0.82f,0.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
-  box({0,0.40f, 3.54f},{9.85f,0.82f,0.22f},{0.045f,0.10f,0.16f},{0.0f,0.18f,0.28f},0,view,proj,cam);
-  box({-4.94f,0.86f,0},{0.28f,0.08f,7.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
-  box({ 4.94f,0.86f,0},{0.28f,0.08f,7.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
-  box({0,0.86f,-3.54f},{9.9f,0.08f,0.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
-  box({0,0.86f, 3.54f},{9.9f,0.08f,0.28f},{0.0f,0.43f,0.65f},{0.0f,0.34f,0.50f},0,view,proj,cam);
-  // Cover blocks are physical colliders as well as 3D objects.
-  for(const auto&o:obstacles){
-    box({o.x,o.h*0.5f,o.z},{o.sx,o.h,o.sz},{0.065f,0.13f,0.19f},{0.0f,0.10f,0.18f},0,view,proj,cam);
-    box({o.x,o.h+0.025f,o.z},{o.sx+0.05f,0.05f,o.sz+0.05f},{0.0f,0.35f,0.50f},{0.0f,0.22f,0.32f},0,view,proj,cam);
-    box({o.x,o.h+0.065f,o.z},{o.sx*0.52f,0.025f,o.sz*0.58f},{0.12f,0.20f,0.25f},{0.0f,0.025f,0.04f},0,view,proj,cam);
-  }
-  // Distributed relay consoles change both the mission state and visible network lighting.
+  // Three field markers are grown into old stone cairns; the player must interact at close range.
   for(int i=0;i<3;i++){
     const float x=RELAY_X[i],z=RELAY_Z[i];
-    const bool disabled=(relayMask&(1<<i))!=0;
-    const V3 body=disabled?V3{0.035f,0.15f,0.11f}:V3{0.055f,0.10f,0.16f};
-    const V3 panel=disabled?V3{0.04f,0.72f,0.36f}:V3{0.95f,0.16f,0.045f};
-    const V3 glow=disabled?V3{0.0f,0.16f,0.06f}:V3{0.32f,0.025f,0.0f};
-    box({x,0.018f,0},{0.038f,0.022f,6.62f},disabled?V3{0.025f,0.22f,0.12f}:V3{0.20f,0.04f,0.055f},disabled?V3{0.0f,0.10f,0.04f}:V3{0.18f,0.015f,0.025f},0,view,proj,cam);
-    box({x,0.34f,z},{0.58f,0.62f,0.42f},body,glow,0,view,proj,cam);
-    box({x,0.47f,z-0.23f},{0.36f,0.23f,0.045f},panel,glow,0,view,proj,cam);
-    orb({x,0.77f,z-0.23f},{0.13f,0.13f,0.13f},panel,glow,view,proj,cam);
-    box({x,0.83f,z},{0.48f,0.055f,0.055f},panel,glow,0,view,proj,cam);
-  }
-  // Extraction opens only after all three relays are offline and the hostiles are neutralized.
-  const bool objectiveComplete=allEnemiesDefeated()&&relayMask==0x7;
-  V3 exitColor=objectiveComplete?V3{0.02f,0.85f,0.42f}:V3{0.02f,0.20f,0.28f};
-  V3 exitGlow=objectiveComplete?V3{0.0f,0.5f,0.20f}:V3{0.0f,0.035f,0.06f};
-  for(int i=0;i<24;i++){
-    float a=2*PI*(float)i/24.0f;
-    box({4.02f+std::cos(a)*0.57f,0.065f,-2.48f+std::sin(a)*0.57f},{0.14f,0.055f,0.10f},exitColor,exitGlow,a,view,proj,cam);
-  }
-  box({4.02f,0.18f,-2.48f},{0.78f,0.12f,0.78f},{0.025f,0.12f,0.15f},{0.0f,0.07f,0.1f},0,view,proj,cam);
-  box({4.02f,0.58f,-2.48f},{0.10f,0.80f,0.10f},exitColor,exitGlow,0,view,proj,cam);
-  orb({4.02f,1.08f+0.08f*std::sin(elapsed*2.2f),-2.48f},{0.24f,0.24f,0.24f},exitColor,exitGlow,view,proj,cam);
-  // Player: procedural humanoid armor, visor, backpack, weapon and walk cycle.
-  float playerYaw=aiming?std::atan2(aimX-playerX,aimZ-playerZ):facingYaw;
-  float inputDx=(moveX-moveOriginX)/(float)std::max(1,screenH);
-  float inputDy=(moveY-moveOriginY)/(float)std::max(1,screenH);
-  float inputMagnitude=std::sqrt(inputDx*inputDx+inputDy*inputDy);
-  float playerGait=moving?std::clamp(inputMagnitude/0.16f,0.0f,1.0f):0.0f;
-  drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*9.4f,playerGait,0,true,{0.035f,0.24f,0.34f},{0.025f,0.49f,0.62f},{0.0f,0.075f,0.12f},view,proj,cam);
-  box({playerX,1.53f,playerZ},{0.78f,0.055f,0.075f},{0.10f,0.035f,0.06f},{0.02f,0.0f,0.0f},0,view,proj,cam);
-  if(playerHealth>0.001f)box({playerX-0.39f+0.39f*playerHealth,1.535f,playerZ},{0.78f*playerHealth,0.065f,0.08f},{0.0f,0.78f,0.84f},{0.0f,0.18f,0.24f},0,view,proj,cam);
-  // Three enemy archetypes share the rig but have distinct proportions and colors.
-  for(const auto&e:enemies){
-    if(e.hp<=0.0f)continue;
-    const float distanceToPlayer=std::sqrt((playerX-e.x)*(playerX-e.x)+(playerZ-e.z)*(playerZ-e.z));
-    const float enemyGait=distanceToPlayer>e.radius+0.48f?0.72f:0.12f;
-    const V3 enemyArmor=e.type==1?V3{0.22f,0.045f,0.07f}:(e.type==2?V3{0.13f,0.028f,0.12f}:V3{0.17f,0.035f,0.06f});
-    const V3 enemyTrim=e.type==1?V3{0.95f,0.22f,0.10f}:(e.type==2?V3{0.95f,0.16f,0.38f}:V3{0.98f,0.09f,0.17f});
-    const V3 enemyGlow=e.type==1?V3{0.16f,0.008f,0.012f}:(e.type==2?V3{0.14f,0.004f,0.05f}:V3{0.12f,0.006f,0.015f});
-    drawHumanoid({e.x,0.0f,e.z},e.yaw,elapsed*(6.2f+e.speed),enemyGait,e.type,false,enemyArmor,enemyTrim,enemyGlow,view,proj,cam);
-    const int enemyIndex=(int)(&e-&enemies[0]);
-    if(e.type==1&&enemyWindup[(size_t)enemyIndex]>0.04f){
-      const float ring=0.62f+0.28f*std::clamp(enemyWindup[(size_t)enemyIndex]/0.42f,0.0f,1.0f);
-      for(int k=0;k<10;k++){const float a=2.0f*PI*(float)k/10.0f;box({e.x+std::cos(a)*ring,0.045f,e.z+std::sin(a)*ring},{0.16f,0.035f,0.10f},{0.95f,0.18f,0.025f},{0.32f,0.035f,0.0f},a,view,proj,cam);}
+    const bool complete=(relayMask&(1<<i))!=0;
+    const V3 stone=complete?V3{0.24f,0.27f,0.16f}:V3{0.31f,0.26f,0.17f};
+    const V3 seed=complete?V3{0.36f,0.65f,0.25f}:V3{0.80f,0.49f,0.19f};
+    const V3 seedGlow=complete?V3{0.018f,0.055f,0.004f}:V3{0.065f,0.025f,0.002f};
+    poseOrganic({x,0.13f,z},{0.64f,0.25f,0.61f},stone,{0.002f,0.002f,0.001f},(float)i*0.9f,0,0,view,proj,cam);
+    for(int k=0;k<5;k++){
+      const float a=2.0f*PI*(float)k/5.0f+(float)i*0.45f;
+      poseOrb({x+std::cos(a)*0.37f,0.10f,z+std::sin(a)*0.37f},{0.22f,0.13f,0.20f},
+        {0.29f,0.28f,0.19f},{0.002f,0.002f,0.001f},a,0,0,view,proj,cam);
     }
-    const float barY=1.50f+0.02f*std::sin(elapsed*8.0f+e.x);
-    box({e.x,barY,e.z},{0.62f,0.05f,0.07f},{0.12f,0.02f,0.04f},{0.02f,0.0f,0.0f},0,view,proj,cam);
-    box({e.x-0.31f+(0.62f*e.hp/e.maxHp)*0.5f,barY+0.005f,e.z},{0.62f*e.hp/e.maxHp,0.06f,0.075f},enemyTrim,{0.16f,0.0f,0.02f},0,view,proj,cam);
+    poseOrganic({x,0.34f,z},{0.25f,0.39f,0.24f},{0.18f,0.24f,0.12f},{0.004f,0.008f,0.001f},(float)i*0.55f,0,0,view,proj,cam);
+    poseOrb({x,0.61f+0.035f*std::sin(visualTime*1.3f+(float)i),z},{0.22f,0.24f,0.22f},seed,seedGlow,view,proj,cam);
   }
-  // Aim indicator follows the right-hand touch direction in world space.
+  // Optional medicinal growths let the player trade exploration for a small health recovery.
+  for(int i=0;i<2;i++){
+    if(podCollected[(size_t)i])continue;
+    const float x=POD_X[i],z=POD_Z[i];
+    drawPlant(x,z,0.54f,visualTime+(float)i*2.3f,view,proj,cam);
+    poseOrganic({x,0.31f+0.04f*std::sin(visualTime*1.5f+(float)i),z},{0.22f,0.26f,0.22f},
+      {0.64f,0.44f,0.15f},{0.045f,0.018f,0.002f},visualTime*0.08f,0,0,view,proj,cam);
+  }
+  // Extraction is a natural clearing ringed by pale stones and a warm trail marker.
+  for(int i=0;i<18;i++){
+    const float a=2.0f*PI*(float)i/18.0f;
+    poseOrganic({EXIT_X+std::cos(a)*0.73f,0.045f,EXIT_Z+std::sin(a)*0.73f},{0.22f,0.11f,0.18f},
+      {0.41f,0.37f,0.25f},{0.006f,0.004f,0.001f},a,0,0,view,proj,cam);
+  }
+  const bool objectiveComplete=allEnemiesDefeated()&&relayMask==0x7;
+  poseOrganic({EXIT_X,0.08f,EXIT_Z},{0.58f,0.10f,0.58f},
+    objectiveComplete?V3{0.42f,0.60f,0.27f}:V3{0.28f,0.27f,0.17f},
+    objectiveComplete?V3{0.035f,0.07f,0.006f}:V3{0.002f,0.002f,0.001f},0,0,0,view,proj,cam);
+  poseOrb({EXIT_X,0.36f+0.05f*std::sin(visualTime*1.6f),EXIT_Z},{0.18f,0.24f,0.18f},
+    objectiveComplete?V3{0.72f,0.79f,0.43f}:V3{0.36f,0.33f,0.20f},
+    objectiveComplete?V3{0.06f,0.08f,0.01f}:V3{0.002f,0.002f,0.001f},0,0,0,view,proj,cam);
+  // The player's outfit is rounded and field-worn; the camera keeps the whole clearing readable.
+  const float playerYaw=aiming?std::atan2(aimX-playerX,aimZ-playerZ):facingYaw;
+  const float inputDx=(moveX-moveOriginX)/(float)std::max(1,screenH);
+  const float inputDy=(moveY-moveOriginY)/(float)std::max(1,screenH);
+  const float inputMagnitude=std::sqrt(inputDx*inputDx+inputDy*inputDy);
+  const float playerGait=moving?std::clamp(inputMagnitude/0.13f,0.0f,1.0f):0.0f;
+  drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*8.0f,playerGait,0,true,
+    {0.28f,0.34f,0.20f},{0.59f,0.51f,0.27f},{0.012f,0.018f,0.003f},view,proj,cam);
+  // Four creatures use different anatomies and behaviors rather than a shared robot rig.
+  for(size_t i=0;i<enemies.size();i++){
+    const auto&e=enemies[i];if(e.hp<=0.0f)continue;
+    const float distanceToPlayer=std::sqrt((playerX-e.x)*(playerX-e.x)+(playerZ-e.z)*(playerZ-e.z));
+    const float enemyGait=distanceToPlayer>e.radius+0.48f?0.88f:0.20f;
+    const V3 enemyArmor=e.type==1?V3{0.30f,0.18f,0.095f}:(e.type==2?V3{0.23f,0.30f,0.13f}:(e.type==3?V3{0.33f,0.23f,0.10f}:V3{0.20f,0.27f,0.12f}));
+    const V3 enemyTrim=e.type==1?V3{0.75f,0.43f,0.16f}:(e.type==2?V3{0.72f,0.72f,0.38f}:(e.type==3?V3{0.63f,0.37f,0.16f}:V3{0.52f,0.57f,0.22f}));
+    const V3 enemyGlow=e.type==1?V3{0.035f,0.014f,0.001f}:(e.type==2?V3{0.024f,0.035f,0.005f}:V3{0.015f,0.019f,0.002f});
+    drawCreature({e.x,0.0f,e.z},e.yaw,elapsed*(4.6f+e.speed),enemyGait,e.type,enemyArmor,enemyTrim,enemyGlow,view,proj,cam);
+    const int healthBeads=(int)std::ceil(3.0f*e.hp/std::max(1.0f,e.maxHp));
+    for(int bead=0;bead<healthBeads;bead++){
+      const float a=2.0f*PI*(float)bead/3.0f;
+      poseOrb({e.x+std::cos(a)*0.30f,1.38f,e.z+std::sin(a)*0.30f},{0.085f,0.075f,0.085f},
+        enemyTrim,{0.008f,0.004f,0.001f},0,0,0,view,proj,cam);
+    }
+    if(e.type==1&&enemyWindup[i]>0.04f){
+      const float ring=0.65f+0.25f*std::clamp(enemyWindup[i]/0.42f,0.0f,1.0f);
+      for(int k=0;k<8;k++){
+        const float a=2.0f*PI*(float)k/8.0f;
+        poseOrb({e.x+std::cos(a)*ring,0.035f,e.z+std::sin(a)*ring},{0.12f,0.035f,0.12f},
+          {0.78f,0.29f,0.075f},{0.03f,0.006f,0.001f},0,0,0,view,proj,cam);
+      }
+    }
+  }
+  // A small soft reticle makes drag-aim readable without a segmented neon ring.
   if(aiming&&!won&&!lost){
-    orb({aimX,0.055f,aimZ},{0.18f,0.045f,0.18f},{0.04f,0.72f,0.90f},{0.0f,0.24f,0.34f},view,proj,cam);
-    for(int i=0;i<12;i++){float a=2*PI*(float)i/12.0f;box({aimX+std::cos(a)*0.26f,0.055f,aimZ+std::sin(a)*0.26f},{0.08f,0.035f,0.045f},{0.12f,0.76f,0.9f},{0.0f,0.18f,0.27f},a,view,proj,cam);}
+    poseOrb({aimX,0.045f,aimZ},{0.12f,0.035f,0.12f},{0.66f,0.78f,0.40f},{0.015f,0.02f,0.002f},0,0,0,view,proj,cam);
+    for(int i=0;i<4;i++){
+      const float a=2.0f*PI*(float)i/4.0f;
+      poseOrb({aimX+std::cos(a)*0.20f,0.045f,aimZ+std::sin(a)*0.20f},{0.055f,0.035f,0.055f},
+        {0.72f,0.81f,0.47f},{0.01f,0.015f,0.002f},0,0,0,view,proj,cam);
+    }
   }
-  // Friendly and hostile energy projectiles have distinct colors.
   for(const auto&s:shots)if(s.life>0.0f){
-    if(s.hostile)orb({s.x,0.34f,s.z},{0.17f,0.17f,0.17f},{1.0f,0.20f,0.055f},{0.30f,0.025f,0.0f},view,proj,cam);
-    else orb({s.x,0.34f,s.z},{0.19f,0.19f,0.19f},{0.10f,0.85f,1.0f},{0.0f,0.30f,0.48f},view,proj,cam);
+    if(s.hostile)orb({s.x,0.34f,s.z},{0.15f,0.15f,0.15f},{0.85f,0.33f,0.10f},{0.045f,0.007f,0.001f},view,proj,cam);
+    else orb({s.x,0.34f,s.z},{0.16f,0.16f,0.16f},{0.73f,0.85f,0.45f},{0.02f,0.025f,0.004f},view,proj,cam);
   }
-  // Small status beacons show remaining targets without a flat HUD overlay.
-  for(int i=0;i<4;i++){
-    bool alive=enemies[i].hp>0.0f;
-    orb({-4.25f+0.25f*(float)i,0.93f,-2.94f},{0.13f,0.13f,0.13f},
-      alive?V3{1.0f,0.10f,0.17f}:V3{0.05f,0.42f,0.30f},
-      alive?V3{0.24f,0.0f,0.02f}:V3{0.0f,0.12f,0.07f},view,proj,cam);
+  // Subtle count markers sit inside the ground-cover rather than floating over a blue grid.
+  for(size_t i=0;i<enemies.size();i++){
+    const bool alive=enemies[i].hp>0.0f;
+    poseOrb({-5.45f+0.32f*(float)i,0.055f,-4.02f},{0.10f,0.07f,0.10f},
+      alive?V3{0.60f,0.27f,0.11f}:V3{0.24f,0.45f,0.17f},
+      alive?V3{0.015f,0.003f,0.0f}:V3{0.003f,0.008f,0.001f},0,0,0,view,proj,cam);
   }
 }
 bool projectileBlocked(float x,float z){
