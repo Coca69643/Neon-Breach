@@ -284,44 +284,111 @@ void drawPose(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,float pitch,float
 void poseBox(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 cam){drawPose(cubeMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);}
 void poseOrb(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 cam){drawPose(sphereMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);}
 // Procedural character rig: every visible part uses native meshes and runtime transforms.
-void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
-  const bool heavy=archetype==1, agile=archetype==2;
-  const float bodyScale=heavy?1.10f:(agile?0.92f:1.0f), widthScale=heavy?1.22f:(agile?0.84f:1.0f);
-  const float legSwing=std::sin(phase)*gait, armSwing=-legSwing;
-  const float bob=0.010f*std::sin(phase*2.0f)+0.025f*std::abs(legSwing);
-  const V3 forward{std::sin(yaw),0.0f,std::cos(yaw)}, right{std::cos(yaw),0.0f,-std::sin(yaw)};
-  auto point=[&](float side,float front,float y)->V3{return {at.x+right.x*side+forward.x*front,at.y+y+bob,at.z+right.z*side+forward.z*front};};
-  const V3 dark=isPlayer?V3{0.018f,0.055f,0.075f}:V3{0.055f,0.014f,0.025f};
-  const V3 metal=isPlayer?V3{0.055f,0.14f,0.18f}:V3{0.12f,0.025f,0.045f};
-  orb({at.x,0.026f,at.z},{heavy?0.86f:0.72f,0.034f,heavy?0.78f:0.68f},{0.008f,0.014f,0.022f},{0,0,0},view,proj,cam);
-  for(int sign : {-1,1}){
-    const float side=(float)sign, swing=legSwing*side;
-    poseOrb(point(side*0.13f*widthScale,swing*0.055f,0.245f),{0.155f*widthScale,0.245f*bodyScale,0.155f*bodyScale},armor,glow,yaw,swing*0.62f,side*0.025f,view,proj,cam);
-    poseOrb(point(side*0.13f*widthScale,swing*0.105f,0.105f),{0.125f*widthScale,0.205f*bodyScale,0.125f*bodyScale},metal,glow,yaw,-swing*0.24f,side*0.015f,view,proj,cam);
-    poseBox(point(side*0.14f*widthScale,swing*0.12f+0.035f,0.052f),{0.17f*widthScale,0.085f,0.235f},dark,glow,yaw,0.0f,side*0.015f,view,proj,cam);
-  }
-  poseOrb(point(0,0,0.365f),{0.30f*widthScale,0.20f*bodyScale,0.235f*bodyScale},metal,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(0,0.015f,0.405f),{0.34f*widthScale,0.075f,0.255f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(0,agile?0.015f:-0.015f,0.585f),{0.335f*widthScale,0.355f*bodyScale,0.245f*bodyScale},armor,glow,yaw,agile?0.10f:0.0f,legSwing*0.035f,view,proj,cam);
-  poseBox(point(0,0.155f,0.595f),{0.34f*widthScale,0.255f,0.085f},trim,glow,yaw,agile?0.08f:0.0f,0.0f,view,proj,cam);
-  poseBox(point(0,0.205f,0.59f),{0.105f,0.12f,0.035f},isPlayer?V3{0.20f,0.93f,1.0f}:trim,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(0,-0.145f,0.57f),{0.245f*widthScale,0.29f,0.16f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
-  for(int sign : {-1,1}){
-    const float side=(float)sign;
-    poseBox(point(side*0.30f*widthScale,0.0f,0.665f),{0.22f*widthScale,0.145f,0.20f},metal,glow,yaw,armSwing*0.10f,side*0.08f,view,proj,cam);
-    poseOrb(point(side*0.345f*widthScale,-armSwing*0.045f,0.525f),{0.125f*widthScale,0.225f*bodyScale,0.13f},armor,glow,yaw,armSwing*0.52f,side*0.20f,view,proj,cam);
-    poseOrb(point(side*0.36f*widthScale,-armSwing*0.085f,0.355f),{0.105f*widthScale,0.205f*bodyScale,0.115f},metal,glow,yaw,armSwing*0.38f,side*0.12f,view,proj,cam);
-    poseOrb(point(side*0.37f*widthScale,-armSwing*0.10f,0.225f),{0.105f,0.095f,0.105f},dark,glow,yaw,0.0f,side*0.08f,view,proj,cam);
-  }
-  poseOrb(point(0,0,0.995f),{0.235f,0.265f*bodyScale,0.225f},metal,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(0,0.176f,1.005f),{0.285f,0.115f,0.055f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(0,0.211f,1.01f),{0.205f,0.026f,0.024f},isPlayer?V3{0.38f,0.96f,1.0f}:trim,isPlayer?V3{0.10f,0.28f,0.34f}:glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(-0.105f,0,1.245f),{0.035f,0.105f,0.035f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(-0.105f,0,1.305f),{0.07f,0.07f,0.07f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(0.16f,0.355f,0.435f),{0.12f,0.115f,0.34f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseBox(point(0.16f,0.38f,0.445f),{0.055f,0.045f,0.245f},isPlayer?V3{0.035f,0.38f,0.48f}:trim,glow,yaw,0.0f,0.0f,view,proj,cam);
-  if(isPlayer&&aiming&&shotCooldown>0.10f)poseOrb(point(0.16f,0.57f,0.435f),{0.075f,0.075f,0.075f},{0.22f,0.88f,1.0f},{0.0f,0.35f,0.5f},yaw,0.0f,0.0f,view,proj,cam);
+void poseOrganic(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 cam){
+  drawPose(organicMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);
 }
+// The field operative uses rounded armor, fabric-like masses and soft equipment volumes.
+void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
+  (void)archetype;(void)isPlayer;
+  const float swing=std::sin(phase)*gait;
+  const float bob=0.018f*std::sin(phase*2.0f)*gait;
+  const V3 forward{std::sin(yaw),0.0f,std::cos(yaw)},right{std::cos(yaw),0.0f,-std::sin(yaw)};
+  auto point=[&](float side,float front,float y)->V3{
+    return {at.x+right.x*side+forward.x*front,at.y+y+bob,at.z+right.z*side+forward.z*front};
+  };
+  const V3 cloth{0.18f,0.20f,0.14f},leather{0.24f,0.15f,0.085f},dark{0.075f,0.085f,0.065f};
+  orb({at.x,0.018f,at.z},{0.66f,0.028f,0.58f},{0.025f,0.030f,0.020f},{0,0,0},view,proj,cam);
+  for(int sign : {-1,1}){
+    const float side=(float)sign,leg=swing*side;
+    poseOrb(point(side*0.14f,leg*0.07f,0.245f),{0.17f,0.26f,0.17f},armor,glow,yaw,leg*0.22f,side*0.025f,view,proj,cam);
+    poseOrb(point(side*0.14f,leg*0.13f,0.115f),{0.135f,0.20f,0.14f},cloth,{0.006f,0.008f,0.004f},yaw,-leg*0.17f,side*0.02f,view,proj,cam);
+    poseOrb(point(side*0.145f,leg*0.17f+0.10f,0.055f),{0.20f,0.095f,0.23f},leather,{0.01f,0.004f,0.0f},yaw,0.0f,0.0f,view,proj,cam);
+  }
+  poseOrganic(point(0,-0.025f,0.40f),{0.34f,0.24f,0.28f},dark,{0.005f,0.006f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrganic(point(0,0.015f,0.585f),{0.42f,0.43f,0.32f},armor,glow,yaw,-0.04f,0.0f,view,proj,cam);
+  poseOrb(point(0,0.135f,0.59f),{0.33f,0.30f,0.17f},cloth,{0.004f,0.006f,0.002f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(0,0.205f,0.61f),{0.13f,0.11f,0.06f},trim,{0.028f,0.035f,0.008f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrganic(point(0,-0.19f,0.60f),{0.27f,0.31f,0.18f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
+  for(int sign : {-1,1}){
+    const float side=(float)sign,arm=swing*side;
+    poseOrganic(point(side*0.30f,0.0f,0.67f),{0.24f,0.20f,0.23f},armor,glow,yaw,0.0f,side*0.12f,view,proj,cam);
+    poseOrb(point(side*0.34f,-arm*0.06f,0.52f),{0.15f,0.23f,0.15f},cloth,{0.006f,0.007f,0.004f},yaw,arm*0.25f,side*0.17f,view,proj,cam);
+    poseOrb(point(side*0.35f,-arm*0.10f,0.37f),{0.13f,0.20f,0.13f},armor,glow,yaw,arm*0.34f,side*0.11f,view,proj,cam);
+    poseOrb(point(side*0.36f,-arm*0.12f,0.245f),{0.12f,0.12f,0.12f},leather,{0.005f,0.003f,0.0f},yaw,0.0f,side*0.08f,view,proj,cam);
+  }
+  // A hooded field helmet and a small glass-like visor replace the old square robot head.
+  poseOrganic(point(0,0,0.995f),{0.27f,0.26f,0.25f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(0,0.085f,1.045f),{0.26f,0.205f,0.22f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(0,0.15f,1.055f),{0.18f,0.064f,0.055f},{0.19f,0.22f,0.13f},{0.025f,0.03f,0.006f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(0,0.165f,1.063f),{0.11f,0.027f,0.027f},{0.52f,0.59f,0.38f},{0.04f,0.045f,0.015f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrganic(point(-0.23f,-0.12f,0.69f),{0.24f,0.31f,0.24f},leather,{0.008f,0.004f,0.0f},yaw,-0.06f,-0.12f,view,proj,cam);
+  poseOrganic(point(0.17f,-0.36f,0.56f),{0.25f,0.33f,0.22f},dark,{0.004f,0.004f,0.002f},yaw,0.02f,0.08f,view,proj,cam);
+  poseOrb(point(0.19f,0.25f,0.43f),{0.085f,0.085f,0.28f},dark,{0.002f,0.003f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(0.19f,0.36f,0.45f),{0.07f,0.07f,0.20f},trim,{0.018f,0.025f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
+}
+// Three creatures use different silhouettes: a low crawler, an armored grazer and a floating spore.
+void drawCreature(V3 at,float yaw,float phase,float gait,int type,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
+  const float bob=0.025f*std::sin(phase*1.7f);
+  const V3 f{std::sin(yaw),0.0f,std::cos(yaw)},r{std::cos(yaw),0.0f,-std::sin(yaw)};
+  auto point=[&](float side,float front,float y)->V3{
+    return {at.x+r.x*side+f.x*front,at.y+y+bob,at.z+r.z*side+f.z*front};
+  };
+  orb({at.x,0.022f,at.z},{type==1?1.12f:0.82f,0.03f,type==1?0.92f:0.75f},{0.025f,0.026f,0.017f},{0,0,0},view,proj,cam);
+  if(type==0){
+    poseOrganic(point(0,-0.10f,0.43f),{0.68f,0.34f,0.88f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+    poseOrganic(point(0,0.46f,0.36f),{0.43f,0.32f,0.48f},trim,glow,yaw,0.03f,0.0f,view,proj,cam);
+    poseOrganic(point(0,0.65f,0.29f),{0.31f,0.22f,0.30f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+    for(int sideSign : {-1,1}){
+      const float side=(float)sideSign;
+      poseOrb(point(side*0.18f,0.67f,0.43f),{0.10f,0.085f,0.075f},{0.78f,0.60f,0.26f},{0.04f,0.022f,0.002f},yaw,0.0f,0.0f,view,proj,cam);
+      for(int leg=0;leg<3;leg++){
+        const float front=0.36f-(float)leg*0.36f;
+        const float kick=std::sin(phase*1.5f+(float)leg*1.4f+side)*0.11f*gait;
+        poseOrb(point(side*(0.32f+std::abs(kick)),front,0.22f),{0.12f,0.105f,0.34f},armor,{0.005f,0.006f,0.002f},yaw,kick*side,side*0.45f,view,proj,cam);
+        poseOrb(point(side*0.43f,front+kick,0.105f),{0.15f,0.09f,0.18f},trim,glow,yaw,0.0f,side*0.12f,view,proj,cam);
+      }
+    }
+    for(int k=0;k<3;k++)poseOrganic(point(0.0f,-0.24f-(float)k*0.16f,0.67f-(float)k*0.035f),{0.22f-(float)k*0.035f,0.16f,0.23f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+  }else if(type==1){
+    poseOrganic(point(0,-0.03f,0.43f),{0.94f,0.53f,0.88f},armor,glow,yaw,0.10f,0.0f,view,proj,cam);
+    poseOrganic(point(0,-0.05f,0.77f),{0.90f,0.62f,0.82f},trim,glow,yaw,0.18f,0.0f,view,proj,cam);
+    poseOrganic(point(0,0.52f,0.43f),{0.43f,0.38f,0.40f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+    for(int sideSign : {-1,1}){
+      const float side=(float)sideSign;
+      poseOrb(point(side*0.22f,0.66f,0.48f),{0.12f,0.10f,0.08f},{0.95f,0.63f,0.24f},{0.04f,0.018f,0.0f},yaw,0.0f,0.0f,view,proj,cam);
+      poseOrganic(point(side*0.54f,0.32f,0.47f),{0.32f,0.30f,0.32f},trim,glow,yaw,0.0f,side*0.16f,view,proj,cam);
+      poseOrb(point(side*0.58f,0.20f,0.23f),{0.25f,0.24f,0.30f},armor,glow,yaw,0.0f,side*0.25f,view,proj,cam);
+      poseOrb(point(side*0.41f,-0.30f,0.22f),{0.27f,0.22f,0.32f},armor,{0.004f,0.004f,0.001f},yaw,0.0f,side*0.30f,view,proj,cam);
+    }
+    for(int k=0;k<4;k++){
+      const float a=2.0f*PI*(float)k/4.0f;
+      poseOrganic(point(std::cos(a)*0.35f,-0.28f+std::sin(a)*0.38f,0.91f),{0.18f,0.23f,0.18f},trim,glow,yaw,a*0.08f,std::sin(a)*0.25f,view,proj,cam);
+    }
+  }else if(type==2){
+    poseOrganic(point(0,0.0f,0.86f),{0.55f,0.61f,0.53f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+    poseOrb(point(0,0.09f,1.08f),{0.30f,0.29f,0.29f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+    for(int k=0;k<4;k++){
+      const float a=2.0f*PI*(float)k/4.0f+phase*0.12f;
+      const float sx=std::cos(a),sz=std::sin(a);
+      poseOrganic({at.x+sx*0.38f,at.y+0.82f+0.10f*std::sin(phase+a),at.z+sz*0.38f},{0.20f,0.38f,0.19f},trim,glow,a,0.22f*sz,-0.28f*sx,view,proj,cam);
+      poseOrb({at.x+sx*0.58f,at.y+0.62f,at.z+sz*0.58f},{0.09f,0.20f,0.09f},armor,{0.006f,0.008f,0.002f},a,0.0f,0.0f,view,proj,cam);
+    }
+    poseOrganic(point(0,0.03f,0.45f),{0.24f,0.28f,0.22f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+  }else{
+    // The skitter has a low, segmented profile and constantly shifts laterally.
+    poseOrganic(point(0,-0.30f,0.34f),{0.36f,0.30f,0.52f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+    poseOrganic(point(0,0.08f,0.34f),{0.32f,0.27f,0.42f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+    poseOrganic(point(0,0.42f,0.30f),{0.27f,0.24f,0.30f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+    poseOrb(point(0,0.60f,0.23f),{0.19f,0.10f,0.12f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+    for(int sign : {-1,1})for(int k=0;k<3;k++){
+      const float side=(float)sign;
+      const float front=0.24f-(float)k*0.30f;
+      const float twitch=std::sin(phase*2.8f+(float)k*1.2f+side)*0.07f*gait;
+      poseOrb(point(side*(0.24f+std::abs(twitch)),front,0.20f),{0.10f,0.09f,0.27f},armor,glow,yaw,twitch,side*0.53f,view,proj,cam);
+    }
+  }
+}
+bool allEnemiesDefeated(){
 bool allEnemiesDefeated(){for(const auto&e:enemies)if(e.hp>0.0f)return false;return true;}
 int activeEnemyCount(){int count=0;for(const auto&e:enemies)if(e.hp>0.0f)count++;return count;}
 bool nearActiveRelay(){
