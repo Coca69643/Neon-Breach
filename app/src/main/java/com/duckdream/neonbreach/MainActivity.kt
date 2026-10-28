@@ -343,7 +343,7 @@ class MainActivity : Activity() {
         layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(104), dp(46), Gravity.END or Gravity.BOTTOM).apply {
             marginEnd = dp(164); bottomMargin = dp(24)
         })
-        interactButton = actionButton("DESATIVAR RELÉ", true) {
+        interactButton = actionButton("INTERAGIR", true) {
             gameView.interact()
             updateHud(gameView.snapshot())
         }.apply { isEnabled = false; alpha = 0.62f }
