@@ -396,7 +396,6 @@ void drawCreature(V3 at,float yaw,float phase,float gait,int type,V3 armor,V3 tr
     }
   }
 }
-bool allEnemiesDefeated(){
 bool allEnemiesDefeated(){for(const auto&e:enemies)if(e.hp>0.0f)return false;return true;}
 int activeEnemyCount(){int count=0;for(const auto&e:enemies)if(e.hp>0.0f)count++;return count;}
 bool nearActiveRelay(){
