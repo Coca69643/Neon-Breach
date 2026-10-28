@@ -24,11 +24,11 @@ GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
 GLint fallbackResLoc=-1;
 Mesh cubeMesh, sphereMesh, organicMesh;
 int screenW=1, screenH=1;
-float playerX=-3.55f, playerZ=-2.15f, playerHealth=1.0f;
+float playerX=-5.15f, playerZ=-3.25f, playerHealth=1.0f;
 float moveOriginX=0, moveOriginY=0, moveX=0, moveY=0;
 bool moving=false, aiming=false, firing=false;
-float aimX=2.0f, aimZ=0.0f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0.0f;
-float facingYaw=0.0f, moveDirX=0.0f, moveDirZ=1.0f;
+float aimX=-5.15f, aimZ=-8.25f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0.0f;
+float facingYaw=PI, moveDirX=0.0f, moveDirZ=-1.0f;
 float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=1.0f;
 float elapsed=0.0f, accumulator=0.0f, visualTime=0.0f;
 int missionSerial=0, arenaVariant=0;
@@ -483,7 +483,7 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
         {0.29f,0.28f,0.19f},{0.002f,0.002f,0.001f},a,0,0,view,proj,cam);
     }
     poseOrganic({x,0.34f,z},{0.25f,0.39f,0.24f},{0.18f,0.24f,0.12f},{0.004f,0.008f,0.001f},(float)i*0.55f,0,0,view,proj,cam);
-    poseOrb({x,0.61f+0.035f*std::sin(visualTime*1.3f+(float)i),z},{0.22f,0.24f,0.22f},seed,seedGlow,view,proj,cam);
+    poseOrb({x,0.61f+0.035f*std::sin(visualTime*1.3f+(float)i),z},{0.22f,0.24f,0.22f},seed,seedGlow,0,0,0,view,proj,cam);
   }
   // Optional medicinal growths let the player trade exploration for a small health recovery.
   for(int i=0;i<2;i++){
