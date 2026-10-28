@@ -22,7 +22,7 @@ struct Shot { float x,y,z,vx,vz,life; bool hostile=false; };
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
 GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
 GLint fallbackResLoc=-1;
-Mesh cubeMesh, sphereMesh;
+Mesh cubeMesh, sphereMesh, organicMesh;
 int screenW=1, screenH=1;
 float playerX=-3.55f, playerZ=-2.15f, playerHealth=1.0f;
 float moveOriginX=0, moveOriginY=0, moveX=0, moveY=0;
@@ -30,7 +30,7 @@ bool moving=false, aiming=false, firing=false;
 float aimX=2.0f, aimZ=0.0f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0.0f;
 float facingYaw=0.0f, moveDirX=0.0f, moveDirZ=1.0f;
 float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=1.0f;
-float elapsed=0.0f, accumulator=0.0f;
+float elapsed=0.0f, accumulator=0.0f, visualTime=0.0f;
 int missionSerial=0, arenaVariant=0;
 std::array<float,4> enemyShotCooldown{};
 std::array<float,4> enemyWindup{};
@@ -49,25 +49,30 @@ std::array<Enemy,4> enemies{{
   {1.05f,-2.45f,1.0f,1.0f,0.92f,0.32f,0,PI}
 }};
 std::array<Obstacle,4> obstacles{{
-  {-2.65f, 1.45f, 0.95f, 0.50f, 0.70f},
-  {-0.10f, 2.55f, 0.90f, 0.46f, 0.65f},
-  { 1.50f,-1.25f, 0.92f, 0.52f, 0.62f},
-  { 3.12f, 0.20f, 0.88f, 0.46f, 0.72f}
+  {-2.95f,0.15f,1.05f,0.78f,0.62f},
+  {-0.45f,2.00f,0.92f,0.70f,0.72f},
+  { 2.20f,0.10f,1.08f,0.84f,0.58f},
+  { 1.65f,-2.72f,0.88f,1.00f,0.65f}
 }};
 constexpr std::array<Obstacle,4> ARENA_LAYOUT_B{{
-  {-2.40f,-0.20f,0.95f,0.55f,0.72f},
-  {-0.40f,1.85f,0.85f,0.50f,0.66f},
-  {1.35f,0.15f,0.95f,0.55f,0.62f},
-  {2.65f,-2.55f,0.75f,0.55f,0.74f}
+  {-2.55f,-0.40f,1.12f,0.76f,0.70f},
+  {-0.85f,2.45f,0.86f,0.82f,0.62f},
+  {1.48f,0.30f,1.18f,0.72f,0.78f},
+  {3.45f,-2.30f,0.92f,0.84f,0.58f}
 }};
 constexpr std::array<Obstacle,4> ARENA_LAYOUT_C{{
-  {-2.60f,0.15f,0.75f,0.95f,0.85f},
-  {-0.90f,2.50f,0.75f,0.50f,0.66f},
-  {0.80f,-1.00f,1.00f,0.50f,0.72f},
-  {2.60f,0.50f,0.82f,0.55f,0.78f}
+  {-3.15f,0.65f,0.86f,1.10f,0.76f},
+  {-1.10f,2.35f,1.16f,0.72f,0.60f},
+  {0.95f,-0.90f,1.14f,0.82f,0.68f},
+  {3.25f,1.35f,0.94f,0.90f,0.72f}
 }};
-constexpr float RELAY_X[3]={-3.72f,0.0f,3.70f};
-constexpr float RELAY_Z[3]={2.58f,-0.58f,1.82f};
+constexpr float RELAY_X[3]={-4.15f,0.05f,4.22f};
+constexpr float RELAY_Z[3]={2.65f,-0.55f,2.35f};
+constexpr float EXIT_X=5.15f;
+constexpr float EXIT_Z=-3.52f;
+constexpr float POD_X[2]={-2.95f,3.55f};
+constexpr float POD_Z[2]={-3.32f,0.10f};
+std::array<bool,2> podCollected{{false,false}};
 
 V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
 V3 sub(V3 a,V3 b){return {a.x-b.x,a.y-b.y,a.z-b.z};}
@@ -125,7 +130,7 @@ void createMeshes(){
   face(c,{b,a,b},{b,b,b},{a,b,b},{a,a,b},{0,0,1});
   face(c,{a,a,a},{a,b,a},{b,b,a},{b,a,a},{0,0,-1});
   uploadMesh(cubeMesh,c);
-  std::vector<Vertex>s;const int rings=12,sectors=18;
+  std::vector<Vertex>s;const int rings=18,sectors=26;
   auto point=[](float t,float p){return V3{0.5f*std::sin(t)*std::cos(p),0.5f*std::cos(t),0.5f*std::sin(t)*std::sin(p)};};
   auto normal=[](V3 p){return norm(p);};
   for(int i=0;i<rings;i++){
@@ -137,7 +142,26 @@ void createMeshes(){
     }
   }
   uploadMesh(sphereMesh,s);
-  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","3D meshes ready: cube=%d sphere=%d",cubeMesh.count,sphereMesh.count);
+  // A second, gently irregular surface gives creatures and stone forms a softer silhouette.
+  std::vector<Vertex> organic;
+  const int organicRings=18, organicSectors=26;
+  auto organicPoint=[](float t,float p){
+    const float wave=0.060f*std::sin(3.0f*t+0.65f)*std::cos(5.0f*p)
+      +0.032f*std::sin(7.0f*p+1.3f)*std::sin(t)
+      +0.020f*std::cos(4.0f*t-2.0f*p);
+    const float r=1.0f+wave;
+    return V3{0.5f*r*std::sin(t)*std::cos(p),0.5f*r*std::cos(t),0.5f*r*std::sin(t)*std::sin(p)};
+  };
+  for(int i=0;i<organicRings;i++){
+    const float t1=PI*(float)i/organicRings,t2=PI*(float)(i+1)/organicRings;
+    for(int j=0;j<organicSectors;j++){
+      const float p1=2*PI*(float)j/organicSectors,p2=2*PI*(float)(j+1)/organicSectors;
+      V3 a=organicPoint(t1,p1),b=organicPoint(t2,p1),c=organicPoint(t2,p2),d=organicPoint(t1,p2);
+      addTri(organic,a,b,c,norm(a));addTri(organic,a,c,d,norm(a));
+    }
+  }
+  uploadMesh(organicMesh,organic);
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Procedural meshes ready: cube=%d sphere=%d organic=%d",cubeMesh.count,sphereMesh.count,organicMesh.count);
 }
 GLuint compileShader(GLenum type,const char*source){
   GLuint sh=glCreateShader(type);glShaderSource(sh,1,&source,nullptr);glCompileShader(sh);
@@ -178,7 +202,7 @@ GLuint make3DProgram(){
     vec3 col=uColor*(0.22+0.68*diffuse+fillLight)+spec;
     col+=uGlow+rim*(0.035+0.095*dot(uColor,vec3(0.333)));
     float fog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
-    col=mix(col,vec3(0.006,0.012,0.026),fog);
+    col=mix(col,vec3(0.024,0.031,0.020),fog);
     outColor=vec4(col,1.0);
   })";
   return linkProgram(vs,fs,"3D scene");
@@ -204,22 +228,23 @@ void configureArena(){
 }
 void resetMission(){
   configureArena();
-  playerX=-3.55f;playerZ=-2.15f;playerHealth=1.0f;aimX=playerX+5.0f;aimZ=playerZ;elapsed=0;accumulator=0;
-  moving=false;aiming=false;firing=false;shotCooldown=0;facingYaw=0.0f;moveDirX=0.0f;moveDirZ=1.0f;
-  dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=1.0f;
-  won=false;lost=false;defeated=0;relayMask=0;
+  playerX=-5.15f;playerZ=-3.25f;playerHealth=1.0f;
+  aimX=playerX;aimZ=playerZ-5.0f;elapsed=0;accumulator=0;
+  moving=false;aiming=false;firing=false;shotCooldown=0;facingYaw=PI;moveDirX=0.0f;moveDirZ=-1.0f;
+  dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=-1.0f;
+  won=false;lost=false;defeated=0;relayMask=0;podCollected={{false,false}};
   enemyShotCooldown.fill(0.8f);enemyWindup.fill(0.0f);enemyAttackCooldown.fill(0.0f);
   shots.fill({});
   if(arenaVariant==0){
-    enemies={{{2.45f,2.75f,1,1,1.05f,0.34f,0,PI},{3.25f,-1.45f,2,2,0.70f,0.43f,1,PI},{-0.80f,0.60f,1,1,1.45f,0.28f,2,PI},{1.05f,-2.45f,1,1,0.92f,0.32f,0,PI}}};
+    enemies={{{-3.85f,2.95f,1,1,1.10f,0.36f,0,PI},{0.85f,2.90f,2,2,0.72f,0.48f,1,PI},{3.90f,0.15f,1,1,1.35f,0.31f,2,PI},{-1.45f,-2.45f,1,1,1.62f,0.31f,3,PI}}};
   }else if(arenaVariant==1){
-    enemies={{{3.65f,2.45f,1,1,1.05f,0.34f,0,PI},{2.80f,-0.85f,2,2,0.70f,0.43f,1,PI},{-1.25f,-1.20f,1,1,1.45f,0.28f,2,PI},{0.35f,-2.45f,1,1,0.92f,0.32f,0,PI}}};
+    enemies={{{-4.40f,1.45f,1,1,1.10f,0.36f,0,PI},{1.45f,2.90f,2,2,0.72f,0.48f,1,PI},{3.35f,-0.40f,1,1,1.35f,0.31f,2,PI},{-0.75f,-2.30f,1,1,1.62f,0.31f,3,PI}}};
   }else{
-    enemies={{{3.65f,2.55f,1,1,1.05f,0.34f,0,PI},{3.45f,-1.65f,2,2,0.70f,0.43f,1,PI},{-0.70f,0.55f,1,1,1.45f,0.28f,2,PI},{1.60f,2.65f,1,1,0.92f,0.32f,0,PI}}};
+    enemies={{{-2.75f,3.35f,1,1,1.10f,0.36f,0,PI},{2.05f,2.40f,2,2,0.72f,0.48f,1,PI},{4.00f,0.60f,1,1,1.35f,0.31f,2,PI},{0.45f,-3.10f,1,1,1.62f,0.31f,3,PI}}};
   }
 }
 void resolveCollision(float&x,float&z,float radius){
-  x=std::clamp(x,-4.55f+radius,4.55f-radius);z=std::clamp(z,-3.05f+radius,3.05f-radius);
+  x=std::clamp(x,-6.10f+radius,6.10f-radius);z=std::clamp(z,-4.30f+radius,4.30f-radius);
   for(const auto&o:obstacles){
     float qx=std::clamp(x,o.x-o.sx*0.5f,o.x+o.sx*0.5f),qz=std::clamp(z,o.z-o.sz*0.5f,o.z+o.sz*0.5f);
     float dx=x-qx,dz=z-qz,d2=dx*dx+dz*dz;
@@ -307,10 +332,17 @@ bool nearActiveRelay(){
   }
   return false;
 }
+bool nearFieldPod(){
+  for(int i=0;i<2;i++)if(!podCollected[(size_t)i]){
+    const float dx=playerX-POD_X[i],dz=playerZ-POD_Z[i];
+    if(dx*dx+dz*dz<0.85f*0.85f)return true;
+  }
+  return false;
+}
 void publishSnapshot(){
   int hp=(int)std::round(std::clamp(playerHealth,0.0f,1.0f)*100.0f);
   int packed=(gameMode&7)|((hp&127)<<3)|((relayMask&7)<<10)|((activeEnemyCount()&7)<<13)
-    |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0);
+    |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
@@ -432,7 +464,7 @@ void fixedUpdate(float dt){
     if(moving){
       const float dx=(moveX-moveOriginX)/(float)std::max(1,screenH),dy=(moveY-moveOriginY)/(float)std::max(1,screenH);
       const float mag=std::sqrt(dx*dx+dy*dy);
-      if(mag>0.012f){moveDirX=dx/mag;moveDirZ=-dy/mag;inputStrength=std::clamp(mag/0.15f,0.0f,1.0f);if(!aiming)facingYaw=std::atan2(moveDirX,moveDirZ);}
+      if(mag>0.012f){moveDirX=dx/mag;moveDirZ=dy/mag;inputStrength=std::clamp(mag/0.15f,0.0f,1.0f);if(!aiming)facingYaw=std::atan2(moveDirX,moveDirZ);}
     }
     if(dodgeTime>0.0f){playerX+=dodgeDirX*8.2f*dt;playerZ+=dodgeDirZ*8.2f*dt;resolveCollision(playerX,playerZ,0.30f);}
     else if(moving&&inputStrength>0.0f){playerX+=moveDirX*3.55f*inputStrength*dt;playerZ+=moveDirZ*3.55f*inputStrength*dt;resolveCollision(playerX,playerZ,0.30f);}
@@ -510,7 +542,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeDrawFrame(JNIEnv*,jobject){
   auto now=std::chrono::steady_clock::now();
   float frame=std::chrono::duration<float>(now-previousFrame).count();previousFrame=now;
-  frame=std::clamp(frame,0.0f,0.05f);accumulator+=frame;
+  frame=std::clamp(frame,0.0f,0.05f);visualTime+=frame;accumulator+=frame;
   const float step=1.0f/60.0f;
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -518,9 +550,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
     return;
   }
-  V3 camera{0.0f,8.6f,11.2f};
+  V3 camera{0.0f,10.2f,11.6f};
   Mat4 view=lookAt(camera,{0.0f,0.0f,0.0f},{0.0f,1.0f,0.0f});
-  Mat4 proj=perspective(44.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
+  Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
   glUseProgram(program);drawScene(view,proj,camera);
   if(lost||won){
     // Volumetric outcome signal: a large bright ring above the arena center.
@@ -547,6 +579,16 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
   screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);
   if(gameMode!=1)return;
   if(action==7){
+    for(int i=0;i<2;i++){
+      if(podCollected[(size_t)i])continue;
+      const float px=playerX-POD_X[i],pz=playerZ-POD_Z[i];
+      if(px*px+pz*pz<0.85f*0.85f){
+        podCollected[(size_t)i]=true;
+        playerHealth=std::min(1.0f,playerHealth+0.24f);
+        __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Field pod collected; health=%f",playerHealth);
+        publishSnapshot();return;
+      }
+    }
     for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];if(dx*dx+dz*dz<1.25f*1.25f){relayMask|=(1<<i);__android_log_print(ANDROID_LOG_INFO,"NeonBreach","Relay %d disabled; mask=%d",i+1,relayMask);publishSnapshot();return;}}
     publishSnapshot();return;
   }
