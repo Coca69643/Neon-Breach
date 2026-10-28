@@ -31,6 +31,7 @@ float aimX=-5.15f, aimZ=-8.25f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0
 float facingYaw=PI, moveDirX=0.0f, moveDirZ=-1.0f;
 float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=-1.0f;
 float elapsed=0.0f, accumulator=0.0f, visualTime=0.0f;
+float cameraFocusX=0.0f, cameraFocusZ=0.0f;
 int missionSerial=0, arenaVariant=0;
 int operativeClass=0; // 0 Kestrel, 1 Bastion, 2 Patch
 std::array<float,4> enemyShotCooldown{};
@@ -219,7 +220,7 @@ GLuint make3DProgram(){
     col*=mottling;
     col+=uGlow+rim*(0.035+0.095*dot(uColor,vec3(0.333)));
     float fog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
-    col=mix(col,vec3(0.024,0.031,0.020),fog);
+    col=mix(col,vec3(0.018,0.027,0.040),fog);
     outColor=vec4(col,1.0);
   })";
   return linkProgram(vs,fs,"3D scene");
@@ -246,6 +247,7 @@ void configureArena(){
 void resetMission(){
   configureArena();
   playerX=-5.15f;playerZ=-3.25f;playerHealth=1.0f;
+  cameraFocusX=std::clamp(playerX*0.68f,-3.8f,3.8f);cameraFocusZ=std::clamp(playerZ*0.55f,-2.25f,2.25f);
   aimX=playerX;aimZ=playerZ-5.0f;elapsed=0;accumulator=0;
   moving=false;aiming=false;firing=false;shotCooldown=0;facingYaw=PI;moveDirX=0.0f;moveDirZ=-1.0f;
   dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=-1.0f;
@@ -443,57 +445,80 @@ void publishSnapshot(){
     |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0)|(nearActiveHazard()?1<<19:0);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
-// Low-cost procedural flora and lumpy stone forms keep the setting alive without external assets.
-void drawPlant(float x,float z,float size,float phase,const Mat4&view,const Mat4&proj,V3 cam){
-  orb({x,0.012f,z},{size*1.35f,0.025f,size*1.05f},{0.055f,0.071f,0.034f},{0.003f,0.005f,0.001f},view,proj,cam);
-  const V3 greens[4]={{0.17f,0.25f,0.095f},{0.22f,0.30f,0.11f},{0.12f,0.20f,0.075f},{0.28f,0.31f,0.13f}};
-  for(int i=0;i<4;i++){
-    const float a=phase*0.06f+(2.0f*PI*(float)i/4.0f);
-    const float sway=std::sin(visualTime*0.8f+phase+(float)i)*0.025f;
-    poseOrganic({x+std::cos(a)*size*0.25f,0.09f+std::abs(sway),z+std::sin(a)*size*0.25f},
-      {size*0.76f,size*0.13f,size*0.28f},greens[i],{0.004f,0.007f,0.001f},a,0.0f,sway,view,proj,cam);
-  }
-  poseOrganic({x,0.10f,z},{size*0.30f,size*0.24f,size*0.30f},{0.32f,0.35f,0.15f},{0.01f,0.015f,0.003f},phase,0,0,view,proj,cam);
-}
-void drawTree(float x,float z,float size,float phase,const Mat4&view,const Mat4&proj,V3 cam){
-  poseOrb({x,size*0.56f,z},{size*0.24f,size*1.18f,size*0.24f},{0.20f,0.13f,0.075f},{0.005f,0.003f,0.001f},phase*0.015f,0,0,view,proj,cam);
-  poseOrganic({x+std::sin(phase)*size*0.18f,size*1.12f,z},{size*0.92f,size*0.68f,size*0.85f},{0.11f,0.19f,0.075f},{0.003f,0.008f,0.001f},phase*0.02f,0,0,view,proj,cam);
-  poseOrganic({x-size*0.32f,size*1.35f,z+size*0.20f},{size*0.70f,size*0.58f,size*0.70f},{0.17f,0.24f,0.09f},{0.005f,0.01f,0.001f},phase*0.03f,0,0,view,proj,cam);
-  poseOrganic({x+size*0.30f,size*1.32f,z-size*0.18f},{size*0.72f,size*0.57f,size*0.72f},{0.20f,0.27f,0.10f},{0.005f,0.01f,0.001f},phase*0.025f,0,0,view,proj,cam);
-}
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
-  // SITE ORION-9: a research outpost partly reclaimed after the containment breach.
-  box({0.0f,-0.25f,0.0f},{17.0f,0.44f,13.0f},{0.075f,0.092f,0.105f},{0.003f,0.006f,0.010f},0,view,proj,cam);
-  box({0.0f,-0.006f,0.0f},{14.3f,0.035f,10.5f},{0.13f,0.145f,0.15f},{0.003f,0.005f,0.006f},0,view,proj,cam);
-  for(int i=-3;i<=3;i+=2)box({(float)i*1.78f,0.015f,0.0f},{0.035f,0.014f,9.8f},{0.20f,0.23f,0.23f},{0.002f,0.003f,0.003f},0,view,proj,cam);
-  box({-1.6f,0.016f,-1.35f},{4.8f,0.016f,0.035f},{0.20f,0.23f,0.23f},{0.002f,0.003f,0.003f},0,view,proj,cam);
-  box({2.5f,0.016f,1.45f},{3.5f,0.016f,0.035f},{0.20f,0.23f,0.23f},{0.002f,0.003f,0.003f},0,view,proj,cam);
-  // Moss patches and growth mark the site as abandoned rather than pristine.
-  for(int i=0;i<18;i++){
-    const float a=(float)i*2.39996f;
-    const float x=std::sin(a)*5.35f;
-    const float z=std::cos(a*0.79f)*3.62f;
-    const float sx=0.80f+0.30f*(float)(i%4);
-    const bool moss=(i%3)!=0;
-    poseOrganic({x,-0.006f,z},{sx,0.018f,0.46f+0.12f*(float)(i%3)},
-      moss?V3{0.12f,0.16f,0.075f}:V3{0.25f,0.22f,0.15f},
-      {0.002f,0.003f,0.001f},a,0,0,view,proj,cam);
+  // ORION INDUSTRIAL MODULES: layered steel, service conduits and containment hardware.
+  box({0.0f,-0.25f,0.0f},{17.0f,0.44f,13.0f},{0.052f,0.064f,0.080f},{0.002f,0.004f,0.008f},0,view,proj,cam);
+  box({0.0f,-0.006f,0.0f},{14.3f,0.035f,10.5f},{0.16f,0.18f,0.20f},{0.003f,0.005f,0.008f},0,view,proj,cam);
+
+  // Flush floor-panel seams create scale and a readable industrial layout.
+  for(int row=-2;row<=2;row++){
+    const float z=(float)row*1.72f;
+    box({0.0f,0.014f,z},{13.9f,0.012f,0.022f},{0.055f,0.070f,0.082f},{0.001f,0.002f,0.004f},0,view,proj,cam);
   }
-  const std::array<V3,8> treePositions{{
-    {-6.65f,0,-4.80f},{-6.85f,0,-0.75f},{-6.55f,0,3.85f},{-2.20f,0,5.00f},
-    {2.40f,0,5.00f},{6.55f,0,3.95f},{6.80f,0,-0.35f},{6.35f,0,-4.70f}
-  }};
-  for(size_t i=0;i<treePositions.size();i++)drawTree(treePositions[i].x,treePositions[i].z,0.90f+0.24f*(float)(i%3),visualTime+(float)i*4.3f,view,proj,cam);
-  const std::array<V3,12> plantPositions{{
-    {-5.80f,0,-3.30f},{-5.90f,0,-0.80f},{-5.45f,0,1.10f},{-5.20f,0,3.60f},
-    {-3.45f,0,3.85f},{-1.60f,0,3.95f},{1.65f,0,4.00f},{3.25f,0,3.95f},
-    {5.50f,0,3.70f},{5.70f,0,1.20f},{5.65f,0,-1.35f},{4.95f,0,-4.05f}
-  }};
-  for(size_t i=0;i<plantPositions.size();i++)drawPlant(plantPositions[i].x,plantPositions[i].z,0.42f+0.12f*(float)(i%3),visualTime+(float)i*1.7f,view,proj,cam);
-  // Damaged containment rails frame combat without enclosing the lanes.
-  box({-6.15f,0.34f,0.0f},{0.16f,0.56f,6.8f},{0.10f,0.13f,0.15f},{0.003f,0.008f,0.010f},0,view,proj,cam);
-  box({6.15f,0.34f,0.4f},{0.16f,0.56f,5.9f},{0.10f,0.13f,0.15f},{0.003f,0.008f,0.010f},0,view,proj,cam);
-  for(int i=0;i<5;i++){const float x=-4.8f+(float)i*2.4f;box({x,0.32f,4.78f},{0.18f,0.55f,0.18f},{0.12f,0.15f,0.16f},{0.002f,0.004f,0.005f},0,view,proj,cam);if(i<4)box({x+1.2f,0.32f,4.78f},{2.25f,0.07f,0.08f},{0.17f,0.20f,0.21f},{0.002f,0.003f,0.004f},0,view,proj,cam);}
+  for(int column=-3;column<=3;column++){
+    const float x=(float)column*1.72f;
+    box({x,0.014f,0.0f},{0.022f,0.012f,10.1f},{0.055f,0.070f,0.082f},{0.001f,0.002f,0.004f},0,view,proj,cam);
+  }
+  // A marked transfer lane leads from the entry toward the containment zone.
+  for(int i=0;i<5;i++){
+    const float z=-3.95f+(float)i*0.43f;
+    box({-3.35f,0.026f,z},{0.055f,0.014f,0.22f},{0.20f,0.66f,0.69f},{0.003f,0.025f,0.028f},0,view,proj,cam);
+  }
+  // Amber restricted-zone bars are placed along the rear service boundary, not through combat lanes.
+  for(int i=0;i<7;i++){
+    const float x=-5.25f+(float)i*1.75f;
+    box({x,0.027f,4.16f},{0.46f,0.016f,0.085f},(i%2==0)?V3{0.80f,0.34f,0.075f}:V3{0.12f,0.14f,0.15f},
+      (i%2==0)?V3{0.030f,0.006f,0.001f}:V3{0.001f,0.002f,0.003f},0,view,proj,cam);
+  }
+
+  // Structural perimeter and bulkhead. The central doorway is a visual landmark.
+  box({-6.55f,0.78f,0.0f},{0.24f,1.56f,9.65f},{0.075f,0.095f,0.11f},{0.002f,0.005f,0.008f},0,view,proj,cam);
+  box({ 6.55f,0.78f,0.0f},{0.24f,1.56f,9.65f},{0.075f,0.095f,0.11f},{0.002f,0.005f,0.008f},0,view,proj,cam);
+  box({-3.75f,0.76f,4.88f},{5.55f,1.52f,0.28f},{0.095f,0.12f,0.14f},{0.003f,0.006f,0.009f},0,view,proj,cam);
+  box({ 3.70f,0.76f,4.88f},{5.65f,1.52f,0.28f},{0.095f,0.12f,0.14f},{0.003f,0.006f,0.009f},0,view,proj,cam);
+  // Reinforced door jambs and header surround the decontamination shutter.
+  box({-1.12f,0.77f,4.62f},{0.18f,1.54f,0.36f},{0.19f,0.23f,0.25f},{0.004f,0.007f,0.010f},0,view,proj,cam);
+  box({ 1.12f,0.77f,4.62f},{0.18f,1.54f,0.36f},{0.19f,0.23f,0.25f},{0.004f,0.007f,0.010f},0,view,proj,cam);
+  box({0.0f,1.55f,4.62f},{2.42f,0.20f,0.36f},{0.19f,0.23f,0.25f},{0.004f,0.007f,0.010f},0,view,proj,cam);
+  box({0.0f,0.80f,4.69f},{1.86f,1.25f,0.06f},{0.045f,0.060f,0.075f},{0.001f,0.003f,0.006f},0,view,proj,cam);
+  box({0.0f,1.36f,4.64f},{1.55f,0.06f,0.07f},{0.80f,0.31f,0.065f},{0.045f,0.008f,0.001f},0,view,proj,cam);
+
+  // Repeated wall ribs and emergency status lights establish a facility rhythm.
+  for(int i=0;i<6;i++){
+    const float z=-3.72f+(float)i*1.48f;
+    box({-6.36f,0.78f,z},{0.10f,1.62f,0.13f},{0.16f,0.19f,0.21f},{0.002f,0.004f,0.006f},0,view,proj,cam);
+    box({ 6.36f,0.78f,z},{0.10f,1.62f,0.13f},{0.16f,0.19f,0.21f},{0.002f,0.004f,0.006f},0,view,proj,cam);
+    if(i%2==0){
+      box({-6.29f,1.24f,z},{0.035f,0.12f,0.30f},{0.84f,0.29f,0.065f},{0.038f,0.006f,0.001f},0,view,proj,cam);
+      box({ 6.29f,1.24f,z},{0.035f,0.12f,0.30f},{0.84f,0.29f,0.065f},{0.038f,0.006f,0.001f},0,view,proj,cam);
+    }
+  }
+
+  // Exposed service pipes run above the playable lanes and turn into the side bulkheads.
+  box({-5.82f,1.86f,0.20f},{0.13f,0.13f,8.95f},{0.20f,0.25f,0.28f},{0.004f,0.008f,0.011f},0,view,proj,cam);
+  box({-5.57f,1.70f,0.20f},{0.08f,0.08f,8.95f},{0.48f,0.24f,0.095f},{0.015f,0.005f,0.001f},0,view,proj,cam);
+  box({ 5.82f,1.86f,0.20f},{0.13f,0.13f,8.95f},{0.20f,0.25f,0.28f},{0.004f,0.008f,0.011f},0,view,proj,cam);
+  box({ 5.57f,1.70f,0.20f},{0.08f,0.08f,8.95f},{0.48f,0.24f,0.095f},{0.015f,0.005f,0.001f},0,view,proj,cam);
+  box({0.0f,1.96f,4.26f},{10.9f,0.14f,0.14f},{0.20f,0.25f,0.28f},{0.004f,0.008f,0.011f},0,view,proj,cam);
+  box({0.0f,1.80f,4.02f},{10.9f,0.08f,0.08f},{0.48f,0.24f,0.095f},{0.015f,0.005f,0.001f},0,view,proj,cam);
+
+  // Industrial ceiling light housings: restrained glow, with open sky above the camera view.
+  for(int i=0;i<3;i++){
+    const float x=-4.0f+(float)i*4.0f;
+    box({x,2.12f,0.75f},{0.92f,0.14f,0.34f},{0.085f,0.12f,0.15f},{0.003f,0.009f,0.014f},0,view,proj,cam);
+    box({x,2.035f,0.75f},{0.68f,0.025f,0.12f},{0.17f,0.72f,0.77f},{0.018f,0.075f,0.082f},0,view,proj,cam);
+  }
+
+  // Wall-mounted diagnostics: simple geometry but unmistakably facility equipment.
+  for(int i=0;i<2;i++){
+    const float side=i==0?-1.0f:1.0f;
+    const float x=side*6.16f;
+    const float z=i==0?1.15f:-1.85f;
+    box({x,1.07f,z},{0.12f,0.60f,0.82f},{0.055f,0.075f,0.095f},{0.002f,0.006f,0.010f},0,view,proj,cam);
+    box({x-side*0.07f,1.12f,z},{0.025f,0.31f,0.52f},{0.10f,0.47f,0.55f},{0.006f,0.035f,0.042f},0,view,proj,cam);
+    for(int led=0;led<3;led++)box({x-side*0.09f,1.30f-(float)led*0.13f,z+0.27f},{0.025f,0.045f,0.045f},
+      led==0?V3{0.88f,0.32f,0.07f}:V3{0.12f,0.68f,0.55f},led==0?V3{0.035f,0.006f,0.001f}:V3{0.004f,0.02f,0.015f},0,view,proj,cam);
+  }
   // Utility consoles with hazard markings are cover; they also keep their collision geometry.
   for(size_t i=0;i<obstacles.size();i++){
     const auto&o=obstacles[i];const float yaw=(float)i*0.16f;
@@ -716,6 +741,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   auto now=std::chrono::steady_clock::now();
   float frame=std::chrono::duration<float>(now-previousFrame).count();previousFrame=now;
   frame=std::clamp(frame,0.0f,0.05f);visualTime+=frame;accumulator+=frame;
+  const float cameraFollow=1.0f-std::exp(-frame*4.6f);
+  const float desiredFocusX=gameMode==1?std::clamp(playerX*0.68f,-3.8f,3.8f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
+  const float desiredFocusZ=gameMode==1?std::clamp(playerZ*0.55f,-2.25f,2.25f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusZ);
+  cameraFocusX+=(desiredFocusX-cameraFocusX)*cameraFollow;
+  cameraFocusZ+=(desiredFocusZ-cameraFocusZ)*cameraFollow;
   const float step=1.0f/60.0f;
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
@@ -723,8 +753,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
     return;
   }
-  V3 camera{0.0f,10.2f,11.6f};
-  Mat4 view=lookAt(camera,{0.0f,0.0f,0.0f},{0.0f,1.0f,0.0f});
+  V3 camera{cameraFocusX,10.2f,cameraFocusZ+11.6f};
+  Mat4 view=lookAt(camera,{cameraFocusX,0.0f,cameraFocusZ},{0.0f,1.0f,0.0f});
   Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
   glUseProgram(program);drawScene(view,proj,camera);
   if(lost||won){
