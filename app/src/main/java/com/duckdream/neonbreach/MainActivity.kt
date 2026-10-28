@@ -163,6 +163,25 @@ class MainActivity : Activity() {
         }
     }
 
+    private fun menuCommandButton(label: String, accent: Boolean = false, onClick: () -> Unit): TextView {
+        return text(if (accent) "▸  $label" else "›  $label", 15f, if (accent) cyan else white, true).apply {
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), dp(7), dp(10), dp(7))
+            background = GradientDrawable().apply {
+                shape = GradientDrawable.RECTANGLE
+                cornerRadius = dp(4).toFloat()
+                setColor(if (accent) Color.argb(112, 12, 50, 58) else Color.argb(28, 18, 31, 36))
+                setStroke(dp(1), if (accent) Color.argb(190, 42, 207, 221) else Color.argb(76, 132, 157, 164))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                onClick()
+            }
+        }
+    }
+
     private fun addVertical(parent: LinearLayout, child: View, bottom: Int = 0, width: Int = -1, height: Int = -2) {
         parent.addView(child, LinearLayout.LayoutParams(width, height).apply {
             if (bottom > 0) bottomMargin = dp(bottom)
@@ -194,31 +213,36 @@ class MainActivity : Activity() {
         }
         addVertical(left, text("DUCK DREAM STUDIOS", 10f, cyan, true), 8)
         addVertical(left, text("NEON BREACH", 32f, white, true), 1)
+        addVertical(left, View(this).apply { setBackgroundColor(cyan) }, 8, dp(176), dp(2))
         addVertical(left, text("PROTOCOLO DE CONTENÇÃO", 11f, muted, true), 8)
         addVertical(left, text("OPERADOR  ${operativeName()}", 12f, amber, true), 10)
-        addVertical(left, actionButton("INICIAR OPERAÇÃO", true) { startNewMission() }, 7, dp(226), dp(43))
-        val continueBtn = actionButton("CONTINUAR") { continueMission() }
+        addVertical(left, menuCommandButton("INICIAR OPERAÇÃO", true) { startNewMission() }, 7, dp(226), dp(43))
+        val continueBtn = menuCommandButton("CONTINUAR") { continueMission() }
         continueBtn.isEnabled = hasSession
         continueBtn.alpha = if (hasSession) 1f else 0.40f
         addVertical(left, continueBtn, 7, dp(226), dp(41))
-        addVertical(left, actionButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 7, dp(226), dp(41))
-        addVertical(left, actionButton("CONFIGURAÇÕES") { showSettings() }, 7, dp(226), dp(41))
+        addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 7, dp(226), dp(41))
+        addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 7, dp(226), dp(41))
         addVertical(left, text("SITE ORION-9  •  0.13.0", 9f, muted, true), 12)
         layer.addView(left, FrameLayout.LayoutParams(dp(252), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
 
+        val briefing = FrameLayout(this)
+        val briefingRule = View(this).apply { setBackgroundColor(amber) }
+        briefing.addView(briefingRule, FrameLayout.LayoutParams(dp(2), -1, Gravity.START))
         val right = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.START
-            setPadding(dp(5), dp(6), dp(5), dp(6))
+            setPadding(dp(13), dp(6), dp(5), dp(6))
             isClickable = true
             setOnClickListener { }
         }
         addVertical(right, text("FALHA DE CONTENÇÃO", 12f, amber, true), 8)
         addVertical(right, text("Reconecte os relés da instalação, contenha as criaturas e alcance a zona de extração.", 13f, white), 15)
         addVertical(right, text("3 RELÉS DE CONTENÇÃO\n4 AMEAÇAS\n1 ZONA DE EXTRAÇÃO", 10f, muted, true), 0)
-        layer.addView(right, FrameLayout.LayoutParams(dp(205), -2, Gravity.END or Gravity.CENTER_VERTICAL).apply {
+        briefing.addView(right, FrameLayout.LayoutParams(-1, -2))
+        layer.addView(briefing, FrameLayout.LayoutParams(dp(205), -2, Gravity.END or Gravity.CENTER_VERTICAL).apply {
             marginEnd = dp(27)
         })
         attachLayer(layer)
