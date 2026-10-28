@@ -72,7 +72,10 @@ constexpr float EXIT_X=5.15f;
 constexpr float EXIT_Z=-3.52f;
 constexpr float POD_X[2]={-2.95f,3.55f};
 constexpr float POD_Z[2]={-3.32f,0.10f};
+constexpr float HAZARD_X[2]={-1.20f,2.85f};
+constexpr float HAZARD_Z[2]={-1.55f,1.48f};
 std::array<bool,2> podCollected{{false,false}};
+std::array<float,2> hazardCooldown{{0.0f,0.0f}};
 
 V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
 V3 sub(V3 a,V3 b){return {a.x-b.x,a.y-b.y,a.z-b.z};}
@@ -232,7 +235,7 @@ void resetMission(){
   aimX=playerX;aimZ=playerZ-5.0f;elapsed=0;accumulator=0;
   moving=false;aiming=false;firing=false;shotCooldown=0;facingYaw=PI;moveDirX=0.0f;moveDirZ=-1.0f;
   dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=-1.0f;
-  won=false;lost=false;defeated=0;relayMask=0;podCollected={{false,false}};
+  won=false;lost=false;defeated=0;relayMask=0;podCollected={{false,false}};hazardCooldown.fill(0.0f);
   enemyShotCooldown.fill(0.8f);enemyWindup.fill(0.0f);enemyAttackCooldown.fill(0.0f);
   shots.fill({});
   if(arenaVariant==0){
@@ -406,10 +409,19 @@ bool nearFieldPod(){
   }
   return false;
 }
+bool nearActiveHazard(){
+  for(int i=0;i<2;i++){
+    const float cycle=std::fmod(elapsed+(float)i*1.55f,3.8f);
+    if(cycle<2.4f||cycle>3.15f)continue;
+    const float dx=playerX-HAZARD_X[i],dz=playerZ-HAZARD_Z[i];
+    if(dx*dx+dz*dz<1.18f*1.18f)return true;
+  }
+  return false;
+}
 void publishSnapshot(){
   int hp=(int)std::round(std::clamp(playerHealth,0.0f,1.0f)*100.0f);
   int packed=(gameMode&7)|((hp&127)<<3)|((relayMask&7)<<10)|((activeEnemyCount()&7)<<13)
-    |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0);
+    |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0)|(nearActiveHazard()?1<<19:0);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
 // Low-cost procedural flora and lumpy stone forms keep the setting alive without external assets.
@@ -484,6 +496,22 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     }
     poseOrganic({x,0.34f,z},{0.25f,0.39f,0.24f},{0.18f,0.24f,0.12f},{0.004f,0.008f,0.001f},(float)i*0.55f,0,0,view,proj,cam);
     poseOrb({x,0.61f+0.035f*std::sin(visualTime*1.3f+(float)i),z},{0.22f,0.24f,0.22f},seed,seedGlow,0,0,0,view,proj,cam);
+  }
+  // Amber spore beds pulse in cycles. Their color and radius telegraph when the patch is dangerous.
+  for(int i=0;i<2;i++){
+    const float cycle=std::fmod(elapsed+(float)i*1.55f,3.8f);
+    const bool dangerous=cycle>2.4f&&cycle<3.15f;
+    const float radius=(dangerous?0.80f:0.62f)+0.035f*std::sin(visualTime*2.0f+(float)i);
+    const V3 sporeColor=dangerous?V3{0.83f,0.35f,0.075f}:V3{0.31f,0.29f,0.16f};
+    const V3 sporeGlow=dangerous?V3{0.055f,0.012f,0.001f}:V3{0.002f,0.003f,0.001f};
+    for(int k=0;k<8;k++){
+      const float a=2.0f*PI*(float)k/8.0f;
+      poseOrb({HAZARD_X[i]+std::cos(a)*radius,0.042f,HAZARD_Z[i]+std::sin(a)*radius},
+        {0.14f,0.055f,0.14f},sporeColor,sporeGlow,0,0,0,view,proj,cam);
+    }
+    poseOrganic({HAZARD_X[i],0.12f+0.025f*std::sin(visualTime*1.8f+(float)i),HAZARD_Z[i]},
+      {0.38f,0.24f,0.38f},dangerous?V3{0.61f,0.31f,0.10f}:V3{0.25f,0.25f,0.14f},
+      sporeGlow,visualTime*0.08f,0,0,view,proj,cam);
   }
   // Optional medicinal growths let the player trade exploration for a small health recovery.
   for(int i=0;i<2;i++){
@@ -571,6 +599,16 @@ void fixedUpdate(float dt){
   dodgeCooldown=std::max(0.0f,dodgeCooldown-dt);dodgeTime=std::max(0.0f,dodgeTime-dt);shotCooldown=std::max(0.0f,shotCooldown-dt);
   for(int i=0;i<4;i++){enemyShotCooldown[i]=std::max(0.0f,enemyShotCooldown[i]-dt);enemyAttackCooldown[i]=std::max(0.0f,enemyAttackCooldown[i]-dt);}
   if(!won&&!lost){
+    for(int i=0;i<2;i++){
+      hazardCooldown[(size_t)i]=std::max(0.0f,hazardCooldown[(size_t)i]-dt);
+      const float cycle=std::fmod(elapsed+(float)i*1.55f,3.8f);
+      if(cycle<2.4f||cycle>3.15f||hazardCooldown[(size_t)i]>0.0f)continue;
+      const float hx=playerX-HAZARD_X[i],hz=playerZ-HAZARD_Z[i];
+      if(hx*hx+hz*hz<0.88f*0.88f&&!invulnerableNow){
+        playerHealth=std::max(0.0f,playerHealth-0.13f);
+        hazardCooldown[(size_t)i]=0.90f;
+      }
+    }
     float inputStrength=0.0f;
     if(moving){
       const float dx=(moveX-moveOriginX)/(float)std::max(1,screenH),dy=(moveY-moveOriginY)/(float)std::max(1,screenH);
