@@ -1,52 +1,37 @@
-# NEON BREACH 0.9.0 — Android nativo
+# NEON BREACH
 
-Projeto mobile-first de Duck Dream Studios: Kotlin para interface e entrada; C++17/NDK e OpenGL ES 3.0 para a simulação 3D.
+**NEON BREACH** é um jogo de ação e tiro em 3D visto de cima, desenvolvido pela Duck Dream Studios para Android. A proposta é entrar em instalações futuristas, enfrentar diferentes tipos de inimigos, ativar sistemas e encontrar uma rota de extração.
 
-## Novidades 0.9.0
+O projeto ainda está em desenvolvimento. A ideia é construir um jogo mobile de verdade, com controles pensados para a tela sensível ao toque e uma identidade visual própria — não apenas uma demonstração técnica.
 
-- Joystick virtual desenhado em Canvas para movimento analógico à esquerda.
-- Botão de disparo separado, com disparo enquanto pressionado e mira opcional por arrasto no lado direito.
-- Orientação do personagem ligada à direção de movimento, além de esquiva com recarga e invulnerabilidade curta.
-- Três variações de arena por código, obstáculos que bloqueiam projéteis e inimigos com perseguição, ataque pesado anunciado e disparos à distância.
-- HUD atualizado para os novos controles; sem assets ou bibliotecas gráficas externas.
+## Sobre o jogo
 
-## Histórico 0.8.0
+NEON BREACH é feito com código próprio: Kotlin cuida da parte Android e dos controles, enquanto C++17 e OpenGL ES 3.0 são usados na simulação e na apresentação 3D. Os personagens, as arenas e os efeitos atuais são gerados por código, sem modelos ou texturas gráficas importados e sem uma engine de jogo tradicional.
 
-- Personagens humanoides, armaduras, capacete/visor, mochila e arma gerados por código a partir das malhas nativas.
-- Animação procedural de braços e pernas, balanço corporal, orientação e efeito de disparo.
-- Rotações 3D e iluminação de contorno no shader, sem modelos, texturas, engine ou bibliotecas gráficas externas.
-- Código de versão Android atualizado para 10 (0.8.0).
+O foco neste momento é consolidar os controles, o combate, os cenários e o ritmo das missões. Como o jogo continua evoluindo, algumas partes ainda são protótipos e precisam ser avaliadas em dispositivos reais.
 
-## Histórico 0.7.1
+## Log de atualizações
 
-- Ícone de launcher definido explicitamente no manifesto e incluído como vector drawable.
-- Configuração de compilação para reutilizar uma chave de assinatura persistente quando os quatro GitHub Actions secrets de assinatura estiverem configurados.
-- Mantém a missão Protocolo de Ruptura, menu, HUD, pausa, configurações e tela de resultado da 0.7.0.
+### 0.9.0 — Controles e combate
 
-## Atualização por cima de uma versão instalada
+- Adicionado joystick virtual para movimentação.
+- Separado o botão de disparo, com mira por arrasto no lado direito da tela.
+- Melhorada a orientação do personagem e adicionada uma esquiva com recarga.
+- Incluídos inimigos com comportamentos diferentes: perseguição, ataque pesado anunciado e disparos à distância.
+- Adicionadas três variações de arena, obstáculos que bloqueiam projéteis e ajustes no HUD.
 
-O Android aceita uma atualização quando o `applicationId` é o mesmo, o certificado de assinatura é o mesmo e o `versionCode` é igual ou maior. O `applicationId` continua `com.duckdream.neonbreach`; o `versionCode` desta versão é 11.
+### 0.8.0 — Personagens 3D
 
-**Importante:** os APKs anteriores foram gerados em runners temporários usando a chave debug automática. Ela não é persistente entre execuções, portanto não é possível garantir uma atualização por cima desses APKs. Para os builds futuros poderem atualizar a instalação sem desinstalar, configure uma única chave privada persistente nos GitHub Actions secrets antes de distribuir a versão de migração. A migração da instalação v0.7.0 atual exigirá desinstalar essa versão uma vez, pois a assinatura antiga não pode ser recuperada do APK.
+- Introduzidos personagens humanoides construídos a partir de malhas geradas pelo próprio jogo.
+- Adicionados armadura, capacete com visor, mochila e arma.
+- Criadas animações procedurais para braços, pernas e movimento corporal.
+- Melhoradas a iluminação e a leitura dos volumes 3D.
 
-### Secrets necessários no repositório
+### 0.7.1 — Identidade do aplicativo
 
-Em **Settings → Secrets and variables → Actions**, crie:
+- Definido um ícone próprio para o aplicativo Android.
+- Preservados o menu, o HUD, a pausa, as configurações e as telas de resultado introduzidas na versão anterior.
 
-- `NEON_BREACH_KEYSTORE_BASE64`: conteúdo Base64 de um keystore privado JKS.
-- `NEON_BREACH_KEYSTORE_PASSWORD`: senha do keystore.
-- `NEON_BREACH_KEY_ALIAS`: alias da chave.
-- `NEON_BREACH_KEY_PASSWORD`: senha da chave.
+---
 
-Não coloque o keystore nem as senhas em arquivos versionados ou no código público. Depois de configurar os secrets, execute novamente o workflow. O log avisará quando o APK usar a assinatura persistente; sem os secrets, o build continuará como debug temporário e não será adequado para atualizações sobre builds de outras execuções.
-
-## Baixar o APK
-
-1. Abra [GitHub Actions](https://github.com/Coca69643/Neon-Breach/actions).
-2. Abra o build mais recente com conclusão verde.
-3. Em **Artifacts**, baixe `neon-breach-debug-apk`.
-4. Extraia o ZIP e instale o APK.
-
-## Limitações
-
-Build verde confirma compilação e empacotamento, não substitui teste físico. A 0.9.0 ainda é um protótipo 3D nativo; é necessário testar menu, HUD, controles, relés, combate, extração e estabilidade no Realme C53.
+*NEON BREACH está em desenvolvimento. As mudanças descritas registram o estado do projeto; a compilação de uma versão, por si só, não significa que todos os recursos tenham sido validados em um dispositivo físico.*
