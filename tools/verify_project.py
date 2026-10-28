@@ -34,7 +34,7 @@ for token in (
     "fixedUpdate", "resolveCollision", "makeFallbackProgram",
     "drawPose", "drawHumanoid", "rotateX", "rotateZ",
     "projectileBlocked", "ARENA_LAYOUT_B", "ARENA_LAYOUT_C",
-    "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "drawPlant", "drawTree", "nearFieldPod", "moveDirZ=dy/mag",
+    "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "drawPlant", "drawTree", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "publishedSnapshot",
@@ -52,7 +52,7 @@ activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").re
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR EXPEDIÇÃO", "CONFIGURAÇÕES", "PAUSA",
-              "ATIVAR MARCADOR", "INTERAGIR", "DISPARAR", "ESQUIVA", "Joystick de movimento",
+              "ATIVAR MARCADOR", "INTERAGIR", "ESPOROS ATIVOS", "DISPARAR", "ESQUIVA", "Joystick de movimento",
               "EXPEDIÇÃO CONCLUÍDA", "COLHER SEIVA", "CRIATURAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
