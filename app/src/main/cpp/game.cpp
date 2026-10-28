@@ -72,8 +72,8 @@ constexpr float EXIT_X=5.15f;
 constexpr float EXIT_Z=-3.52f;
 constexpr float POD_X[2]={-2.95f,3.55f};
 constexpr float POD_Z[2]={-3.32f,0.10f};
-constexpr float HAZARD_X[2]={-1.20f,2.85f};
-constexpr float HAZARD_Z[2]={-1.55f,1.48f};
+constexpr float HAZARD_X[2]={-1.20f,3.85f};
+constexpr float HAZARD_Z[2]={-1.55f,-1.35f};
 std::array<bool,2> podCollected{{false,false}};
 std::array<float,2> hazardCooldown{{0.0f,0.0f}};
 
@@ -203,6 +203,11 @@ GLuint make3DProgram(){
     float fillLight=max(dot(n,normalize(vec3(0.72,0.28,-0.44))),0.0)*0.16;
     float rim=pow(1.0-max(dot(n,viewDir),0.0),2.7);
     vec3 col=uColor*(0.22+0.68*diffuse+fillLight)+spec;
+    // Deterministic world-space grain adds material variation without downloaded textures.
+    vec2 grainCell=floor(vWorld.xz*vec2(19.0,17.0));
+    float grain=fract(sin(dot(grainCell,vec2(12.9898,78.233)))*43758.5453);
+    float mottling=0.94+0.11*grain;
+    col*=mottling;
     col+=uGlow+rim*(0.035+0.095*dot(uColor,vec3(0.333)));
     float fog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
     col=mix(col,vec3(0.024,0.031,0.020),fog);
