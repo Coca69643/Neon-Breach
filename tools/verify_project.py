@@ -52,7 +52,7 @@ activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").re
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR EXPEDIÇÃO", "CONFIGURAÇÕES", "PAUSA",
-              "DESATIVAR RELÉ", "DISPARAR", "ESQUIVA", "Joystick de movimento",
+              "ATIVAR MARCADOR", "INTERAGIR", "DISPARAR", "ESQUIVA", "Joystick de movimento",
               "EXPEDIÇÃO CONCLUÍDA", "COLHER SEIVA", "CRIATURAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
