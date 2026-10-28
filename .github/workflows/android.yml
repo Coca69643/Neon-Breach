@@ -2,6 +2,14 @@ name: Build NEON BREACH APK
 
 on:
   workflow_dispatch:
+  pull_request:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - '*.gradle'
+      - 'gradle.properties'
+      - 'tools/**'
+      - '.github/workflows/android.yml'
   push:
     branches: [main]
     paths:
