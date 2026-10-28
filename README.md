@@ -1,8 +1,16 @@
-# NEON BREACH 0.8.0 — Android nativo
+# NEON BREACH 0.9.0 — Android nativo
 
 Projeto mobile-first de Duck Dream Studios: Kotlin para interface e entrada; C++17/NDK e OpenGL ES 3.0 para a simulação 3D.
 
-## Novidades 0.8.0
+## Novidades 0.9.0
+
+- Joystick virtual desenhado em Canvas para movimento analógico à esquerda.
+- Botão de disparo separado, com disparo enquanto pressionado e mira opcional por arrasto no lado direito.
+- Orientação do personagem ligada à direção de movimento, além de esquiva com recarga e invulnerabilidade curta.
+- Três variações de arena por código, obstáculos que bloqueiam projéteis e inimigos com perseguição, ataque pesado anunciado e disparos à distância.
+- HUD atualizado para os novos controles; sem assets ou bibliotecas gráficas externas.
+
+## Histórico 0.8.0
 
 - Personagens humanoides, armaduras, capacete/visor, mochila e arma gerados por código a partir das malhas nativas.
 - Animação procedural de braços e pernas, balanço corporal, orientação e efeito de disparo.
@@ -17,7 +25,7 @@ Projeto mobile-first de Duck Dream Studios: Kotlin para interface e entrada; C++
 
 ## Atualização por cima de uma versão instalada
 
-O Android aceita uma atualização quando o `applicationId` é o mesmo, o certificado de assinatura é o mesmo e o `versionCode` é igual ou maior. O `applicationId` continua `com.duckdream.neonbreach`; o `versionCode` desta versão é 10.
+O Android aceita uma atualização quando o `applicationId` é o mesmo, o certificado de assinatura é o mesmo e o `versionCode` é igual ou maior. O `applicationId` continua `com.duckdream.neonbreach`; o `versionCode` desta versão é 11.
 
 **Importante:** os APKs anteriores foram gerados em runners temporários usando a chave debug automática. Ela não é persistente entre execuções, portanto não é possível garantir uma atualização por cima desses APKs. Para os builds futuros poderem atualizar a instalação sem desinstalar, configure uma única chave privada persistente nos GitHub Actions secrets antes de distribuir a versão de migração. A migração da instalação v0.7.0 atual exigirá desinstalar essa versão uma vez, pois a assinatura antiga não pode ser recuperada do APK.
 
@@ -41,4 +49,4 @@ Não coloque o keystore nem as senhas em arquivos versionados ou no código púb
 
 ## Limitações
 
-Build verde confirma compilação e empacotamento, não substitui teste físico. A 0.8.0 ainda é um protótipo 3D nativo; é necessário testar menu, HUD, controles, relés, combate, extração e estabilidade no Realme C53.
+Build verde confirma compilação e empacotamento, não substitui teste físico. A 0.9.0 ainda é um protótipo 3D nativo; é necessário testar menu, HUD, controles, relés, combate, extração e estabilidade no Realme C53.

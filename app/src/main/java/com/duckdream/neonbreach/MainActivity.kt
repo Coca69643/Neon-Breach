@@ -2,8 +2,11 @@ package com.duckdream.neonbreach
 
 import android.app.Activity
 import android.content.res.ColorStateList
+import android.graphics.Canvas
 import android.graphics.Color
+import android.graphics.Paint
 import android.graphics.Typeface
+import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
@@ -34,6 +37,8 @@ class MainActivity : Activity() {
     private lateinit var relayStatus: TextView
     private lateinit var threatStatus: TextView
     private lateinit var interactButton: TextView
+    private lateinit var dodgeButton: TextView
+    private lateinit var fireButton: TextView
 
     private val uiHandler = Handler(Looper.getMainLooper())
     private val pollState = object : Runnable {
@@ -321,36 +326,123 @@ class MainActivity : Activity() {
             isClickable = true
             setOnClickListener { }
         }
-        layer.addView(objectiveText, FrameLayout.LayoutParams(dp(335), -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
-            topMargin = dp(14)
-        })
-
+        layer.addView(objectiveText, FrameLayout.LayoutParams(dp(335), -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(14) })
         val pause = actionButton("Ⅱ  PAUSAR") { showPause() }
         layer.addView(pause, FrameLayout.LayoutParams(dp(112), dp(42), Gravity.END or Gravity.TOP).apply {
             marginEnd = dp(16); topMargin = dp(14)
         })
 
-        interactButton = actionButton("APROXIME-SE DE UM RELÉ", true) {
+        val joystick = VirtualJoystick(this)
+        layer.addView(joystick, FrameLayout.LayoutParams(dp(150), dp(150), Gravity.START or Gravity.BOTTOM).apply {
+            marginStart = dp(20); bottomMargin = dp(16)
+        })
+        fireButton = holdButton("DISPARAR", true, onDown = { gameView.setFiring(true) }, onUp = { gameView.setFiring(false) })
+        layer.addView(fireButton, FrameLayout.LayoutParams(dp(132), dp(58), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(20); bottomMargin = dp(18)
+        })
+        dodgeButton = actionButton("ESQUIVA") { gameView.dodge() }.apply { textSize = 13f }
+        layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(104), dp(46), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(164); bottomMargin = dp(24)
+        })
+        interactButton = actionButton("DESATIVAR RELÉ", true) {
             gameView.interact()
             updateHud(gameView.snapshot())
-        }.apply {
-            isEnabled = false
-            alpha = 0.62f
-        }
-        layer.addView(interactButton, FrameLayout.LayoutParams(dp(230), dp(44), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(16)
-        })
-
-        val controls = text("ARRASTE: MOVIMENTO   •   MIRA E DISPARO À DIREITA", 10f, muted, true).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(6), dp(4), dp(6), dp(4))
-            isClickable = true
-            setOnClickListener { }
-        }
-        layer.addView(controls, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.START).apply {
-            marginStart = dp(14); bottomMargin = dp(12)
+        }.apply { isEnabled = false; alpha = 0.62f }
+        layer.addView(interactButton, FrameLayout.LayoutParams(dp(208), dp(42), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(20); bottomMargin = dp(88)
         })
         return layer
+    }
+
+    private fun holdButton(label: String, accent: Boolean, onDown: () -> Unit, onUp: () -> Unit): TextView {
+        return text(label, 15f, if (accent) cyan else white, true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(10), dp(12), dp(10))
+            background = buttonBackground(accent)
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                        onDown()
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> { onUp(); view.performClick(); true }
+                    MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> { onUp(); true }
+                    else -> true
+                }
+            }
+        }
+    }
+
+    private inner class VirtualJoystick(context: Context) : View(context) {
+        private val baseFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(145, 4, 16, 28) }
+        private val baseStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(220, 35, 220, 244); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
+        }
+        private val innerStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.argb(110, 135, 194, 210); style = Paint.Style.STROKE; strokeWidth = dp(1).toFloat()
+        }
+        private val knobFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 32, 116, 143) }
+        private val knobStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(160, 241, 250); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
+        }
+        private var pointerId = -1
+        private var knobX = 0f
+        private var knobY = 0f
+        init { isClickable = true; contentDescription = "Joystick de movimento" }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width * 0.5f; val cy = height * 0.5f; val radius = minOf(width, height) * 0.43f
+            canvas.drawCircle(cx, cy, radius, baseFill)
+            canvas.drawCircle(cx, cy, radius, baseStroke)
+            canvas.drawCircle(cx, cy, radius * 0.58f, innerStroke)
+            canvas.drawCircle(cx + knobX, cy + knobY, radius * 0.34f, knobFill)
+            canvas.drawCircle(cx + knobX, cy + knobY, radius * 0.34f, knobStroke)
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            val cx = width * 0.5f; val cy = height * 0.5f; val radius = minOf(width, height) * 0.43f * 0.70f
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    pointerId = event.getPointerId(event.actionIndex)
+                    gameView.controlTouch(0, cx, cy)
+                    updateStick(event.getX(event.actionIndex), event.getY(event.actionIndex), cx, cy, radius)
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    val index = event.findPointerIndex(pointerId)
+                    if (index >= 0) updateStick(event.getX(index), event.getY(index), cx, cy, radius)
+                    return true
+                }
+                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                    gameView.controlTouch(2, cx + knobX, cy + knobY)
+                    pointerId = -1; knobX = 0f; knobY = 0f; invalidate(); performClick()
+                    return true
+                }
+                MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.getPointerId(event.actionIndex) == pointerId) {
+                        gameView.controlTouch(2, cx + knobX, cy + knobY)
+                        pointerId = -1; knobX = 0f; knobY = 0f; invalidate()
+                    }
+                    return true
+                }
+            }
+            return true
+        }
+
+        private fun updateStick(x: Float, y: Float, cx: Float, cy: Float, radius: Float) {
+            var dx = x - cx; var dy = y - cy
+            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
+            if (distance > radius && distance > 0f) { dx = dx / distance * radius; dy = dy / distance * radius }
+            knobX = dx; knobY = dy
+            gameView.controlTouch(1, cx + knobX, cy + knobY)
+            invalidate()
+        }
+        override fun performClick(): Boolean { super.performClick(); return true }
     }
 
     private fun updateHud(snapshot: Int) {
@@ -360,6 +452,7 @@ class MainActivity : Activity() {
         val relayMask = (snapshot ushr 10) and 7
         val enemiesLeft = (snapshot ushr 13) and 7
         val nearRelay = (snapshot and (1 shl 16)) != 0
+        val dodgeReady = (snapshot and (1 shl 17)) != 0
         val relaysDone = Integer.bitCount(relayMask)
         healthBar.progress = health.coerceIn(0, 100)
         healthBar.progressTintList = ColorStateList.valueOf(if (health <= 28) Color.rgb(255, 67, 82) else cyan)
@@ -371,10 +464,14 @@ class MainActivity : Activity() {
             enemiesLeft > 0 -> "OBJETIVO 02  /  NEUTRALIZE AS AMEAÇAS"
             else -> "EXTRAÇÃO LIBERADA  /  ALCANCE O MARCADOR VERDE"
         }
-        interactButton.text = if (nearRelay) "DESATIVAR RELÉ" else "APROXIME-SE DE UM RELÉ"
+        interactButton.text = if (nearRelay) "DESATIVAR RELÉ" else "APROXIME-SE DO RELÉ"
         interactButton.isEnabled = nearRelay
         interactButton.alpha = if (nearRelay) 1f else 0.62f
         interactButton.background = buttonBackground(true, nearRelay)
+        dodgeButton.text = if (dodgeReady) "ESQUIVA" else "RECARGA"
+        dodgeButton.isEnabled = dodgeReady
+        dodgeButton.alpha = if (dodgeReady) 1f else 0.48f
+        dodgeButton.background = buttonBackground(dodgeReady, dodgeReady)
         if (mode == 4 || mode == 5) showResult(mode == 4)
     }
 
@@ -422,6 +519,9 @@ class MainActivity : Activity() {
         fun interact() {
             queueEvent { nativeTouch(7, 0f, 0f, width.toFloat(), height.toFloat()) }
         }
+        fun controlTouch(action: Int, x: Float, y: Float) = sendTouch(action, x, y)
+        fun setFiring(active: Boolean) = sendTouch(if (active) 8 else 9, 0f, 0f)
+        fun dodge() = sendTouch(10, 0f, 0f)
 
         fun snapshot(): Int = renderer.readSnapshot()
 

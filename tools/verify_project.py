@@ -33,6 +33,8 @@ for token in (
     "perspective(", "glEnable(GL_DEPTH_TEST)", "createMeshes",
     "fixedUpdate", "resolveCollision", "makeFallbackProgram",
     "drawPose", "drawHumanoid", "rotateX", "rotateZ",
+    "projectileBlocked", "ARENA_LAYOUT_B", "ARENA_LAYOUT_C",
+    "dodgeCooldown", "enemyShotCooldown", "enemyWindup",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "publishedSnapshot",
@@ -50,15 +52,16 @@ activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").re
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "OPERAÇÃO SUSPENSA",
-              "DESATIVAR RELÉ", "OPERAÇÃO CONCLUÍDA", "VIBRAÇÃO DE INTERFACE"):
+              "DESATIVAR RELÉ", "DISPARAR", "ESQUIVA", "Joystick de movimento",
+              "OPERAÇÃO CONCLUÍDA", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.8.0'" not in build or "versionCode 10" not in build:
-    raise SystemExit("Version 0.8.0 metadata missing")
+if "versionName '0.9.0'" not in build or "versionCode 11" not in build:
+    raise SystemExit("Version 0.9.0 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
-print(f"Project structure, icon, signing configuration, procedural humanoid renderer, UI and mission checks OK ({len(required)} required files found).")
+print(f"Project structure, icon, signing configuration, procedural 3D renderer, virtual controls and combat checks OK ({len(required)} required files found).")
 print("This check does not replace Android compilation or on-device testing.")
