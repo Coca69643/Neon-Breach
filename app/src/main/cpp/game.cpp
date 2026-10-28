@@ -29,7 +29,7 @@ float moveOriginX=0, moveOriginY=0, moveX=0, moveY=0;
 bool moving=false, aiming=false, firing=false;
 float aimX=-5.15f, aimZ=-8.25f, aimOriginX=0.0f, aimOriginY=0.0f, shotCooldown=0.0f;
 float facingYaw=PI, moveDirX=0.0f, moveDirZ=-1.0f;
-float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=1.0f;
+float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=-1.0f;
 float elapsed=0.0f, accumulator=0.0f, visualTime=0.0f;
 int missionSerial=0, arenaVariant=0;
 std::array<float,4> enemyShotCooldown{};
@@ -43,10 +43,10 @@ std::atomic<int> publishedSnapshot{0};
 std::chrono::steady_clock::time_point previousFrame=std::chrono::steady_clock::now();
 std::array<Shot,18> shots{};
 std::array<Enemy,4> enemies{{
-  {3.55f, 2.15f, 1.0f, 1.0f, 1.05f, 0.34f, 0, PI},
-  {3.35f,-1.75f, 2.0f, 2.0f, 0.70f, 0.43f, 1, PI},
-  {-0.35f,2.55f, 1.0f, 1.0f, 1.45f, 0.28f, 2, PI},
-  {1.05f,-2.45f,1.0f,1.0f,0.92f,0.32f,0,PI}
+  {-3.85f,2.95f,1.0f,1.0f,1.10f,0.36f,0,PI},
+  {0.85f,2.90f,2.0f,2.0f,0.72f,0.48f,1,PI},
+  {3.90f,0.15f,1.0f,1.0f,1.35f,0.31f,2,PI},
+  {-1.45f,-2.45f,1.0f,1.0f,1.62f,0.31f,3,PI}
 }};
 std::array<Obstacle,4> obstacles{{
   {-2.95f,0.15f,1.05f,0.78f,0.62f},
