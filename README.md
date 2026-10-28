@@ -17,7 +17,7 @@ O foco agora é dar personalidade ao mundo, diferenciar as criaturas, melhorar a
 - Cenário refeito como uma clareira orgânica com solo terroso, vegetação, árvores e pedras irregulares geradas por código.
 - Personagem principal redesenhado com volumes mais suaves; as quatro criaturas agora têm silhuetas e anatomias diferentes.
 - Corrigida a conversão vertical do joystick e o eixo vertical da mira.
-- Adicionados brotos restauradores opcionais que recuperam parte da vitalidade.
+- Adicionados brotos restauradores opcionais que recuperam parte da vitalidade e focos de esporos que avisam antes de causar dano.
 - Menu, HUD e botões atualizados para combinar com o novo ambiente, com menos azul, menos painéis pesados e cantos mais suaves.
 
 ### 0.9.0 — Controles e combate
