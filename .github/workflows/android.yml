@@ -45,6 +45,7 @@ jobs:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
       - name: Prepare persistent APK signing key when configured
+        if: github.event_name != 'pull_request'
         env:
           NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
           NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
