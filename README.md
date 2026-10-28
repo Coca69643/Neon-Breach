@@ -1,4 +1,4 @@
-# NEON BREACH 0.10.0
+# NEON BREACH 0.11.0
 
 **NEON BREACH** é um jogo de ação e tiro em 3D visto de cima, desenvolvido pela Duck Dream Studios para Android. A proposta é entrar em instalações futuristas, enfrentar diferentes tipos de inimigos, ativar sistemas e encontrar uma rota de extração.
 
@@ -11,6 +11,14 @@ NEON BREACH é feito com código próprio: Kotlin cuida da parte Android e dos c
 O foco agora é dar personalidade ao mundo, diferenciar as criaturas, melhorar a leitura dos objetivos e acertar os controles. Esta versão continua em desenvolvimento e precisa ser testada em dispositivos reais.
 
 ## Log de atualizações
+
+### 0.11.0 — Mira e disparo sem confusão
+
+- Substituído o botão retangular de disparo por um controle circular com ícone de munição, rótulo **ATIRAR** e feedback visual ao manter pressionado.
+- Separação explícita entre as ações: arrastar o lado direito controla a mira; manter **ATIRAR** pressionado dispara continuamente; soltar ou cancelar o toque interrompe o fogo.
+- Redimensionados e reposicionados os controles de tiro e esquiva, preservando alvos de toque confortáveis e o espaço do botão de interação.
+- Atualizadas as instruções de controle e o identificador da versão dentro do jogo.
+- Reforçada a verificação do projeto para validar o novo controle e a versão 0.11.0.
 
 ### 0.10.0 — Fronteira selvagem
 

@@ -37,7 +37,7 @@ for token in (
     "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "drawPlant", "drawTree", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
-    "relayMask==0x7", "action==7", "publishedSnapshot",
+    "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
 ):
     if token not in cpp:
         raise SystemExit(f"3D renderer check failed: {token} missing")
@@ -52,16 +52,16 @@ activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").re
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR EXPEDIÇÃO", "CONFIGURAÇÕES", "PAUSA",
-              "ATIVAR MARCADOR", "INTERAGIR", "ESPOROS ATIVOS", "DISPARAR", "ESQUIVA", "Joystick de movimento",
+              "ATIVAR MARCADOR", "INTERAGIR", "ESPOROS ATIVOS", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
               "EXPEDIÇÃO CONCLUÍDA", "COLHER SEIVA", "CRIATURAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.10.0'" not in build or "versionCode 12" not in build:
-    raise SystemExit("Version 0.10.0 metadata missing")
+if "versionName '0.11.0'" not in build or "versionCode 13" not in build:
+    raise SystemExit("Version 0.11.0 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
-print(f"Project structure, icon, organic procedural world, corrected joystick axes, interactables and Android UI checks OK ({len(required)} required files found).")
+print(f"Project structure, icon, organic procedural world, corrected joystick axes, dedicated circular fire control, interactables and Android UI checks OK ({len(required)} required files found).")
 print("This check does not replace Android compilation or on-device testing.")

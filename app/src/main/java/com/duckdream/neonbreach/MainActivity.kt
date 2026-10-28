@@ -38,7 +38,7 @@ class MainActivity : Activity() {
     private lateinit var threatStatus: TextView
     private lateinit var interactButton: TextView
     private lateinit var dodgeButton: TextView
-    private lateinit var fireButton: TextView
+    private lateinit var fireButton: FireControlButton
 
     private val uiHandler = Handler(Looper.getMainLooper())
     private val pollState = object : Runnable {
@@ -190,7 +190,7 @@ class MainActivity : Activity() {
         continueBtn.alpha = if (hasSession) 1f else 0.40f
         addVertical(left, continueBtn, 7, dp(226), dp(41))
         addVertical(left, actionButton("OPÇÕES") { showSettings() }, 7, dp(226), dp(41))
-        addVertical(left, text("FRONTEIRA SELVAGEM  •  0.10.0", 9f, muted, true), 12)
+        addVertical(left, text("FRONTEIRA SELVAGEM  •  0.11.0", 9f, muted, true), 12)
         layer.addView(left, FrameLayout.LayoutParams(dp(252), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
@@ -221,7 +221,7 @@ class MainActivity : Activity() {
         }
         addVertical(content, text("CONFIGURAÇÕES", 30f, white, true), 4)
         addVertical(content, text("CONTROLES", 13f, cyan, true), 8)
-        addVertical(content, text("ESQUERDA  —  MOVIMENTO\nDIREITA  —  MIRA E DISPARO\nAPROXIME-SE DE UM MARCADOR OU BROTO E INTERAJA.", 15f, white), 18)
+        addVertical(content, text("ESQUERDA  —  MOVIMENTO\nARRASTE O LADO DIREITO  —  MIRA\nMANTENHA ATIRAR PRESSIONADO  —  DISPARO CONTÍNUO\nAPROXIME-SE DE UM MARCADOR OU BROTO E INTERAJA.", 15f, white), 18)
         val hapticLabel = if (hapticsEnabled) "VIBRAÇÃO DE INTERFACE: LIGADA" else "VIBRAÇÃO DE INTERFACE: DESLIGADA"
         val haptics = actionButton(hapticLabel, hapticsEnabled) {
             hapticsEnabled = !hapticsEnabled
@@ -335,44 +335,166 @@ class MainActivity : Activity() {
         layer.addView(joystick, FrameLayout.LayoutParams(dp(150), dp(150), Gravity.START or Gravity.BOTTOM).apply {
             marginStart = dp(20); bottomMargin = dp(16)
         })
-        fireButton = holdButton("DISPARAR", true, onDown = { gameView.setFiring(true) }, onUp = { gameView.setFiring(false) })
-        layer.addView(fireButton, FrameLayout.LayoutParams(dp(132), dp(58), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(20); bottomMargin = dp(18)
+        // A dedicated circular fire control never doubles as the aim surface.
+        fireButton = FireControlButton(this)
+        layer.addView(fireButton, FrameLayout.LayoutParams(dp(88), dp(88), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(18); bottomMargin = dp(14)
         })
-        dodgeButton = actionButton("ESQUIVA") { gameView.dodge() }.apply { textSize = 13f }
-        layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(104), dp(46), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(164); bottomMargin = dp(24)
+        dodgeButton = actionButton("ESQUIVA") { gameView.dodge() }.apply { textSize = 12f }
+        layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(92), dp(44), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(124); bottomMargin = dp(23)
         })
         interactButton = actionButton("INTERAGIR", true) {
             gameView.interact()
             updateHud(gameView.snapshot())
         }.apply { isEnabled = false; alpha = 0.62f }
         layer.addView(interactButton, FrameLayout.LayoutParams(dp(208), dp(42), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(20); bottomMargin = dp(88)
+            marginEnd = dp(20); bottomMargin = dp(110)
         })
         return layer
     }
 
-    private fun holdButton(label: String, accent: Boolean, onDown: () -> Unit, onUp: () -> Unit): TextView {
-        return text(label, 15f, if (accent) cyan else white, true).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = buttonBackground(accent)
+    /**
+     * Dedicated hold-to-fire control. The visual glyph and circular silhouette make
+     * firing distinct from the right-side drag area used for aiming.
+     */
+    private inner class FireControlButton(context: Context) : View(context) {
+        private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+        private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(2).toFloat()
+        }
+        private val innerRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1).toFloat()
+            color = Color.argb(110, 190, 217, 134)
+        }
+        private val bulletPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(231, 242, 191)
+        }
+        private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(190, 217, 134)
+            style = Paint.Style.STROKE
+            strokeWidth = dp(2).toFloat()
+            strokeCap = Paint.Cap.ROUND
+        }
+        private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            color = Color.rgb(246, 241, 222)
+            textAlign = Paint.Align.CENTER
+            textSize = dp(10).toFloat()
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        }
+        private var activePointerId = -1
+        private var trackingPointer = false
+        private var firingVisual = false
+
+        init {
             isClickable = true
             isFocusable = true
-            setOnClickListener { }
-            setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        if (hapticsEnabled) view.performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                        onDown()
-                        true
+            contentDescription = "Atirar. Mantenha pressionado para disparo contínuo."
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width * 0.5f
+            val cy = height * 0.5f
+            val radius = minOf(width, height) * 0.425f
+            fillPaint.color = if (firingVisual) Color.argb(238, 53, 77, 34)
+                else Color.argb(222, 13, 24, 22)
+            ringPaint.color = if (firingVisual) Color.rgb(232, 246, 182) else cyan
+            ringPaint.strokeWidth = dp(if (firingVisual) 3 else 2).toFloat()
+
+            canvas.drawCircle(cx, cy, radius, fillPaint)
+            canvas.drawCircle(cx, cy, radius, ringPaint)
+            canvas.drawCircle(cx, cy, radius * 0.78f, innerRingPaint)
+
+            // A tilted cartridge with short muzzle/trail strokes reads as firing,
+            // rather than as a second aiming reticle.
+            val iconY = cy - dp(7)
+            canvas.save()
+            canvas.rotate(-38f, cx, iconY)
+            canvas.drawRoundRect(
+                cx - dp(4).toFloat(), iconY - dp(11).toFloat(),
+                cx + dp(4).toFloat(), iconY + dp(5).toFloat(),
+                dp(3).toFloat(), dp(3).toFloat(), bulletPaint
+            )
+            canvas.drawLine(cx, iconY + dp(8).toFloat(), cx, iconY + dp(13).toFloat(), trailPaint)
+            canvas.drawLine(cx - dp(5).toFloat(), iconY + dp(5).toFloat(),
+                cx - dp(5).toFloat(), iconY + dp(9).toFloat(), trailPaint)
+            canvas.restore()
+
+            canvas.drawText("ATIRAR", cx, cy + radius * 0.71f, labelPaint)
+            if (firingVisual) {
+                val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 226, 137) }
+                canvas.drawCircle(cx + radius * 0.55f, cy - radius * 0.55f, dp(3).toFloat(), pulsePaint)
+            }
+        }
+
+        override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.pointerCount == 0) {
+                endHold()
+                return true
+            }
+            val index = event.actionIndex.coerceIn(0, event.pointerCount - 1)
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    activePointerId = event.getPointerId(index)
+                    trackingPointer = true
+                    if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                    updateHold(event.getX(index), event.getY(index))
+                    return true
+                }
+                MotionEvent.ACTION_MOVE -> {
+                    if (trackingPointer) {
+                        val pointerIndex = event.findPointerIndex(activePointerId)
+                        if (pointerIndex >= 0) updateHold(event.getX(pointerIndex), event.getY(pointerIndex))
                     }
-                    MotionEvent.ACTION_UP -> { onUp(); view.performClick(); true }
-                    MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> { onUp(); true }
-                    else -> true
+                    return true
+                }
+                MotionEvent.ACTION_POINTER_UP -> {
+                    if (event.getPointerId(index) == activePointerId) endHold()
+                    return true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val ownsPointer = trackingPointer && event.getPointerId(index) == activePointerId
+                    val inside = ownsPointer && isInside(event.getX(index), event.getY(index))
+                    endHold()
+                    if (inside) performClick()
+                    return true
+                }
+                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
+                    endHold()
+                    return true
                 }
             }
+            return true
+        }
+
+        private fun isInside(x: Float, y: Float): Boolean =
+            x >= 0f && y >= 0f && x <= width.toFloat() && y <= height.toFloat()
+
+        private fun updateHold(x: Float, y: Float) {
+            val shouldFire = isInside(x, y)
+            if (firingVisual != shouldFire) {
+                firingVisual = shouldFire
+                gameView.setFiring(shouldFire)
+            }
+            isPressed = shouldFire
+            invalidate()
+        }
+
+        private fun endHold() {
+            trackingPointer = false
+            activePointerId = -1
+            if (firingVisual) gameView.setFiring(false)
+            firingVisual = false
+            isPressed = false
+            invalidate()
+        }
+
+        override fun performClick(): Boolean {
+            super.performClick()
+            return true
         }
     }
 
