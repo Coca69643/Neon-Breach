@@ -34,14 +34,21 @@ for token in (
     "fixedUpdate", "resolveCollision", "makeFallbackProgram",
     "drawPose", "drawHumanoid", "rotateX", "rotateZ",
     "projectileBlocked", "ARENA_LAYOUT_B", "ARENA_LAYOUT_C",
-    "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "drawPlant", "drawTree", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
+    "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "operativeClass", "operativeMoveSpeed", "operativeShotDamage", "operativeDamageTakenMultiplier", "nativeSetOperative", "SITE ORION-9",
+    "ORION INDUSTRIAL MODULES", "cameraFollow", "cameraFocusX", "cameraFocusZ",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
 ):
     if token not in cpp:
         raise SystemExit(f"3D renderer check failed: {token} missing")
+scene_start = cpp.index("void drawScene")
+scene_end = cpp.index("bool projectileBlocked", scene_start)
+scene = cpp[scene_start:scene_end]
+if "drawTree(" in scene or "drawPlant(" in scene:
+    raise SystemExit("Old forest props remain in the active scene renderer")
+
 if re.search(r"uResolutionY|vec2\s+q\s*=", cpp):
     raise SystemExit("Stale/incomplete shader code detected")
 if re.search(r"\bactive\b", cpp):
@@ -54,14 +61,14 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
               "RESTAURAR RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "KESTREL", "BASTION", "PATCH",
-              "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
+              "SITE ORION-9  •  0.13.0", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
               "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS CONTIDAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.12.0'" not in build or "versionCode 14" not in build:
-    raise SystemExit("Version 0.12.0 metadata missing")
+if "versionName '0.13.0'" not in build or "versionCode 15" not in build:
+    raise SystemExit("Version 0.13.0 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 

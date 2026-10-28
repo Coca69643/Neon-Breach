@@ -1,4 +1,4 @@
-# NEON BREACH 0.12.0
+# NEON BREACH 0.13.0
 
 **NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação ocorre no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção.
 
@@ -8,6 +8,13 @@ O ciclo da missão está explícito: restaurar três relés, conter quatro amea�
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.13.0 — Instalação industrial e câmera dinâmica
+- Remove as árvores, plantas e manchas de musgo da área jogável; o cenário passa a ser uma instalação com painéis metálicos, divisões de piso, anteparo de descontaminação, tubulações de serviço, painéis de diagnóstico, lâmpadas industriais e marcações de segurança.
+- Adiciona acompanhamento suave da câmera durante a operação, mantendo a leitura do mapa; menu e configurações recuperam o enquadramento neutro.
+- Ajusta a névoa atmosférica para uma paleta fria e industrial.
+- Atualiza o rótulo visível e os metadados Android para 0.13.0 / versionCode 15.
+- A compilação confirma que o APK foi empacotado; aparência, conforto da câmera e desempenho continuam dependendo do teste em dispositivo físico.
 
 ### 0.12.0 — Equipe ORION-9
 - Adicionada seleção persistente de três operadores com papéis funcionais: Kestrel (mobilidade/esquiva), Bastion (resistência e dano) e Patch (cadência, alcance de interação e recuperação médica).
