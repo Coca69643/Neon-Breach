@@ -1,16 +1,21 @@
-# NEON BREACH 0.11.0
+# NEON BREACH 0.12.0
 
-**NEON BREACH** é um jogo de ação e tiro em 3D visto de cima, desenvolvido pela Duck Dream Studios para Android. A proposta é entrar em instalações futuristas, enfrentar diferentes tipos de inimigos, ativar sistemas e encontrar uma rota de extração.
+**NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação ocorre no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção.
 
-O projeto ainda está em desenvolvimento. A ideia é construir um jogo mobile de verdade, com controles pensados para a tela sensível ao toque e uma identidade visual própria — não apenas uma demonstração técnica.
+O ciclo da missão está explícito: restaurar três relés, conter quatro ameaças e alcançar a zona de extração. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
 
 ## Sobre o jogo
-
-NEON BREACH é feito com código próprio: Kotlin cuida da parte Android e dos controles, enquanto C++17 e OpenGL ES 3.0 são usados na simulação e na apresentação 3D. Os personagens, as arenas e os efeitos atuais são gerados por código, sem modelos ou texturas gráficas importados e sem uma engine de jogo tradicional.
-
-O foco agora é dar personalidade ao mundo, diferenciar as criaturas, melhorar a leitura dos objetivos e acertar os controles. Esta versão continua em desenvolvimento e precisa ser testada em dispositivos reais.
+Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.12.0 — Equipe ORION-9
+- Adicionada seleção persistente de três operadores com papéis funcionais: Kestrel (mobilidade/esquiva), Bastion (resistência e dano) e Patch (cadência, alcance de interação e recuperação médica).
+- Os atributos alteram velocidade, intervalo de disparo, dano, mitigação recebida, recarga da esquiva, cura e alcance de restauração de relés.
+- Materiais e proporções corporais diferenciados por operador.
+- Arena oval substituída por base modular retangular; coberturas de equipamento, relés, kits médicos e pad de extração agora têm leitura industrial.
+- Menu e HUD passam a comunicar falha de contenção e extração.
+- Versão Android atualizada para 0.12.0.
 
 ### 0.11.0 — Mira e disparo sem confusão
 

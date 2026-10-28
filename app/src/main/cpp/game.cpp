@@ -17,7 +17,7 @@ struct Vertex { float px, py, pz, nx, ny, nz; };
 struct Mesh { GLuint vao=0, vbo=0; GLsizei count=0; };
 struct Obstacle { float x,z,sx,sz,h; };
 struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
-struct Shot { float x,y,z,vx,vz,life; bool hostile=false; };
+struct Shot { float x,y,z,vx,vz,life; bool hostile=false; float damage=1.0f; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
 GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
@@ -32,6 +32,7 @@ float facingYaw=PI, moveDirX=0.0f, moveDirZ=-1.0f;
 float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=-1.0f;
 float elapsed=0.0f, accumulator=0.0f, visualTime=0.0f;
 int missionSerial=0, arenaVariant=0;
+int operativeClass=0; // 0 Kestrel, 1 Bastion, 2 Patch
 std::array<float,4> enemyShotCooldown{};
 std::array<float,4> enemyWindup{};
 std::array<float,4> enemyAttackCooldown{};
@@ -76,6 +77,14 @@ constexpr float HAZARD_X[2]={-1.20f,3.85f};
 constexpr float HAZARD_Z[2]={-1.55f,-1.35f};
 std::array<bool,2> podCollected{{false,false}};
 std::array<float,2> hazardCooldown{{0.0f,0.0f}};
+float operativeMoveSpeed(){return operativeClass==0?4.25f:(operativeClass==1?2.95f:3.55f);}
+float operativeFireInterval(){return operativeClass==0?0.13f:(operativeClass==1?0.26f:0.105f);}
+float operativeShotDamage(){return operativeClass==1?1.45f:(operativeClass==2?0.72f:1.0f);}
+float operativeDamageTakenMultiplier(){return operativeClass==1?0.65f:1.0f;}
+float operativeDodgeCooldown(){return operativeClass==0?0.82f:(operativeClass==1?1.45f:1.15f);}
+float operativeMedicalHeal(){return operativeClass==2?0.40f:0.24f;}
+float operativeRelayInteractionRadius(){return operativeClass==2?1.70f:1.25f;}
+void hurtPlayer(float amount){playerHealth=std::max(0.0f,playerHealth-amount*operativeDamageTakenMultiplier());}
 
 V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
 V3 sub(V3 a,V3 b){return {a.x-b.x,a.y-b.y,a.z-b.z};}
@@ -297,7 +306,12 @@ void poseOrganic(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const M
 }
 // The field operative uses rounded armor, fabric-like masses and soft equipment volumes.
 void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
-  (void)archetype;(void)isPlayer;
+  if(isPlayer){
+    if(archetype==0){armor={0.16f,0.25f,0.31f};trim={0.96f,0.38f,0.12f};glow={0.012f,0.075f,0.12f};}
+    else if(archetype==1){armor={0.22f,0.25f,0.28f};trim={0.96f,0.58f,0.18f};glow={0.07f,0.032f,0.006f};}
+    else{armor={0.10f,0.27f,0.27f};trim={0.62f,0.87f,0.78f};glow={0.008f,0.10f,0.095f};}
+  }
+  const float widthScale=(isPlayer&&archetype==1)?1.17f:((isPlayer&&archetype==2)?1.02f:0.94f);
   const float swing=std::sin(phase)*gait;
   const float bob=0.018f*std::sin(phase*2.0f)*gait;
   const V3 forward{std::sin(yaw),0.0f,std::cos(yaw)},right{std::cos(yaw),0.0f,-std::sin(yaw)};
@@ -313,13 +327,13 @@ void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPl
     poseOrb(point(side*0.145f,leg*0.17f+0.10f,0.055f),{0.20f,0.095f,0.23f},leather,{0.01f,0.004f,0.0f},yaw,0.0f,0.0f,view,proj,cam);
   }
   poseOrganic(point(0,-0.025f,0.40f),{0.34f,0.24f,0.28f},dark,{0.005f,0.006f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrganic(point(0,0.015f,0.585f),{0.42f,0.43f,0.32f},armor,glow,yaw,-0.04f,0.0f,view,proj,cam);
+  poseOrganic(point(0,0.015f,0.585f),{0.42f*widthScale,0.43f,0.32f*widthScale},armor,glow,yaw,-0.04f,0.0f,view,proj,cam);
   poseOrb(point(0,0.135f,0.59f),{0.33f,0.30f,0.17f},cloth,{0.004f,0.006f,0.002f},yaw,0.0f,0.0f,view,proj,cam);
   poseOrb(point(0,0.205f,0.61f),{0.13f,0.11f,0.06f},trim,{0.028f,0.035f,0.008f},yaw,0.0f,0.0f,view,proj,cam);
   poseOrganic(point(0,-0.19f,0.60f),{0.27f,0.31f,0.18f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
   for(int sign : {-1,1}){
     const float side=(float)sign,arm=swing*side;
-    poseOrganic(point(side*0.30f,0.0f,0.67f),{0.24f,0.20f,0.23f},armor,glow,yaw,0.0f,side*0.12f,view,proj,cam);
+    poseOrganic(point(side*0.30f*widthScale,0.0f,0.67f),{0.24f*widthScale,0.20f,0.23f*widthScale},armor,glow,yaw,0.0f,side*0.12f,view,proj,cam);
     poseOrb(point(side*0.34f,-arm*0.06f,0.52f),{0.15f,0.23f,0.15f},cloth,{0.006f,0.007f,0.004f},yaw,arm*0.25f,side*0.17f,view,proj,cam);
     poseOrb(point(side*0.35f,-arm*0.10f,0.37f),{0.13f,0.20f,0.13f},armor,glow,yaw,arm*0.34f,side*0.11f,view,proj,cam);
     poseOrb(point(side*0.36f,-arm*0.12f,0.245f),{0.12f,0.12f,0.12f},leather,{0.005f,0.003f,0.0f},yaw,0.0f,side*0.08f,view,proj,cam);
@@ -402,7 +416,8 @@ bool nearActiveRelay(){
   for(int i=0;i<3;i++){
     if(relayMask&(1<<i))continue;
     float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];
-    if(dx*dx+dz*dz<1.05f*1.05f)return true;
+    const float range=operativeRelayInteractionRadius()-0.20f;
+    if(dx*dx+dz*dz<range*range)return true;
   }
   return false;
 }
@@ -447,10 +462,13 @@ void drawTree(float x,float z,float size,float phase,const Mat4&view,const Mat4&
   poseOrganic({x+size*0.30f,size*1.32f,z-size*0.18f},{size*0.72f,size*0.57f,size*0.72f},{0.20f,0.27f,0.10f},{0.005f,0.01f,0.001f},phase*0.025f,0,0,view,proj,cam);
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
-  // The arena is a clearing in a broad, uneven forest floor, not a walled blue box.
-  orb({0.0f,-0.25f,0.0f},{18.0f,0.44f,14.0f},{0.16f,0.145f,0.095f},{0.008f,0.009f,0.003f},view,proj,cam);
-  orb({0.0f,-0.024f,0.0f},{14.8f,0.035f,10.9f},{0.18f,0.17f,0.115f},{0.003f,0.004f,0.001f},view,proj,cam);
-  // Soil, moss and weathered stone patches use deterministic placement so layouts stay stable.
+  // SITE ORION-9: a research outpost partly reclaimed after the containment breach.
+  box({0.0f,-0.25f,0.0f},{17.0f,0.44f,13.0f},{0.075f,0.092f,0.105f},{0.003f,0.006f,0.010f},0,view,proj,cam);
+  box({0.0f,-0.006f,0.0f},{14.3f,0.035f,10.5f},{0.13f,0.145f,0.15f},{0.003f,0.005f,0.006f},0,view,proj,cam);
+  for(int i=-3;i<=3;i+=2)box({(float)i*1.78f,0.015f,0.0f},{0.035f,0.014f,9.8f},{0.20f,0.23f,0.23f},{0.002f,0.003f,0.003f},0,view,proj,cam);
+  box({-1.6f,0.016f,-1.35f},{4.8f,0.016f,0.035f},{0.20f,0.23f,0.23f},{0.002f,0.003f,0.003f},0,view,proj,cam);
+  box({2.5f,0.016f,1.45f},{3.5f,0.016f,0.035f},{0.20f,0.23f,0.23f},{0.002f,0.003f,0.003f},0,view,proj,cam);
+  // Moss patches and growth mark the site as abandoned rather than pristine.
   for(int i=0;i<18;i++){
     const float a=(float)i*2.39996f;
     const float x=std::sin(a)*5.35f;
@@ -472,34 +490,29 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     {5.50f,0,3.70f},{5.70f,0,1.20f},{5.65f,0,-1.35f},{4.95f,0,-4.05f}
   }};
   for(size_t i=0;i<plantPositions.size();i++)drawPlant(plantPositions[i].x,plantPositions[i].z,0.42f+0.12f*(float)(i%3),visualTime+(float)i*1.7f,view,proj,cam);
-  // A few fallen limbs and stones break up the floor while keeping the central routes readable.
-  poseOrganic({-4.75f,0.12f,0.10f},{1.05f,0.22f,0.28f},{0.24f,0.16f,0.085f},{0.004f,0.003f,0.001f},0.25f,0.0f,0.0f,view,proj,cam);
-  poseOrganic({4.85f,0.11f,1.15f},{0.85f,0.20f,0.31f},{0.25f,0.17f,0.09f},{0.004f,0.003f,0.001f},-0.55f,0.0f,0.0f,view,proj,cam);
-  // Cover keeps its gameplay collider but now reads as irregular boulders with moss, not crates.
+  // Damaged containment rails frame combat without enclosing the lanes.
+  box({-6.15f,0.34f,0.0f},{0.16f,0.56f,6.8f},{0.10f,0.13f,0.15f},{0.003f,0.008f,0.010f},0,view,proj,cam);
+  box({6.15f,0.34f,0.4f},{0.16f,0.56f,5.9f},{0.10f,0.13f,0.15f},{0.003f,0.008f,0.010f},0,view,proj,cam);
+  for(int i=0;i<5;i++){const float x=-4.8f+(float)i*2.4f;box({x,0.32f,4.78f},{0.18f,0.55f,0.18f},{0.12f,0.15f,0.16f},{0.002f,0.004f,0.005f},0,view,proj,cam);if(i<4)box({x+1.2f,0.32f,4.78f},{2.25f,0.07f,0.08f},{0.17f,0.20f,0.21f},{0.002f,0.003f,0.004f},0,view,proj,cam);}
+  // Utility consoles with hazard markings are cover; they also keep their collision geometry.
   for(size_t i=0;i<obstacles.size();i++){
-    const auto&o=obstacles[i];
-    poseOrganic({o.x,o.h*0.31f,o.z},{o.sx*1.22f,o.h*0.86f,o.sz*1.20f},
-      {0.26f,0.25f,0.18f},{0.004f,0.005f,0.001f},(float)i*0.7f,0.0f,0.0f,view,proj,cam);
-    poseOrganic({o.x-o.sx*0.20f,o.h*0.72f,o.z-o.sz*0.12f},{o.sx*0.48f,0.10f,o.sz*0.45f},
-      {0.13f,0.19f,0.07f},{0.003f,0.006f,0.001f},(float)i*1.1f,0.0f,0.0f,view,proj,cam);
-    poseOrb({o.x+o.sx*0.32f,0.065f,o.z+o.sz*0.31f},{0.18f,0.12f,0.18f},
-      {0.36f,0.31f,0.19f},{0.001f,0.001f,0.0f},0,0,0,view,proj,cam);
+    const auto&o=obstacles[i];const float yaw=(float)i*0.16f;
+    box({o.x,o.h*0.43f,o.z},{o.sx*1.12f,o.h*0.86f,o.sz*1.10f},{0.105f,0.135f,0.15f},{0.006f,0.010f,0.012f},yaw,view,proj,cam);
+    box({o.x,o.h*0.87f,o.z},{o.sx*0.84f,0.075f,o.sz*0.83f},{0.23f,0.27f,0.27f},{0.003f,0.004f,0.004f},yaw,view,proj,cam);
+    box({o.x,o.h*0.62f,o.z+o.sz*0.54f},{o.sx*0.64f,0.055f,0.035f},{0.80f,0.31f,0.08f},{0.035f,0.008f,0.001f},yaw,view,proj,cam);
   }
-  // Three field markers are grown into old stone cairns; the player must interact at close range.
+  // Three containment relays have hardware silhouettes and amber/cyan states.
   for(int i=0;i<3;i++){
-    const float x=RELAY_X[i],z=RELAY_Z[i];
-    const bool complete=(relayMask&(1<<i))!=0;
-    const V3 stone=complete?V3{0.24f,0.27f,0.16f}:V3{0.31f,0.26f,0.17f};
-    const V3 seed=complete?V3{0.36f,0.65f,0.25f}:V3{0.80f,0.49f,0.19f};
-    const V3 seedGlow=complete?V3{0.018f,0.055f,0.004f}:V3{0.065f,0.025f,0.002f};
-    poseOrganic({x,0.13f,z},{0.64f,0.25f,0.61f},stone,{0.002f,0.002f,0.001f},(float)i*0.9f,0,0,view,proj,cam);
-    for(int k=0;k<5;k++){
-      const float a=2.0f*PI*(float)k/5.0f+(float)i*0.45f;
-      poseOrb({x+std::cos(a)*0.37f,0.10f,z+std::sin(a)*0.37f},{0.22f,0.13f,0.20f},
-        {0.29f,0.28f,0.19f},{0.002f,0.002f,0.001f},a,0,0,view,proj,cam);
-    }
-    poseOrganic({x,0.34f,z},{0.25f,0.39f,0.24f},{0.18f,0.24f,0.12f},{0.004f,0.008f,0.001f},(float)i*0.55f,0,0,view,proj,cam);
-    poseOrb({x,0.61f+0.035f*std::sin(visualTime*1.3f+(float)i),z},{0.22f,0.24f,0.22f},seed,seedGlow,0,0,0,view,proj,cam);
+    const float x=RELAY_X[i],z=RELAY_Z[i];const bool complete=(relayMask&(1<<i))!=0;
+    const V3 signal=complete?V3{0.10f,0.78f,0.82f}:V3{0.93f,0.36f,0.10f};
+    const V3 glow=complete?V3{0.008f,0.11f,0.13f}:V3{0.095f,0.018f,0.001f};
+    box({x,0.09f,z},{0.90f,0.18f,0.78f},{0.075f,0.095f,0.105f},{0.004f,0.006f,0.008f},0,view,proj,cam);
+    box({x,0.34f,z},{0.43f,0.42f,0.40f},{0.17f,0.21f,0.23f},{0.003f,0.006f,0.008f},0,view,proj,cam);
+    box({x,0.58f,z},{0.53f,0.12f,0.48f},{0.25f,0.28f,0.28f},{0.004f,0.006f,0.006f},0,view,proj,cam);
+    box({x-0.26f,0.36f,z},{0.065f,0.34f,0.07f},signal,glow,0,view,proj,cam);
+    box({x+0.26f,0.36f,z},{0.065f,0.34f,0.07f},signal,glow,0,view,proj,cam);
+    poseOrb({x,0.76f+0.035f*std::sin(visualTime*1.7f+(float)i),z},{0.17f,0.19f,0.17f},signal,glow,0,0,0,view,proj,cam);
+    if(!complete)for(int k=0;k<4;k++){const float a=2.0f*PI*(float)k/4.0f;poseOrb({x+std::cos(a)*0.48f,0.045f,z+std::sin(a)*0.40f},{0.075f,0.04f,0.075f},{0.86f,0.36f,0.10f},{0.025f,0.006f,0.001f},0,0,0,view,proj,cam);}
   }
   // Amber spore beds pulse in cycles. Their color and radius telegraph when the patch is dangerous.
   for(int i=0;i<2;i++){
@@ -517,34 +530,27 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
       {0.38f,0.24f,0.38f},dangerous?V3{0.61f,0.31f,0.10f}:V3{0.25f,0.25f,0.14f},
       sporeGlow,visualTime*0.08f,0,0,view,proj,cam);
   }
-  // Optional medicinal growths let the player trade exploration for a small health recovery.
+  // Medical capsules provide readable health recovery.
   for(int i=0;i<2;i++){
-    if(podCollected[(size_t)i])continue;
-    const float x=POD_X[i],z=POD_Z[i];
-    drawPlant(x,z,0.54f,visualTime+(float)i*2.3f,view,proj,cam);
-    poseOrganic({x,0.31f+0.04f*std::sin(visualTime*1.5f+(float)i),z},{0.22f,0.26f,0.22f},
-      {0.64f,0.44f,0.15f},{0.045f,0.018f,0.002f},visualTime*0.08f,0,0,view,proj,cam);
+    if(podCollected[(size_t)i])continue;const float x=POD_X[i],z=POD_Z[i];
+    box({x,0.10f,z},{0.42f,0.20f,0.38f},{0.12f,0.15f,0.16f},{0.004f,0.008f,0.010f},0,view,proj,cam);
+    box({x,0.24f,z},{0.30f,0.10f,0.27f},{0.28f,0.34f,0.33f},{0.003f,0.006f,0.006f},0,view,proj,cam);
+    box({x,0.32f,z},{0.07f,0.13f,0.07f},{0.12f,0.80f,0.82f},{0.015f,0.10f,0.12f},0,view,proj,cam);
+    poseOrb({x,0.43f+0.035f*std::sin(visualTime*1.6f+(float)i),z},{0.11f,0.14f,0.11f},{0.70f,0.88f,0.86f},{0.02f,0.08f,0.075f},0,0,0,view,proj,cam);
   }
-  // Extraction is a natural clearing ringed by pale stones and a warm trail marker.
-  for(int i=0;i<18;i++){
-    const float a=2.0f*PI*(float)i/18.0f;
-    poseOrganic({EXIT_X+std::cos(a)*0.73f,0.045f,EXIT_Z+std::sin(a)*0.73f},{0.22f,0.11f,0.18f},
-      {0.41f,0.37f,0.25f},{0.006f,0.004f,0.001f},a,0,0,view,proj,cam);
-  }
+  // Extraction is a marked transfer pad, unlocked after relays and threats are handled.
   const bool objectiveComplete=allEnemiesDefeated()&&relayMask==0x7;
-  poseOrganic({EXIT_X,0.08f,EXIT_Z},{0.58f,0.10f,0.58f},
-    objectiveComplete?V3{0.42f,0.60f,0.27f}:V3{0.28f,0.27f,0.17f},
-    objectiveComplete?V3{0.035f,0.07f,0.006f}:V3{0.002f,0.002f,0.001f},0,0,0,view,proj,cam);
-  poseOrb({EXIT_X,0.36f+0.05f*std::sin(visualTime*1.6f),EXIT_Z},{0.18f,0.24f,0.18f},
-    objectiveComplete?V3{0.72f,0.79f,0.43f}:V3{0.36f,0.33f,0.20f},
-    objectiveComplete?V3{0.06f,0.08f,0.01f}:V3{0.002f,0.002f,0.001f},0,0,0,view,proj,cam);
+  box({EXIT_X,0.025f,EXIT_Z},{1.55f,0.10f,1.25f},{0.075f,0.105f,0.12f},{0.003f,0.006f,0.009f},0,view,proj,cam);
+  box({EXIT_X,0.085f,EXIT_Z},{1.28f,0.035f,0.98f},{0.15f,0.19f,0.20f},{0.003f,0.005f,0.006f},0,view,proj,cam);
+  for(int i=0;i<5;i++){const float dx=((float)i-2.0f)*0.22f;box({EXIT_X+dx,0.11f,EXIT_Z-0.40f},{0.12f,0.035f,0.08f},objectiveComplete?V3{0.10f,0.78f,0.82f}:V3{0.88f,0.32f,0.07f},objectiveComplete?V3{0.01f,0.10f,0.12f}:V3{0.055f,0.008f,0.001f},0,view,proj,cam);}
+  poseOrb({EXIT_X,0.34f+0.05f*std::sin(visualTime*1.6f),EXIT_Z},{0.15f,0.22f,0.15f},objectiveComplete?V3{0.15f,0.86f,0.84f}:V3{0.90f,0.40f,0.10f},objectiveComplete?V3{0.015f,0.12f,0.12f}:V3{0.07f,0.013f,0.001f},0,0,0,view,proj,cam);
   // The player's outfit is rounded and field-worn; the camera keeps the whole clearing readable.
   const float playerYaw=aiming?std::atan2(aimX-playerX,aimZ-playerZ):facingYaw;
   const float inputDx=(moveX-moveOriginX)/(float)std::max(1,screenH);
   const float inputDy=(moveY-moveOriginY)/(float)std::max(1,screenH);
   const float inputMagnitude=std::sqrt(inputDx*inputDx+inputDy*inputDy);
   const float playerGait=moving?std::clamp(inputMagnitude/0.13f,0.0f,1.0f):0.0f;
-  drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*8.0f,playerGait,0,true,
+  drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*8.0f,playerGait,operativeClass,true,
     {0.28f,0.34f,0.20f},{0.59f,0.51f,0.27f},{0.012f,0.018f,0.003f},view,proj,cam);
   // Four creatures use different anatomies and behaviors rather than a shared robot rig.
   for(size_t i=0;i<enemies.size();i++){
@@ -609,7 +615,7 @@ void fixedUpdate(float dt){
       if(cycle<2.4f||cycle>3.15f||hazardCooldown[(size_t)i]>0.0f)continue;
       const float hx=playerX-HAZARD_X[i],hz=playerZ-HAZARD_Z[i];
       if(hx*hx+hz*hz<0.88f*0.88f&&!invulnerableNow){
-        playerHealth=std::max(0.0f,playerHealth-0.13f);
+        hurtPlayer(0.13f);
         hazardCooldown[(size_t)i]=0.90f;
       }
     }
@@ -620,7 +626,7 @@ void fixedUpdate(float dt){
       if(mag>0.012f){moveDirX=dx/mag;moveDirZ=dy/mag;inputStrength=std::clamp(mag/0.15f,0.0f,1.0f);if(!aiming)facingYaw=std::atan2(moveDirX,moveDirZ);}
     }
     if(dodgeTime>0.0f){playerX+=dodgeDirX*8.2f*dt;playerZ+=dodgeDirZ*8.2f*dt;resolveCollision(playerX,playerZ,0.30f);}
-    else if(moving&&inputStrength>0.0f){playerX+=moveDirX*3.55f*inputStrength*dt;playerZ+=moveDirZ*3.55f*inputStrength*dt;resolveCollision(playerX,playerZ,0.30f);}
+    else if(moving&&inputStrength>0.0f){playerX+=moveDirX*operativeMoveSpeed()*inputStrength*dt;playerZ+=moveDirZ*operativeMoveSpeed()*inputStrength*dt;resolveCollision(playerX,playerZ,0.30f);}
     if(aiming){const float ax=aimX-playerX,az=aimZ-playerZ;if(std::abs(ax)+std::abs(az)>0.001f)facingYaw=std::atan2(ax,az);}
 
     // Dedicated hold-to-fire; aim drag only steers the weapon.
@@ -630,7 +636,7 @@ void fixedUpdate(float dt){
         float dx,dz;
         if(aiming){dx=aimX-playerX;dz=aimZ-playerZ;const float d=std::sqrt(dx*dx+dz*dz);if(d>0.001f){dx/=d;dz/=d;}else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}}
         else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}
-        shots[slot]={playerX+dx*0.48f,0.45f,playerZ+dz*0.48f,dx*8.3f,dz*8.3f,1.12f,false};shotCooldown=0.17f;
+        shots[slot]={playerX+dx*0.48f,0.45f,playerZ+dz*0.48f,dx*8.3f,dz*8.3f,1.12f,false,operativeShotDamage()};shotCooldown=operativeFireInterval();
       }
     }
     // Chasers close distance; heavy units telegraph a lunge; ranged units strafe and shoot.
@@ -653,7 +659,7 @@ void fixedUpdate(float dt){
         else if(enemyAttackCooldown[i]<=0.0f){
           enemyWindup[i]+=dt;
           if(enemyWindup[i]>=0.42f){
-            if(d<1.72f&&!invulnerableNow){playerHealth=std::max(0.0f,playerHealth-0.24f);if(d>0.001f){playerX-=dx/d*0.22f;playerZ-=dz/d*0.22f;resolveCollision(playerX,playerZ,0.30f);}}
+            if(d<1.72f&&!invulnerableNow){hurtPlayer(0.24f);if(d>0.001f){playerX-=dx/d*0.22f;playerZ-=dz/d*0.22f;resolveCollision(playerX,playerZ,0.30f);}}
             enemyAttackCooldown[i]=1.55f;enemyWindup[i]=0.0f;
           }
         }else enemyWindup[i]=0.0f;
@@ -668,12 +674,12 @@ void fixedUpdate(float dt){
           e.x+=vx*e.speed*burst*dt;e.z+=vz*e.speed*burst*dt;
           resolveCollision(e.x,e.z,e.radius);
         }else if(enemyAttackCooldown[i]<=0.0f){
-          if(!invulnerableNow)playerHealth=std::max(0.0f,playerHealth-0.085f);
+          if(!invulnerableNow)hurtPlayer(0.085f);
           enemyAttackCooldown[i]=0.72f;
         }
       }else{
         if(d>e.radius+0.43f){const float step=std::min(e.speed*dt,std::max(0.0f,d-e.radius-0.40f));if(d>0.001f){e.x+=dx/d*step;e.z+=dz/d*step;}resolveCollision(e.x,e.z,e.radius);enemyWindup[i]=0.0f;}
-        else if(enemyAttackCooldown[i]<=0.0f){if(!invulnerableNow)playerHealth=std::max(0.0f,playerHealth-0.12f);enemyAttackCooldown[i]=0.82f;}
+        else if(enemyAttackCooldown[i]<=0.0f){if(!invulnerableNow)hurtPlayer(0.12f);enemyAttackCooldown[i]=0.82f;}
       }
     }
     // Projectiles stop on cover; enemy shots only hurt the player.
@@ -681,8 +687,8 @@ void fixedUpdate(float dt){
       if(s.life<=0.0f)continue;
       s.x+=s.vx*dt;s.z+=s.vz*dt;s.life-=dt;
       if(s.life<=0.0f||projectileBlocked(s.x,s.z)){s.life=0.0f;continue;}
-      if(s.hostile){const float dx=s.x-playerX,dz=s.z-playerZ;if(dx*dx+dz*dz<0.30f*0.30f){if(!invulnerableNow)playerHealth=std::max(0.0f,playerHealth-0.10f);s.life=0.0f;}}
-      else for(auto&e:enemies){if(e.hp<=0.0f)continue;const float dx=s.x-e.x,dz=s.z-e.z;if(dx*dx+dz*dz<(e.radius+0.12f)*(e.radius+0.12f)){e.hp=std::max(0.0f,e.hp-1.0f);s.life=0.0f;if(e.hp<=0.0f)defeated++;break;}}
+      if(s.hostile){const float dx=s.x-playerX,dz=s.z-playerZ;if(dx*dx+dz*dz<0.30f*0.30f){if(!invulnerableNow)hurtPlayer(0.10f);s.life=0.0f;}}
+      else for(auto&e:enemies){if(e.hp<=0.0f)continue;const float dx=s.x-e.x,dz=s.z-e.z;if(dx*dx+dz*dz<(e.radius+0.12f)*(e.radius+0.12f)){e.hp=std::max(0.0f,e.hp-s.damage);s.life=0.0f;if(e.hp<=0.0f)defeated++;break;}}
     }
     if(playerHealth<=0.0f){lost=true;moving=false;aiming=false;firing=false;gameMode=5;}
     if(allEnemiesDefeated()&&relayMask==0x7){float dx=playerX-4.02f,dz=playerZ+2.48f;if(dx*dx+dz*dz<0.72f*0.72f){won=true;moving=false;aiming=false;firing=false;gameMode=4;}}
@@ -701,7 +707,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
   glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
-  glClearColor(0.026f,0.032f,0.020f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
+  glClearColor(0.024f,0.032f,0.040f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
   screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);glViewport(0,0,screenW,screenH);
@@ -739,6 +745,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeStartNewMission(JNIEnv*,jobject){
   resetMission();gameMode=1;previousFrame=std::chrono::steady_clock::now();publishSnapshot();
 }
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetOperative(JNIEnv*,jobject,jint selected){
+  operativeClass=std::clamp((int)selected,0,2);publishSnapshot();
+}
 extern "C" JNIEXPORT jint JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeGetSnapshot(JNIEnv*,jobject){
   return (jint)publishedSnapshot.load(std::memory_order_relaxed);
 }
@@ -751,18 +760,18 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
       const float px=playerX-POD_X[i],pz=playerZ-POD_Z[i];
       if(px*px+pz*pz<0.85f*0.85f){
         podCollected[(size_t)i]=true;
-        playerHealth=std::min(1.0f,playerHealth+0.24f);
+        playerHealth=std::min(1.0f,playerHealth+operativeMedicalHeal());
         __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Field pod collected; health=%f",playerHealth);
         publishSnapshot();return;
       }
     }
-    for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];if(dx*dx+dz*dz<1.25f*1.25f){relayMask|=(1<<i);__android_log_print(ANDROID_LOG_INFO,"NeonBreach","Relay %d disabled; mask=%d",i+1,relayMask);publishSnapshot();return;}}
+    for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];const float range=operativeRelayInteractionRadius();if(dx*dx+dz*dz<range*range){relayMask|=(1<<i);__android_log_print(ANDROID_LOG_INFO,"NeonBreach","Containment relay %d restored; mask=%d",i+1,relayMask);publishSnapshot();return;}}
     publishSnapshot();return;
   }
   if(action==8){firing=true;publishSnapshot();return;}
   if(action==9){firing=false;publishSnapshot();return;}
   if(action==10){
-    if(dodgeCooldown<=0.0f){dodgeDirX=moveDirX;dodgeDirZ=moveDirZ;if(!moving){dodgeDirX=std::sin(facingYaw);dodgeDirZ=std::cos(facingYaw);}dodgeTime=0.20f;dodgeCooldown=1.15f;}
+    if(dodgeCooldown<=0.0f){dodgeDirX=moveDirX;dodgeDirZ=moveDirZ;if(!moving){dodgeDirX=std::sin(facingYaw);dodgeDirZ=std::cos(facingYaw);}dodgeTime=0.20f;dodgeCooldown=operativeDodgeCooldown();}
     publishSnapshot();return;
   }
   switch(action){
