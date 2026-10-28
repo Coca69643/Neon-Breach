@@ -37,7 +37,7 @@ for token in (
     "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "drawPlant", "drawTree", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
-    "relayMask==0x7", "action==7", "publishedSnapshot",
+    "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
 ):
     if token not in cpp:
         raise SystemExit(f"3D renderer check failed: {token} missing")
@@ -52,7 +52,7 @@ activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").re
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR EXPEDIÇÃO", "CONFIGURAÇÕES", "PAUSA",
-              "ATIVAR MARCADOR", "INTERAGIR", "ESPOROS ATIVOS", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "ESQUIVA", "Joystick de movimento",
+              "ATIVAR MARCADOR", "INTERAGIR", "ESPOROS ATIVOS", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
               "EXPEDIÇÃO CONCLUÍDA", "COLHER SEIVA", "CRIATURAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
