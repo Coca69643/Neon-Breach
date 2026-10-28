@@ -446,7 +446,7 @@ void publishSnapshot(){
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
-  // ORION INDUSTRIAL MODULES: layered steel, service conduits and containment hardware.
+  // SITE ORION-9 — ORION INDUSTRIAL MODULES: layered steel, service conduits and containment hardware.
   box({0.0f,-0.25f,0.0f},{17.0f,0.44f,13.0f},{0.052f,0.064f,0.080f},{0.002f,0.004f,0.008f},0,view,proj,cam);
   box({0.0f,-0.006f,0.0f},{14.3f,0.035f,10.5f},{0.16f,0.18f,0.20f},{0.003f,0.005f,0.008f},0,view,proj,cam);
 
