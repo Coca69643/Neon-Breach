@@ -431,6 +431,10 @@ class MainActivity : Activity() {
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
+            if (event.pointerCount == 0) {
+                endHold()
+                return true
+            }
             val index = event.actionIndex.coerceIn(0, event.pointerCount - 1)
             when (event.actionMasked) {
                 MotionEvent.ACTION_DOWN -> {
