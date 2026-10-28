@@ -67,6 +67,8 @@ Mat4 multiply(const Mat4&a,const Mat4&b){
 Mat4 translate(float x,float y,float z){Mat4 m=identity();m.v[12]=x;m.v[13]=y;m.v[14]=z;return m;}
 Mat4 scale(float x,float y,float z){Mat4 m=identity();m.v[0]=x;m.v[5]=y;m.v[10]=z;return m;}
 Mat4 rotateY(float a){Mat4 m=identity();float c=std::cos(a),s=std::sin(a);m.v[0]=c;m.v[2]=-s;m.v[8]=s;m.v[10]=c;return m;}
+Mat4 rotateX(float a){Mat4 m=identity();float c=std::cos(a),s=std::sin(a);m.v[5]=c;m.v[6]=s;m.v[9]=-s;m.v[10]=c;return m;}
+Mat4 rotateZ(float a){Mat4 m=identity();float c=std::cos(a),s=std::sin(a);m.v[0]=c;m.v[1]=s;m.v[4]=-s;m.v[5]=c;return m;}
 Mat4 perspective(float fov,float aspect,float nearP,float farP){
   Mat4 m{};float f=1.0f/std::tan(fov*0.5f);
   m.v[0]=f/std::max(0.1f,aspect);m.v[5]=f;
@@ -153,8 +155,10 @@ GLuint make3DProgram(){
     float diffuse=max(dot(n,light),0.0);
     vec3 viewDir=normalize(uCamera-vWorld);
     float spec=pow(max(dot(reflect(-light,n),viewDir),0.0),20.0)*0.16;
-    vec3 col=uColor*(0.25+0.75*diffuse)+spec;
-    col+=uGlow;
+    float fillLight=max(dot(n,normalize(vec3(0.72,0.28,-0.44))),0.0)*0.16;
+    float rim=pow(1.0-max(dot(n,viewDir),0.0),2.7);
+    vec3 col=uColor*(0.22+0.68*diffuse+fillLight)+spec;
+    col+=uGlow+rim*(0.035+0.095*dot(uColor,vec3(0.333)));
     float fog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
     col=mix(col,vec3(0.006,0.012,0.026),fog);
     outColor=vec4(col,1.0);
@@ -205,6 +209,55 @@ void draw(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,const Mat4&view,const
 }
 void box(V3 p,V3 s,V3 c,V3 glow,float yaw,const Mat4&v,const Mat4&pjt,V3 cam){draw(cubeMesh,p,s,c,glow,yaw,v,pjt,cam);}
 void orb(V3 p,V3 s,V3 c,V3 glow,const Mat4&v,const Mat4&pjt,V3 cam){draw(sphereMesh,p,s,c,glow,0,v,pjt,cam);}
+void drawPose(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,float pitch,float roll,const Mat4&view,const Mat4&proj,V3 camera){
+  if(!program||!m.vao)return;
+  Mat4 model=multiply(translate(pos.x,pos.y,pos.z),multiply(rotateY(yaw),multiply(rotateZ(roll),multiply(rotateX(pitch),scale(size.x,size.y,size.z)))));
+  Mat4 mvp=multiply(proj,multiply(view,model));
+  glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,model.v);
+  glUniform3f(colorLoc,color.x,color.y,color.z);glUniform3f(glowLoc,glow.x,glow.y,glow.z);glUniform3f(cameraLoc,camera.x,camera.y,camera.z);
+  glBindVertexArray(m.vao);glDrawArrays(GL_TRIANGLES,0,m.count);
+}
+void poseBox(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 cam){drawPose(cubeMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);}
+void poseOrb(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 cam){drawPose(sphereMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);}
+// Procedural character rig: every visible part uses native meshes and runtime transforms.
+void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
+  const bool heavy=archetype==1, agile=archetype==2;
+  const float bodyScale=heavy?1.10f:(agile?0.92f:1.0f), widthScale=heavy?1.22f:(agile?0.84f:1.0f);
+  const float legSwing=std::sin(phase)*gait, armSwing=-legSwing;
+  const float bob=0.010f*std::sin(phase*2.0f)+0.025f*std::abs(legSwing);
+  const V3 forward{std::sin(yaw),0.0f,std::cos(yaw)}, right{std::cos(yaw),0.0f,-std::sin(yaw)};
+  auto point=[&](float side,float front,float y)->V3{return {at.x+right.x*side+forward.x*front,at.y+y+bob,at.z+right.z*side+forward.z*front};};
+  const V3 dark=isPlayer?V3{0.018f,0.055f,0.075f}:V3{0.055f,0.014f,0.025f};
+  const V3 metal=isPlayer?V3{0.055f,0.14f,0.18f}:V3{0.12f,0.025f,0.045f};
+  orb({at.x,0.026f,at.z},{heavy?0.86f:0.72f,0.034f,heavy?0.78f:0.68f},{0.008f,0.014f,0.022f},{0,0,0},view,proj,cam);
+  for(int sign : {-1,1}){
+    const float side=(float)sign, swing=legSwing*side;
+    poseOrb(point(side*0.13f*widthScale,swing*0.055f,0.245f),{0.155f*widthScale,0.245f*bodyScale,0.155f*bodyScale},armor,glow,yaw,swing*0.62f,side*0.025f,view,proj,cam);
+    poseOrb(point(side*0.13f*widthScale,swing*0.105f,0.105f),{0.125f*widthScale,0.205f*bodyScale,0.125f*bodyScale},metal,glow,yaw,-swing*0.24f,side*0.015f,view,proj,cam);
+    poseBox(point(side*0.14f*widthScale,swing*0.12f+0.035f,0.052f),{0.17f*widthScale,0.085f,0.235f},dark,glow,yaw,0.0f,side*0.015f,view,proj,cam);
+  }
+  poseOrb(point(0,0,0.365f),{0.30f*widthScale,0.20f*bodyScale,0.235f*bodyScale},metal,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(0,0.015f,0.405f),{0.34f*widthScale,0.075f,0.255f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(0,agile?0.015f:-0.015f,0.585f),{0.335f*widthScale,0.355f*bodyScale,0.245f*bodyScale},armor,glow,yaw,agile?0.10f:0.0f,legSwing*0.035f,view,proj,cam);
+  poseBox(point(0,0.155f,0.595f),{0.34f*widthScale,0.255f,0.085f},trim,glow,yaw,agile?0.08f:0.0f,0.0f,view,proj,cam);
+  poseBox(point(0,0.205f,0.59f),{0.105f,0.12f,0.035f},isPlayer?V3{0.20f,0.93f,1.0f}:trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(0,-0.145f,0.57f),{0.245f*widthScale,0.29f,0.16f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
+  for(int sign : {-1,1}){
+    const float side=(float)sign;
+    poseBox(point(side*0.30f*widthScale,0.0f,0.665f),{0.22f*widthScale,0.145f,0.20f},metal,glow,yaw,armSwing*0.10f,side*0.08f,view,proj,cam);
+    poseOrb(point(side*0.345f*widthScale,-armSwing*0.045f,0.525f),{0.125f*widthScale,0.225f*bodyScale,0.13f},armor,glow,yaw,armSwing*0.52f,side*0.20f,view,proj,cam);
+    poseOrb(point(side*0.36f*widthScale,-armSwing*0.085f,0.355f),{0.105f*widthScale,0.205f*bodyScale,0.115f},metal,glow,yaw,armSwing*0.38f,side*0.12f,view,proj,cam);
+    poseOrb(point(side*0.37f*widthScale,-armSwing*0.10f,0.225f),{0.105f,0.095f,0.105f},dark,glow,yaw,0.0f,side*0.08f,view,proj,cam);
+  }
+  poseOrb(point(0,0,0.995f),{0.235f,0.265f*bodyScale,0.225f},metal,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(0,0.176f,1.005f),{0.285f,0.115f,0.055f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(0,0.211f,1.01f),{0.205f,0.026f,0.024f},isPlayer?V3{0.38f,0.96f,1.0f}:trim,isPlayer?V3{0.10f,0.28f,0.34f}:glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(-0.105f,0,1.245f),{0.035f,0.105f,0.035f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseOrb(point(-0.105f,0,1.305f),{0.07f,0.07f,0.07f},trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(0.16f,0.355f,0.435f),{0.12f,0.115f,0.34f},dark,glow,yaw,0.0f,0.0f,view,proj,cam);
+  poseBox(point(0.16f,0.38f,0.445f),{0.055f,0.045f,0.245f},isPlayer?V3{0.035f,0.38f,0.48f}:trim,glow,yaw,0.0f,0.0f,view,proj,cam);
+  if(isPlayer&&aiming&&shotCooldown>0.10f)poseOrb(point(0.16f,0.57f,0.435f),{0.075f,0.075f,0.075f},{0.22f,0.88f,1.0f},{0.0f,0.35f,0.5f},yaw,0.0f,0.0f,view,proj,cam);
+}
 bool allEnemiesDefeated(){for(const auto&e:enemies)if(e.hp>0.0f)return false;return true;}
 int activeEnemyCount(){int count=0;for(const auto&e:enemies)if(e.hp>0.0f)count++;return count;}
 bool nearActiveRelay(){
@@ -268,40 +321,27 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   box({4.02f,0.18f,-2.48f},{0.78f,0.12f,0.78f},{0.025f,0.12f,0.15f},{0.0f,0.07f,0.1f},0,view,proj,cam);
   box({4.02f,0.58f,-2.48f},{0.10f,0.80f,0.10f},exitColor,exitGlow,0,view,proj,cam);
   orb({4.02f,1.08f+0.08f*std::sin(elapsed*2.2f),-2.48f},{0.24f,0.24f,0.24f},exitColor,exitGlow,view,proj,cam);
-  // Player unit: layered armor, visible core, shoulder plates and soft shadow.
-  orb({playerX,0.025f,playerZ},{0.84f,0.035f,0.78f},{0.008f,0.014f,0.022f},{0,0,0},view,proj,cam);
+  // Player: procedural humanoid armor, visor, backpack, weapon and walk cycle.
   float playerYaw=std::atan2(aimX-playerX,aimZ-playerZ);
-  orb({playerX,0.43f,playerZ},{0.66f,0.72f,0.62f},{0.035f,0.24f,0.34f},{0.0f,0.08f,0.14f},view,proj,cam);
-  box({playerX,0.48f,playerZ},{0.48f,0.38f,0.54f},{0.055f,0.36f,0.46f},{0.0f,0.08f,0.14f},playerYaw,view,proj,cam);
-  box({playerX-0.30f,0.40f,playerZ},{0.20f,0.30f,0.34f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
-  box({playerX+0.30f,0.40f,playerZ},{0.20f,0.30f,0.34f},{0.07f,0.16f,0.25f},{0.0f,0.035f,0.08f},playerYaw,view,proj,cam);
-  orb({playerX,0.91f,playerZ},{0.25f,0.25f,0.25f},{0.18f,0.83f,0.94f},{0.02f,0.24f,0.34f},view,proj,cam);
-  orb({playerX+std::sin(playerYaw)*0.22f,0.79f,playerZ+std::cos(playerYaw)*0.22f},{0.16f,0.09f,0.16f},{0.52f,0.96f,1.0f},{0.12f,0.22f,0.28f},view,proj,cam);
-  // Health is a 3D bar hovering above the player.
-  box({playerX,1.32f,playerZ},{0.78f,0.065f,0.09f},{0.10f,0.035f,0.06f},{0.02f,0.0f,0.0f},0,view,proj,cam);
-  if(playerHealth>0.001f)box({playerX-0.39f+0.39f*playerHealth,1.325f,playerZ},{0.78f*playerHealth,0.075f,0.095f},{0.0f,0.78f,0.84f},{0.0f,0.18f,0.24f},0,view,proj,cam);
-  // Distinct hostile silhouettes: swift sphere, heavy armored block, standard drone.
+  float inputDx=(moveX-moveOriginX)/(float)std::max(1,screenH);
+  float inputDy=(moveY-moveOriginY)/(float)std::max(1,screenH);
+  float inputMagnitude=std::sqrt(inputDx*inputDx+inputDy*inputDy);
+  float playerGait=moving?std::clamp(inputMagnitude/0.16f,0.0f,1.0f):0.0f;
+  drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*9.4f,playerGait,0,true,{0.035f,0.24f,0.34f},{0.025f,0.49f,0.62f},{0.0f,0.075f,0.12f},view,proj,cam);
+  box({playerX,1.53f,playerZ},{0.78f,0.055f,0.075f},{0.10f,0.035f,0.06f},{0.02f,0.0f,0.0f},0,view,proj,cam);
+  if(playerHealth>0.001f)box({playerX-0.39f+0.39f*playerHealth,1.535f,playerZ},{0.78f*playerHealth,0.065f,0.08f},{0.0f,0.78f,0.84f},{0.0f,0.18f,0.24f},0,view,proj,cam);
+  // Three enemy archetypes share the rig but have distinct proportions and colors.
   for(const auto&e:enemies){
     if(e.hp<=0.0f)continue;
-    float bob=0.035f*std::sin(elapsed*4.0f+e.x*2.0f);
-    orb({e.x,0.025f,e.z},{e.radius*2.4f,0.035f,e.radius*2.4f},{0.035f,0.006f,0.02f},{0,0,0},view,proj,cam);
-    if(e.type==1){
-      box({e.x,0.28f+bob,e.z},{0.61f,0.49f,0.58f},{0.28f,0.045f,0.075f},{0.16f,0.005f,0.02f},e.yaw,view,proj,cam);
-      box({e.x,0.55f+bob,e.z},{0.43f,0.20f,0.40f},{0.38f,0.07f,0.10f},{0.18f,0.01f,0.02f},e.yaw,view,proj,cam);
-      box({e.x-0.34f,0.30f+bob,e.z},{0.18f,0.27f,0.23f},{0.14f,0.035f,0.06f},{0.06f,0.0f,0.01f},e.yaw,view,proj,cam);
-      box({e.x+0.34f,0.30f+bob,e.z},{0.18f,0.27f,0.23f},{0.14f,0.035f,0.06f},{0.06f,0.0f,0.01f},e.yaw,view,proj,cam);
-    }else if(e.type==2){
-      orb({e.x,0.38f+bob,e.z},{0.42f,0.56f,0.42f},{0.28f,0.055f,0.09f},{0.10f,0.0f,0.015f},view,proj,cam);
-      orb({e.x,0.72f+bob,e.z},{0.24f,0.24f,0.24f},{0.46f,0.08f,0.12f},{0.16f,0.0f,0.02f},view,proj,cam);
-      box({e.x-0.25f,0.32f+bob,e.z},{0.12f,0.12f,0.36f},{0.18f,0.035f,0.06f},{0.08f,0.0f,0.01f},e.yaw,view,proj,cam);
-      box({e.x+0.25f,0.32f+bob,e.z},{0.12f,0.12f,0.36f},{0.18f,0.035f,0.06f},{0.08f,0.0f,0.01f},e.yaw,view,proj,cam);
-    }else{
-      orb({e.x,0.34f+bob,e.z},{0.42f,0.48f,0.42f},{0.28f,0.035f,0.075f},{0.10f,0.0f,0.015f},view,proj,cam);
-      orb({e.x,0.67f+bob,e.z},{0.25f,0.24f,0.25f},{0.40f,0.06f,0.09f},{0.13f,0.0f,0.02f},view,proj,cam);
-      box({e.x,0.53f+bob,e.z+0.15f},{0.22f,0.09f,0.08f},{1.0f,0.15f,0.21f},{0.28f,0.01f,0.02f},e.yaw,view,proj,cam);
-    }
-    box({e.x,0.87f+bob,e.z},{0.60f,0.055f,0.075f},{0.16f,0.025f,0.04f},{0.02f,0.0f,0.0f},0,view,proj,cam);
-    box({e.x-0.30f+(0.60f*e.hp/e.maxHp)*0.5f,0.88f+bob,e.z},{0.60f*e.hp/e.maxHp,0.062f,0.08f},{1.0f,0.10f,0.18f},{0.19f,0.0f,0.02f},0,view,proj,cam);
+    const float distanceToPlayer=std::sqrt((playerX-e.x)*(playerX-e.x)+(playerZ-e.z)*(playerZ-e.z));
+    const float enemyGait=distanceToPlayer>e.radius+0.48f?0.72f:0.12f;
+    const V3 enemyArmor=e.type==1?V3{0.22f,0.045f,0.07f}:(e.type==2?V3{0.13f,0.028f,0.12f}:V3{0.17f,0.035f,0.06f});
+    const V3 enemyTrim=e.type==1?V3{0.95f,0.22f,0.10f}:(e.type==2?V3{0.95f,0.16f,0.38f}:V3{0.98f,0.09f,0.17f});
+    const V3 enemyGlow=e.type==1?V3{0.16f,0.008f,0.012f}:(e.type==2?V3{0.14f,0.004f,0.05f}:V3{0.12f,0.006f,0.015f});
+    drawHumanoid({e.x,0.0f,e.z},e.yaw,elapsed*(6.2f+e.speed),enemyGait,e.type,false,enemyArmor,enemyTrim,enemyGlow,view,proj,cam);
+    const float barY=1.50f+0.02f*std::sin(elapsed*8.0f+e.x);
+    box({e.x,barY,e.z},{0.62f,0.05f,0.07f},{0.12f,0.02f,0.04f},{0.02f,0.0f,0.0f},0,view,proj,cam);
+    box({e.x-0.31f+(0.62f*e.hp/e.maxHp)*0.5f,barY+0.005f,e.z},{0.62f*e.hp/e.maxHp,0.06f,0.075f},enemyTrim,{0.16f,0.0f,0.02f},0,view,proj,cam);
   }
   // Aim indicator follows the right-hand touch direction in world space.
   if(aiming&&!won&&!lost){

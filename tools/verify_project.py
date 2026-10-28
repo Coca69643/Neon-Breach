@@ -32,6 +32,7 @@ for token in (
     "#version 300 es", "layout(location=0)", "uMVP", "uModel",
     "perspective(", "glEnable(GL_DEPTH_TEST)", "createMeshes",
     "fixedUpdate", "resolveCollision", "makeFallbackProgram",
+    "drawPose", "drawHumanoid", "rotateX", "rotateZ",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "publishedSnapshot",
@@ -54,10 +55,10 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.7.2'" not in build or "versionCode 9" not in build:
-    raise SystemExit("Version 0.7.2 metadata missing")
+if "versionName '0.8.0'" not in build or "versionCode 10" not in build:
+    raise SystemExit("Version 0.8.0 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
-print(f"Project structure, icon, signing configuration, 3D renderer, UI and mission checks OK ({len(required)} required files found).")
+print(f"Project structure, icon, signing configuration, procedural humanoid renderer, UI and mission checks OK ({len(required)} required files found).")
 print("This check does not replace Android compilation or on-device testing.")
