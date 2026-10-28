@@ -384,7 +384,7 @@ class MainActivity : Activity() {
             textSize = dp(10).toFloat()
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
         }
-        private var activePointerId = INVALID_POINTER
+        private var activePointerId = -1
         private var trackingPointer = false
         private var firingVisual = false
 
@@ -485,7 +485,7 @@ class MainActivity : Activity() {
 
         private fun endHold() {
             trackingPointer = false
-            activePointerId = INVALID_POINTER
+            activePointerId = -1
             if (firingVisual) gameView.setFiring(false)
             firingVisual = false
             isPressed = false
