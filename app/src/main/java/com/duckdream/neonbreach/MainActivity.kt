@@ -53,10 +53,10 @@ class MainActivity : Activity() {
 
     private enum class Screen { MENU, SETTINGS, PLAYING, PAUSED, RESULT }
 
-    private val cyan = Color.rgb(35, 220, 244)
-    private val white = Color.rgb(233, 245, 250)
-    private val muted = Color.rgb(140, 166, 181)
-    private val panel = Color.argb(222, 5, 14, 25)
+    private val cyan = Color.rgb(190, 217, 134)
+    private val white = Color.rgb(246, 241, 222)
+    private val muted = Color.rgb(180, 174, 149)
+    private val panel = Color.argb(220, 18, 23, 14)
     private val prefs by lazy { getSharedPreferences("neon_breach_settings", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -128,13 +128,13 @@ class MainActivity : Activity() {
     }
 
     private fun buttonBackground(accent: Boolean, enabled: Boolean = true): GradientDrawable {
-        val strokeColor = if (accent) cyan else Color.rgb(57, 91, 112)
-        val fill = if (accent) Color.argb(220, 7, 48, 65) else Color.argb(196, 8, 24, 38)
+        val strokeColor = if (accent) cyan else Color.rgb(91, 102, 69)
+        val fill = if (accent) Color.argb(220, 48, 59, 30) else Color.argb(205, 27, 30, 20)
         return GradientDrawable().apply {
             shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(4).toFloat()
-            setColor(if (enabled) fill else Color.argb(90, 8, 19, 29))
-            setStroke(dp(1), if (enabled) strokeColor else Color.rgb(42, 58, 69))
+            cornerRadius = dp(12).toFloat()
+            setColor(if (enabled) fill else Color.argb(90, 24, 26, 18))
+            setStroke(dp(1), if (enabled) strokeColor else Color.rgb(58, 61, 48))
         }
     }
 
@@ -175,39 +175,38 @@ class MainActivity : Activity() {
     private fun showMainMenu(preserveMission: Boolean) {
         currentScreen = Screen.MENU
         gameView.setGameMode(if (preserveMission && hasSession) 6 else 0)
-        val layer = overlay(Color.argb(178, 2, 8, 17))
+        // Keep the living terrain visible; the menu sits over the world instead of a full opaque card.
+        val layer = overlay(Color.argb(86, 12, 16, 8))
         val left = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(4), 0, dp(4))
         }
-        addVertical(left, text("DUCK DREAM STUDIOS  /  FIELD SYSTEMS", 11f, cyan, true), 10)
-        addVertical(left, text("NEON BREACH", 36f, white, true), 2)
-        addVertical(left, text("PROTOCOLO DE RUPTURA", 14f, cyan, true), 16)
-        val start = actionButton("INICIAR OPERAÇÃO", true) { startNewMission() }
-        addVertical(left, start, 8, dp(268), dp(48))
-        val continueBtn = actionButton("CONTINUAR OPERAÇÃO") { continueMission() }
+        addVertical(left, text("DUCK DREAM STUDIOS", 10f, cyan, true), 8)
+        addVertical(left, text("NEON BREACH", 32f, white, true), 1)
+        addVertical(left, text("EXPLORE. ENCONTRE SEU CAMINHO.", 11f, muted, true), 14)
+        addVertical(left, actionButton("INICIAR EXPEDIÇÃO", true) { startNewMission() }, 7, dp(226), dp(43))
+        val continueBtn = actionButton("CONTINUAR") { continueMission() }
         continueBtn.isEnabled = hasSession
-        continueBtn.alpha = if (hasSession) 1f else 0.42f
-        addVertical(left, continueBtn, 8, dp(268), dp(48))
-        addVertical(left, actionButton("CONFIGURAÇÕES") { showSettings() }, 18, dp(268), dp(46))
-        addVertical(left, text("SETOR 01  •  REDE SOB AMEAÇA", 10f, muted, true), 0)
-        layer.addView(left, FrameLayout.LayoutParams(dp(300), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
-            marginStart = dp(34)
+        continueBtn.alpha = if (hasSession) 1f else 0.40f
+        addVertical(left, continueBtn, 7, dp(226), dp(41))
+        addVertical(left, actionButton("OPÇÕES") { showSettings() }, 7, dp(226), dp(41))
+        addVertical(left, text("FRONTEIRA SELVAGEM  •  0.10.0", 9f, muted, true), 12)
+        layer.addView(left, FrameLayout.LayoutParams(dp(252), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
+            marginStart = dp(28)
         })
 
         val right = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.END
-            setPadding(dp(10), dp(8), dp(10), dp(8))
+            gravity = Gravity.START
+            setPadding(dp(5), dp(6), dp(5), dp(6))
             isClickable = true
             setOnClickListener { }
         }
-        addVertical(right, text("OPERAÇÃO  /  001", 12f, cyan, true), 12)
-        addVertical(right, text("INVASÃO À REDE", 21f, white, true), 4)
-        addVertical(right, text("Desative os relés de segurança.\nNeutralize as unidades hostis.\nAlcance o ponto de extração.", 14f, muted), 22)
-        addVertical(right, text("3  RELÉS\n4  UNIDADES HOSTIS\n1  PONTO DE EXTRAÇÃO", 12f, white, true), 0)
-        layer.addView(right, FrameLayout.LayoutParams(dp(235), -2, Gravity.END or Gravity.CENTER_VERTICAL).apply {
-            marginEnd = dp(36)
+        addVertical(right, text("UM LUGAR ESQUECIDO", 12f, cyan, true), 8)
+        addVertical(right, text("Ruínas cobertas pela mata.\nCriaturas que não ficam paradas.\nRecursos escondidos pela trilha.", 13f, white), 15)
+        addVertical(right, text("3 MARCADORES\n4 CRIATURAS\n2 BROTOS RESTAURADORES", 10f, muted, true), 0)
+        layer.addView(right, FrameLayout.LayoutParams(dp(205), -2, Gravity.END or Gravity.CENTER_VERTICAL).apply {
+            marginEnd = dp(27)
         })
         attachLayer(layer)
     }
@@ -215,14 +214,14 @@ class MainActivity : Activity() {
     private fun showSettings() {
         currentScreen = Screen.SETTINGS
         gameView.setGameMode(3)
-        val layer = overlay(Color.argb(214, 2, 8, 17))
+        val layer = overlay(Color.argb(190, 12, 16, 8))
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(6), dp(4), dp(6), dp(4))
         }
         addVertical(content, text("CONFIGURAÇÕES", 30f, white, true), 4)
         addVertical(content, text("CONTROLES", 13f, cyan, true), 8)
-        addVertical(content, text("LADO ESQUERDO  —  MOVIMENTO\nLADO DIREITO  —  MIRA E DISPARO\nAPROXIME-SE DE UM RELÉ E USE DESATIVAR.", 15f, white), 18)
+        addVertical(content, text("ESQUERDA  —  MOVIMENTO\nDIREITA  —  MIRA E DISPARO\nAPROXIME-SE DE UM MARCADOR OU BROTO E INTERAJA.", 15f, white), 18)
         val hapticLabel = if (hapticsEnabled) "VIBRAÇÃO DE INTERFACE: LIGADA" else "VIBRAÇÃO DE INTERFACE: DESLIGADA"
         val haptics = actionButton(hapticLabel, hapticsEnabled) {
             hapticsEnabled = !hapticsEnabled
@@ -258,14 +257,14 @@ class MainActivity : Activity() {
         currentScreen = Screen.PAUSED
         hasSession = true
         gameView.setGameMode(2)
-        val layer = overlay(Color.argb(202, 2, 8, 17))
+        val layer = overlay(Color.argb(168, 12, 16, 8))
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(8), dp(4), dp(8), dp(4))
         }
-        addVertical(content, text("OPERAÇÃO SUSPENSA", 28f, white, true), 6)
-        addVertical(content, text("O setor permanece no estado atual.", 13f, muted), 18)
+        addVertical(content, text("PAUSA", 27f, white, true), 6)
+        addVertical(content, text("A expedição continua daqui quando voltar.", 13f, muted), 18)
         addVertical(content, actionButton("RETOMAR", true) { resumeMission() }, 8, dp(270), dp(46))
         addVertical(content, actionButton("REINICIAR OPERAÇÃO") { startNewMission() }, 8, dp(270), dp(46))
         addVertical(content, actionButton("VOLTAR AO MENU") {
@@ -287,17 +286,17 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             setPadding(dp(13), dp(9), dp(13), dp(9))
             background = GradientDrawable().apply {
-                cornerRadius = dp(4).toFloat()
-                setColor(Color.argb(185, 3, 12, 22))
-                setStroke(dp(1), Color.argb(125, 26, 116, 144))
+                cornerRadius = dp(11).toFloat()
+                setColor(Color.argb(170, 20, 25, 14))
+                setStroke(dp(1), Color.argb(140, 109, 128, 68))
             }
             isClickable = true
             setOnClickListener { }
         }
-        addVertical(left, text("NEON BREACH  /  SETOR 01", 12f, cyan, true), 5)
+        addVertical(left, text("NEON BREACH  /  FRONTEIRA", 12f, cyan, true), 5)
         val healthRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
         healthValue = text("100%", 12f, white, true)
-        healthRow.addView(text("INTEGRIDADE", 11f, muted, true), LinearLayout.LayoutParams(0, -2, 1f))
+        healthRow.addView(text("VITALIDADE", 11f, muted, true), LinearLayout.LayoutParams(0, -2, 1f))
         healthRow.addView(healthValue, LinearLayout.LayoutParams(-2, -2))
         addVertical(left, healthRow, 3)
         healthBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
@@ -307,21 +306,21 @@ class MainActivity : Activity() {
             progressBackgroundTintList = ColorStateList.valueOf(Color.rgb(30, 47, 58))
         }
         addVertical(left, healthBar, 7, dp(245), dp(10))
-        relayStatus = text("RELÉS  0 / 3", 12f, white, true)
+        relayStatus = text("MARCADORES  0 / 3", 12f, white, true)
         addVertical(left, relayStatus, 3)
-        threatStatus = text("HOSTIS  0 / 4 NEUTRALIZADOS", 11f, muted, true)
+        threatStatus = text("CRIATURAS  0 / 4 CONTIDAS", 11f, muted, true)
         addVertical(left, threatStatus, 0)
         layer.addView(left, FrameLayout.LayoutParams(dp(275), -2, Gravity.START or Gravity.TOP).apply {
             marginStart = dp(15); topMargin = dp(13)
         })
 
-        objectiveText = text("OBJETIVO 01  /  DESATIVE OS RELÉS", 13f, white, true).apply {
+        objectiveText = text("ENCONTRE OS MARCADORES", 12f, white, true).apply {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(8), dp(12), dp(8))
             background = GradientDrawable().apply {
-                cornerRadius = dp(4).toFloat()
-                setColor(Color.argb(196, 4, 18, 30))
-                setStroke(dp(1), Color.argb(140, 18, 121, 151))
+                cornerRadius = dp(11).toFloat()
+                setColor(Color.argb(184, 24, 29, 16))
+                setStroke(dp(1), Color.argb(145, 109, 128, 68))
             }
             isClickable = true
             setOnClickListener { }
@@ -380,12 +379,12 @@ class MainActivity : Activity() {
     private inner class VirtualJoystick(context: Context) : View(context) {
         private val baseFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(145, 4, 16, 28) }
         private val baseStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(220, 35, 220, 244); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
+            color = Color.argb(220, 190, 217, 134); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
         }
         private val innerStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.argb(110, 135, 194, 210); style = Paint.Style.STROKE; strokeWidth = dp(1).toFloat()
         }
-        private val knobFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 32, 116, 143) }
+        private val knobFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 82, 106, 53) }
         private val knobStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             color = Color.rgb(160, 241, 250); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
         }
@@ -452,22 +451,27 @@ class MainActivity : Activity() {
         val relayMask = (snapshot ushr 10) and 7
         val enemiesLeft = (snapshot ushr 13) and 7
         val nearRelay = (snapshot and (1 shl 16)) != 0
+        val nearPod = (snapshot and (1 shl 18)) != 0
         val dodgeReady = (snapshot and (1 shl 17)) != 0
         val relaysDone = Integer.bitCount(relayMask)
         healthBar.progress = health.coerceIn(0, 100)
         healthBar.progressTintList = ColorStateList.valueOf(if (health <= 28) Color.rgb(255, 67, 82) else cyan)
         healthValue.text = "$health%"
-        relayStatus.text = "RELÉS  $relaysDone / 3"
-        threatStatus.text = "HOSTIS  ${4 - enemiesLeft} / 4 NEUTRALIZADOS"
+        relayStatus.text = "MARCADORES  $relaysDone / 3"
+        threatStatus.text = "CRIATURAS  ${4 - enemiesLeft} / 4 CONTIDAS"
         objectiveText.text = when {
-            relaysDone < 3 -> "OBJETIVO 01  /  DESATIVE OS RELÉS"
-            enemiesLeft > 0 -> "OBJETIVO 02  /  NEUTRALIZE AS AMEAÇAS"
-            else -> "EXTRAÇÃO LIBERADA  /  ALCANCE O MARCADOR VERDE"
+            relaysDone < 3 -> "EXPLORE A ÁREA  /  ATIVE OS MARCADORES"
+            enemiesLeft > 0 -> "A TRILHA ESTÁ BLOQUEADA  /  CRIATURAS NA ÁREA"
+            else -> "CAMINHO ABERTO  /  SIGA AS PEDRAS CLARAS"
         }
-        interactButton.text = if (nearRelay) "DESATIVAR RELÉ" else "APROXIME-SE DO RELÉ"
-        interactButton.isEnabled = nearRelay
-        interactButton.alpha = if (nearRelay) 1f else 0.62f
-        interactButton.background = buttonBackground(true, nearRelay)
+        interactButton.text = when {
+            nearPod -> "COLHER SEIVA"
+            nearRelay -> "ATIVAR MARCADOR"
+            else -> "APROXIME-SE"
+        }
+        interactButton.isEnabled = nearRelay || nearPod
+        interactButton.alpha = if (nearRelay || nearPod) 1f else 0.62f
+        interactButton.background = buttonBackground(true, nearRelay || nearPod)
         dodgeButton.text = if (dodgeReady) "ESQUIVA" else "RECARGA"
         dodgeButton.isEnabled = dodgeReady
         dodgeButton.alpha = if (dodgeReady) 1f else 0.48f
@@ -479,15 +483,15 @@ class MainActivity : Activity() {
         if (currentScreen != Screen.PLAYING) return
         currentScreen = Screen.RESULT
         hasSession = false
-        val layer = overlay(Color.argb(214, 2, 8, 17))
+        val layer = overlay(Color.argb(190, 12, 16, 8))
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
             setPadding(dp(8), dp(4), dp(8), dp(4))
         }
-        addVertical(content, text(if (victory) "OPERAÇÃO CONCLUÍDA" else "UNIDADE PERDIDA", 29f,
+        addVertical(content, text(if (victory) "EXPEDIÇÃO CONCLUÍDA" else "EXPEDIÇÃO INTERROMPIDA", 29f,
             if (victory) Color.rgb(61, 244, 170) else Color.rgb(255, 81, 97), true), 8)
-        addVertical(content, text(if (victory) "Rede comprometida. Extração confirmada." else "Integridade esgotada. O setor continua hostil.", 14f, muted), 20)
+        addVertical(content, text(if (victory) "A trilha está aberta. Você chegou ao destino." else "A vitalidade acabou. Tente outra rota.", 14f, muted), 20)
         addVertical(content, actionButton(if (victory) "NOVA OPERAÇÃO" else "TENTAR NOVAMENTE", true) { startNewMission() }, 8, dp(280), dp(48))
         addVertical(content, actionButton("MENU PRINCIPAL") { showMainMenu(false) }, 8, dp(280), dp(46))
         layer.addView(content, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
