@@ -203,7 +203,7 @@ class MainActivity : Activity() {
         addVertical(left, continueBtn, 7, dp(226), dp(41))
         addVertical(left, actionButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 7, dp(226), dp(41))
         addVertical(left, actionButton("CONFIGURAÇÕES") { showSettings() }, 7, dp(226), dp(41))
-        addVertical(left, text("SITE ORION-9  •  0.12.0", 9f, muted, true), 12)
+        addVertical(left, text("SITE ORION-9  •  0.13.0", 9f, muted, true), 12)
         layer.addView(left, FrameLayout.LayoutParams(dp(252), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
