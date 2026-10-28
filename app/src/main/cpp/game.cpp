@@ -560,7 +560,11 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
     case 0: moving=true;moveOriginX=moveX=x;moveOriginY=moveY=y;break;
     case 1: if(moving){moveX=x;moveY=y;}break;
     case 2: moving=false;break;
-    case 3: aiming=true;aimOriginX=x;aimOriginY=y;break;
+    case 3:
+      aiming=true;aimOriginX=x;aimOriginY=y;
+      aimX=playerX+std::sin(facingYaw)*5.0f;
+      aimZ=playerZ+std::cos(facingYaw)*5.0f;
+      break;
     case 4: if(aiming){float dx=(x-aimOriginX)/(float)screenH,dz=-(y-aimOriginY)/(float)screenH;float mag=std::sqrt(dx*dx+dz*dz);if(mag>0.035f){aimX=playerX+dx/mag*5.0f;aimZ=playerZ+dz/mag*5.0f;}}break;
     case 5: if(aiming)facingYaw=std::atan2(aimX-playerX,aimZ-playerZ);aiming=false;break;
     case 6: moving=false;aiming=false;firing=false;break;
