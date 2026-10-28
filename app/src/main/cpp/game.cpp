@@ -615,6 +615,20 @@ void fixedUpdate(float dt){
             enemyAttackCooldown[i]=1.55f;enemyWindup[i]=0.0f;
           }
         }else enemyWindup[i]=0.0f;
+      }else if(e.type==3){
+        // Fast skitter circles toward the player's flank and darts inward in short bursts.
+        const float safeD=std::max(0.001f,d);
+        const float orbit=std::sin(elapsed*2.7f+(float)i*1.8f);
+        float vx=(dx/safeD)*0.44f+(-dz/safeD)*orbit*0.92f;
+        float vz=(dz/safeD)*0.44f+(dx/safeD)*orbit*0.92f;
+        const float burst=(d>2.0f)?1.0f:(0.34f+0.48f*std::abs(orbit));
+        if(d>0.68f){
+          e.x+=vx*e.speed*burst*dt;e.z+=vz*e.speed*burst*dt;
+          resolveCollision(e.x,e.z,e.radius);
+        }else if(enemyAttackCooldown[i]<=0.0f){
+          if(!invulnerableNow)playerHealth=std::max(0.0f,playerHealth-0.085f);
+          enemyAttackCooldown[i]=0.72f;
+        }
       }else{
         if(d>e.radius+0.43f){const float step=std::min(e.speed*dt,std::max(0.0f,d-e.radius-0.40f));if(d>0.001f){e.x+=dx/d*step;e.z+=dz/d*step;}resolveCollision(e.x,e.z,e.radius);enemyWindup[i]=0.0f;}
         else if(enemyAttackCooldown[i]<=0.0f){if(!invulnerableNow)playerHealth=std::max(0.0f,playerHealth-0.12f);enemyAttackCooldown[i]=0.82f;}
@@ -637,7 +651,7 @@ void fixedUpdate(float dt){
 
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
   // EGL can recreate the context after resume: rebuild every GL object.
-  program=0;fallbackProgram=0;fallbackVao=0;cubeMesh={};sphereMesh={};
+  program=0;fallbackProgram=0;fallbackVao=0;cubeMesh={};sphereMesh={};organicMesh={};
   program=make3DProgram();
   if(!program){__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","3D renderer failed, showing diagnostic fallback");fallbackProgram=makeFallbackProgram();}
   if(program){mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");cameraLoc=glGetUniformLocation(program,"uCamera");createMeshes();}
@@ -645,7 +659,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
   glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
-  glClearColor(0.004f,0.008f,0.018f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
+  glClearColor(0.026f,0.032f,0.020f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
   screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);glViewport(0,0,screenW,screenH);
@@ -718,7 +732,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
       aimX=playerX+std::sin(facingYaw)*5.0f;
       aimZ=playerZ+std::cos(facingYaw)*5.0f;
       break;
-    case 4: if(aiming){float dx=(x-aimOriginX)/(float)screenH,dz=-(y-aimOriginY)/(float)screenH;float mag=std::sqrt(dx*dx+dz*dz);if(mag>0.035f){aimX=playerX+dx/mag*5.0f;aimZ=playerZ+dz/mag*5.0f;}}break;
+    case 4: if(aiming){float dx=(x-aimOriginX)/(float)screenH,dz=(y-aimOriginY)/(float)screenH;float mag=std::sqrt(dx*dx+dz*dz);if(mag>0.035f){aimX=playerX+dx/mag*5.0f;aimZ=playerZ+dz/mag*5.0f;}}break;
     case 5: if(aiming)facingYaw=std::atan2(aimX-playerX,aimZ-playerZ);aiming=false;break;
     case 6: moving=false;aiming=false;firing=false;break;
   }
