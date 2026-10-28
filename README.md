@@ -17,11 +17,6 @@ Projeto mobile-first de Duck Dream Studios: Kotlin para interface e entrada; C++
 - Rotações 3D e iluminação de contorno no shader, sem modelos, texturas, engine ou bibliotecas gráficas externas.
 - Código de versão Android atualizado para 10 (0.8.0).
 
-## Histórico 0.8.0
-
-- Personagens humanoides procedurais e animações articuladas.
-- Iluminação de contorno no shader.
-
 ## Histórico 0.7.1
 
 - Ícone de launcher definido explicitamente no manifesto e incluído como vector drawable.
