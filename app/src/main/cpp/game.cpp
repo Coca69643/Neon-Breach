@@ -25,10 +25,17 @@ struct Room {
   float centerX=0.0f,minX=0.0f,maxX=0.0f,minZ=-ROOM_HALF_DEPTH,maxZ=ROOM_HALF_DEPTH;
   int wavesTotal=1,wavesSpawned=0;
   bool visited=false,cleared=false,doorOpen=false;
+  bool chestSpawned=false,chestOpened=false;
   std::array<Obstacle,4> cover{};
 };
 struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
-struct Shot { float x,y,z,vx,vz,life; bool hostile=false; float damage=1.0f; };
+struct Shot {
+  float x,y,z,vx,vz,life;
+  bool hostile=false;
+  float damage=1.0f;
+  int piercesRemaining=0;
+  int lastHitEnemy=-1;
+};
 struct ProjectileInstance { float x,y,z,radius,r,g,b,glow; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
@@ -81,6 +88,12 @@ bool won=false, lost=false;
 int defeated=0;
 int gameMode=0; // 0 menu, 1 playing, 2 pause, 3 settings, 4 victory, 5 defeat, 6 suspended menu
 int relayMask=0;
+enum LootModifier : int { LOOT_NONE=0, LOOT_OVERCLOCK=1, LOOT_NANO_SHIELD=2, LOOT_PIERCING_ROUNDS=3 };
+int lootModifier=LOOT_NONE;
+float nanoShieldCooldown=0.0f;
+bool interactionHeld=false;
+float interactionTimer=0.0f;
+int interactionTarget=-1;
 std::atomic<int> publishedSnapshot{0};
 std::chrono::steady_clock::time_point previousFrame=std::chrono::steady_clock::now();
 std::array<Shot,18> shots{};
@@ -123,8 +136,14 @@ constexpr float HAZARD_Z[2]={-1.55f,-1.35f};
 std::array<bool,2> podCollected{{false,false}};
 std::array<float,2> hazardCooldown{{0.0f,0.0f}};
 float operativeMoveSpeed(){return operativeClass==1?5.10f:4.25f;}
-float operativeFireInterval(){return operativeClass==1?0.18f:0.15f;}
-float operativeShotDamage(){return 1.0f;}
+float operativeFireInterval(){
+  const float base=operativeClass==1?0.18f:0.15f;
+  return lootModifier==LOOT_OVERCLOCK?base*0.80f:base;
+}
+float operativeShotDamage(){
+  const int restoredRelays=((relayMask&1)?1:0)+((relayMask&2)?1:0)+((relayMask&4)?1:0);
+  return 1.0f+0.15f*(float)restoredRelays;
+}
 float operativeDamageTakenMultiplier(){return 1.0f;}
 float operativeDodgeCooldown(){return operativeClass==1?0.98f:0.88f;}
 float operativeMedicalHeal(){return 0.24f;}
@@ -139,6 +158,12 @@ void triggerPlayerShotFeedback(){
   triggerCameraShake(0.026f,0.085f);
 }
 void hurtPlayer(float amount){
+  if(lootModifier==LOOT_NANO_SHIELD&&nanoShieldCooldown<=0.0f){
+    nanoShieldCooldown=10.0f;
+    triggerCameraShake(0.065f,0.15f);
+    __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Nano-Shield absorbed an impact; cooldown=10s");
+    return;
+  }
   const float previousHealth=playerHealth;
   playerHealth=std::max(0.0f,playerHealth-amount*operativeDamageTakenMultiplier());
   if(playerHealth<previousHealth)triggerCameraShake(0.13f,0.19f);
@@ -513,6 +538,7 @@ void configureArena(){
     room.maxZ=ROOM_HALF_DEPTH;
     room.wavesTotal=(i==0||i==3)?2:1;
     room.wavesSpawned=0;room.visited=false;room.cleared=false;room.doorOpen=false;
+    room.chestSpawned=false;room.chestOpened=false;
     const int layout=(i+arenaVariant)%3;
     const std::array<Obstacle,4>*source=layout==0?&ARENA_LAYOUT_A:(layout==1?&ARENA_LAYOUT_B:&ARENA_LAYOUT_C);
     room.cover=*source;
@@ -534,6 +560,8 @@ void resetMission(){
   moving=false;aiming=false;firing=false;shotCooldown=0;facingYaw=PI;moveDirX=0.0f;moveDirZ=-1.0f;
   dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=-1.0f;
   won=false;lost=false;defeated=0;relayMask=0;podCollected={{false,false}};hazardCooldown.fill(0.0f);
+  lootModifier=LOOT_NONE;nanoShieldCooldown=0.0f;
+  interactionHeld=false;interactionTimer=0.0f;interactionTarget=-1;
   enemyShotCooldown.fill(0.8f);enemyWindup.fill(0.0f);enemyAttackCooldown.fill(0.0f);
   enemyReactionTimer.fill(0.0f);enemyThinkInterval.fill(0.10f);
   enemySlalomPhase.fill(0.0f);enemySlalomFrequency.fill(1.0f);enemySlalomStrength.fill(0.15f);
@@ -772,6 +800,12 @@ void processRoomClear(){
     return;
   }
   room.cleared=true;
+  if(activeRoom==ROOM_COUNT-1&&!room.chestSpawned){
+    room.chestSpawned=true;
+    room.chestOpened=false;
+    triggerCameraShake(0.13f,0.28f);
+    __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Supply chest spawned in the final room");
+  }
   if(activeRoom>0)rooms[(size_t)(activeRoom-1)].doorOpen=true;
   if(activeRoom<ROOM_COUNT-1){
     room.doorOpen=true;
@@ -796,6 +830,53 @@ bool nearFieldPod(){
   }
   return false;
 }
+bool nearLootChest(){
+  const Room&room=rooms[(size_t)(ROOM_COUNT-1)];
+  if(activeRoom!=ROOM_COUNT-1||!room.chestSpawned||room.chestOpened)return false;
+  const float dx=playerX-room.centerX,dz=playerZ;
+  return dx*dx+dz*dz<1.65f*1.65f;
+}
+int nearestRelayInteractionTarget(){
+  const float range=operativeRelayInteractionRadius()-0.20f;
+  float best=range*range;
+  int target=-1;
+  for(int i=0;i<3;i++){
+    if(relayMask&(1<<i))continue;
+    const float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];
+    const float distanceSq=dx*dx+dz*dz;
+    if(distanceSq<best){best=distanceSq;target=i;}
+  }
+  return target;
+}
+void updateHeldInteraction(float dt){
+  if(!interactionHeld){interactionTimer=0.0f;interactionTarget=-1;return;}
+  int target=-1;
+  float requiredHold=2.0f;
+  if(nearLootChest()){target=3;requiredHold=1.0f;}
+  else target=nearestRelayInteractionTarget();
+  if(target<0){interactionTarget=-1;interactionTimer=0.0f;return;}
+  if(interactionTarget!=target){interactionTarget=target;interactionTimer=0.0f;}
+  interactionTimer+=dt;
+  if(interactionTimer<requiredHold)return;
+  if(target<3){
+    relayMask|=(1<<target);
+    const int bonus=((relayMask&1)?15:0)+((relayMask&2)?15:0)+((relayMask&4)?15:0);
+    __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Containment relay %d restored; damage bonus=%d%%",target+1,bonus);
+    triggerCameraShake(0.105f,0.22f);
+  }else{
+    Room&room=rooms[(size_t)(ROOM_COUNT-1)];
+    if(room.chestSpawned&&!room.chestOpened){
+      std::uniform_int_distribution<int> rewardRoll(LOOT_OVERCLOCK,LOOT_PIERCING_ROUNDS);
+      lootModifier=rewardRoll(aiRandomEngine);
+      room.chestOpened=true;
+      nanoShieldCooldown=0.0f;
+      __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Supply chest opened; modifier=%d",lootModifier);
+      triggerCameraShake(0.18f,0.36f);
+    }
+  }
+  interactionHeld=false;interactionTimer=0.0f;interactionTarget=-1;
+  publishSnapshot();
+}
 bool nearActiveHazard(){
   for(int i=0;i<2;i++){
     const float cycle=std::fmod(elapsed+(float)i*1.55f,3.8f);
@@ -809,7 +890,8 @@ void publishSnapshot(){
   int hp=(int)std::round(std::clamp(playerHealth,0.0f,1.0f)*100.0f);
   int packed=(gameMode&7)|((hp&127)<<3)|((relayMask&7)<<10)|((activeEnemyCount()&7)<<13)
     |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0)|(nearActiveHazard()?1<<19:0)
-    |((defeated&31)<<20)|((activeRoom&3)<<25)|(rooms[(size_t)activeRoom].doorOpen?1<<27:0);
+    |((defeated&31)<<20)|((activeRoom&3)<<25)|(rooms[(size_t)activeRoom].doorOpen?1<<27:0)
+    |((lootModifier&3)<<28)|(rooms[3].chestSpawned?1<<30:0)|(rooms[3].chestOpened?1u<<31:0);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
 void drawPlayerHealthBar(const Mat4&view,const Mat4&proj,V3 cam){
@@ -826,6 +908,27 @@ void drawPlayerHealthBar(const Mat4&view,const Mat4&proj,V3 cam){
     box({leftEdge+filledWidth*0.5f,1.455f,playerZ},
         {filledWidth,0.024f,barDepth*0.70f},accent,
         {accent.x*0.055f,accent.y*0.055f,accent.z*0.055f},0,view,proj,cam);
+  }
+}
+void drawLootChest(const Mat4&view,const Mat4&proj,V3 cam){
+  const Room&room=rooms[(size_t)(ROOM_COUNT-1)];
+  if(!room.chestSpawned)return;
+  const float x=room.centerX,z=0.0f;
+  const V3 gold{0.92f,0.56f,0.10f},goldGlow{0.095f,0.032f,0.002f};
+  const V3 alloy{0.095f,0.12f,0.14f},darkGlow{0.004f,0.006f,0.008f};
+  box({x,0.19f,z},{1.16f,0.34f,0.86f},alloy,darkGlow,0,view,proj,cam);
+  box({x,0.37f,z},{1.20f,0.075f,0.90f},gold,goldGlow,0,view,proj,cam);
+  box({x-0.51f,0.42f,z},{0.075f,0.45f,0.88f},gold,goldGlow,0,view,proj,cam);
+  box({x+0.51f,0.42f,z},{0.075f,0.45f,0.88f},gold,goldGlow,0,view,proj,cam);
+  box({x,0.43f,z},{0.22f,0.24f,0.16f},{0.82f,0.34f,0.065f},{0.05f,0.008f,0.001f},0,view,proj,cam);
+  if(room.chestOpened){
+    poseBox({x,0.73f,z-0.38f},{1.18f,0.18f,0.82f},gold,goldGlow,0,-0.88f,0,view,proj,cam);
+    V3 rewardColor=lootModifier==LOOT_OVERCLOCK?V3{0.0f,0.90f,0.94f}:
+        (lootModifier==LOOT_NANO_SHIELD?V3{0.18f,0.56f,1.0f}:V3{0.28f,1.0f,0.28f});
+    poseOrb({x,0.76f+0.04f*std::sin(visualTime*2.2f),z},{0.24f,0.28f,0.24f},rewardColor,mul(rewardColor,0.18f),0,0,0,view,proj,cam);
+  }else{
+    poseBox({x,0.59f,z},{1.18f,0.18f,0.82f},gold,goldGlow,0,0,0,view,proj,cam);
+    poseOrb({x,0.75f+0.035f*std::sin(visualTime*1.8f),z},{0.11f,0.12f,0.11f},{1.0f,0.75f,0.16f},{0.12f,0.045f,0.002f},0,0,0,view,proj,cam);
   }
 }
 void drawRoomArrow(const Room&room,const Mat4&view,const Mat4&proj,V3 cam){
@@ -920,6 +1023,7 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     drawRoomEnergyDoor(gate,view,proj,cam);
     if(gate==activeRoom&&rooms[(size_t)gate].doorOpen)drawRoomArrow(rooms[(size_t)gate],view,proj,cam);
   }
+  drawLootChest(view,proj,cam);
   for(int i=0;i<3;i++){
     const float x=RELAY_X[i],z=RELAY_Z[i];const bool complete=(relayMask&(1<<i))!=0;
     const V3 signal=complete?V3{0.10f,0.78f,0.82f}:V3{0.93f,0.36f,0.10f};
@@ -954,7 +1058,7 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     box({x,0.32f,z},{0.07f,0.13f,0.07f},{0.12f,0.80f,0.82f},{0.015f,0.10f,0.12f},0,view,proj,cam);
     poseOrb({x,0.43f+0.035f*std::sin(visualTime*1.6f+(float)i),z},{0.11f,0.14f,0.11f},{0.70f,0.88f,0.86f},{0.02f,0.08f,0.075f},0,0,0,view,proj,cam);
   }
-  const bool objectiveComplete=defeated>=TOTAL_MISSION_ELIMINATIONS&&rooms[3].cleared&&relayMask==0x7;
+  const bool objectiveComplete=defeated>=TOTAL_MISSION_ELIMINATIONS&&rooms[3].cleared&&rooms[3].chestOpened&&relayMask==0x7;
   box({activeExtractionX(),0.025f,activeExtractionZ()},{1.55f,0.10f,1.25f},{0.075f,0.105f,0.12f},{0.003f,0.006f,0.009f},0,view,proj,cam);
   box({activeExtractionX(),0.085f,activeExtractionZ()},{1.28f,0.035f,0.98f},{0.15f,0.19f,0.20f},{0.003f,0.005f,0.006f},0,view,proj,cam);
   for(int i=0;i<5;i++){
@@ -1029,6 +1133,7 @@ void fixedUpdate(float dt){
   elapsed+=dt;
   const bool invulnerableNow=dodgeTime>0.0f;
   dodgeCooldown=std::max(0.0f,dodgeCooldown-dt);dodgeTime=std::max(0.0f,dodgeTime-dt);shotCooldown=std::max(0.0f,shotCooldown-dt);
+  nanoShieldCooldown=std::max(0.0f,nanoShieldCooldown-dt);
   for(int i=0;i<4;i++){enemyShotCooldown[i]=std::max(0.0f,enemyShotCooldown[i]-dt);enemyAttackCooldown[i]=std::max(0.0f,enemyAttackCooldown[i]-dt);}
   if(!won&&!lost){
     for(int i=0;i<2;i++){
@@ -1050,6 +1155,7 @@ void fixedUpdate(float dt){
     if(dodgeTime>0.0f){playerX+=dodgeDirX*8.2f*dt;playerZ+=dodgeDirZ*8.2f*dt;resolveCollision(playerX,playerZ,0.30f);updateRoomTransition();}
     else if(moving&&inputStrength>0.0f){playerX+=moveDirX*operativeMoveSpeed()*inputStrength*dt;playerZ+=moveDirZ*operativeMoveSpeed()*inputStrength*dt;resolveCollision(playerX,playerZ,0.30f);updateRoomTransition();}
     if(aiming){const float ax=aimX-playerX,az=aimZ-playerZ;if(std::abs(ax)+std::abs(az)>0.001f)facingYaw=std::atan2(ax,az);}
+    updateHeldInteraction(dt);
 
     // Dedicated hold-to-fire; aim drag only steers the weapon.
     if(firing&&shotCooldown<=0.0f&&playerHealth>0.0f){
@@ -1069,7 +1175,7 @@ void fixedUpdate(float dt){
           const float spread=(float)(pellet-1)*0.20f;
           const float angle=baseAngle+spread;shotDx=std::sin(angle);shotDz=std::cos(angle);
         }
-        shots[(size_t)slot]={shotX,0.45f,shotZ,shotDx*8.3f,shotDz*8.3f,1.12f,false,operativeShotDamage()};
+        shots[(size_t)slot]={shotX,0.45f,shotZ,shotDx*8.3f,shotDz*8.3f,1.12f,false,operativeShotDamage(),lootModifier==LOOT_PIERCING_ROUNDS?1:0,-1};
       }
       shotCooldown=operativeFireInterval();
       triggerPlayerShotFeedback();
@@ -1092,7 +1198,7 @@ void fixedUpdate(float dt){
           else{const float strafe=std::sin(elapsed*1.15f+(float)i*2.1f)*0.55f;steerX=(-dz/safeD)*strafe;steerZ=(dx/safeD)*strafe;}
           if(d<6.0f&&enemyShotCooldown[(size_t)i]<=0.0f){
             int slot=-1;for(int k=0;k<(int)shots.size();k++)if(shots[(size_t)k].life<=0.0f){slot=k;break;}
-            if(slot>=0&&d>0.1f){shots[(size_t)slot]={e.x,0.38f,e.z,dx/safeD*4.6f,dz/safeD*4.6f,2.0f,true};enemyShotCooldown[(size_t)i]=1.55f;}
+            if(slot>=0&&d>0.1f){shots[(size_t)slot]={e.x,0.38f,e.z,dx/safeD*4.6f,dz/safeD*4.6f,2.0f,true,1.0f,0,-1};enemyShotCooldown[(size_t)i]=1.55f;}
           }
         }else if(e.type==1){
           if(d>1.22f){steerX=dx/safeD;steerZ=dz/safeD;enemyWindup[(size_t)i]=std::max(0.0f,enemyWindup[(size_t)i]-enemyThinkInterval[(size_t)i]*2.5f);}
@@ -1133,12 +1239,27 @@ void fixedUpdate(float dt){
       if(s.life<=0.0f)continue;
       s.x+=s.vx*dt;s.z+=s.vz*dt;s.life-=dt;
       if(s.life<=0.0f||projectileBlocked(s.x,s.z)){s.life=0.0f;continue;}
-      if(s.hostile){const float dx=s.x-playerX,dz=s.z-playerZ;if(dx*dx+dz*dz<0.30f*0.30f){if(!invulnerableNow)hurtPlayer(0.10f);s.life=0.0f;}}
-      else for(auto&e:enemies){if(e.hp<=0.0f)continue;const float dx=s.x-e.x,dz=s.z-e.z;if(dx*dx+dz*dz<(e.radius+0.12f)*(e.radius+0.12f)){e.hp=std::max(0.0f,e.hp-s.damage);s.life=0.0f;if(e.hp<=0.0f){defeated++;progression.registerElimination();}break;}}
+      if(s.hostile){
+        const float dx=s.x-playerX,dz=s.z-playerZ;
+        if(dx*dx+dz*dz<0.30f*0.30f){if(!invulnerableNow)hurtPlayer(0.10f);s.life=0.0f;}
+      }else{
+        for(int enemyIndex=0;enemyIndex<(int)enemies.size();enemyIndex++){
+          auto&e=enemies[(size_t)enemyIndex];
+          if(e.hp<=0.0f||s.lastHitEnemy==enemyIndex)continue;
+          const float dx=s.x-e.x,dz=s.z-e.z;
+          if(dx*dx+dz*dz<(e.radius+0.12f)*(e.radius+0.12f)){
+            e.hp=std::max(0.0f,e.hp-s.damage);
+            if(e.hp<=0.0f){defeated++;progression.registerElimination();}
+            if(s.piercesRemaining>0){--s.piercesRemaining;s.lastHitEnemy=enemyIndex;}
+            else s.life=0.0f;
+            break;
+          }
+        }
+      }
     }
     processRoomClear();
     if(playerHealth<=0.0f){lost=true;moving=false;aiming=false;firing=false;gameMode=5;}
-    if(activeRoom==ROOM_COUNT-1&&rooms[3].cleared&&defeated>=TOTAL_MISSION_ELIMINATIONS&&relayMask==0x7){float dx=playerX-activeExtractionX(),dz=playerZ-activeExtractionZ();if(dx*dx+dz*dz<0.82f*0.82f){won=true;moving=false;aiming=false;firing=false;gameMode=4;}}
+    if(activeRoom==ROOM_COUNT-1&&rooms[3].cleared&&rooms[3].chestOpened&&defeated>=TOTAL_MISSION_ELIMINATIONS&&relayMask==0x7){float dx=playerX-activeExtractionX(),dz=playerZ-activeExtractionZ();if(dx*dx+dz*dz<0.82f*0.82f){won=true;moving=false;aiming=false;firing=false;gameMode=4;}}
   }
   publishSnapshot();
 }
@@ -1236,7 +1357,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSetMode(JNIEnv*,jobject,jint mode){
   if(mode>=0&&mode<=6){
     gameMode=mode;
-    if(mode!=1){moving=false;aiming=false;firing=false;dodgeTime=0.0f;}
+    if(mode!=1){moving=false;aiming=false;firing=false;dodgeTime=0.0f;interactionHeld=false;interactionTimer=0.0f;interactionTarget=-1;}
     previousFrame=std::chrono::steady_clock::now();
     publishSnapshot();
   }
@@ -1270,7 +1391,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
         publishSnapshot();return;
       }
     }
-    for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;float dx=playerX-RELAY_X[i],dz=playerZ-RELAY_Z[i];const float range=operativeRelayInteractionRadius();if(dx*dx+dz*dz<range*range){relayMask|=(1<<i);__android_log_print(ANDROID_LOG_INFO,"NeonBreach","Containment relay %d restored; mask=%d",i+1,relayMask);publishSnapshot();return;}}
+    publishSnapshot();return;
+  }
+  if(action==11){
+    interactionHeld=true;interactionTimer=0.0f;interactionTarget=-1;
+    publishSnapshot();return;
+  }
+  if(action==12){
+    interactionHeld=false;interactionTimer=0.0f;interactionTarget=-1;
     publishSnapshot();return;
   }
   if(action==8){firing=true;publishSnapshot();return;}
