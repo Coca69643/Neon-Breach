@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <random>
 #include <vector>
 
 namespace {
@@ -18,11 +19,14 @@ struct Mesh { GLuint vao=0, vbo=0; GLsizei count=0; };
 struct Obstacle { float x,z,sx,sz,h; };
 struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
 struct Shot { float x,y,z,vx,vz,life; bool hostile=false; float damage=1.0f; };
+struct ProjectileInstance { float x,y,z,radius,r,g,b,glow; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
 GLuint postProgram=0, postVao=0, sceneFramebuffer=0, sceneColorTexture=0, sceneDepthBuffer=0;
+GLuint projectileProgram=0, projectileVao=0, projectileQuadVbo=0, projectileIndexBuffer=0, projectileInstanceVbo=0;
 GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
 GLint fallbackResLoc=-1, postSceneLoc=-1, postResolutionLoc=-1;
+GLint projectileViewLoc=-1, projectileProjectionLoc=-1;
 int sceneTargetW=0, sceneTargetH=0;
 Mesh cubeMesh, sphereMesh, organicMesh;
 int screenW=1, screenH=1;
@@ -44,6 +48,17 @@ int operativeClass=0; // 0 Kestrel, 1 Bastion, 2 Patch
 std::array<float,4> enemyShotCooldown{};
 std::array<float,4> enemyWindup{};
 std::array<float,4> enemyAttackCooldown{};
+std::array<float,4> enemyReactionTimer{};
+std::array<float,4> enemyThinkInterval{};
+std::array<float,4> enemySlalomPhase{};
+std::array<float,4> enemySlalomFrequency{};
+std::array<float,4> enemySlalomStrength{};
+std::array<float,4> enemySteerX{};
+std::array<float,4> enemySteerZ{};
+std::array<float,4> enemyMoveScale{1.0f,1.0f,1.0f,1.0f};
+std::mt19937 aiRandomEngine{std::random_device{}()};
+std::uniform_real_distribution<float> aiUnitDistribution{0.0f,1.0f};
+float randomRange(float minimum,float maximum){return minimum+(maximum-minimum)*aiUnitDistribution(aiRandomEngine);}
 bool won=false, lost=false;
 int defeated=0;
 int gameMode=0; // 0 menu, 1 playing, 2 pause, 3 settings, 4 victory, 5 defeat, 6 suspended menu
@@ -368,6 +383,84 @@ bool createSceneTarget(int width,int height){
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Stylized post-process target: %dx%d (display %dx%d)",sceneTargetW,sceneTargetH,width,height);
   return true;
 }
+GLuint makeProjectileProgram(){
+  const char*vs=R"(#version 300 es
+  layout(location=0) in vec2 aCorner;
+  layout(location=1) in vec3 iPosition;
+  layout(location=2) in float iRadius;
+  layout(location=3) in vec3 iColor;
+  layout(location=4) in float iGlow;
+  uniform mat4 uView;uniform mat4 uProjection;
+  out vec2 vCorner;out vec3 vColor;out float vGlow;
+  void main(){
+    vec4 centerView=uView*vec4(iPosition,1.0);
+    centerView.xy+=aCorner*iRadius;
+    gl_Position=uProjection*centerView;
+    vCorner=aCorner;vColor=iColor;vGlow=iGlow;
+  })";
+  const char*fs=R"(#version 300 es
+  precision mediump float;
+  in vec2 vCorner;in vec3 vColor;in float vGlow;
+  out vec4 outColor;
+  void main(){
+    float radiusSq=dot(vCorner,vCorner);
+    if(radiusSq>1.0)discard;
+    float sphereDepth=sqrt(max(0.0,1.0-radiusSq));
+    float highlight=0.58+0.42*sphereDepth;
+    vec3 color=vColor*highlight+vColor*vGlow*(0.65+0.35*sphereDepth);
+    float alpha=1.0-smoothstep(0.78,1.0,radiusSq);
+    outColor=vec4(color,alpha);
+  })";
+  return linkProgram(vs,fs,"instanced projectiles");
+}
+void createProjectileRenderer(){
+  projectileProgram=makeProjectileProgram();
+  if(!projectileProgram)return;
+  projectileViewLoc=glGetUniformLocation(projectileProgram,"uView");
+  projectileProjectionLoc=glGetUniformLocation(projectileProgram,"uProjection");
+  const float corners[]={-1.0f,-1.0f,1.0f,-1.0f,-1.0f,1.0f,1.0f,1.0f};
+  const GLushort indices[]={0,1,2,2,1,3};
+  glGenVertexArrays(1,&projectileVao);glBindVertexArray(projectileVao);
+  glGenBuffers(1,&projectileQuadVbo);glBindBuffer(GL_ARRAY_BUFFER,projectileQuadVbo);
+  glBufferData(GL_ARRAY_BUFFER,sizeof(corners),corners,GL_STATIC_DRAW);
+  glEnableVertexAttribArray(0);glVertexAttribPointer(0,2,GL_FLOAT,GL_FALSE,2*sizeof(float),(void*)0);
+  glGenBuffers(1,&projectileIndexBuffer);glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,projectileIndexBuffer);
+  glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(indices),indices,GL_STATIC_DRAW);
+  glGenBuffers(1,&projectileInstanceVbo);glBindBuffer(GL_ARRAY_BUFFER,projectileInstanceVbo);
+  glBufferData(GL_ARRAY_BUFFER,(GLsizeiptr)(sizeof(ProjectileInstance)*shots.size()),nullptr,GL_DYNAMIC_DRAW);
+  const GLsizei stride=(GLsizei)sizeof(ProjectileInstance);
+  glEnableVertexAttribArray(1);glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,stride,(void*)offsetof(ProjectileInstance,x));glVertexAttribDivisor(1,1);
+  glEnableVertexAttribArray(2);glVertexAttribPointer(2,1,GL_FLOAT,GL_FALSE,stride,(void*)offsetof(ProjectileInstance,radius));glVertexAttribDivisor(2,1);
+  glEnableVertexAttribArray(3);glVertexAttribPointer(3,3,GL_FLOAT,GL_FALSE,stride,(void*)offsetof(ProjectileInstance,r));glVertexAttribDivisor(3,1);
+  glEnableVertexAttribArray(4);glVertexAttribPointer(4,1,GL_FLOAT,GL_FALSE,stride,(void*)offsetof(ProjectileInstance,glow));glVertexAttribDivisor(4,1);
+  glBindVertexArray(0);glBindBuffer(GL_ARRAY_BUFFER,0);
+}
+bool drawProjectilesInstanced(const Mat4&view,const Mat4&projection){
+  if(!projectileProgram||!projectileVao||!projectileInstanceVbo)return false;
+  std::array<ProjectileInstance,18> batch{};
+  GLsizei count=0;
+  for(const auto&shot:shots){
+    if(shot.life<=0.0f)continue;
+    const bool hostile=shot.hostile;
+    const V3 tint=hostile?V3{0.94f,0.35f,0.11f}:V3{0.74f,0.88f,0.48f};
+    batch[(size_t)count++]={shot.x,0.34f,shot.z,hostile?0.085f:0.090f,tint.x,tint.y,tint.z,hostile?0.24f:0.19f};
+  }
+  if(count==0)return true;
+  glUseProgram(projectileProgram);
+  glUniformMatrix4fv(projectileViewLoc,1,GL_FALSE,view.v);
+  glUniformMatrix4fv(projectileProjectionLoc,1,GL_FALSE,projection.v);
+  glBindBuffer(GL_ARRAY_BUFFER,projectileInstanceVbo);
+  glBufferSubData(GL_ARRAY_BUFFER,0,(GLsizeiptr)(sizeof(ProjectileInstance)*(size_t)count),batch.data());
+  glBindVertexArray(projectileVao);
+  const GLboolean blendWasEnabled=glIsEnabled(GL_BLEND);
+  GLboolean depthWriteWasEnabled=GL_TRUE;glGetBooleanv(GL_DEPTH_WRITEMASK,&depthWriteWasEnabled);
+  glEnable(GL_BLEND);glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA);glDepthMask(GL_FALSE);
+  glDrawElementsInstanced(GL_TRIANGLES,6,GL_UNSIGNED_SHORT,(void*)0,count);
+  glDepthMask(depthWriteWasEnabled);
+  if(!blendWasEnabled)glDisable(GL_BLEND);
+  glBindVertexArray(0);glUseProgram(program);
+  return true;
+}
 GLuint makeFallbackProgram(){
   const char*vs=R"(#version 300 es
   void main(){vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));gl_Position=vec4(p[gl_VertexID],0.0,1.0);})";
@@ -399,6 +492,16 @@ void resetMission(){
   dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=-1.0f;
   won=false;lost=false;defeated=0;relayMask=0;podCollected={{false,false}};hazardCooldown.fill(0.0f);
   enemyShotCooldown.fill(0.8f);enemyWindup.fill(0.0f);enemyAttackCooldown.fill(0.0f);
+  enemyReactionTimer.fill(0.0f);enemyThinkInterval.fill(0.10f);
+  enemySlalomPhase.fill(0.0f);enemySlalomFrequency.fill(1.0f);enemySlalomStrength.fill(0.15f);
+  enemySteerX.fill(0.0f);enemySteerZ.fill(0.0f);enemyMoveScale.fill(1.0f);
+  for(size_t i=0;i<enemies.size();i++){
+    enemyThinkInterval[i]=randomRange(0.075f,0.145f);
+    enemyReactionTimer[i]=randomRange(0.0f,0.13f);
+    enemySlalomPhase[i]=randomRange(0.0f,2.0f*PI);
+    enemySlalomFrequency[i]=randomRange(0.82f,1.42f);
+    enemySlalomStrength[i]=randomRange(0.10f,0.23f);
+  }
   shots.fill({});
   if(arenaVariant==0){
     enemies={{{-3.85f,2.95f,1,1,1.10f,0.36f,0,PI},{0.85f,2.90f,2,2,0.72f,0.48f,1,PI},{3.90f,0.15f,1,1,1.35f,0.31f,2,PI},{-1.45f,-2.45f,1,1,1.62f,0.31f,3,PI}}};
@@ -769,16 +872,18 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
         {0.72f,0.81f,0.47f},{0.01f,0.015f,0.002f},0,0,0,view,proj,cam);
     }
   }
-  for(const auto&s:shots)if(s.life>0.0f){
-    if(s.hostile)orb({s.x,0.34f,s.z},{0.15f,0.15f,0.15f},{0.85f,0.33f,0.10f},{0.045f,0.007f,0.001f},view,proj,cam);
-    else orb({s.x,0.34f,s.z},{0.16f,0.16f,0.16f},{0.73f,0.85f,0.45f},{0.02f,0.025f,0.004f},view,proj,cam);
-  }
   // Subtle count markers sit inside the ground-cover rather than floating over a blue grid.
   for(size_t i=0;i<enemies.size();i++){
     const bool alive=enemies[i].hp>0.0f;
     poseOrb({-5.45f+0.32f*(float)i,0.055f,-4.02f},{0.10f,0.07f,0.10f},
       alive?V3{0.60f,0.27f,0.11f}:V3{0.24f,0.45f,0.17f},
       alive?V3{0.015f,0.003f,0.0f}:V3{0.003f,0.008f,0.001f},0,0,0,view,proj,cam);
+  }
+  if(!drawProjectilesInstanced(view,proj)){
+    for(const auto&shot:shots)if(shot.life>0.0f){
+      if(shot.hostile)orb({shot.x,0.34f,shot.z},{0.15f,0.15f,0.15f},{0.85f,0.33f,0.10f},{0.045f,0.007f,0.001f},view,proj,cam);
+      else orb({shot.x,0.34f,shot.z},{0.16f,0.16f,0.16f},{0.73f,0.85f,0.45f},{0.02f,0.025f,0.004f},view,proj,cam);
+    }
   }
 }
 bool projectileBlocked(float x,float z){
@@ -829,47 +934,56 @@ void fixedUpdate(float dt){
         triggerPlayerShotFeedback();
       }
     }
-    // Chasers close distance; heavy units telegraph a lunge; ranged units strafe and shoot.
+    // Each unit refreshes tactical decisions on its own randomized frame phase.
+    // Movement and collision integration remain continuous at the fixed simulation rate.
     for(int i=0;i<(int)enemies.size();i++){
-      auto&e=enemies[i];if(e.hp<=0.0f)continue;
-      float dx=playerX-e.x,dz=playerZ-e.z,d=std::sqrt(dx*dx+dz*dz);
-      if(d>0.001f)e.yaw=std::atan2(dx,dz);
-      if(e.type==2){
-        float vx=0.0f,vz=0.0f;
-        if(d>3.25f){vx=dx/std::max(0.001f,d);vz=dz/std::max(0.001f,d);}
-        else if(d<2.15f){vx=-dx/std::max(0.001f,d);vz=-dz/std::max(0.001f,d);}
-        else{const float strafe=std::sin(elapsed*1.15f+(float)i*2.1f)*0.55f;vx=(-dz/std::max(0.001f,d))*strafe;vz=(dx/std::max(0.001f,d))*strafe;}
-        e.x+=vx*e.speed*dt;e.z+=vz*e.speed*dt;resolveCollision(e.x,e.z,e.radius);
-        if(d<6.0f&&enemyShotCooldown[i]<=0.0f){
-          int slot=-1;for(int k=0;k<(int)shots.size();k++)if(shots[k].life<=0.0f){slot=k;break;}
-          if(slot>=0&&d>0.1f){shots[slot]={e.x,0.38f,e.z,dx/d*4.6f,dz/d*4.6f,2.0f,true};enemyShotCooldown[i]=1.55f;}
-        }
-      }else if(e.type==1){
-        if(d>1.22f){const float step=std::min(e.speed*dt,std::max(0.0f,d-1.08f));if(d>0.001f){e.x+=dx/d*step;e.z+=dz/d*step;}enemyWindup[i]=std::max(0.0f,enemyWindup[i]-dt*2.5f);resolveCollision(e.x,e.z,e.radius);}
-        else if(enemyAttackCooldown[i]<=0.0f){
-          enemyWindup[i]+=dt;
-          if(enemyWindup[i]>=0.42f){
-            if(d<1.72f&&!invulnerableNow){hurtPlayer(0.24f);if(d>0.001f){playerX-=dx/d*0.22f;playerZ-=dz/d*0.22f;resolveCollision(playerX,playerZ,0.30f);}}
-            enemyAttackCooldown[i]=1.55f;enemyWindup[i]=0.0f;
-          }
-        }else enemyWindup[i]=0.0f;
-      }else if(e.type==3){
-        // Fast skitter circles toward the player's flank and darts inward in short bursts.
+      auto&e=enemies[(size_t)i];if(e.hp<=0.0f)continue;
+      enemyReactionTimer[(size_t)i]-=dt;
+      if(enemyReactionTimer[(size_t)i]<=0.0f){
+        enemyReactionTimer[(size_t)i]=enemyThinkInterval[(size_t)i];
+        const float dx=playerX-e.x,dz=playerZ-e.z;
+        const float d=std::sqrt(dx*dx+dz*dz);
         const float safeD=std::max(0.001f,d);
-        const float orbit=std::sin(elapsed*2.7f+(float)i*1.8f);
-        float vx=(dx/safeD)*0.44f+(-dz/safeD)*orbit*0.92f;
-        float vz=(dz/safeD)*0.44f+(dx/safeD)*orbit*0.92f;
-        const float burst=(d>2.0f)?1.0f:(0.34f+0.48f*std::abs(orbit));
-        if(d>0.68f){
-          e.x+=vx*e.speed*burst*dt;e.z+=vz*e.speed*burst*dt;
-          resolveCollision(e.x,e.z,e.radius);
-        }else if(enemyAttackCooldown[i]<=0.0f){
-          if(!invulnerableNow)hurtPlayer(0.085f);
-          enemyAttackCooldown[i]=0.72f;
+        if(d>0.001f)e.yaw=std::atan2(dx,dz);
+        float steerX=0.0f,steerZ=0.0f,moveScale=1.0f;
+        if(e.type==2){
+          if(d>3.25f){steerX=dx/safeD;steerZ=dz/safeD;}
+          else if(d<2.15f){steerX=-dx/safeD;steerZ=-dz/safeD;}
+          else{const float strafe=std::sin(elapsed*1.15f+(float)i*2.1f)*0.55f;steerX=(-dz/safeD)*strafe;steerZ=(dx/safeD)*strafe;}
+          if(d<6.0f&&enemyShotCooldown[(size_t)i]<=0.0f){
+            int slot=-1;for(int k=0;k<(int)shots.size();k++)if(shots[(size_t)k].life<=0.0f){slot=k;break;}
+            if(slot>=0&&d>0.1f){shots[(size_t)slot]={e.x,0.38f,e.z,dx/safeD*4.6f,dz/safeD*4.6f,2.0f,true};enemyShotCooldown[(size_t)i]=1.55f;}
+          }
+        }else if(e.type==1){
+          if(d>1.22f){steerX=dx/safeD;steerZ=dz/safeD;enemyWindup[(size_t)i]=std::max(0.0f,enemyWindup[(size_t)i]-enemyThinkInterval[(size_t)i]*2.5f);}
+          else if(enemyAttackCooldown[(size_t)i]<=0.0f){
+            enemyWindup[(size_t)i]+=enemyThinkInterval[(size_t)i];
+            if(enemyWindup[(size_t)i]>=0.42f){
+              if(d<1.72f&&!invulnerableNow){hurtPlayer(0.24f);if(d>0.001f){playerX-=dx/safeD*0.22f;playerZ-=dz/safeD*0.22f;resolveCollision(playerX,playerZ,0.30f);}}
+              enemyAttackCooldown[(size_t)i]=1.55f;enemyWindup[(size_t)i]=0.0f;
+            }
+          }else enemyWindup[(size_t)i]=0.0f;
+        }else if(e.type==3){
+          const float orbit=std::sin(elapsed*2.7f+(float)i*1.8f);
+          steerX=(dx/safeD)*0.44f+(-dz/safeD)*orbit*0.92f;
+          steerZ=(dz/safeD)*0.44f+(dx/safeD)*orbit*0.92f;
+          moveScale=(d>2.0f)?1.0f:(0.34f+0.48f*std::abs(orbit));
+          if(d<=0.68f){steerX=0.0f;steerZ=0.0f;moveScale=0.0f;if(enemyAttackCooldown[(size_t)i]<=0.0f){if(!invulnerableNow)hurtPlayer(0.085f);enemyAttackCooldown[(size_t)i]=0.72f;}}
+        }else{
+          if(d>e.radius+0.43f){steerX=dx/safeD;steerZ=dz/safeD;enemyWindup[(size_t)i]=0.0f;}
+          else{enemyWindup[(size_t)i]=0.0f;if(enemyAttackCooldown[(size_t)i]<=0.0f){if(!invulnerableNow)hurtPlayer(0.12f);enemyAttackCooldown[(size_t)i]=0.82f;}}
         }
-      }else{
-        if(d>e.radius+0.43f){const float step=std::min(e.speed*dt,std::max(0.0f,d-e.radius-0.40f));if(d>0.001f){e.x+=dx/d*step;e.z+=dz/d*step;}resolveCollision(e.x,e.z,e.radius);enemyWindup[i]=0.0f;}
-        else if(enemyAttackCooldown[i]<=0.0f){if(!invulnerableNow)hurtPlayer(0.12f);enemyAttackCooldown[i]=0.82f;}
+        enemySteerX[(size_t)i]=steerX;enemySteerZ[(size_t)i]=steerZ;enemyMoveScale[(size_t)i]=moveScale;
+      }
+      const float baseX=enemySteerX[(size_t)i],baseZ=enemySteerZ[(size_t)i];
+      const float baseLength=std::sqrt(baseX*baseX+baseZ*baseZ);
+      if(baseLength>0.001f){
+        const float dirX=baseX/baseLength,dirZ=baseZ/baseLength;
+        const float lateral=std::sin(elapsed*enemySlalomFrequency[(size_t)i]+enemySlalomPhase[(size_t)i])*enemySlalomStrength[(size_t)i];
+        const float moveX=baseX-dirZ*lateral,moveZ=baseZ+dirX*lateral;
+        e.x+=moveX*e.speed*enemyMoveScale[(size_t)i]*dt;
+        e.z+=moveZ*e.speed*enemyMoveScale[(size_t)i]*dt;
+        resolveCollision(e.x,e.z,e.radius);
       }
     }
     // Projectiles stop on cover; enemy shots only hurt the player.
@@ -891,6 +1005,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   // EGL can recreate the context after resume: rebuild every GL object.
   // EGL can recreate the context after resume: rebuild every GL object from a clean state.
   program=0;fallbackProgram=0;fallbackVao=0;postProgram=0;postVao=0;
+  projectileProgram=0;projectileVao=0;projectileQuadVbo=0;projectileIndexBuffer=0;projectileInstanceVbo=0;
   sceneFramebuffer=0;sceneColorTexture=0;sceneDepthBuffer=0;sceneTargetW=sceneTargetH=0;
   cubeMesh={};sphereMesh={};organicMesh={};
   program=make3DProgram();
@@ -900,6 +1015,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");
     cameraLoc=glGetUniformLocation(program,"uCamera");
     postProgram=makePostProgram();
+    createProjectileRenderer();
     if(postProgram){
       postSceneLoc=glGetUniformLocation(postProgram,"uScene");
       postResolutionLoc=glGetUniformLocation(postProgram,"uResolution");

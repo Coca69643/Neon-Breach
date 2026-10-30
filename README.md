@@ -1,4 +1,4 @@
-# NEON BREACH 0.2
+# NEON BREACH 0.3
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
@@ -10,6 +10,13 @@ O ciclo da missão está explícito: restaurar três relés, conter quatro amea�
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.3 — Variabilidade de IA e renderização instanciada (Passo 3)
+- Introduz slalom nos inimigos, com força lateral senoidal e fase, frequência e amplitude sorteadas por unidade via C++17 `<random>`.
+- Dessincroniza as decisões táticas com atrasos iniciais aleatórios e intervalos de 75–145 ms; movimento e colisões continuam integrados a cada tick fixo.
+- Agrupa projéteis aliados e hostis em um único draw indexado instanciado, usando buffer dinâmico e `glDrawElementsInstanced`.
+- Acrescenta validação GLSL dos shaders de projéteis instanciados ao GitHub Actions.
+- Atualiza a versão Android para 0.3 e versionCode 18.
 
 ### 0.2 — Game Feel mecânico (Passo 2)
 - Troca o acompanhamento exponencial da câmera por uma mola linear amortecida com velocidade própria, integração em subpassos e resposta suavemente elástica.

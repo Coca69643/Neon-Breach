@@ -37,6 +37,8 @@ shader_sets = (
     ("make3DProgram", "3D scene", "fs", "frag", "scene.frag"),
     ("makePostProgram", "stylized lens post-process", "vs", "vert", "post.vert"),
     ("makePostProgram", "stylized lens post-process", "fs", "frag", "post.frag"),
+    ("makeProjectileProgram", "instanced projectiles", "vs", "vert", "projectiles.vert"),
+    ("makeProjectileProgram", "instanced projectiles", "fs", "frag", "projectiles.frag"),
     ("makeFallbackProgram", "fallback", "vs", "vert", "fallback.vert"),
     ("makeFallbackProgram", "fallback", "fs", "frag", "fallback.frag"),
 )
@@ -59,4 +61,4 @@ with tempfile.TemporaryDirectory(prefix="neon-breach-glsl-") as temp_dir:
             raise SystemExit(result.returncode)
         print(f"GLSL ES 3.00 OK: {filename}")
 
-print(f"All {len(shader_sets)} embedded OpenGL ES shaders compiled successfully.")
+print(f"All {len(shader_sets)} embedded OpenGL ES shader stages compiled successfully.")
