@@ -106,8 +106,10 @@ if "processRoomClear" not in cpp or "updateRoomTransition" not in cpp:
     raise SystemExit("Room-local waves or transition logic is missing")
 if "for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;" in cpp:
     raise SystemExit("Relays must no longer restore on a single tap")
-if "nativeTouch(11" not in activity or "nativeTouch(12" not in activity:
+if "fun beginInteraction() = sendTouch(11" not in activity or "fun endInteraction() = sendTouch(12" not in activity:
     raise SystemExit("Held interaction JNI lifecycle is missing")
+if "if(action==11)" not in cpp or "if(action==12)" not in cpp:
+    raise SystemExit("Native held interaction begin/end actions are missing")
 if "rooms[3].chestOpened" not in cpp or "LOOT_NANO_SHIELD" not in cpp:
     raise SystemExit("Final chest or loot modifier effects are missing")
 print("Two-second relay hold, +15% relay damage, final supply chest and randomized permanent loot checks OK.")
