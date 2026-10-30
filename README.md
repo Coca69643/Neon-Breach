@@ -1,4 +1,6 @@
-# NEON BREACH 0.13.0
+# NEON BREACH 0.1
+
+**Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
 **NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação ocorre no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção.
 
@@ -8,6 +10,14 @@ O ciclo da missão está explícito: restaurar três relés, conter quatro amea�
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.1 — Stylized Game Art (Passo 1)
+- Substitui a resposta difusa contínua por três bandas discretas de iluminação toon: sombra, meio-tom e luz.
+- Adiciona um passe de pós-processamento OpenGL ES com vinheta de borda e aberração cromática sutil, por deslocamento dos canais vermelho e azul.
+- Renderiza a cena em framebuffer limitado a 1600 × 900 para conter o custo de memória, com fallback para renderização direta se o framebuffer não puder ser criado.
+- Atualiza o rótulo Android para 0.1. O versionCode passa para 16, mantendo a progressão monotônica exigida para atualizações Android.
+
+### Histórico da linha anterior
 
 ### 0.13.0 — Instalação industrial e câmera dinâmica
 - Remove as árvores, plantas e manchas de musgo da área jogável; o cenário passa a ser uma instalação com painéis metálicos, divisões de piso, anteparo de descontaminação, tubulações de serviço, painéis de diagnóstico, lâmpadas industriais e marcações de segurança.

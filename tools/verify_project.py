@@ -8,6 +8,7 @@ required = [
     "app/src/main/AndroidManifest.xml", "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
     "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp",
+    "tools/validate_shaders.py",
 ]
 missing = [p for p in required if not Path(p).is_file()]
 if missing:
@@ -37,6 +38,9 @@ for token in (
     "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "operativeClass", "operativeMoveSpeed", "operativeShotDamage", "operativeDamageTakenMultiplier", "nativeSetOperative", "SITE ORION-9",
     "ORION INDUSTRIAL MODULES", "cameraFollow", "cameraFocusX", "cameraFocusZ",
+    "band=diffuse>0.72?1.0:(diffuse>0.34?0.72:0.43)", "makePostProgram",
+    "createSceneTarget", "GL_FRAMEBUFFER_COMPLETE", "GL_RGBA8", "vec2 chromaticOffset",
+    "smoothstep(0.18,1.20,radiusSq)", "postprocessReady",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
@@ -61,14 +65,14 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
               "RESTAURAR RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "KESTREL", "BASTION", "PATCH",
-              "SITE ORION-9  •  0.13.0", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
+              "SITE ORION-9  •  0.1", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
               "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS CONTIDAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.13.0'" not in build or "versionCode 15" not in build:
-    raise SystemExit("Version 0.13.0 metadata missing")
+if "versionName '0.1'" not in build or "versionCode 16" not in build:
+    raise SystemExit("Version 0.1 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 

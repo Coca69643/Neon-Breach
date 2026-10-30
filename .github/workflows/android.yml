@@ -68,8 +68,14 @@ jobs:
           fi
       - name: Install Android SDK, NDK and CMake
         run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
+      - name: Install GLSL validator
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes glslang-tools
       - name: Validate required source files
         run: python3 tools/verify_project.py
+      - name: Compile embedded OpenGL ES shaders
+        run: python3 tools/validate_shaders.py
       - name: Compile debug APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists

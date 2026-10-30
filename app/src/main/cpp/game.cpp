@@ -20,8 +20,10 @@ struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
 struct Shot { float x,y,z,vx,vz,life; bool hostile=false; float damage=1.0f; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
+GLuint postProgram=0, postVao=0, sceneFramebuffer=0, sceneColorTexture=0, sceneDepthBuffer=0;
 GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
-GLint fallbackResLoc=-1;
+GLint fallbackResLoc=-1, postSceneLoc=-1, postResolutionLoc=-1;
+int sceneTargetW=0, sceneTargetH=0;
 Mesh cubeMesh, sphereMesh, organicMesh;
 int screenW=1, screenH=1;
 float playerX=-5.15f, playerZ=-3.25f, playerHealth=1.0f;
@@ -208,11 +210,14 @@ GLuint make3DProgram(){
   void main(){
     vec3 n=normalize(vNormal);vec3 light=normalize(vec3(-0.42,0.88,0.34));
     float diffuse=max(dot(n,light),0.0);
+    // Three hard diffuse bands replace smooth Lambert shading: shadow, midtone and light.
+    float band=diffuse>0.72?1.0:(diffuse>0.34?0.72:0.43);
     vec3 viewDir=normalize(uCamera-vWorld);
-    float spec=pow(max(dot(reflect(-light,n),viewDir),0.0),20.0)*0.16;
-    float fillLight=max(dot(n,normalize(vec3(0.72,0.28,-0.44))),0.0)*0.16;
+    float specularResponse=pow(max(dot(reflect(-light,n),viewDir),0.0),20.0);
+    float spec=step(0.84,specularResponse)*0.12;
+    float fillLight=max(dot(n,normalize(vec3(0.72,0.28,-0.44))),0.0)*0.08;
     float rim=pow(1.0-max(dot(n,viewDir),0.0),2.7);
-    vec3 col=uColor*(0.22+0.68*diffuse+fillLight)+spec;
+    vec3 col=uColor*(0.22+0.68*band+fillLight)+vec3(spec);
     // Deterministic world-space grain adds material variation without downloaded textures.
     vec2 grainCell=floor(vWorld.xz*vec2(19.0,17.0));
     float grain=fract(sin(dot(grainCell,vec2(12.9898,78.233)))*43758.5453);
@@ -224,6 +229,84 @@ GLuint make3DProgram(){
     outColor=vec4(col,1.0);
   })";
   return linkProgram(vs,fs,"3D scene");
+}
+GLuint makePostProgram(){
+  const char*vs=R"(#version 300 es
+  out vec2 vUV;
+  void main(){
+    vec2 p[3]=vec2[3](vec2(-1.0,-1.0),vec2(3.0,-1.0),vec2(-1.0,3.0));
+    vec2 position=p[gl_VertexID];
+    gl_Position=vec4(position,0.0,1.0);
+    vUV=position*0.5+0.5;
+  })";
+  const char*fs=R"(#version 300 es
+  precision highp float;
+  in vec2 vUV;
+  uniform sampler2D uScene;
+  uniform vec2 uResolution;
+  out vec4 outColor;
+  void main(){
+    vec2 centered=vUV*2.0-1.0;
+    float aspect=uResolution.x/max(uResolution.y,1.0);
+    vec2 radial=vec2(centered.x*aspect,centered.y);
+    float radiusSq=dot(radial,radial);
+    float edge=smoothstep(0.18,1.20,radiusSq);
+    // RGB channels shift by at most about one render pixel, only near the lens edge.
+    vec2 radialDirection=normalize(centered+vec2(0.00001));
+    vec2 chromaticOffset=radialDirection*(vec2(1.10)/uResolution)*smoothstep(0.12,1.20,radiusSq);
+    vec2 redUV=clamp(vUV+chromaticOffset,vec2(0.001),vec2(0.999));
+    vec2 blueUV=clamp(vUV-chromaticOffset,vec2(0.001),vec2(0.999));
+    vec3 color;
+    color.r=texture(uScene,redUV).r;
+    color.g=texture(uScene,vUV).g;
+    color.b=texture(uScene,blueUV).b;
+    // Restrained 16% edge falloff preserves gameplay readability.
+    color*=1.0-0.16*edge;
+    outColor=vec4(color,1.0);
+  })";
+  return linkProgram(vs,fs,"stylized lens post-process");
+}
+void destroySceneTarget(){
+  if(sceneFramebuffer)glDeleteFramebuffers(1,&sceneFramebuffer);
+  if(sceneColorTexture)glDeleteTextures(1,&sceneColorTexture);
+  if(sceneDepthBuffer)glDeleteRenderbuffers(1,&sceneDepthBuffer);
+  sceneFramebuffer=sceneColorTexture=sceneDepthBuffer=0;
+  sceneTargetW=sceneTargetH=0;
+}
+bool createSceneTarget(int width,int height){
+  if(!postProgram||!postVao||width<=0||height<=0)return false;
+  const float renderScale=std::min(1.0f,std::min(1600.0f/(float)width,900.0f/(float)height));
+  const int targetW=std::max(1,(int)std::lround((float)width*renderScale));
+  const int targetH=std::max(1,(int)std::lround((float)height*renderScale));
+  if(sceneFramebuffer&&sceneTargetW==targetW&&sceneTargetH==targetH)return true;
+  destroySceneTarget();
+  glGenFramebuffers(1,&sceneFramebuffer);
+  glBindFramebuffer(GL_FRAMEBUFFER,sceneFramebuffer);
+  glGenTextures(1,&sceneColorTexture);
+  glBindTexture(GL_TEXTURE_2D,sceneColorTexture);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_CLAMP_TO_EDGE);
+  glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,targetW,targetH,0,GL_RGBA,GL_UNSIGNED_BYTE,nullptr);
+  glFramebufferTexture2D(GL_FRAMEBUFFER,GL_COLOR_ATTACHMENT0,GL_TEXTURE_2D,sceneColorTexture,0);
+  glGenRenderbuffers(1,&sceneDepthBuffer);
+  glBindRenderbuffer(GL_RENDERBUFFER,sceneDepthBuffer);
+  glRenderbufferStorage(GL_RENDERBUFFER,GL_DEPTH_COMPONENT24,targetW,targetH);
+  glFramebufferRenderbuffer(GL_FRAMEBUFFER,GL_DEPTH_ATTACHMENT,GL_RENDERBUFFER,sceneDepthBuffer);
+  const GLenum status=glCheckFramebufferStatus(GL_FRAMEBUFFER);
+  glBindTexture(GL_TEXTURE_2D,0);
+  glBindRenderbuffer(GL_RENDERBUFFER,0);
+  glBindFramebuffer(GL_FRAMEBUFFER,0);
+  if(status!=GL_FRAMEBUFFER_COMPLETE){
+    __android_log_print(ANDROID_LOG_ERROR,"NeonBreach","Post-process framebuffer incomplete: 0x%x; using direct rendering",(unsigned int)status);
+    destroySceneTarget();
+    return false;
+  }
+  sceneTargetW=targetW;
+  sceneTargetH=targetH;
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Stylized post-process target: %dx%d (display %dx%d)",sceneTargetW,sceneTargetH,width,height);
+  return true;
 }
 GLuint makeFallbackProgram(){
   const char*vs=R"(#version 300 es
@@ -724,18 +807,33 @@ void fixedUpdate(float dt){
 
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
   // EGL can recreate the context after resume: rebuild every GL object.
-  program=0;fallbackProgram=0;fallbackVao=0;cubeMesh={};sphereMesh={};organicMesh={};
+  // EGL can recreate the context after resume: rebuild every GL object from a clean state.
+  program=0;fallbackProgram=0;fallbackVao=0;postProgram=0;postVao=0;
+  sceneFramebuffer=0;sceneColorTexture=0;sceneDepthBuffer=0;sceneTargetW=sceneTargetH=0;
+  cubeMesh={};sphereMesh={};organicMesh={};
   program=make3DProgram();
   if(!program){__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","3D renderer failed, showing diagnostic fallback");fallbackProgram=makeFallbackProgram();}
-  if(program){mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");cameraLoc=glGetUniformLocation(program,"uCamera");createMeshes();}
-  else if(fallbackProgram){fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");glGenVertexArrays(1,&fallbackVao);}
+  if(program){
+    mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");
+    colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");
+    cameraLoc=glGetUniformLocation(program,"uCamera");
+    postProgram=makePostProgram();
+    if(postProgram){
+      postSceneLoc=glGetUniformLocation(postProgram,"uScene");
+      postResolutionLoc=glGetUniformLocation(postProgram,"uResolution");
+      glGenVertexArrays(1,&postVao);
+    }
+    createMeshes();
+  }else if(fallbackProgram){fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");glGenVertexArrays(1,&fallbackVao);}
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
   glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
   glClearColor(0.024f,0.032f,0.040f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
-  screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);glViewport(0,0,screenW,screenH);
+  screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);
+  glBindFramebuffer(GL_FRAMEBUFFER,0);glViewport(0,0,screenW,screenH);
+  if(program&&postProgram&&postVao)createSceneTarget(screenW,screenH);
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeDrawFrame(JNIEnv*,jobject){
   auto now=std::chrono::steady_clock::now();
@@ -748,6 +846,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   cameraFocusZ+=(desiredFocusZ-cameraFocusZ)*cameraFollow;
   const float step=1.0f/60.0f;
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
+  const bool postprocessReady=program&&postProgram&&postVao&&sceneFramebuffer&&sceneColorTexture;
+  glBindFramebuffer(GL_FRAMEBUFFER,postprocessReady?sceneFramebuffer:0);
+  glViewport(0,0,postprocessReady?sceneTargetW:screenW,postprocessReady?sceneTargetH:screenH);
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   if(!program){
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
@@ -758,10 +859,24 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
   glUseProgram(program);drawScene(view,proj,camera);
   if(lost||won){
-    // Volumetric outcome signal: a large bright ring above the arena center.
     V3 color=won?V3{0.0f,0.9f,0.38f}:V3{1.0f,0.04f,0.10f};
     V3 glow=won?V3{0.0f,0.48f,0.12f}:V3{0.35f,0.0f,0.015f};
     for(int i=0;i<28;i++){float a=2*PI*(float)i/28.0f;orb({std::cos(a)*0.75f,1.05f+0.05f*std::sin(elapsed*3),std::sin(a)*0.75f},{0.12f,0.12f,0.12f},color,glow,view,proj,camera);}
+  }
+  if(postprocessReady){
+    glBindFramebuffer(GL_FRAMEBUFFER,0);
+    glViewport(0,0,screenW,screenH);
+    glDisable(GL_DEPTH_TEST);
+    glUseProgram(postProgram);
+    glActiveTexture(GL_TEXTURE0);
+    glBindTexture(GL_TEXTURE_2D,sceneColorTexture);
+    glUniform1i(postSceneLoc,0);
+    glUniform2f(postResolutionLoc,(float)sceneTargetW,(float)sceneTargetH);
+    glBindVertexArray(postVao);
+    glDrawArrays(GL_TRIANGLES,0,3);
+    glBindVertexArray(0);
+    glBindTexture(GL_TEXTURE_2D,0);
+    glEnable(GL_DEPTH_TEST);
   }
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSetMode(JNIEnv*,jobject,jint mode){
