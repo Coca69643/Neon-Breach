@@ -875,7 +875,6 @@ void updateHeldInteraction(float dt){
     }
   }
   interactionHeld=false;interactionTimer=0.0f;interactionTarget=-1;
-  publishSnapshot();
 }
 bool nearActiveHazard(){
   for(int i=0;i<2;i++){
