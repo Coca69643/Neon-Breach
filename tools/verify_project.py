@@ -37,7 +37,7 @@ for token in (
     "projectileBlocked", "ARENA_LAYOUT_B", "ARENA_LAYOUT_C",
     "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
     "operativeClass", "operativeMoveSpeed", "operativeShotDamage", "operativeDamageTakenMultiplier", "nativeSetOperative", "SITE ORION-9",
-    "ORION INDUSTRIAL MODULES", "cameraFollow", "cameraFocusX", "cameraFocusZ",
+    "ORION INDUSTRIAL MODULES", "updateCameraSpring", "cameraFocusX", "cameraFocusZ",
     "band=diffuse>0.72?1.0:(diffuse>0.34?0.72:0.43)", "makePostProgram",
     "createSceneTarget", "GL_FRAMEBUFFER_COMPLETE", "GL_RGBA8", "vec2 chromaticOffset",
     "smoothstep(0.18,1.20,radiusSq)", "postprocessReady",
