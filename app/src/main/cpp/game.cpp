@@ -979,7 +979,9 @@ void fixedUpdate(float dt){
       const float baseLength=std::sqrt(baseX*baseX+baseZ*baseZ);
       if(baseLength>0.001f){
         const float dirX=baseX/baseLength,dirZ=baseZ/baseLength;
-        const float lateral=std::sin(elapsed*enemySlalomFrequency[(size_t)i]+enemySlalomPhase[(size_t)i])*enemySlalomStrength[(size_t)i];
+        const float slalomPhase=elapsed*enemySlalomFrequency[(size_t)i]+enemySlalomPhase[(size_t)i];
+        const float lateralWave=0.72f*std::sin(slalomPhase)+0.28f*std::cos(slalomPhase*0.5f+enemySlalomPhase[(size_t)i]*0.25f);
+        const float lateral=lateralWave*enemySlalomStrength[(size_t)i];
         const float moveX=baseX-dirZ*lateral,moveZ=baseZ+dirX*lateral;
         e.x+=moveX*e.speed*enemyMoveScale[(size_t)i]*dt;
         e.z+=moveZ*e.speed*enemyMoveScale[(size_t)i]*dt;
