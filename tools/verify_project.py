@@ -76,13 +76,13 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
               "RESTAURAR RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "NEON-VANGUARD", "STELLAR-REAPER",
               "SITE ORION-9  •  0.4", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
-              "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS CONTIDAS", "VIBRAÇÃO DE INTERFACE"):
+              "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS ATIVAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
 if "versionName '0.4'" not in build or "versionCode 19" not in build:
-    raise SystemExit("Version 0.3 metadata missing")
+    raise SystemExit("Version 0.4 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
