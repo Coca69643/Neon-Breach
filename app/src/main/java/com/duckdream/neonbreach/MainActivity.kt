@@ -321,6 +321,7 @@ class MainActivity : Activity() {
         }
         addVertical(content, text("CONFIGURAÇÕES", 28f, white, true), 4)
         addVertical(content, text("ÁUDIO E CONTROLES", 13f, cyan, true), 8)
+        addVertical(content, text("ESQUERDA — MOVIMENTO\nARRASTE O LADO DIREITO — MIRA\nMANTENHA ATIRAR PRESSIONADO — DISPARO CONTÍNUO", 11f, muted), 10)
 
         val soundLabel = if (soundEnabled) "SOM DE JOGO: LIGADO" else "SOM DE JOGO: DESLIGADO"
         addVertical(content, actionButton(soundLabel, soundEnabled) {
