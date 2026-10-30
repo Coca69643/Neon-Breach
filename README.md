@@ -1,4 +1,4 @@
-# NEON BREACH 0.6
+# NEON BREACH 0.7
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
@@ -6,12 +6,20 @@
 
 O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração através das portas de energia das salas. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
 
-A missão atravessa quatro salas retangulares conectadas, com seis ondas e 24 ameaças; a extração fica na quarta sala.
+A missão atravessa quatro salas retangulares conectadas, com seis ondas e 24 ameaças; os três relés concedem bônus de dano e um baú de suprimentos aguarda na quarta sala.
 
 ## Sobre o jogo
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.7 — Relés por interação, baú de suprimentos e modificadores (Passo 3)
+- Substitui a restauração instantânea dos relés por uma interação mantida por 2 segundos; o temporizador e a validação de alcance são executados no C++17 e são cancelados ao soltar ou sair do alcance.
+- Cada relé restaurado concede +15% de dano aos disparos do jogador, acumulando até +45% quando os três relés estão ativos na missão.
+- Quando a quarta sala é limpa, surge um baú de suprimentos estilizado no centro. O jogador o abre mantendo Interagir por 1 segundo.
+- O baú concede um modificador aleatório usando std::uniform_int_distribution: Overclock (25% maior cadência), Nano-Shield (absorve um impacto e recarrega em 10 segundos) ou Piercing Rounds (atravessa o primeiro inimigo atingido).
+- O modificador permanece ativo até o fim da partida e é removido ao iniciar uma nova missão. A extração final exige abrir o baú.
+- Atualiza a versão Android para 0.7 e versionCode 22.
 
 ### 0.6 — Dungeon-crawler com quatro salas conectadas (Passo 2)
 - Substitui a arena única por quatro módulos retangulares armazenados em `std::array<Room, 4>`, com limites, coberturas e estado de exploração próprios.

@@ -461,10 +461,29 @@ class MainActivity : Activity() {
             setPadding(dp(7), dp(4), dp(7), dp(4))
             isClickable = true
             isFocusable = true
+            contentDescription = "Interagir. Segure por 2 segundos para restaurar um relé ou por 1 segundo para abrir o baú."
             setOnClickListener {
                 if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                gameView.interact()
+                gameView.interact() // Single-tap pickup remains reserved for medical supplies.
                 updateHud(gameView.snapshot())
+            }
+            setOnTouchListener { view, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        gameView.beginInteraction()
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        gameView.endInteraction()
+                        view.performClick()
+                        true
+                    }
+                    MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
+                        gameView.endInteraction()
+                        true
+                    }
+                    else -> true
+                }
             }
         }
         layer.addView(interactButton, FrameLayout.LayoutParams(dp(174), dp(28), Gravity.END or Gravity.BOTTOM).apply {
@@ -722,22 +741,35 @@ class MainActivity : Activity() {
         val nearRelay = (snapshot and (1 shl 16)) != 0
         val nearPod = (snapshot and (1 shl 18)) != 0
         val nearHazard = (snapshot and (1 shl 19)) != 0
+        val chestSpawned = (snapshot and (1 shl 30)) != 0
+        val chestOpened = (snapshot and (1 shl 31)) != 0
+        val lootModifier = (snapshot ushr 28) and 3
+        val lootName = when (lootModifier) {
+            1 -> "OVERCLOCK"
+            2 -> "NANO-SHIELD"
+            3 -> "PIERCING"
+            else -> ""
+        }
         val dodgeReady = (snapshot and (1 shl 17)) != 0
         val relaysDone = Integer.bitCount(relayMask)
-        relayStatus.text = "RELÉS  $relaysDone / 3"
+        relayStatus.text = "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO"
         threatStatus.text = "AMEAÇAS  $enemiesLeft"
-        progressText.text = "SALA ${room + 1}/4  •  $eliminations/24"
+        progressText.text = if (lootName.isNotEmpty()) "SALA ${room + 1}/4  •  $eliminations/24  •  $lootName" else "SALA ${room + 1}/4  •  $eliminations/24"
         objectiveText.text = when {
             nearHazard -> "ALERTA  /  EVITE A ÁREA"
+            nearRelay -> "SEGURE INTERAGIR POR 2S  /  +15% DANO"
             enemiesLeft > 0 -> "CONTENHA AS AMEAÇAS"
+            room == 3 && chestSpawned && !chestOpened -> "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR"
+            room == 3 && chestOpened && relaysDone < 3 -> "LOOT GARANTIDO  /  RETORNE AOS RELÉS"
             room < 3 && nextDoorOpen -> "PORTA ABERTA  /  SIGA A SETA"
             room < 3 -> "PORTA DE ENERGIA  /  ELIMINE AS AMEAÇAS"
             relaysDone < 3 -> "RETORNE  /  RESTAURE OS RELÉS"
             else -> "EXTRAÇÃO  /  ALCANCE O PAD"
         }
         interactButton.text = when {
-            nearPod -> "KIT MÉDICO"
-            nearRelay -> "RESTAURAR RELÉ"
+            nearPod -> "KIT MÉDICO  /  TOQUE"
+            nearRelay -> "SEGURE 2S  /  RELÉ"
+            room == 3 && chestSpawned && !chestOpened -> "SEGURE 1S  /  BAÚ"
             else -> "SEM ALVO DE INTERAÇÃO"
         }
         interactButton.isEnabled = nearRelay || nearPod
@@ -796,6 +828,8 @@ class MainActivity : Activity() {
         fun interact() {
             queueEvent { nativeTouch(7, 0f, 0f, width.toFloat(), height.toFloat()) }
         }
+        fun beginInteraction() = sendTouch(11, 0f, 0f)
+        fun endInteraction() = sendTouch(12, 0f, 0f)
         fun controlTouch(action: Int, x: Float, y: Float) = sendTouch(action, x, y)
         fun setFiring(active: Boolean) = sendTouch(if (active) 8 else 9, 0f, 0f)
         fun dodge() = sendTouch(10, 0f, 0f)
