@@ -1,4 +1,5 @@
 #include <jni.h>
+#include "ProgressionManager.h"
 #include <GLES3/gl3.h>
 #include <android/log.h>
 #include <algorithm>
@@ -22,6 +23,11 @@ struct Shot { float x,y,z,vx,vz,life; bool hostile=false; float damage=1.0f; };
 struct ProjectileInstance { float x,y,z,radius,r,g,b,glow; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
+GLint sectorPaletteLoc=-1;
+neonbreach::ProgressionManager progression;
+int activeWave=0;
+float touchSensitivity=1.0f;
+bool nativeSoundEnabled=true;
 GLuint postProgram=0, postVao=0, sceneFramebuffer=0, sceneColorTexture=0, sceneDepthBuffer=0;
 GLuint projectileProgram=0, projectileVao=0, projectileQuadVbo=0, projectileIndexBuffer=0, projectileInstanceVbo=0;
 GLint mvpLoc=-1, modelLoc=-1, colorLoc=-1, glowLoc=-1, cameraLoc=-1;
@@ -44,7 +50,7 @@ float cameraShakeOffsetX=0.0f, cameraShakeOffsetY=0.0f;
 float playerSquashAge=0.15f;
 bool playerSquashActive=false;
 int missionSerial=0, arenaVariant=0;
-int operativeClass=0; // 0 Kestrel, 1 Bastion, 2 Patch
+int operativeClass=0; // 0 Neon-Vanguard, 1 Stellar-Reaper
 std::array<float,4> enemyShotCooldown{};
 std::array<float,4> enemyWindup{};
 std::array<float,4> enemyAttackCooldown{};
@@ -94,19 +100,22 @@ constexpr float RELAY_X[3]={-4.15f,0.05f,4.22f};
 constexpr float RELAY_Z[3]={2.65f,-0.55f,2.35f};
 constexpr float EXIT_X=5.15f;
 constexpr float EXIT_Z=-3.52f;
+constexpr int TOTAL_MISSION_ELIMINATIONS=24;
+float activeExtractionX(){return progression.sectorIndex()>0?13.10f:EXIT_X;}
+float activeExtractionZ(){return progression.sectorIndex()>0?-2.55f:EXIT_Z+1.04f;}
 constexpr float POD_X[2]={-2.95f,3.55f};
 constexpr float POD_Z[2]={-3.32f,0.10f};
 constexpr float HAZARD_X[2]={-1.20f,3.85f};
 constexpr float HAZARD_Z[2]={-1.55f,-1.35f};
 std::array<bool,2> podCollected{{false,false}};
 std::array<float,2> hazardCooldown{{0.0f,0.0f}};
-float operativeMoveSpeed(){return operativeClass==0?4.25f:(operativeClass==1?2.95f:3.55f);}
-float operativeFireInterval(){return operativeClass==0?0.13f:(operativeClass==1?0.26f:0.105f);}
-float operativeShotDamage(){return operativeClass==1?1.45f:(operativeClass==2?0.72f:1.0f);}
-float operativeDamageTakenMultiplier(){return operativeClass==1?0.65f:1.0f;}
-float operativeDodgeCooldown(){return operativeClass==0?0.82f:(operativeClass==1?1.45f:1.15f);}
-float operativeMedicalHeal(){return operativeClass==2?0.40f:0.24f;}
-float operativeRelayInteractionRadius(){return operativeClass==2?1.70f:1.25f;}
+float operativeMoveSpeed(){return operativeClass==1?5.10f:4.25f;}
+float operativeFireInterval(){return operativeClass==1?0.18f:0.15f;}
+float operativeShotDamage(){return 1.0f;}
+float operativeDamageTakenMultiplier(){return 1.0f;}
+float operativeDodgeCooldown(){return operativeClass==1?0.98f:0.88f;}
+float operativeMedicalHeal(){return 0.24f;}
+float operativeRelayInteractionRadius(){return 1.25f;}
 void triggerCameraShake(float impulse,float decay){
   if(impulse>=cameraShakeAmplitude)cameraShakeDecay=std::max(0.035f,decay);
   cameraShakeAmplitude=std::max(cameraShakeAmplitude,impulse);
@@ -239,7 +248,10 @@ void createMeshes(){
     const float wave=0.060f*std::sin(3.0f*t+0.65f)*std::cos(5.0f*p)
       +0.032f*std::sin(7.0f*p+1.3f)*std::sin(t)
       +0.020f*std::cos(4.0f*t-2.0f*p);
-    const float r=1.0f+wave;
+    // Multiscale value noise displaces generated vertices to break perfect silhouettes.
+    const float vertexNoise=0.052f*valueNoise(t*8.0f+p*12.0f,3.7f)
+      +0.024f*valueNoise(t*19.0f-p*17.0f,9.4f);
+    const float r=1.0f+wave+vertexNoise;
     return V3{0.5f*r*std::sin(t)*std::cos(p),0.5f*r*std::cos(t),0.5f*r*std::sin(t)*std::sin(p)};
   };
   for(int i=0;i<organicRings;i++){
@@ -280,7 +292,7 @@ GLuint make3DProgram(){
   const char*fs=R"(#version 300 es
   precision highp float;
   in vec3 vWorld;in vec3 vNormal;
-  uniform vec3 uColor;uniform vec3 uGlow;uniform vec3 uCamera;
+  uniform vec3 uColor;uniform vec3 uGlow;uniform vec3 uCamera;uniform vec3 uSectorPalette;
   out vec4 outColor;
   void main(){
     vec3 n=normalize(vNormal);vec3 light=normalize(vec3(-0.42,0.88,0.34));
@@ -299,6 +311,7 @@ GLuint make3DProgram(){
     float mottling=0.94+0.11*grain;
     col*=mottling;
     col+=uGlow+rim*(0.035+0.095*dot(uColor,vec3(0.333)));
+    col+=uSectorPalette*0.035;
     float fog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
     col=mix(col,vec3(0.018,0.027,0.040),fog);
     outColor=vec4(col,1.0);
@@ -442,7 +455,7 @@ bool drawProjectilesInstanced(const Mat4&view,const Mat4&projection){
   for(const auto&shot:shots){
     if(shot.life<=0.0f)continue;
     const bool hostile=shot.hostile;
-    const V3 tint=hostile?V3{0.94f,0.35f,0.11f}:V3{0.74f,0.88f,0.48f};
+    const V3 tint=hostile?V3{1.0f,0.09f,0.267f}:V3{0.0f,0.902f,0.463f};
     batch[(size_t)count++]={shot.x,0.34f,shot.z,hostile?0.085f:0.090f,tint.x,tint.y,tint.z,hostile?0.24f:0.19f};
   }
   if(count==0)return true;
@@ -481,6 +494,7 @@ void configureArena(){
   }};
 }
 void resetMission(){
+  progression.reset();activeWave=0;
   configureArena();
   playerX=-5.15f;playerZ=-3.25f;playerHealth=1.0f;
   cameraFocusX=std::clamp(playerX*0.68f,-3.8f,3.8f);cameraFocusZ=std::clamp(playerZ*0.55f,-2.25f,2.25f);
@@ -512,7 +526,7 @@ void resetMission(){
   }
 }
 void resolveCollision(float&x,float&z,float radius){
-  x=std::clamp(x,-6.10f+radius,6.10f-radius);z=std::clamp(z,-4.30f+radius,4.30f-radius);
+  x=std::clamp(x,progression.minX()+radius,progression.maxX()-radius);z=std::clamp(z,progression.minZ()+radius,progression.maxZ()-radius);
   for(const auto&o:obstacles){
     float qx=std::clamp(x,o.x-o.sx*0.5f,o.x+o.sx*0.5f),qz=std::clamp(z,o.z-o.sz*0.5f,o.z+o.sz*0.5f);
     float dx=x-qx,dz=z-qz,d2=dx*dx+dz*dz;
@@ -558,9 +572,8 @@ void poseOrganic(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const M
 // The field operative uses rounded armor, fabric-like masses and soft equipment volumes.
 void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,float squashX,float squashZ,const Mat4&view,const Mat4&proj,V3 cam){
   if(isPlayer){
-    if(archetype==0){armor={0.16f,0.25f,0.31f};trim={0.96f,0.38f,0.12f};glow={0.012f,0.075f,0.12f};}
-    else if(archetype==1){armor={0.22f,0.25f,0.28f};trim={0.96f,0.58f,0.18f};glow={0.07f,0.032f,0.006f};}
-    else{armor={0.10f,0.27f,0.27f};trim={0.62f,0.87f,0.78f};glow={0.008f,0.10f,0.095f};}
+    if(archetype==0){armor={0.0f,0.42f,0.52f};trim={0.0f,0.898f,1.0f};glow={0.0f,0.18f,0.24f};}
+    else{armor={0.48f,0.34f,0.0f};trim={1.0f,0.839f,0.0f};glow={0.24f,0.16f,0.0f};}
   }
   const float widthScale=(isPlayer&&archetype==1)?1.17f:((isPlayer&&archetype==2)?1.02f:0.94f);
   const float swing=std::sin(phase)*gait;
@@ -673,6 +686,27 @@ void drawCreature(V3 at,float yaw,float phase,float gait,int type,V3 armor,V3 tr
 }
 bool allEnemiesDefeated(){for(const auto&e:enemies)if(e.hp>0.0f)return false;return true;}
 int activeEnemyCount(){int count=0;for(const auto&e:enemies)if(e.hp>0.0f)count++;return count;}
+void spawnEnemyWave(int wave){
+  const bool expanded=progression.sectorIndex()>0;
+  const float x0[4]={expanded?8.1f:-4.75f,expanded?10.4f:-0.35f,expanded?13.1f:3.75f,expanded?11.8f:4.65f};
+  const float z0[4]={3.0f,3.35f,0.55f,-2.75f};
+  const float healthScale=1.0f+0.075f*(float)wave;
+  const float speedScale=1.0f+0.045f*(float)wave;
+  for(size_t i=0;i<enemies.size();i++){
+    const int type=((int)i+wave)%4;
+    const float hpBase=type==1?2.4f:1.0f;
+    const float speedBase=type==0?1.10f:(type==1?0.72f:(type==2?1.35f:1.62f));
+    const float radius=type==1?0.48f:((type==2||type==3)?0.31f:0.36f);
+    const float jitter=0.16f*std::sin((float)wave*1.7f+(float)i*2.4f);
+    enemies[i]={x0[i]+jitter,z0[i]+0.18f*std::cos((float)wave+(float)i),hpBase*healthScale,hpBase*healthScale,speedBase*speedScale,radius,type,PI};
+    enemyShotCooldown[i]=randomRange(0.45f,1.10f);
+    enemyWindup[i]=0.0f;enemyAttackCooldown[i]=randomRange(0.25f,0.75f);
+    enemyThinkInterval[i]=randomRange(0.075f,0.145f);enemyReactionTimer[i]=randomRange(0.0f,0.13f);
+    enemySlalomPhase[i]=randomRange(0.0f,2.0f*PI);enemySlalomFrequency[i]=randomRange(0.82f,1.42f);
+    enemySlalomStrength[i]=randomRange(0.10f,0.23f);enemySteerX[i]=0.0f;enemySteerZ[i]=0.0f;enemyMoveScale[i]=1.0f;
+  }
+  shots.fill({});
+}
 bool nearActiveRelay(){
   for(int i=0;i<3;i++){
     if(relayMask&(1<<i))continue;
@@ -701,13 +735,21 @@ bool nearActiveHazard(){
 void publishSnapshot(){
   int hp=(int)std::round(std::clamp(playerHealth,0.0f,1.0f)*100.0f);
   int packed=(gameMode&7)|((hp&127)<<3)|((relayMask&7)<<10)|((activeEnemyCount()&7)<<13)
-    |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0)|(nearActiveHazard()?1<<19:0);
+    |(nearActiveRelay()?1<<16:0)|(dodgeCooldown<=0.0f?1<<17:0)|(nearFieldPod()?1<<18:0)|(nearActiveHazard()?1<<19:0)
+    |((defeated&31)<<20)|((progression.sectorIndex()&7)<<25);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   // SITE ORION-9 — ORION INDUSTRIAL MODULES: layered steel, service conduits and containment hardware.
   box({0.0f,-0.25f,0.0f},{17.0f,0.44f,13.0f},{0.052f,0.064f,0.080f},{0.002f,0.004f,0.008f},0,view,proj,cam);
   box({0.0f,-0.006f,0.0f},{14.3f,0.035f,10.5f},{0.16f,0.18f,0.20f},{0.003f,0.005f,0.008f},0,view,proj,cam);
+  if(progression.sectorIndex()>0){
+    const auto palette=progression.palette();
+    box({10.85f,-0.25f,0.0f},{9.4f,0.44f,13.0f},{0.045f,0.055f,0.070f},{0.002f,0.004f,0.008f},0,view,proj,cam);
+    box({10.85f,-0.006f,0.0f},{9.35f,0.035f,10.5f},{0.19f,0.14f,0.085f},{palette.r*0.10f,palette.g*0.045f,palette.b*0.012f},0,view,proj,cam);
+    for(int row=-2;row<=2;row++)box({10.85f,0.014f,(float)row*1.72f},{9.1f,0.012f,0.022f},{0.09f,0.065f,0.045f},{0.003f,0.002f,0.001f},0,view,proj,cam);
+    for(int col=0;col<5;col++)box({7.05f+(float)col*1.88f,0.014f,0.0f},{0.022f,0.012f,10.1f},{0.09f,0.065f,0.045f},{0.003f,0.002f,0.001f},0,view,proj,cam);
+  }
 
   // Flush floor-panel seams create scale and a readable industrial layout.
   for(int row=-2;row<=2;row++){
@@ -732,7 +774,12 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
 
   // Structural perimeter and bulkhead. The central doorway is a visual landmark.
   box({-6.55f,0.78f,0.0f},{0.24f,1.56f,9.65f},{0.075f,0.095f,0.11f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-  box({ 6.55f,0.78f,0.0f},{0.24f,1.56f,9.65f},{0.075f,0.095f,0.11f},{0.002f,0.005f,0.008f},0,view,proj,cam);
+  if(progression.sectorIndex()==0)box({ 6.55f,0.78f,0.0f},{0.24f,1.56f,9.65f},{0.075f,0.095f,0.11f},{0.002f,0.005f,0.008f},0,view,proj,cam);
+  else{
+    box({15.55f,0.78f,0.0f},{0.24f,1.56f,9.65f},{0.10f,0.12f,0.15f},{0.006f,0.004f,0.001f},0,view,proj,cam);
+    box({10.90f,0.76f,4.88f},{9.2f,1.52f,0.28f},{0.12f,0.105f,0.085f},{0.009f,0.004f,0.001f},0,view,proj,cam);
+    box({10.90f,0.76f,-4.88f},{9.2f,1.52f,0.28f},{0.12f,0.105f,0.085f},{0.009f,0.004f,0.001f},0,view,proj,cam);
+  }
   box({-3.75f,0.76f,4.88f},{5.55f,1.52f,0.28f},{0.095f,0.12f,0.14f},{0.003f,0.006f,0.009f},0,view,proj,cam);
   box({ 3.70f,0.76f,4.88f},{5.65f,1.52f,0.28f},{0.095f,0.12f,0.14f},{0.003f,0.006f,0.009f},0,view,proj,cam);
   // Reinforced door jambs and header surround the decontamination shutter.
@@ -746,10 +793,10 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   for(int i=0;i<6;i++){
     const float z=-3.72f+(float)i*1.48f;
     box({-6.36f,0.78f,z},{0.10f,1.62f,0.13f},{0.16f,0.19f,0.21f},{0.002f,0.004f,0.006f},0,view,proj,cam);
-    box({ 6.36f,0.78f,z},{0.10f,1.62f,0.13f},{0.16f,0.19f,0.21f},{0.002f,0.004f,0.006f},0,view,proj,cam);
+    if(progression.sectorIndex()==0)box({ 6.36f,0.78f,z},{0.10f,1.62f,0.13f},{0.16f,0.19f,0.21f},{0.002f,0.004f,0.006f},0,view,proj,cam);
     if(i%2==0){
       box({-6.29f,1.24f,z},{0.035f,0.12f,0.30f},{0.84f,0.29f,0.065f},{0.038f,0.006f,0.001f},0,view,proj,cam);
-      box({ 6.29f,1.24f,z},{0.035f,0.12f,0.30f},{0.84f,0.29f,0.065f},{0.038f,0.006f,0.001f},0,view,proj,cam);
+      if(progression.sectorIndex()==0)box({ 6.29f,1.24f,z},{0.035f,0.12f,0.30f},{0.84f,0.29f,0.065f},{0.038f,0.006f,0.001f},0,view,proj,cam);
     }
   }
 
@@ -824,10 +871,10 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   }
   // Extraction is a marked transfer pad, unlocked after relays and threats are handled.
   const bool objectiveComplete=allEnemiesDefeated()&&relayMask==0x7;
-  box({EXIT_X,0.025f,EXIT_Z},{1.55f,0.10f,1.25f},{0.075f,0.105f,0.12f},{0.003f,0.006f,0.009f},0,view,proj,cam);
-  box({EXIT_X,0.085f,EXIT_Z},{1.28f,0.035f,0.98f},{0.15f,0.19f,0.20f},{0.003f,0.005f,0.006f},0,view,proj,cam);
-  for(int i=0;i<5;i++){const float dx=((float)i-2.0f)*0.22f;box({EXIT_X+dx,0.11f,EXIT_Z-0.40f},{0.12f,0.035f,0.08f},objectiveComplete?V3{0.10f,0.78f,0.82f}:V3{0.88f,0.32f,0.07f},objectiveComplete?V3{0.01f,0.10f,0.12f}:V3{0.055f,0.008f,0.001f},0,view,proj,cam);}
-  poseOrb({EXIT_X,0.34f+0.05f*std::sin(visualTime*1.6f),EXIT_Z},{0.15f,0.22f,0.15f},objectiveComplete?V3{0.15f,0.86f,0.84f}:V3{0.90f,0.40f,0.10f},objectiveComplete?V3{0.015f,0.12f,0.12f}:V3{0.07f,0.013f,0.001f},0,0,0,view,proj,cam);
+  box({activeExtractionX(),0.025f,activeExtractionZ()},{1.55f,0.10f,1.25f},{0.075f,0.105f,0.12f},{0.003f,0.006f,0.009f},0,view,proj,cam);
+  box({activeExtractionX(),0.085f,activeExtractionZ()},{1.28f,0.035f,0.98f},{0.15f,0.19f,0.20f},{0.003f,0.005f,0.006f},0,view,proj,cam);
+  for(int i=0;i<5;i++){const float dx=((float)i-2.0f)*0.22f;box({activeExtractionX()+dx,0.11f,activeExtractionZ()-0.40f},{0.12f,0.035f,0.08f},objectiveComplete?V3{0.10f,0.78f,0.82f}:V3{0.88f,0.32f,0.07f},objectiveComplete?V3{0.01f,0.10f,0.12f}:V3{0.055f,0.008f,0.001f},0,view,proj,cam);}
+  poseOrb({activeExtractionX(),0.34f+0.05f*std::sin(visualTime*1.6f),activeExtractionZ()},{0.15f,0.22f,0.15f},objectiveComplete?V3{0.15f,0.86f,0.84f}:V3{0.90f,0.40f,0.10f},objectiveComplete?V3{0.015f,0.12f,0.12f}:V3{0.07f,0.013f,0.001f},0,0,0,view,proj,cam);
   // The player's outfit is rounded and field-worn; the camera keeps the whole clearing readable.
   const float playerYaw=aiming?std::atan2(aimX-playerX,aimZ-playerZ):facingYaw;
   const float inputDx=(moveX-moveOriginX)/(float)std::max(1,screenH);
@@ -844,9 +891,9 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
     const auto&e=enemies[i];if(e.hp<=0.0f)continue;
     const float distanceToPlayer=std::sqrt((playerX-e.x)*(playerX-e.x)+(playerZ-e.z)*(playerZ-e.z));
     const float enemyGait=distanceToPlayer>e.radius+0.48f?0.88f:0.20f;
-    const V3 enemyArmor=e.type==1?V3{0.30f,0.18f,0.095f}:(e.type==2?V3{0.23f,0.30f,0.13f}:(e.type==3?V3{0.33f,0.23f,0.10f}:V3{0.20f,0.27f,0.12f}));
-    const V3 enemyTrim=e.type==1?V3{0.75f,0.43f,0.16f}:(e.type==2?V3{0.72f,0.72f,0.38f}:(e.type==3?V3{0.63f,0.37f,0.16f}:V3{0.52f,0.57f,0.22f}));
-    const V3 enemyGlow=e.type==1?V3{0.035f,0.014f,0.001f}:(e.type==2?V3{0.024f,0.035f,0.005f}:V3{0.015f,0.019f,0.002f});
+    const V3 enemyArmor{1.0f,0.09f,0.267f};
+    const V3 enemyTrim{1.0f,0.25f,0.36f};
+    const V3 enemyGlow{0.10f,0.004f,0.018f};
     drawCreature({e.x,0.0f,e.z},e.yaw,elapsed*(4.6f+e.speed),enemyGait,e.type,enemyArmor,enemyTrim,enemyGlow,view,proj,cam);
     const int healthBeads=(int)std::ceil(3.0f*e.hp/std::max(1.0f,e.maxHp));
     for(int bead=0;bead<healthBeads;bead++){
@@ -881,13 +928,13 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   }
   if(!drawProjectilesInstanced(view,proj)){
     for(const auto&shot:shots)if(shot.life>0.0f){
-      if(shot.hostile)orb({shot.x,0.34f,shot.z},{0.15f,0.15f,0.15f},{0.85f,0.33f,0.10f},{0.045f,0.007f,0.001f},view,proj,cam);
-      else orb({shot.x,0.34f,shot.z},{0.16f,0.16f,0.16f},{0.73f,0.85f,0.45f},{0.02f,0.025f,0.004f},view,proj,cam);
+      if(shot.hostile)orb({shot.x,0.34f,shot.z},{0.15f,0.15f,0.15f},{1.0f,0.09f,0.267f},{0.045f,0.004f,0.012f},view,proj,cam);
+      else orb({shot.x,0.34f,shot.z},{0.16f,0.16f,0.16f},{0.0f,0.902f,0.463f},{0.0f,0.025f,0.012f},view,proj,cam);
     }
   }
 }
 bool projectileBlocked(float x,float z){
-  if(x<-4.78f||x>4.78f||z<-3.34f||z>3.34f)return true;
+  if(x<progression.minX()||x>progression.maxX()||z<progression.minZ()||z>progression.maxZ())return true;
   for(const auto&o:obstacles)if(std::abs(x-o.x)<=o.sx*0.5f+0.055f&&std::abs(z-o.z)<=o.sz*0.5f+0.055f)return true;
   return false;
 }
@@ -924,15 +971,26 @@ void fixedUpdate(float dt){
 
     // Dedicated hold-to-fire; aim drag only steers the weapon.
     if(firing&&shotCooldown<=0.0f&&playerHealth>0.0f){
-      int slot=-1;for(int i=0;i<(int)shots.size();i++)if(shots[i].life<=0.0f){slot=i;break;}
-      if(slot>=0){
-        float dx,dz;
-        if(aiming){dx=aimX-playerX;dz=aimZ-playerZ;const float d=std::sqrt(dx*dx+dz*dz);if(d>0.001f){dx/=d;dz/=d;}else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}}
-        else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}
-        shots[slot]={playerX+dx*0.48f,0.45f,playerZ+dz*0.48f,dx*8.3f,dz*8.3f,1.12f,false,operativeShotDamage()};
-        shotCooldown=operativeFireInterval();
-        triggerPlayerShotFeedback();
+      float dx,dz;
+      if(aiming){dx=aimX-playerX;dz=aimZ-playerZ;const float d=std::sqrt(dx*dx+dz*dz);if(d>0.001f){dx/=d;dz/=d;}else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}}
+      else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}
+      const float baseAngle=std::atan2(dx,dz);
+      const int pelletCount=operativeClass==0?2:3;
+      for(int pellet=0;pellet<pelletCount;pellet++){
+        int slot=-1;for(int i=0;i<(int)shots.size();i++)if(shots[(size_t)i].life<=0.0f){slot=i;break;}
+        if(slot<0)break;
+        float shotDx=dx,shotDz=dz,shotX=playerX+dx*0.48f,shotZ=playerZ+dz*0.48f;
+        if(operativeClass==0){
+          const float lateral=pellet==0?-0.105f:0.105f;
+          shotX+=std::cos(baseAngle)*lateral;shotZ-=std::sin(baseAngle)*lateral;
+        }else{
+          const float spread=(float)(pellet-1)*0.20f;
+          const float angle=baseAngle+spread;shotDx=std::sin(angle);shotDz=std::cos(angle);
+        }
+        shots[(size_t)slot]={shotX,0.45f,shotZ,shotDx*8.3f,shotDz*8.3f,1.12f,false,operativeShotDamage()};
       }
+      shotCooldown=operativeFireInterval();
+      triggerPlayerShotFeedback();
     }
     // Each unit refreshes tactical decisions on its own randomized frame phase.
     // Movement and collision integration remain continuous at the fixed simulation rate.
@@ -994,10 +1052,15 @@ void fixedUpdate(float dt){
       s.x+=s.vx*dt;s.z+=s.vz*dt;s.life-=dt;
       if(s.life<=0.0f||projectileBlocked(s.x,s.z)){s.life=0.0f;continue;}
       if(s.hostile){const float dx=s.x-playerX,dz=s.z-playerZ;if(dx*dx+dz*dz<0.30f*0.30f){if(!invulnerableNow)hurtPlayer(0.10f);s.life=0.0f;}}
-      else for(auto&e:enemies){if(e.hp<=0.0f)continue;const float dx=s.x-e.x,dz=s.z-e.z;if(dx*dx+dz*dz<(e.radius+0.12f)*(e.radius+0.12f)){e.hp=std::max(0.0f,e.hp-s.damage);s.life=0.0f;if(e.hp<=0.0f)defeated++;break;}}
+      else for(auto&e:enemies){if(e.hp<=0.0f)continue;const float dx=s.x-e.x,dz=s.z-e.z;if(dx*dx+dz*dz<(e.radius+0.12f)*(e.radius+0.12f)){e.hp=std::max(0.0f,e.hp-s.damage);s.life=0.0f;if(e.hp<=0.0f){defeated++;progression.registerElimination();}break;}}
+    }
+    if(allEnemiesDefeated()&&defeated<TOTAL_MISSION_ELIMINATIONS){
+      ++activeWave;
+      if(progression.sectorIndex()>0&&defeated==20)triggerCameraShake(0.16f,0.32f);
+      spawnEnemyWave(activeWave);
     }
     if(playerHealth<=0.0f){lost=true;moving=false;aiming=false;firing=false;gameMode=5;}
-    if(allEnemiesDefeated()&&relayMask==0x7){float dx=playerX-4.02f,dz=playerZ+2.48f;if(dx*dx+dz*dz<0.72f*0.72f){won=true;moving=false;aiming=false;firing=false;gameMode=4;}}
+    if(defeated>=TOTAL_MISSION_ELIMINATIONS&&allEnemiesDefeated()&&relayMask==0x7){float dx=playerX-activeExtractionX(),dz=playerZ-activeExtractionZ();if(dx*dx+dz*dz<0.82f*0.82f){won=true;moving=false;aiming=false;firing=false;gameMode=4;}}
   }
   publishSnapshot();
 }
@@ -1014,6 +1077,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   if(!program){__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","3D renderer failed, showing diagnostic fallback");fallbackProgram=makeFallbackProgram();}
   if(program){
     mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");
+    sectorPaletteLoc=glGetUniformLocation(program,"uSectorPalette");
     colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");
     cameraLoc=glGetUniformLocation(program,"uCamera");
     postProgram=makePostProgram();
@@ -1041,7 +1105,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   frame=std::clamp(frame,0.0f,0.05f);visualTime+=frame;accumulator+=frame;
   const float step=1.0f/60.0f;
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
-  const float desiredFocusX=gameMode==1?std::clamp(playerX*0.68f,-3.8f,3.8f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
+  const float desiredFocusX=gameMode==1?std::clamp(playerX*0.68f,-3.8f,progression.maxX()*0.80f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
   const float desiredFocusZ=gameMode==1?std::clamp(playerZ*0.55f,-2.25f,2.25f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusZ);
   updateCameraSpring(frame,desiredFocusX,desiredFocusZ);
   updateCameraShake(frame);
@@ -1059,7 +1123,10 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   view.v[12]+=cameraShakeOffsetX;
   view.v[13]+=cameraShakeOffsetY;
   Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
-  glUseProgram(program);drawScene(view,proj,camera);
+  glUseProgram(program);
+  const auto sectorPalette=progression.palette();
+  if(sectorPaletteLoc>=0)glUniform3f(sectorPaletteLoc,sectorPalette.r,sectorPalette.g,sectorPalette.b);
+  drawScene(view,proj,camera);
   if(lost||won){
     V3 color=won?V3{0.0f,0.9f,0.38f}:V3{1.0f,0.04f,0.10f};
     V3 glow=won?V3{0.0f,0.48f,0.12f}:V3{0.35f,0.0f,0.015f};
@@ -1093,7 +1160,13 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   resetMission();gameMode=1;previousFrame=std::chrono::steady_clock::now();publishSnapshot();
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetOperative(JNIEnv*,jobject,jint selected){
-  operativeClass=std::clamp((int)selected,0,2);publishSnapshot();
+  operativeClass=std::clamp((int)selected,0,1);publishSnapshot();
+}
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetTouchSensitivity(JNIEnv*,jobject,jfloat sensitivity){
+  touchSensitivity=std::clamp((float)sensitivity,0.5f,1.5f);
+}
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetSoundEnabled(JNIEnv*,jobject,jboolean enabled){
+  nativeSoundEnabled=enabled==JNI_TRUE;
 }
 extern "C" JNIEXPORT jint JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeGetSnapshot(JNIEnv*,jobject){
   return (jint)publishedSnapshot.load(std::memory_order_relaxed);
@@ -1123,14 +1196,14 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_000
   }
   switch(action){
     case 0: moving=true;moveOriginX=moveX=x;moveOriginY=moveY=y;break;
-    case 1: if(moving){moveX=x;moveY=y;}break;
+    case 1: if(moving){moveX=moveOriginX+(x-moveOriginX)*touchSensitivity;moveY=moveOriginY+(y-moveOriginY)*touchSensitivity;}break;
     case 2: moving=false;break;
     case 3:
       aiming=true;aimOriginX=x;aimOriginY=y;
       aimX=playerX+std::sin(facingYaw)*5.0f;
       aimZ=playerZ+std::cos(facingYaw)*5.0f;
       break;
-    case 4: if(aiming){float dx=(x-aimOriginX)/(float)screenH,dz=(y-aimOriginY)/(float)screenH;float mag=std::sqrt(dx*dx+dz*dz);if(mag>0.035f){aimX=playerX+dx/mag*5.0f;aimZ=playerZ+dz/mag*5.0f;}}break;
+    case 4: if(aiming){float dx=(x-aimOriginX)*touchSensitivity/(float)screenH,dz=(y-aimOriginY)*touchSensitivity/(float)screenH;float mag=std::sqrt(dx*dx+dz*dz);if(mag>0.035f){aimX=playerX+dx/mag*5.0f;aimZ=playerZ+dz/mag*5.0f;}}break;
     case 5: if(aiming)facingYaw=std::atan2(aimX-playerX,aimZ-playerZ);aiming=false;break;
     case 6: moving=false;aiming=false;firing=false;break;
   }

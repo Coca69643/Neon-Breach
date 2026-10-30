@@ -1,6 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(neonbreach LANGUAGES CXX)
-add_library(neonbreach SHARED game.cpp)
+add_library(neonbreach SHARED game.cpp ProgressionManager.cpp)
 find_library(log-lib log)
 find_library(android-lib android)
+target_compile_options(neonbreach PRIVATE -O3 -Wall -Wextra)
 target_link_libraries(neonbreach GLESv3 ${android-lib} ${log-lib})

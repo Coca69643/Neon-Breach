@@ -8,6 +8,7 @@ required = [
     "app/src/main/AndroidManifest.xml", "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
     "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp",
+    "app/src/main/cpp/ProgressionManager.h", "app/src/main/cpp/ProgressionManager.cpp",
     "tools/validate_shaders.py",
 ]
 missing = [p for p in required if not Path(p).is_file()]
@@ -45,7 +46,7 @@ for token in (
     "updateCameraShake", "valueNoise", "triggerPlayerShotFeedback", "cameraShakeOffsetX",
     "playerSquashEnvelope", "playerSquashAge", "squashX=1.0f+0.105f*squash",
     "squashZ=1.0f-0.080f*squash", "triggerCameraShake(0.13f,0.19f)",
-    "#include <random>", "std::mt19937 aiRandomEngine", "enemyReactionTimer",
+    "#include <random>", "#include \"ProgressionManager.h\"", "ProgressionManager", "progression.registerElimination()", "TOTAL_MISSION_ELIMINATIONS=24", "spawnEnemyWave", "touchSensitivity", "nativeSetTouchSensitivity", "nativeSetSoundEnabled", "uSectorPalette", "std::mt19937 aiRandomEngine", "enemyReactionTimer",
     "enemyThinkInterval", "enemySlalomPhase", "enemySlalomFrequency", "enemySlalomStrength",
     "enemySteerX", "randomRange(0.0f,0.13f)", "enemySlalomFrequency[(size_t)i]",
     "createProjectileRenderer", "drawProjectilesInstanced", "glDrawElementsInstanced",
@@ -73,17 +74,24 @@ activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").re
 for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
-              "RESTAURAR RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "KESTREL", "BASTION", "PATCH",
-              "SITE ORION-9  •  0.3", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
+              "RESTAURAR RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "NEON-VANGUARD", "STELLAR-REAPER",
+              "SITE ORION-9  •  0.4", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
               "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS CONTIDAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.3'" not in build or "versionCode 18" not in build:
+if "versionName '0.4'" not in build or "versionCode 19" not in build:
     raise SystemExit("Version 0.3 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
 print(f"Project structure, icon, playable operative classes, containment outpost, objective flow, touch controls and Android UI checks OK ({len(required)} required files found).")
+cmake = Path("app/src/main/cpp/CMakeLists.txt").read_text()
+if "-O3" not in cmake:
+    raise SystemExit("Native optimized build flag -O3 is missing")
+manager = Path("app/src/main/cpp/ProgressionManager.cpp").read_text()
+if "KILLS_PER_SECTOR = 20" not in manager or "sectorIndex_" not in manager:
+    raise SystemExit("Sector progression manager does not define the 20-elimination unlock")
+print("Progression, sectors, character abilities, native settings and optimized build checks OK.")
 print("This check does not replace Android compilation or on-device testing.")

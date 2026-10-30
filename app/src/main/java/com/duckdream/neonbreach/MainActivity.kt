@@ -11,6 +11,8 @@ import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
+import android.media.AudioManager
+import android.media.ToneGenerator
 import android.view.Gravity
 import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
@@ -20,6 +22,7 @@ import android.opengl.GLSurfaceView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
 import android.widget.ProgressBar
+import android.widget.SeekBar
 import android.widget.TextView
 
 class MainActivity : Activity() {
@@ -31,12 +34,16 @@ class MainActivity : Activity() {
     private var backgroundedDuringGame = false
     private var hapticsEnabled = true
     private var selectedOperative = 0
+    private var soundEnabled = true
+    private var touchSensitivity = 1.0f
+    private var toneGenerator: ToneGenerator? = null
 
     private lateinit var healthBar: ProgressBar
     private lateinit var healthValue: TextView
     private lateinit var objectiveText: TextView
     private lateinit var relayStatus: TextView
     private lateinit var threatStatus: TextView
+    private lateinit var progressText: TextView
     private lateinit var interactButton: TextView
     private lateinit var dodgeButton: TextView
     private lateinit var fireButton: FireControlButton
@@ -64,7 +71,10 @@ class MainActivity : Activity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         hapticsEnabled = prefs.getBoolean("haptics", true)
-        selectedOperative = prefs.getInt("operative", 0).coerceIn(0, 2)
+        selectedOperative = prefs.getInt("operative", 0).coerceIn(0, 1)
+        soundEnabled = prefs.getBoolean("sound_enabled", true)
+        touchSensitivity = prefs.getFloat("touch_sensitivity", 1.0f).coerceIn(0.5f, 1.5f)
+        toneGenerator = try { ToneGenerator(AudioManager.STREAM_MUSIC, 55) } catch (_: RuntimeException) { null }
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
             View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
@@ -78,6 +88,8 @@ class MainActivity : Activity() {
         root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
         gameView.setOperative(selectedOperative)
+        gameView.setTouchSensitivity(touchSensitivity)
+        gameView.setGameSoundEnabled(soundEnabled)
         showMainMenu(false)
         uiHandler.postDelayed(pollState, 180L)
     }
@@ -104,6 +116,8 @@ class MainActivity : Activity() {
 
     override fun onDestroy() {
         uiHandler.removeCallbacks(pollState)
+        toneGenerator?.release()
+        toneGenerator = null
         super.onDestroy()
     }
 
@@ -119,10 +133,10 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun operativeName(): String = when (selectedOperative) {
-        0 -> "KESTREL"
-        1 -> "BASTION"
-        else -> "PATCH"
+    private fun operativeName(): String = if (selectedOperative == 0) "NEON-VANGUARD" else "STELLAR-REAPER"
+
+    private fun playGameTone(tone: Int = ToneGenerator.TONE_PROP_BEEP, durationMs: Int = 55) {
+        if (soundEnabled) toneGenerator?.startTone(tone, durationMs)
     }
 
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
@@ -223,7 +237,7 @@ class MainActivity : Activity() {
         addVertical(left, continueBtn, 7, dp(226), dp(41))
         addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 7, dp(226), dp(41))
         addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 7, dp(226), dp(41))
-        addVertical(left, text("SITE ORION-9  •  0.3", 9f, muted, true), 12)
+        addVertical(left, text("SITE ORION-9  •  0.4", 9f, muted, true), 12)
         layer.addView(left, FrameLayout.LayoutParams(dp(252), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
@@ -239,8 +253,8 @@ class MainActivity : Activity() {
             setOnClickListener { }
         }
         addVertical(right, text("FALHA DE CONTENÇÃO", 12f, amber, true), 8)
-        addVertical(right, text("Reconecte os relés da instalação, contenha as criaturas e alcance a zona de extração.", 13f, white), 15)
-        addVertical(right, text("3 RELÉS DE CONTENÇÃO\n4 AMEAÇAS\n1 ZONA DE EXTRAÇÃO", 10f, muted, true), 0)
+        addVertical(right, text("Restaure os relés, contenha as ameaças e avance quando 20 eliminações liberarem o próximo setor.", 13f, white), 15)
+        addVertical(right, text("3 RELÉS DE CONTENÇÃO\n20 ELIMINAÇÕES\nSETOR SEGUINTE LIBERADO", 10f, muted, true), 0)
         briefing.addView(right, FrameLayout.LayoutParams(-1, -2))
         layer.addView(briefing, FrameLayout.LayoutParams(dp(205), -2, Gravity.END or Gravity.CENTER_VERTICAL).apply {
             marginEnd = dp(27)
@@ -258,22 +272,21 @@ class MainActivity : Activity() {
             setPadding(dp(8), dp(6), dp(8), dp(6))
         }
         addVertical(content, text("SELECIONE SEU OPERADOR", 25f, white, true), 5)
-        addVertical(content, text("Três funções de campo. A escolha altera combate, mobilidade e suporte.", 12f, muted), 14)
-        val names = arrayOf("KESTREL", "BASTION", "PATCH")
-        val roles = arrayOf("BATEDOR", "BLINDADO", "TÉCNICO")
+        addVertical(content, text("Duas identidades de combate com padrões de disparo diferentes.", 12f, muted), 14)
+        val names = arrayOf("NEON-VANGUARD", "STELLAR-REAPER")
+        val roles = arrayOf("TIRO DUPLO", "DISPARO EM CONE")
         val descriptions = arrayOf(
-            "Alta mobilidade, esquiva rápida e disparo consistente.",
-            "Movimento lento, placas reforçadas e impactos mais fortes.",
-            "Disparo rápido, maior alcance de interação e kits médicos melhores."
+            "Armadura azul-neon. Velocidade padrão e dois projéteis paralelos por rajada.",
+            "Armadura dourada. Movimento 20% mais rápido e três projéteis em leque."
         )
-        val stats = arrayOf("MOBILIDADE ALTA\nDEFESA PADRÃO", "MOBILIDADE BAIXA\nRESISTÊNCIA +35%", "SUPORTE ALTO\nINTERAÇÃO AMPLIADA")
+        val stats = arrayOf("AZUL #00E5FF\nVELOCIDADE 100%", "DOURADO #FFD600\nVELOCIDADE 120%")
         val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
         for (index in names.indices) {
             val selected = index == selectedOperative
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(7), dp(8), dp(7), dp(8))
+                setPadding(dp(10), dp(10), dp(10), dp(10))
                 background = GradientDrawable().apply {
                     cornerRadius = dp(12).toFloat()
                     setColor(Color.argb(if (selected) 202 else 142, 13, 24, 31))
@@ -284,39 +297,70 @@ class MainActivity : Activity() {
                 selectedOperative = index
                 prefs.edit().putInt("operative", selectedOperative).apply()
                 gameView.setOperative(selectedOperative)
+                playGameTone(ToneGenerator.TONE_PROP_ACK, 60)
                 showOperativeSelect()
-            }, 5, dp(145), dp(43))
-            addVertical(card, text(roles[index], 11f, amber, true), 7)
-            addVertical(card, text(descriptions[index], 11f, white), 6)
-            addVertical(card, text(stats[index], 9f, muted, true), 0)
-            row.addView(card, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(4), 0, dp(4), 0) })
+            }, 7, dp(225), dp(45))
+            addVertical(card, text(roles[index], 12f, amber, true), 8)
+            addVertical(card, text(descriptions[index], 12f, white), 8)
+            addVertical(card, text(stats[index], 10f, muted, true), 0)
+            row.addView(card, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(6), 0, dp(6), 0) })
         }
         addVertical(content, row, 14)
-        addVertical(content, actionButton("VOLTAR À OPERAÇÃO", true) { showMainMenu(hasSession) }, 4, dp(250), dp(42))
-        layer.addView(content, FrameLayout.LayoutParams(dp(560), -2, Gravity.CENTER))
+        addVertical(content, actionButton("VOLTAR", true) { showMainMenu(hasSession) }, 4, dp(250), dp(42))
+        layer.addView(content, FrameLayout.LayoutParams(dp(540), -2, Gravity.CENTER))
         attachLayer(layer)
     }
 
     private fun showSettings() {
         currentScreen = Screen.SETTINGS
         gameView.setGameMode(3)
-        val layer = overlay(Color.argb(190, 12, 16, 8))
+        val layer = overlay(Color.argb(190, 8, 13, 18))
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(6), dp(4), dp(6), dp(4))
+            setPadding(dp(8), dp(6), dp(8), dp(6))
         }
-        addVertical(content, text("CONFIGURAÇÕES", 30f, white, true), 4)
-        addVertical(content, text("CONTROLES", 13f, cyan, true), 8)
-        addVertical(content, text("ESQUERDA  —  MOVIMENTO\nARRASTE O LADO DIREITO  —  MIRA\nMANTENHA ATIRAR PRESSIONADO  —  DISPARO CONTÍNUO\nRESTAURE OS RELÉS E ALCANCE A EXTRAÇÃO.", 15f, white), 18)
+        addVertical(content, text("CONFIGURAÇÕES", 28f, white, true), 4)
+        addVertical(content, text("ÁUDIO E CONTROLES", 13f, cyan, true), 8)
+
+        val soundLabel = if (soundEnabled) "SOM DE JOGO: LIGADO" else "SOM DE JOGO: DESLIGADO"
+        addVertical(content, actionButton(soundLabel, soundEnabled) {
+            soundEnabled = !soundEnabled
+            prefs.edit().putBoolean("sound_enabled", soundEnabled).apply()
+            gameView.setGameSoundEnabled(soundEnabled)
+            if (soundEnabled) playGameTone(ToneGenerator.TONE_PROP_ACK, 70)
+            showSettings()
+        }, 8, dp(330), dp(46))
+
+        val sensitivityLabel = text("SENSIBILIDADE DO TOQUE: ${(touchSensitivity * 100f).toInt()}%", 13f, white, true)
+        addVertical(content, sensitivityLabel, 12)
+        val sensitivity = SeekBar(this).apply {
+            max = 100
+            progress = ((touchSensitivity - 0.5f) * 100f).toInt().coerceIn(0, 100)
+            progressTintList = ColorStateList.valueOf(cyan)
+            thumbTintList = ColorStateList.valueOf(cyan)
+            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                    touchSensitivity = 0.5f + progress / 100f
+                    sensitivityLabel.text = "SENSIBILIDADE DO TOQUE: ${(touchSensitivity * 100f).toInt()}%"
+                    gameView.setTouchSensitivity(touchSensitivity)
+                }
+                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+                override fun onStopTrackingTouch(seekBar: SeekBar?) {
+                    prefs.edit().putFloat("touch_sensitivity", touchSensitivity).apply()
+                }
+            })
+        }
+        addVertical(content, sensitivity, 4, dp(330), dp(42))
+        addVertical(content, text("Faixa ajustável de 50% a 150%. A escolha fica salva entre sessões.", 11f, muted), 8)
+
         val hapticLabel = if (hapticsEnabled) "VIBRAÇÃO DE INTERFACE: LIGADA" else "VIBRAÇÃO DE INTERFACE: DESLIGADA"
-        val haptics = actionButton(hapticLabel, hapticsEnabled) {
+        addVertical(content, actionButton(hapticLabel, hapticsEnabled) {
             hapticsEnabled = !hapticsEnabled
             prefs.edit().putBoolean("haptics", hapticsEnabled).apply()
             showSettings()
-        }
-        addVertical(content, haptics, 22, dp(330), dp(48))
-        addVertical(content, actionButton("VOLTAR") { showMainMenu(hasSession) }, 10, dp(330), dp(46))
-        layer.addView(content, FrameLayout.LayoutParams(dp(350), -2, Gravity.CENTER))
+        }, 12, dp(330), dp(44))
+        addVertical(content, actionButton("VOLTAR") { showMainMenu(hasSession) }, 8, dp(330), dp(44))
+        layer.addView(content, FrameLayout.LayoutParams(dp(360), -2, Gravity.CENTER))
         attachLayer(layer)
     }
 
@@ -397,6 +441,8 @@ class MainActivity : Activity() {
         addVertical(left, relayStatus, 3)
         threatStatus = text("CRIATURAS  0 / 4 CONTIDAS", 11f, muted, true)
         addVertical(left, threatStatus, 0)
+        progressText = text("SETOR 1  •  0 / 24 ELIMINAÇÕES", 10f, amber, true)
+        addVertical(left, progressText, 4)
         layer.addView(left, FrameLayout.LayoutParams(dp(275), -2, Gravity.START or Gravity.TOP).apply {
             marginStart = dp(15); topMargin = dp(13)
         })
@@ -564,6 +610,7 @@ class MainActivity : Activity() {
             val shouldFire = isInside(x, y)
             if (firingVisual != shouldFire) {
                 firingVisual = shouldFire
+                if (shouldFire) playGameTone(ToneGenerator.TONE_PROP_BEEP, 55)
                 gameView.setFiring(shouldFire)
             }
             isPressed = shouldFire
@@ -659,6 +706,8 @@ class MainActivity : Activity() {
         val health = (snapshot ushr 3) and 127
         val relayMask = (snapshot ushr 10) and 7
         val enemiesLeft = (snapshot ushr 13) and 7
+        val eliminations = (snapshot ushr 20) and 31
+        val sector = (snapshot ushr 25) and 7
         val nearRelay = (snapshot and (1 shl 16)) != 0
         val nearPod = (snapshot and (1 shl 18)) != 0
         val nearHazard = (snapshot and (1 shl 19)) != 0
@@ -668,7 +717,8 @@ class MainActivity : Activity() {
         healthBar.progressTintList = ColorStateList.valueOf(if (health <= 28) Color.rgb(255, 67, 82) else cyan)
         healthValue.text = "$health%"
         relayStatus.text = "RELÉS ONLINE  $relaysDone / 3"
-        threatStatus.text = "AMEAÇAS CONTIDAS  ${4 - enemiesLeft} / 4"
+        threatStatus.text = "AMEAÇAS ATIVAS  $enemiesLeft"
+        progressText.text = "SETOR ${sector + 1}  •  $eliminations / 24 ELIMINAÇÕES"
         objectiveText.text = when {
             nearHazard -> "ALERTA BIOLÓGICO  /  SAIA DA NUVEM ÂMBAR"
             relaysDone < 3 -> "RESTAURE OS RELÉS DE CONTENÇÃO"
@@ -730,7 +780,9 @@ class MainActivity : Activity() {
         fun startNewMission() {
             queueEvent { renderer.startNewMissionOnGlThread() }
         }
-        fun setOperative(index: Int) { queueEvent { nativeSetOperative(index.coerceIn(0, 2)) } }
+        fun setOperative(index: Int) { queueEvent { nativeSetOperative(index.coerceIn(0, 1)) } }
+        fun setTouchSensitivity(value: Float) { queueEvent { nativeSetTouchSensitivity(value.coerceIn(0.5f, 1.5f)) } }
+        fun setGameSoundEnabled(enabled: Boolean) { queueEvent { nativeSetSoundEnabled(enabled) } }
 
         fun interact() {
             queueEvent { nativeTouch(7, 0f, 0f, width.toFloat(), height.toFloat()) }
@@ -801,6 +853,8 @@ class MainActivity : Activity() {
 
         private external fun nativeTouch(action: Int, x: Float, y: Float, w: Float, h: Float)
         private external fun nativeSetOperative(index: Int)
+        private external fun nativeSetTouchSensitivity(sensitivity: Float)
+        private external fun nativeSetSoundEnabled(enabled: Boolean)
 
         companion object {
             private const val INVALID_POINTER = -1

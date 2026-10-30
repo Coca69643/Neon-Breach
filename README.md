@@ -1,15 +1,26 @@
-# NEON BREACH 0.3
+# NEON BREACH 0.4
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
-**NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação ocorre no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção.
+**NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
 
 O ciclo da missão está explícito: restaurar três relés, conter quatro ameaças e alcançar a zona de extração. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
+
+A missão reúne três relés, 24 ameaças organizadas em seis ondas e uma extração localizada no Setor 2.
 
 ## Sobre o jogo
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.4 — Setores interconectados, novos operadores e identidade visual
+- Adiciona `ProgressionManager.cpp`: cada eliminação atualiza a progressão e 20 eliminações expandem os limites jogáveis, abrem a passagem leste e liberam o Setor 2 com paleta enviada por uniform ao shader.
+- Organiza 24 inimigos em seis ondas de quatro; as primeiras cinco ondas levam ao desbloqueio do novo setor e a sexta ocorre na nova ala antes da extração.
+- Troca a seleção anterior por Neon-Vanguard (azul, velocidade padrão, tiro duplo) e Stellar-Reaper (dourado, velocidade +20%, disparo em cone).
+- Acrescenta deslocamento de vértices com ruído multiescala à malha orgânica procedural.
+- Implementa configuração persistente de som e sensibilidade de toque via SharedPreferences; a sensibilidade chega ao C++ por JNI e os efeitos de feedback usam ToneGenerator do Android.
+- Define jogador azul/dourado, inimigos carmesim e projéteis aliados verde-limão; compila o renderer com `-O3`.
+- Atualiza a versão Android para 0.4 e versionCode 19.
 
 ### 0.3 — Variabilidade de IA e renderização instanciada (Passo 3)
 - Introduz slalom nos inimigos, com força lateral senoidal e fase, frequência e amplitude sorteadas por unidade via C++17 `<random>`.
