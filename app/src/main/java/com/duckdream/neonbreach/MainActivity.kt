@@ -743,6 +743,7 @@ class MainActivity : Activity() {
         val nearHazard = (snapshot and (1 shl 19)) != 0
         val chestSpawned = (snapshot and (1 shl 30)) != 0
         val chestOpened = (snapshot and (1 shl 31)) != 0
+        val chestAvailable = room == 3 && chestSpawned && !chestOpened
         val lootModifier = (snapshot ushr 28) and 3
         val lootName = when (lootModifier) {
             1 -> "OVERCLOCK"
@@ -759,7 +760,7 @@ class MainActivity : Activity() {
             nearHazard -> "ALERTA  /  EVITE A ÁREA"
             nearRelay -> "SEGURE INTERAGIR POR 2S  /  +15% DANO"
             enemiesLeft > 0 -> "CONTENHA AS AMEAÇAS"
-            room == 3 && chestSpawned && !chestOpened -> "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR"
+            chestAvailable -> "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR"
             room == 3 && chestOpened && relaysDone < 3 -> "LOOT GARANTIDO  /  RETORNE AOS RELÉS"
             room < 3 && nextDoorOpen -> "PORTA ABERTA  /  SIGA A SETA"
             room < 3 -> "PORTA DE ENERGIA  /  ELIMINE AS AMEAÇAS"
@@ -769,12 +770,13 @@ class MainActivity : Activity() {
         interactButton.text = when {
             nearPod -> "KIT MÉDICO  /  TOQUE"
             nearRelay -> "SEGURE 2S  /  RELÉ"
-            room == 3 && chestSpawned && !chestOpened -> "SEGURE 1S  /  BAÚ"
+            chestAvailable -> "SEGURE 1S  /  BAÚ"
             else -> "SEM ALVO DE INTERAÇÃO"
         }
-        interactButton.isEnabled = nearRelay || nearPod
-        interactButton.alpha = if (nearRelay || nearPod) 0.95f else 0.38f
-        interactButton.setTextColor(if (nearRelay || nearPod) Color.argb(230, 0, 229, 255) else Color.argb(105, 210, 220, 215))
+        val interactionAvailable = nearRelay || nearPod || chestAvailable
+        interactButton.isEnabled = interactionAvailable
+        interactButton.alpha = if (interactionAvailable) 0.95f else 0.38f
+        interactButton.setTextColor(if (interactionAvailable) Color.argb(230, 0, 229, 255) else Color.argb(105, 210, 220, 215))
         dodgeButton.isEnabled = dodgeReady
         dodgeButton.alpha = if (dodgeReady) 1f else 0.52f
         dodgeButton.invalidate()
