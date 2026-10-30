@@ -236,7 +236,7 @@ class MainActivity : Activity() {
         addVertical(left, continueBtn, 6, dp(181), dp(33))
         addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 6, dp(181), dp(33))
         addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 6, dp(181), dp(33))
-        addVertical(left, text("SITE ORION-9  •  0.5", 9f, muted, true), 10)
+        addVertical(left, text("SITE ORION-9  •  0.6", 9f, muted, true), 10)
         layer.addView(left, FrameLayout.LayoutParams(dp(225), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
@@ -717,7 +717,8 @@ class MainActivity : Activity() {
         val relayMask = (snapshot ushr 10) and 7
         val enemiesLeft = (snapshot ushr 13) and 7
         val eliminations = (snapshot ushr 20) and 31
-        val sector = (snapshot ushr 25) and 7
+        val room = (snapshot ushr 25) and 3
+        val nextDoorOpen = (snapshot and (1 shl 27)) != 0
         val nearRelay = (snapshot and (1 shl 16)) != 0
         val nearPod = (snapshot and (1 shl 18)) != 0
         val nearHazard = (snapshot and (1 shl 19)) != 0
@@ -725,11 +726,13 @@ class MainActivity : Activity() {
         val relaysDone = Integer.bitCount(relayMask)
         relayStatus.text = "RELÉS  $relaysDone / 3"
         threatStatus.text = "AMEAÇAS  $enemiesLeft"
-        progressText.text = "SETOR ${sector + 1}  •  $eliminations / 24"
+        progressText.text = "SALA ${room + 1}/4  •  $eliminations/24"
         objectiveText.text = when {
             nearHazard -> "ALERTA  /  EVITE A ÁREA"
-            relaysDone < 3 -> "RESTAURE OS RELÉS"
             enemiesLeft > 0 -> "CONTENHA AS AMEAÇAS"
+            room < 3 && nextDoorOpen -> "PORTA ABERTA  /  SIGA A SETA"
+            room < 3 -> "PORTA DE ENERGIA  /  ELIMINE AS AMEAÇAS"
+            relaysDone < 3 -> "RETORNE  /  RESTAURE OS RELÉS"
             else -> "EXTRAÇÃO  /  ALCANCE O PAD"
         }
         interactButton.text = when {

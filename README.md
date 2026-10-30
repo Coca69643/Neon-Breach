@@ -1,17 +1,25 @@
-# NEON BREACH 0.5
+# NEON BREACH 0.6
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
 **NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
 
-O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração após a abertura do segundo setor. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
+O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração através das portas de energia das salas. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
 
-A missão reúne três relés, 24 ameaças organizadas em seis ondas e uma extração localizada no Setor 2.
+A missão atravessa quatro salas retangulares conectadas, com seis ondas e 24 ameaças; a extração fica na quarta sala.
 
 ## Sobre o jogo
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.6 — Dungeon-crawler com quatro salas conectadas (Passo 2)
+- Substitui a arena única por quatro módulos retangulares armazenados em `std::array<Room, 4>`, com limites, coberturas e estado de exploração próprios.
+- Gera paredes sólidas e texturizadas proceduralmente; três passagens internas recebem portas de energia com blocos de colisão que desaparecem ao concluir as ondas locais.
+- Distribui seis ondas por sala (2, 1, 1 e 2), totalizando 24 inimigos. Cada sala só ativa seus inimigos ao ser visitada; as portas de entrada e saída ficam trancadas durante o combate e abrem após a ameaça local ser eliminada.
+- Desenha setas de direção no piso depois da abertura das portas e atualiza o HUD para indicar SALA 1/4 a 4/4.
+- Adiciona névoa escura de exploração no Fragment Shader OpenGL ES; os fragmentos das salas seguintes permanecem ocultos até o jogador atravessar a porta e atualizar a sala ativa.
+- Atualiza a versão Android para 0.6 e versionCode 21.
 
 ### 0.5 — UI/UX minimalista e HUD diegético (Passo 1)
 - Remove o painel lateral explicativo de falha de contenção do menu principal; mantém os comandos em uma coluna à esquerda e reduz os botões em 20%.

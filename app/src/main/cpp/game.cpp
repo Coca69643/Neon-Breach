@@ -36,6 +36,7 @@ GLint sectorPaletteLoc=-1, activeRoomLoc=-1;
 neonbreach::ProgressionManager progression;
 std::array<Room,ROOM_COUNT> rooms{};
 int activeRoom=0;
+bool roomWorldInitialized=false;
 int activeWave=0;
 float touchSensitivity=1.0f;
 bool nativeSoundEnabled=true;
@@ -519,6 +520,7 @@ void configureArena(){
   }
   obstacles=rooms[0].cover;
   activeRoom=0;
+  roomWorldInitialized=true;
 }
 void resetMission(){
   progression.reset();activeWave=0;
@@ -738,6 +740,7 @@ void enterRoom(int roomIndex){
   activeRoom=std::clamp(roomIndex,0,ROOM_COUNT-1);
   Room&room=rooms[(size_t)activeRoom];
   obstacles=room.cover;
+  if(!room.cleared&&activeRoom>0)rooms[(size_t)(activeRoom-1)].doorOpen=false;
   if(!room.visited){
     room.visited=true;
     spawnEnemyWave(activeWave+1);
@@ -769,6 +772,7 @@ void processRoomClear(){
     return;
   }
   room.cleared=true;
+  if(activeRoom>0)rooms[(size_t)(activeRoom-1)].doorOpen=true;
   if(activeRoom<ROOM_COUNT-1){
     room.doorOpen=true;
     triggerCameraShake(0.17f,0.34f);
@@ -1140,6 +1144,8 @@ void fixedUpdate(float dt){
 } // namespace
 
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
+  // Initialize dungeon metadata once; EGL context recreation must not reset mission progress.
+  if(!roomWorldInitialized)configureArena();
   // EGL can recreate the context after resume: rebuild every GL object.
   // EGL can recreate the context after resume: rebuild every GL object from a clean state.
   program=0;fallbackProgram=0;fallbackVao=0;postProgram=0;postVao=0;
@@ -1198,7 +1204,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   view.v[13]+=cameraShakeOffsetY;
   Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
   glUseProgram(program);
-  const auto sectorPalette=progression.palette();
   if(sectorPaletteLoc>=0){
     const V3 roomPalettes[4]={{0.025f,0.16f,0.22f},{0.28f,0.12f,0.025f},{0.04f,0.15f,0.27f},{0.24f,0.045f,0.075f}};
     const V3 tint=roomPalettes[(size_t)activeRoom];
