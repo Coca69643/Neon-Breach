@@ -20,7 +20,7 @@ struct Mesh { GLuint vao=0, vbo=0; GLsizei count=0; };
 struct Obstacle { float x,z,sx,sz,h; };
 constexpr int ROOM_COUNT=4;
 constexpr float ROOM_WIDTH=12.0f, ROOM_HALF_WIDTH=6.0f, ROOM_HALF_DEPTH=4.5f;
-constexpr float ROOM_DOOR_HALF_WIDTH=1.35f;
+constexpr float ROOM_DOOR_HALF_WIDTH=1.19f;
 struct Room {
   float centerX=0.0f,minX=0.0f,maxX=0.0f,minZ=-ROOM_HALF_DEPTH,maxZ=ROOM_HALF_DEPTH;
   int wavesTotal=1,wavesSpawned=0;
@@ -912,6 +912,7 @@ void drawRoomShell(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
       {0.008f,0.035f,0.045f},0,view,proj,cam);
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
+  // SITE ORION-9 — ORION INDUSTRIAL MODULES: four connected, procedurally textured containment rooms.
   for(int i=0;i<ROOM_COUNT;i++)drawRoomShell(i,view,proj,cam);
   box({rooms[0].minX,0.80f,0.0f},{0.30f,1.60f,9.35f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
   box({rooms[3].maxX,0.80f,0.0f},{0.30f,1.60f,9.35f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
