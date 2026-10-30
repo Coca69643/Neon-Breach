@@ -90,8 +90,9 @@ print(f"Project structure, icon, playable operative classes, containment outpost
 cmake = Path("app/src/main/cpp/CMakeLists.txt").read_text()
 if "-O3" not in cmake:
     raise SystemExit("Native optimized build flag -O3 is missing")
+manager_header = Path("app/src/main/cpp/ProgressionManager.h").read_text()
 manager = Path("app/src/main/cpp/ProgressionManager.cpp").read_text()
-if "KILLS_PER_SECTOR = 20" not in manager or "sectorIndex_" not in manager:
+if "KILLS_PER_SECTOR = 20" not in manager_header or "sectorIndex_" not in manager:
     raise SystemExit("Sector progression manager does not define the 20-elimination unlock")
 print("Progression, sectors, character abilities, native settings and optimized build checks OK.")
 print("This check does not replace Android compilation or on-device testing.")
