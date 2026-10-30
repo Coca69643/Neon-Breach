@@ -1,4 +1,4 @@
-# NEON BREACH 0.1
+# NEON BREACH 0.2
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
@@ -10,6 +10,12 @@ O ciclo da missão está explícito: restaurar três relés, conter quatro amea�
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.2 — Game Feel mecânico (Passo 2)
+- Troca o acompanhamento exponencial da câmera por uma mola linear amortecida com velocidade própria, integração em subpassos e resposta suavemente elástica.
+- Aplica squash & stretch procedural ao corpo completo do operador: expansão lateral no eixo local X e compressão de profundidade no eixo local Z, com atenuação exponencial e janela de 150 ms após cada disparo.
+- Adiciona um gerenciador nativo de camera shake por ruído suave interpolado; disparos geram impulsos pequenos e impactos recebidos geram impulsos mais fortes. O deslocamento é aplicado à matriz de visão antes de formar cada uMVP.
+- Atualiza o rótulo Android para 0.2 e incrementa versionCode para 17.
 
 ### 0.1 — Stylized Game Art (Passo 1)
 - Substitui a resposta difusa contínua por três bandas discretas de iluminação toon: sombra, meio-tom e luz.

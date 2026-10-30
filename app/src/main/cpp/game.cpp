@@ -34,6 +34,11 @@ float facingYaw=PI, moveDirX=0.0f, moveDirZ=-1.0f;
 float dodgeTime=0.0f, dodgeCooldown=0.0f, dodgeDirX=0.0f, dodgeDirZ=-1.0f;
 float elapsed=0.0f, accumulator=0.0f, visualTime=0.0f;
 float cameraFocusX=0.0f, cameraFocusZ=0.0f;
+float cameraVelocityX=0.0f, cameraVelocityZ=0.0f;
+float cameraShakeAmplitude=0.0f, cameraShakeDecay=0.10f;
+float cameraShakeOffsetX=0.0f, cameraShakeOffsetY=0.0f;
+float playerSquashAge=0.15f;
+bool playerSquashActive=false;
 int missionSerial=0, arenaVariant=0;
 int operativeClass=0; // 0 Kestrel, 1 Bastion, 2 Patch
 std::array<float,4> enemyShotCooldown{};
@@ -87,7 +92,20 @@ float operativeDamageTakenMultiplier(){return operativeClass==1?0.65f:1.0f;}
 float operativeDodgeCooldown(){return operativeClass==0?0.82f:(operativeClass==1?1.45f:1.15f);}
 float operativeMedicalHeal(){return operativeClass==2?0.40f:0.24f;}
 float operativeRelayInteractionRadius(){return operativeClass==2?1.70f:1.25f;}
-void hurtPlayer(float amount){playerHealth=std::max(0.0f,playerHealth-amount*operativeDamageTakenMultiplier());}
+void triggerCameraShake(float impulse,float decay){
+  if(impulse>=cameraShakeAmplitude)cameraShakeDecay=std::max(0.035f,decay);
+  cameraShakeAmplitude=std::max(cameraShakeAmplitude,impulse);
+}
+void triggerPlayerShotFeedback(){
+  playerSquashAge=0.0f;
+  playerSquashActive=true;
+  triggerCameraShake(0.026f,0.085f);
+}
+void hurtPlayer(float amount){
+  const float previousHealth=playerHealth;
+  playerHealth=std::max(0.0f,playerHealth-amount*operativeDamageTakenMultiplier());
+  if(playerHealth<previousHealth)triggerCameraShake(0.13f,0.19f);
+}
 
 V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
 V3 sub(V3 a,V3 b){return {a.x-b.x,a.y-b.y,a.z-b.z};}
@@ -120,6 +138,48 @@ Mat4 lookAt(V3 eye,V3 center,V3 up){
   m.v[2]=-f.x;m.v[6]=-f.y;m.v[10]=-f.z;
   m.v[12]=-dot(s,eye);m.v[13]=-dot(u,eye);m.v[14]=dot(f,eye);
   return m;
+}
+float valueNoise(float coordinate,float seed){
+  const float cell=std::floor(coordinate);
+  float blend=coordinate-cell;
+  blend=blend*blend*(3.0f-2.0f*blend);
+  auto hash=[](float x,float salt){
+    const float raw=std::sin(x*127.1f+salt*311.7f)*43758.5453f;
+    return (raw-std::floor(raw))*2.0f-1.0f;
+  };
+  const float a=hash(cell,seed),b=hash(cell+1.0f,seed);
+  return a+(b-a)*blend;
+}
+void updateCameraSpring(float dt,float targetX,float targetZ){
+  // Semi-implicit damped spring; substeps keep it stable across variable mobile frame times.
+  const int substeps=std::max(1,(int)std::ceil(dt/(1.0f/120.0f)));
+  const float h=dt/(float)substeps;
+  constexpr float stiffness=72.0f;
+  constexpr float damping=15.2f; // close to critical damping, with a small elastic lag
+  for(int i=0;i<substeps;i++){
+    const float ax=(targetX-cameraFocusX)*stiffness-cameraVelocityX*damping;
+    const float az=(targetZ-cameraFocusZ)*stiffness-cameraVelocityZ*damping;
+    cameraVelocityX+=ax*h;
+    cameraVelocityZ+=az*h;
+    cameraFocusX+=cameraVelocityX*h;
+    cameraFocusZ+=cameraVelocityZ*h;
+  }
+}
+void updateCameraShake(float dt){
+  if(cameraShakeAmplitude<=0.00035f){
+    cameraShakeAmplitude=0.0f;
+    cameraShakeOffsetX=0.0f;
+    cameraShakeOffsetY=0.0f;
+    return;
+  }
+  // Two smoothly interpolated noise streams avoid harsh frame-to-frame random jumps.
+  cameraShakeOffsetX=valueNoise(visualTime*31.0f,1.7f)*cameraShakeAmplitude;
+  cameraShakeOffsetY=valueNoise(visualTime*37.0f,8.3f)*cameraShakeAmplitude*0.72f;
+  cameraShakeAmplitude*=std::exp(-dt/std::max(0.035f,cameraShakeDecay));
+}
+float playerSquashEnvelope(){
+  if(!playerSquashActive)return 0.0f;
+  return std::exp(-playerSquashAge/0.045f);
 }
 void addVertex(std::vector<Vertex>&v,V3 p,V3 n){v.push_back({p.x,p.y,p.z,n.x,n.y,n.z});}
 void addTri(std::vector<Vertex>&v,V3 a,V3 b,V3 c,V3 n){addVertex(v,a,n);addVertex(v,b,n);addVertex(v,c,n);}
@@ -331,6 +391,9 @@ void resetMission(){
   configureArena();
   playerX=-5.15f;playerZ=-3.25f;playerHealth=1.0f;
   cameraFocusX=std::clamp(playerX*0.68f,-3.8f,3.8f);cameraFocusZ=std::clamp(playerZ*0.55f,-2.25f,2.25f);
+  cameraVelocityX=cameraVelocityZ=0.0f;
+  cameraShakeAmplitude=cameraShakeOffsetX=cameraShakeOffsetY=0.0f;
+  playerSquashAge=0.15f;playerSquashActive=false;
   aimX=playerX;aimZ=playerZ-5.0f;elapsed=0;accumulator=0;
   moving=false;aiming=false;firing=false;shotCooldown=0;facingYaw=PI;moveDirX=0.0f;moveDirZ=-1.0f;
   dodgeTime=0.0f;dodgeCooldown=0.0f;dodgeDirX=0.0f;dodgeDirZ=-1.0f;
@@ -390,7 +453,7 @@ void poseOrganic(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const M
   drawPose(organicMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);
 }
 // The field operative uses rounded armor, fabric-like masses and soft equipment volumes.
-void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
+void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPlayer,V3 armor,V3 trim,V3 glow,float squashX,float squashZ,const Mat4&view,const Mat4&proj,V3 cam){
   if(isPlayer){
     if(archetype==0){armor={0.16f,0.25f,0.31f};trim={0.96f,0.38f,0.12f};glow={0.012f,0.075f,0.12f};}
     else if(archetype==1){armor={0.22f,0.25f,0.28f};trim={0.96f,0.58f,0.18f};glow={0.07f,0.032f,0.006f};}
@@ -400,38 +463,48 @@ void drawHumanoid(V3 at,float yaw,float phase,float gait,int archetype,bool isPl
   const float swing=std::sin(phase)*gait;
   const float bob=0.018f*std::sin(phase*2.0f)*gait;
   const V3 forward{std::sin(yaw),0.0f,std::cos(yaw)},right{std::cos(yaw),0.0f,-std::sin(yaw)};
+  const float bodyScaleX=isPlayer?squashX:1.0f,bodyScaleZ=isPlayer?squashZ:1.0f;
   auto point=[&](float side,float front,float y)->V3{
-    return {at.x+right.x*side+forward.x*front,at.y+y+bob,at.z+right.z*side+forward.z*front};
+    return {at.x+right.x*side*bodyScaleX+forward.x*front*bodyScaleZ,at.y+y+bob,at.z+right.z*side*bodyScaleX+forward.z*front*bodyScaleZ};
+  };
+  // Scale each rounded body section in local width/depth, not the ground shadow.
+  auto bodyOrb=[&](V3 p,V3 size,V3 color,V3 partGlow,float partYaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 camera){
+    size.x*=bodyScaleX;size.z*=bodyScaleZ;
+    poseOrb(p,size,color,partGlow,partYaw,pitch,roll,v,pjt,camera);
+  };
+  auto bodyOrganic=[&](V3 p,V3 size,V3 color,V3 partGlow,float partYaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 camera){
+    size.x*=bodyScaleX;size.z*=bodyScaleZ;
+    poseOrganic(p,size,color,partGlow,partYaw,pitch,roll,v,pjt,camera);
   };
   const V3 cloth{0.18f,0.20f,0.14f},leather{0.24f,0.15f,0.085f},dark{0.075f,0.085f,0.065f};
   orb({at.x,0.018f,at.z},{0.66f,0.028f,0.58f},{0.025f,0.030f,0.020f},{0,0,0},view,proj,cam);
   for(int sign : {-1,1}){
     const float side=(float)sign,leg=swing*side;
-    poseOrb(point(side*0.14f,leg*0.07f,0.245f),{0.17f,0.26f,0.17f},armor,glow,yaw,leg*0.22f,side*0.025f,view,proj,cam);
-    poseOrb(point(side*0.14f,leg*0.13f,0.115f),{0.135f,0.20f,0.14f},cloth,{0.006f,0.008f,0.004f},yaw,-leg*0.17f,side*0.02f,view,proj,cam);
-    poseOrb(point(side*0.145f,leg*0.17f+0.10f,0.055f),{0.20f,0.095f,0.23f},leather,{0.01f,0.004f,0.0f},yaw,0.0f,0.0f,view,proj,cam);
+    bodyOrb(point(side*0.14f,leg*0.07f,0.245f),{0.17f,0.26f,0.17f},armor,glow,yaw,leg*0.22f,side*0.025f,view,proj,cam);
+    bodyOrb(point(side*0.14f,leg*0.13f,0.115f),{0.135f,0.20f,0.14f},cloth,{0.006f,0.008f,0.004f},yaw,-leg*0.17f,side*0.02f,view,proj,cam);
+    bodyOrb(point(side*0.145f,leg*0.17f+0.10f,0.055f),{0.20f,0.095f,0.23f},leather,{0.01f,0.004f,0.0f},yaw,0.0f,0.0f,view,proj,cam);
   }
-  poseOrganic(point(0,-0.025f,0.40f),{0.34f,0.24f,0.28f},dark,{0.005f,0.006f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrganic(point(0,0.015f,0.585f),{0.42f*widthScale,0.43f,0.32f*widthScale},armor,glow,yaw,-0.04f,0.0f,view,proj,cam);
-  poseOrb(point(0,0.135f,0.59f),{0.33f,0.30f,0.17f},cloth,{0.004f,0.006f,0.002f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(0,0.205f,0.61f),{0.13f,0.11f,0.06f},trim,{0.028f,0.035f,0.008f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrganic(point(0,-0.19f,0.60f),{0.27f,0.31f,0.18f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrganic(point(0,-0.025f,0.40f),{0.34f,0.24f,0.28f},dark,{0.005f,0.006f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrganic(point(0,0.015f,0.585f),{0.42f*widthScale,0.43f,0.32f*widthScale},armor,glow,yaw,-0.04f,0.0f,view,proj,cam);
+  bodyOrb(point(0,0.135f,0.59f),{0.33f,0.30f,0.17f},cloth,{0.004f,0.006f,0.002f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrb(point(0,0.205f,0.61f),{0.13f,0.11f,0.06f},trim,{0.028f,0.035f,0.008f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrganic(point(0,-0.19f,0.60f),{0.27f,0.31f,0.18f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
   for(int sign : {-1,1}){
     const float side=(float)sign,arm=swing*side;
-    poseOrganic(point(side*0.30f*widthScale,0.0f,0.67f),{0.24f*widthScale,0.20f,0.23f*widthScale},armor,glow,yaw,0.0f,side*0.12f,view,proj,cam);
-    poseOrb(point(side*0.34f,-arm*0.06f,0.52f),{0.15f,0.23f,0.15f},cloth,{0.006f,0.007f,0.004f},yaw,arm*0.25f,side*0.17f,view,proj,cam);
-    poseOrb(point(side*0.35f,-arm*0.10f,0.37f),{0.13f,0.20f,0.13f},armor,glow,yaw,arm*0.34f,side*0.11f,view,proj,cam);
-    poseOrb(point(side*0.36f,-arm*0.12f,0.245f),{0.12f,0.12f,0.12f},leather,{0.005f,0.003f,0.0f},yaw,0.0f,side*0.08f,view,proj,cam);
+    bodyOrganic(point(side*0.30f*widthScale,0.0f,0.67f),{0.24f*widthScale,0.20f,0.23f*widthScale},armor,glow,yaw,0.0f,side*0.12f,view,proj,cam);
+    bodyOrb(point(side*0.34f,-arm*0.06f,0.52f),{0.15f,0.23f,0.15f},cloth,{0.006f,0.007f,0.004f},yaw,arm*0.25f,side*0.17f,view,proj,cam);
+    bodyOrb(point(side*0.35f,-arm*0.10f,0.37f),{0.13f,0.20f,0.13f},armor,glow,yaw,arm*0.34f,side*0.11f,view,proj,cam);
+    bodyOrb(point(side*0.36f,-arm*0.12f,0.245f),{0.12f,0.12f,0.12f},leather,{0.005f,0.003f,0.0f},yaw,0.0f,side*0.08f,view,proj,cam);
   }
   // A hooded field helmet and a small glass-like visor replace the old square robot head.
-  poseOrganic(point(0,0,0.995f),{0.27f,0.26f,0.25f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(0,0.085f,1.045f),{0.26f,0.205f,0.22f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(0,0.15f,1.055f),{0.18f,0.064f,0.055f},{0.19f,0.22f,0.13f},{0.025f,0.03f,0.006f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(0,0.165f,1.063f),{0.11f,0.027f,0.027f},{0.52f,0.59f,0.38f},{0.04f,0.045f,0.015f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrganic(point(-0.23f,-0.12f,0.69f),{0.24f,0.31f,0.24f},leather,{0.008f,0.004f,0.0f},yaw,-0.06f,-0.12f,view,proj,cam);
-  poseOrganic(point(0.17f,-0.36f,0.56f),{0.25f,0.33f,0.22f},dark,{0.004f,0.004f,0.002f},yaw,0.02f,0.08f,view,proj,cam);
-  poseOrb(point(0.19f,0.25f,0.43f),{0.085f,0.085f,0.28f},dark,{0.002f,0.003f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
-  poseOrb(point(0.19f,0.36f,0.45f),{0.07f,0.07f,0.20f},trim,{0.018f,0.025f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrganic(point(0,0,0.995f),{0.27f,0.26f,0.25f},leather,{0.008f,0.005f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrb(point(0,0.085f,1.045f),{0.26f,0.205f,0.22f},armor,glow,yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrb(point(0,0.15f,1.055f),{0.18f,0.064f,0.055f},{0.19f,0.22f,0.13f},{0.025f,0.03f,0.006f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrb(point(0,0.165f,1.063f),{0.11f,0.027f,0.027f},{0.52f,0.59f,0.38f},{0.04f,0.045f,0.015f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrganic(point(-0.23f,-0.12f,0.69f),{0.24f,0.31f,0.24f},leather,{0.008f,0.004f,0.0f},yaw,-0.06f,-0.12f,view,proj,cam);
+  bodyOrganic(point(0.17f,-0.36f,0.56f),{0.25f,0.33f,0.22f},dark,{0.004f,0.004f,0.002f},yaw,0.02f,0.08f,view,proj,cam);
+  bodyOrb(point(0.19f,0.25f,0.43f),{0.085f,0.085f,0.28f},dark,{0.002f,0.003f,0.001f},yaw,0.0f,0.0f,view,proj,cam);
+  bodyOrb(point(0.19f,0.36f,0.45f),{0.07f,0.07f,0.20f},trim,{0.018f,0.025f,0.003f},yaw,0.0f,0.0f,view,proj,cam);
 }
 // Three creatures use different silhouettes: a low crawler, an armored grazer and a floating spore.
 void drawCreature(V3 at,float yaw,float phase,float gait,int type,V3 armor,V3 trim,V3 glow,const Mat4&view,const Mat4&proj,V3 cam){
@@ -658,8 +731,11 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   const float inputDy=(moveY-moveOriginY)/(float)std::max(1,screenH);
   const float inputMagnitude=std::sqrt(inputDx*inputDx+inputDy*inputDy);
   const float playerGait=moving?std::clamp(inputMagnitude/0.13f,0.0f,1.0f):0.0f;
+  const float squash=playerSquashEnvelope();
+  const float squashX=1.0f+0.105f*squash;
+  const float squashZ=1.0f-0.080f*squash;
   drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*8.0f,playerGait,operativeClass,true,
-    {0.28f,0.34f,0.20f},{0.59f,0.51f,0.27f},{0.012f,0.018f,0.003f},view,proj,cam);
+    {0.28f,0.34f,0.20f},{0.59f,0.51f,0.27f},{0.012f,0.018f,0.003f},squashX,squashZ,view,proj,cam);
   // Four creatures use different anatomies and behaviors rather than a shared robot rig.
   for(size_t i=0;i<enemies.size();i++){
     const auto&e=enemies[i];if(e.hp<=0.0f)continue;
@@ -711,6 +787,10 @@ bool projectileBlocked(float x,float z){
   return false;
 }
 void fixedUpdate(float dt){
+  if(playerSquashActive){
+    playerSquashAge+=dt;
+    if(playerSquashAge>=0.15f){playerSquashAge=0.15f;playerSquashActive=false;}
+  }
   if(gameMode!=1){publishSnapshot();return;}
   elapsed+=dt;
   const bool invulnerableNow=dodgeTime>0.0f;
@@ -744,7 +824,9 @@ void fixedUpdate(float dt){
         float dx,dz;
         if(aiming){dx=aimX-playerX;dz=aimZ-playerZ;const float d=std::sqrt(dx*dx+dz*dz);if(d>0.001f){dx/=d;dz/=d;}else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}}
         else{dx=std::sin(facingYaw);dz=std::cos(facingYaw);}
-        shots[slot]={playerX+dx*0.48f,0.45f,playerZ+dz*0.48f,dx*8.3f,dz*8.3f,1.12f,false,operativeShotDamage()};shotCooldown=operativeFireInterval();
+        shots[slot]={playerX+dx*0.48f,0.45f,playerZ+dz*0.48f,dx*8.3f,dz*8.3f,1.12f,false,operativeShotDamage()};
+        shotCooldown=operativeFireInterval();
+        triggerPlayerShotFeedback();
       }
     }
     // Chasers close distance; heavy units telegraph a lunge; ranged units strafe and shoot.
@@ -839,13 +921,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   auto now=std::chrono::steady_clock::now();
   float frame=std::chrono::duration<float>(now-previousFrame).count();previousFrame=now;
   frame=std::clamp(frame,0.0f,0.05f);visualTime+=frame;accumulator+=frame;
-  const float cameraFollow=1.0f-std::exp(-frame*4.6f);
-  const float desiredFocusX=gameMode==1?std::clamp(playerX*0.68f,-3.8f,3.8f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
-  const float desiredFocusZ=gameMode==1?std::clamp(playerZ*0.55f,-2.25f,2.25f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusZ);
-  cameraFocusX+=(desiredFocusX-cameraFocusX)*cameraFollow;
-  cameraFocusZ+=(desiredFocusZ-cameraFocusZ)*cameraFollow;
   const float step=1.0f/60.0f;
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
+  const float desiredFocusX=gameMode==1?std::clamp(playerX*0.68f,-3.8f,3.8f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
+  const float desiredFocusZ=gameMode==1?std::clamp(playerZ*0.55f,-2.25f,2.25f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusZ);
+  updateCameraSpring(frame,desiredFocusX,desiredFocusZ);
+  updateCameraShake(frame);
   const bool postprocessReady=program&&postProgram&&postVao&&sceneFramebuffer&&sceneColorTexture;
   glBindFramebuffer(GL_FRAMEBUFFER,postprocessReady?sceneFramebuffer:0);
   glViewport(0,0,postprocessReady?sceneTargetW:screenW,postprocessReady?sceneTargetH:screenH);
@@ -856,6 +937,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   }
   V3 camera{cameraFocusX,10.2f,cameraFocusZ+11.6f};
   Mat4 view=lookAt(camera,{cameraFocusX,0.0f,cameraFocusZ},{0.0f,1.0f,0.0f});
+  // Screen-space view translation is inherited by every object MVP in this frame.
+  view.v[12]+=cameraShakeOffsetX;
+  view.v[13]+=cameraShakeOffsetY;
   Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
   glUseProgram(program);drawScene(view,proj,camera);
   if(lost||won){
