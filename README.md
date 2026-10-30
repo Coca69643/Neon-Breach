@@ -1,10 +1,10 @@
-# NEON BREACH 0.4
+# NEON BREACH 0.5
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
 **NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
 
-O ciclo da missão está explícito: restaurar três relés, conter quatro ameaças e alcançar a zona de extração. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
+O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração após a abertura do segundo setor. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
 
 A missão reúne três relés, 24 ameaças organizadas em seis ondas e uma extração localizada no Setor 2.
 
@@ -12,6 +12,13 @@ A missão reúne três relés, 24 ameaças organizadas em seis ondas e uma extra
 Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
 
 ## Log de atualizações
+
+### 0.5 — UI/UX minimalista e HUD diegético (Passo 1)
+- Remove o painel lateral explicativo de falha de contenção do menu principal; mantém os comandos em uma coluna à esquerda e reduz os botões em 20%.
+- Remove a placa opaca do HUD e os valores de vitalidade no canto da tela; informações de relés, ameaças e setor passam a usar tipografia menor e sem fundo.
+- Move a indicação de vitalidade para uma barra fina renderizada em OpenGL ES acima do operador, com cor vinculada ao personagem selecionado.
+- Substitui os controles visuais de Atirar e Esquiva por ícones vazados, sem círculos ou fundos opacos, mantendo as mesmas áreas de toque e a lógica de disparo contínuo/esquiva.
+- Atualiza a versão Android para 0.5 e versionCode 20.
 
 ### 0.4 — Setores interconectados, novos operadores e identidade visual
 - Adiciona `ProgressionManager.cpp`: cada eliminação atualiza a progressão e 20 eliminações expandem os limites jogáveis, abrem a passagem leste e liberam o Setor 2 com paleta enviada por uniform ao shader.

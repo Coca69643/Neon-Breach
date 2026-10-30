@@ -5,6 +5,8 @@ import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
+import android.graphics.RectF
 import android.graphics.Typeface
 import android.content.Context
 import android.graphics.drawable.GradientDrawable
@@ -21,7 +23,6 @@ import android.view.ViewGroup
 import android.opengl.GLSurfaceView
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.ProgressBar
 import android.widget.SeekBar
 import android.widget.TextView
 
@@ -38,14 +39,12 @@ class MainActivity : Activity() {
     private var touchSensitivity = 1.0f
     private var toneGenerator: ToneGenerator? = null
 
-    private lateinit var healthBar: ProgressBar
-    private lateinit var healthValue: TextView
     private lateinit var objectiveText: TextView
     private lateinit var relayStatus: TextView
     private lateinit var threatStatus: TextView
     private lateinit var progressText: TextView
     private lateinit var interactButton: TextView
-    private lateinit var dodgeButton: TextView
+    private lateinit var dodgeButton: DodgeControlButton
     private lateinit var fireButton: FireControlButton
 
     private val uiHandler = Handler(Looper.getMainLooper())
@@ -178,9 +177,9 @@ class MainActivity : Activity() {
     }
 
     private fun menuCommandButton(label: String, accent: Boolean = false, onClick: () -> Unit): TextView {
-        return text(if (accent) "▸  $label" else "›  $label", 15f, if (accent) cyan else white, true).apply {
+        return text(if (accent) "▸  $label" else "›  $label", 12f, if (accent) cyan else white, true).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(7), dp(10), dp(7))
+            setPadding(dp(10), dp(5), dp(8), dp(5))
             background = GradientDrawable().apply {
                 shape = GradientDrawable.RECTANGLE
                 cornerRadius = dp(4).toFloat()
@@ -219,8 +218,8 @@ class MainActivity : Activity() {
     private fun showMainMenu(preserveMission: Boolean) {
         currentScreen = Screen.MENU
         gameView.setGameMode(if (preserveMission && hasSession) 6 else 0)
-        // Keep the living terrain visible; the menu sits over the world instead of a full opaque card.
-        val layer = overlay(Color.argb(86, 12, 16, 8))
+        // Keep the environment visible; actions remain in a compact left-side column.
+        val layer = overlay(Color.argb(78, 8, 12, 16))
         val left = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(4), 0, dp(4))
@@ -230,34 +229,16 @@ class MainActivity : Activity() {
         addVertical(left, View(this).apply { setBackgroundColor(cyan) }, 8, dp(176), dp(2))
         addVertical(left, text("PROTOCOLO DE CONTENÇÃO", 11f, muted, true), 8)
         addVertical(left, text("OPERADOR  ${operativeName()}", 12f, amber, true), 10)
-        addVertical(left, menuCommandButton("INICIAR OPERAÇÃO", true) { startNewMission() }, 7, dp(226), dp(43))
+        addVertical(left, menuCommandButton("INICIAR OPERAÇÃO", true) { startNewMission() }, 6, dp(181), dp(35))
         val continueBtn = menuCommandButton("CONTINUAR") { continueMission() }
         continueBtn.isEnabled = hasSession
         continueBtn.alpha = if (hasSession) 1f else 0.40f
-        addVertical(left, continueBtn, 7, dp(226), dp(41))
-        addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 7, dp(226), dp(41))
-        addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 7, dp(226), dp(41))
-        addVertical(left, text("SITE ORION-9  •  0.4", 9f, muted, true), 12)
-        layer.addView(left, FrameLayout.LayoutParams(dp(252), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
+        addVertical(left, continueBtn, 6, dp(181), dp(33))
+        addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 6, dp(181), dp(33))
+        addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 6, dp(181), dp(33))
+        addVertical(left, text("SITE ORION-9  •  0.5", 9f, muted, true), 10)
+        layer.addView(left, FrameLayout.LayoutParams(dp(225), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
-        })
-
-        val briefing = FrameLayout(this)
-        val briefingRule = View(this).apply { setBackgroundColor(amber) }
-        briefing.addView(briefingRule, FrameLayout.LayoutParams(dp(2), -1, Gravity.START))
-        val right = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.START
-            setPadding(dp(13), dp(6), dp(5), dp(6))
-            isClickable = true
-            setOnClickListener { }
-        }
-        addVertical(right, text("FALHA DE CONTENÇÃO", 12f, amber, true), 8)
-        addVertical(right, text("Restaure os relés, contenha as ameaças e avance quando 20 eliminações liberarem o próximo setor.", 13f, white), 15)
-        addVertical(right, text("3 RELÉS DE CONTENÇÃO\n20 ELIMINAÇÕES\nSETOR SEGUINTE LIBERADO", 10f, muted, true), 0)
-        briefing.addView(right, FrameLayout.LayoutParams(-1, -2))
-        layer.addView(briefing, FrameLayout.LayoutParams(dp(205), -2, Gravity.END or Gravity.CENTER_VERTICAL).apply {
-            marginEnd = dp(27)
         })
         attachLayer(layer)
     }
@@ -413,109 +394,100 @@ class MainActivity : Activity() {
 
     private fun createHudLayer(): View {
         val layer = overlay(Color.TRANSPARENT, false)
+        val hudColor = Color.argb(198, 236, 239, 225)
+        val hudMuted = Color.argb(164, 188, 195, 185)
         val left = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(13), dp(9), dp(13), dp(9))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(11).toFloat()
-                setColor(Color.argb(170, 20, 25, 14))
-                setStroke(dp(1), Color.argb(140, 109, 128, 68))
-            }
-            isClickable = true
-            setOnClickListener { }
+            setPadding(0, 0, 0, 0)
+            isClickable = false
         }
-        addVertical(left, text("NEON BREACH  /  SITE ORION-9", 12f, cyan, true), 5)
-        addVertical(left, text("OPERADOR  ${operativeName()}", 10f, amber, true), 3)
-        val healthRow = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL }
-        healthValue = text("100%", 12f, white, true)
-        healthRow.addView(text("VITALIDADE", 11f, muted, true), LinearLayout.LayoutParams(0, -2, 1f))
-        healthRow.addView(healthValue, LinearLayout.LayoutParams(-2, -2))
-        addVertical(left, healthRow, 3)
-        healthBar = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
-            max = 100
-            progress = 100
-            progressTintList = ColorStateList.valueOf(cyan)
-            progressBackgroundTintList = ColorStateList.valueOf(Color.rgb(30, 47, 58))
-        }
-        addVertical(left, healthBar, 7, dp(245), dp(10))
-        relayStatus = text("MARCADORES  0 / 3", 12f, white, true)
-        addVertical(left, relayStatus, 3)
-        threatStatus = text("CRIATURAS  0 / 4 CONTIDAS", 11f, muted, true)
-        addVertical(left, threatStatus, 0)
-        progressText = text("SETOR 1  •  0 / 24 ELIMINAÇÕES", 10f, amber, true)
-        addVertical(left, progressText, 4)
-        layer.addView(left, FrameLayout.LayoutParams(dp(275), -2, Gravity.START or Gravity.TOP).apply {
-            marginStart = dp(15); topMargin = dp(13)
+        addVertical(left, text("NEON BREACH  /  SITE ORION-9", 10f, Color.argb(210, 72, 220, 232), true), 3)
+        addVertical(left, text("OPERADOR  ${operativeName()}", 9f, Color.argb(190, 255, 183, 112), true), 5)
+        relayStatus = text("RELÉS  0 / 3", 10f, hudColor, true)
+        addVertical(left, relayStatus, 2)
+        threatStatus = text("AMEAÇAS  4", 9f, hudMuted, true)
+        addVertical(left, threatStatus, 2)
+        progressText = text("SETOR 1  •  0 / 24", 9f, Color.argb(190, 255, 183, 112), true)
+        addVertical(left, progressText, 0)
+        layer.addView(left, FrameLayout.LayoutParams(dp(235), -2, Gravity.START or Gravity.TOP).apply {
+            marginStart = dp(18); topMargin = dp(13)
         })
 
-        objectiveText = text("ENCONTRE OS MARCADORES", 12f, white, true).apply {
+        objectiveText = text("RESTAURE OS RELÉS DE CONTENÇÃO", 10f, hudColor, true).apply {
             gravity = Gravity.CENTER
-            setPadding(dp(12), dp(8), dp(12), dp(8))
-            background = GradientDrawable().apply {
-                cornerRadius = dp(11).toFloat()
-                setColor(Color.argb(184, 24, 29, 16))
-                setStroke(dp(1), Color.argb(145, 109, 128, 68))
-            }
-            isClickable = true
-            setOnClickListener { }
+            alpha = 0.88f
+            setPadding(dp(5), dp(4), dp(5), dp(4))
+            isClickable = false
         }
-        layer.addView(objectiveText, FrameLayout.LayoutParams(dp(335), -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(14) })
-        val pause = actionButton("Ⅱ  PAUSAR") { showPause() }
-        layer.addView(pause, FrameLayout.LayoutParams(dp(112), dp(42), Gravity.END or Gravity.TOP).apply {
-            marginEnd = dp(16); topMargin = dp(14)
+        layer.addView(objectiveText, FrameLayout.LayoutParams(dp(300), -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+            topMargin = dp(14)
+        })
+
+        val pause = text("Ⅱ", 16f, hudColor, true).apply {
+            gravity = Gravity.CENTER
+            alpha = 0.86f
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Pausar"
+            setOnClickListener { showPause() }
+        }
+        layer.addView(pause, FrameLayout.LayoutParams(dp(38), dp(38), Gravity.END or Gravity.TOP).apply {
+            marginEnd = dp(16); topMargin = dp(10)
         })
 
         val joystick = VirtualJoystick(this)
         layer.addView(joystick, FrameLayout.LayoutParams(dp(150), dp(150), Gravity.START or Gravity.BOTTOM).apply {
             marginStart = dp(20); bottomMargin = dp(16)
         })
-        // A dedicated circular fire control never doubles as the aim surface.
+
+        // Open outline glyphs preserve the hit area without opaque circles or button plates.
         fireButton = FireControlButton(this)
-        layer.addView(fireButton, FrameLayout.LayoutParams(dp(88), dp(88), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(18); bottomMargin = dp(14)
+        layer.addView(fireButton, FrameLayout.LayoutParams(dp(76), dp(76), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(18); bottomMargin = dp(12)
         })
-        dodgeButton = actionButton("ESQUIVA") { gameView.dodge() }.apply { textSize = 12f }
-        layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(92), dp(44), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(124); bottomMargin = dp(23)
+        dodgeButton = DodgeControlButton(this).apply {
+            setOnClickListener {
+                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                gameView.dodge()
+            }
+        }
+        layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(76), dp(76), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(108); bottomMargin = dp(12)
         })
-        interactButton = actionButton("INTERAGIR", true) {
-            gameView.interact()
-            updateHud(gameView.snapshot())
-        }.apply { isEnabled = false; alpha = 0.62f }
-        layer.addView(interactButton, FrameLayout.LayoutParams(dp(208), dp(42), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(20); bottomMargin = dp(110)
+
+        interactButton = text("INTERAGIR", 10f, Color.argb(190, 72, 220, 232), true).apply {
+            gravity = Gravity.CENTER
+            alpha = 0.82f
+            setPadding(dp(7), dp(4), dp(7), dp(4))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener {
+                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
+                gameView.interact()
+                updateHud(gameView.snapshot())
+            }
+        }
+        layer.addView(interactButton, FrameLayout.LayoutParams(dp(174), dp(28), Gravity.END or Gravity.BOTTOM).apply {
+            marginEnd = dp(23); bottomMargin = dp(100)
         })
         return layer
     }
 
-    /**
-     * Dedicated hold-to-fire control. The visual glyph and circular silhouette make
-     * firing distinct from the right-side drag area used for aiming.
-     */
     private inner class FireControlButton(context: Context) : View(context) {
-        private val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-        private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(2).toFloat()
-        }
-        private val innerRingPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1).toFloat()
-            color = Color.argb(110, 190, 217, 134)
-        }
-        private val bulletPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(231, 242, 191)
-        }
-        private val trailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(190, 217, 134)
+        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             style = Paint.Style.STROKE
             strokeWidth = dp(2).toFloat()
             strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val detailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(1).toFloat()
+            strokeCap = Paint.Cap.ROUND
         }
         private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(246, 241, 222)
             textAlign = Paint.Align.CENTER
-            textSize = dp(10).toFloat()
+            textSize = dp(9).toFloat()
             typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
         }
         private var activePointerId = -1
@@ -531,37 +503,27 @@ class MainActivity : Activity() {
         override fun onDraw(canvas: Canvas) {
             super.onDraw(canvas)
             val cx = width * 0.5f
-            val cy = height * 0.5f
-            val radius = minOf(width, height) * 0.425f
-            fillPaint.color = if (firingVisual) Color.argb(238, 53, 77, 34)
-                else Color.argb(222, 13, 24, 22)
-            ringPaint.color = if (firingVisual) Color.rgb(232, 246, 182) else cyan
-            ringPaint.strokeWidth = dp(if (firingVisual) 3 else 2).toFloat()
+            val cy = height * 0.40f
+            val accent = if (firingVisual) Color.rgb(255, 214, 0) else Color.rgb(0, 229, 255)
+            iconPaint.color = if (isEnabled) accent else Color.argb(75, 190, 200, 200)
+            detailPaint.color = Color.argb(if (firingVisual) 230 else 175, 232, 241, 236)
+            labelPaint.color = Color.argb(if (firingVisual) 245 else 185, 246, 249, 235)
 
-            canvas.drawCircle(cx, cy, radius, fillPaint)
-            canvas.drawCircle(cx, cy, radius, ringPaint)
-            canvas.drawCircle(cx, cy, radius * 0.78f, innerRingPaint)
-
-            // A tilted cartridge with short muzzle/trail strokes reads as firing,
-            // rather than as a second aiming reticle.
-            val iconY = cy - dp(7)
             canvas.save()
-            canvas.rotate(-38f, cx, iconY)
-            canvas.drawRoundRect(
-                cx - dp(4).toFloat(), iconY - dp(11).toFloat(),
-                cx + dp(4).toFloat(), iconY + dp(5).toFloat(),
-                dp(3).toFloat(), dp(3).toFloat(), bulletPaint
-            )
-            canvas.drawLine(cx, iconY + dp(8).toFloat(), cx, iconY + dp(13).toFloat(), trailPaint)
-            canvas.drawLine(cx - dp(5).toFloat(), iconY + dp(5).toFloat(),
-                cx - dp(5).toFloat(), iconY + dp(9).toFloat(), trailPaint)
+            canvas.rotate(-38f, cx, cy)
+            val barrel = RectF(cx - dp(5).toFloat(), cy - dp(13).toFloat(),
+                cx + dp(5).toFloat(), cy + dp(6).toFloat())
+            canvas.drawRoundRect(barrel, dp(2).toFloat(), dp(2).toFloat(), iconPaint)
+            canvas.drawLine(cx, cy + dp(6).toFloat(), cx, cy + dp(13).toFloat(), iconPaint)
+            canvas.drawLine(cx - dp(5).toFloat(), cy + dp(1).toFloat(),
+                cx - dp(10).toFloat(), cy + dp(1).toFloat(), detailPaint)
+            canvas.drawLine(cx + dp(5).toFloat(), cy - dp(8).toFloat(),
+                cx + dp(9).toFloat(), cy - dp(8).toFloat(), detailPaint)
+            canvas.drawLine(cx - dp(2).toFloat(), cy - dp(17).toFloat(),
+                cx + dp(2).toFloat(), cy - dp(17).toFloat(), detailPaint)
             canvas.restore()
 
-            canvas.drawText("ATIRAR", cx, cy + radius * 0.71f, labelPaint)
-            if (firingVisual) {
-                val pulsePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.rgb(255, 226, 137) }
-                canvas.drawCircle(cx + radius * 0.55f, cy - radius * 0.55f, dp(3).toFloat(), pulsePaint)
-            }
+            canvas.drawText("ATIRAR", cx, height - dp(8).toFloat(), labelPaint)
         }
 
         override fun onTouchEvent(event: MotionEvent): Boolean {
@@ -625,6 +587,54 @@ class MainActivity : Activity() {
             firingVisual = false
             isPressed = false
             invalidate()
+        }
+
+        override fun performClick(): Boolean {
+            super.performClick()
+            return true
+        }
+    }
+
+    private inner class DodgeControlButton(context: Context) : View(context) {
+        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            style = Paint.Style.STROKE
+            strokeWidth = dp(2).toFloat()
+            strokeCap = Paint.Cap.ROUND
+            strokeJoin = Paint.Join.ROUND
+        }
+        private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textAlign = Paint.Align.CENTER
+            textSize = dp(9).toFloat()
+            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
+        }
+
+        init {
+            isClickable = true
+            isFocusable = true
+            contentDescription = "Esquiva"
+        }
+
+        override fun onDraw(canvas: Canvas) {
+            super.onDraw(canvas)
+            val cx = width * 0.5f
+            val cy = height * 0.40f
+            iconPaint.color = if (isEnabled) Color.rgb(0, 229, 255) else Color.argb(78, 190, 200, 200)
+            labelPaint.color = Color.argb(if (isEnabled) 205 else 95, 232, 241, 236)
+
+            val dash = Path().apply {
+                moveTo(cx - dp(15).toFloat(), cy + dp(8).toFloat())
+                lineTo(cx - dp(5).toFloat(), cy - dp(8).toFloat())
+                lineTo(cx + dp(4).toFloat(), cy - dp(1).toFloat())
+                lineTo(cx + dp(14).toFloat(), cy - dp(16).toFloat())
+            }
+            canvas.drawPath(dash, iconPaint)
+            canvas.drawLine(cx - dp(17).toFloat(), cy + dp(2).toFloat(),
+                cx - dp(11).toFloat(), cy - dp(7).toFloat(), iconPaint)
+            canvas.drawLine(cx + dp(7).toFloat(), cy - dp(16).toFloat(),
+                cx + dp(14).toFloat(), cy - dp(16).toFloat(), iconPaint)
+            canvas.drawLine(cx + dp(14).toFloat(), cy - dp(16).toFloat(),
+                cx + dp(14).toFloat(), cy - dp(9).toFloat(), iconPaint)
+            canvas.drawText("ESQUIVA", cx, height - dp(8).toFloat(), labelPaint)
         }
 
         override fun performClick(): Boolean {
@@ -702,9 +712,8 @@ class MainActivity : Activity() {
     }
 
     private fun updateHud(snapshot: Int) {
-        if (currentScreen != Screen.PLAYING || !::healthBar.isInitialized) return
+        if (currentScreen != Screen.PLAYING || !::relayStatus.isInitialized) return
         val mode = snapshot and 7
-        val health = (snapshot ushr 3) and 127
         val relayMask = (snapshot ushr 10) and 7
         val enemiesLeft = (snapshot ushr 13) and 7
         val eliminations = (snapshot ushr 20) and 31
@@ -714,17 +723,14 @@ class MainActivity : Activity() {
         val nearHazard = (snapshot and (1 shl 19)) != 0
         val dodgeReady = (snapshot and (1 shl 17)) != 0
         val relaysDone = Integer.bitCount(relayMask)
-        healthBar.progress = health.coerceIn(0, 100)
-        healthBar.progressTintList = ColorStateList.valueOf(if (health <= 28) Color.rgb(255, 67, 82) else cyan)
-        healthValue.text = "$health%"
-        relayStatus.text = "RELÉS ONLINE  $relaysDone / 3"
-        threatStatus.text = "AMEAÇAS ATIVAS  $enemiesLeft"
-        progressText.text = "SETOR ${sector + 1}  •  $eliminations / 24 ELIMINAÇÕES"
+        relayStatus.text = "RELÉS  $relaysDone / 3"
+        threatStatus.text = "AMEAÇAS  $enemiesLeft"
+        progressText.text = "SETOR ${sector + 1}  •  $eliminations / 24"
         objectiveText.text = when {
-            nearHazard -> "ALERTA BIOLÓGICO  /  SAIA DA NUVEM ÂMBAR"
-            relaysDone < 3 -> "RESTAURE OS RELÉS DE CONTENÇÃO"
-            enemiesLeft > 0 -> "AMEAÇAS NO LOCAL  /  AVANCE COM CUIDADO"
-            else -> "ZONA DE EXTRAÇÃO ATIVA  /  ALCANCE O PAD"
+            nearHazard -> "ALERTA  /  EVITE A ÁREA"
+            relaysDone < 3 -> "RESTAURE OS RELÉS"
+            enemiesLeft > 0 -> "CONTENHA AS AMEAÇAS"
+            else -> "EXTRAÇÃO  /  ALCANCE O PAD"
         }
         interactButton.text = when {
             nearPod -> "KIT MÉDICO"
@@ -732,12 +738,11 @@ class MainActivity : Activity() {
             else -> "SEM ALVO DE INTERAÇÃO"
         }
         interactButton.isEnabled = nearRelay || nearPod
-        interactButton.alpha = if (nearRelay || nearPod) 1f else 0.62f
-        interactButton.background = buttonBackground(true, nearRelay || nearPod)
-        dodgeButton.text = if (dodgeReady) "ESQUIVA" else "RECARGA"
+        interactButton.alpha = if (nearRelay || nearPod) 0.95f else 0.38f
+        interactButton.setTextColor(if (nearRelay || nearPod) Color.argb(230, 0, 229, 255) else Color.argb(105, 210, 220, 215))
         dodgeButton.isEnabled = dodgeReady
-        dodgeButton.alpha = if (dodgeReady) 1f else 0.48f
-        dodgeButton.background = buttonBackground(dodgeReady, dodgeReady)
+        dodgeButton.alpha = if (dodgeReady) 1f else 0.52f
+        dodgeButton.invalidate()
         if (mode == 4 || mode == 5) showResult(mode == 4)
     }
 

@@ -739,6 +739,22 @@ void publishSnapshot(){
     |((defeated&31)<<20)|((progression.sectorIndex()&7)<<25);
   publishedSnapshot.store(packed,std::memory_order_relaxed);
 }
+void drawPlayerHealthBar(const Mat4&view,const Mat4&proj,V3 cam){
+  if(gameMode!=1)return;
+  const float health=std::clamp(playerHealth,0.0f,1.0f);
+  constexpr float barWidth=0.78f;
+  constexpr float barDepth=0.075f;
+  const V3 accent=operativeClass==0?V3{0.0f,0.86f,0.96f}:V3{1.0f,0.80f,0.0f};
+  box({playerX,1.43f,playerZ},{barWidth,0.035f,barDepth},
+      {0.025f,0.035f,0.040f},{0.001f,0.002f,0.003f},0,view,proj,cam);
+  if(health>0.002f){
+    const float filledWidth=barWidth*health;
+    const float leftEdge=playerX-barWidth*0.5f;
+    box({leftEdge+filledWidth*0.5f,1.455f,playerZ},
+        {filledWidth,0.024f,barDepth*0.70f},accent,
+        {accent.x*0.055f,accent.y*0.055f,accent.z*0.055f},0,view,proj,cam);
+  }
+}
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   // SITE ORION-9 — ORION INDUSTRIAL MODULES: layered steel, service conduits and containment hardware.
   box({0.0f,-0.25f,0.0f},{17.0f,0.44f,13.0f},{0.052f,0.064f,0.080f},{0.002f,0.004f,0.008f},0,view,proj,cam);
@@ -886,6 +902,7 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   const float squashZ=1.0f-0.080f*squash;
   drawHumanoid({playerX,0.0f,playerZ},playerYaw,elapsed*8.0f,playerGait,operativeClass,true,
     {0.28f,0.34f,0.20f},{0.59f,0.51f,0.27f},{0.012f,0.018f,0.003f},squashX,squashZ,view,proj,cam);
+  drawPlayerHealthBar(view,proj,cam);
   // Four creatures use different anatomies and behaviors rather than a shared robot rig.
   for(size_t i=0;i<enemies.size();i++){
     const auto&e=enemies[i];if(e.hp<=0.0f)continue;

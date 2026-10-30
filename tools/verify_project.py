@@ -44,7 +44,7 @@ for token in (
     "smoothstep(0.18,1.20,radiusSq)", "postprocessReady",
     "updateCameraSpring", "cameraVelocityX", "cameraVelocityZ", "stiffness=72.0f",
     "updateCameraShake", "valueNoise", "triggerPlayerShotFeedback", "cameraShakeOffsetX",
-    "playerSquashEnvelope", "playerSquashAge", "squashX=1.0f+0.105f*squash",
+    "playerSquashEnvelope", "playerSquashAge", "drawPlayerHealthBar", "barWidth=0.78f", "squashX=1.0f+0.105f*squash",
     "squashZ=1.0f-0.080f*squash", "triggerCameraShake(0.13f,0.19f)",
     "#include <random>", "#include \"ProgressionManager.h\"", "ProgressionManager", "progression.registerElimination()", "TOTAL_MISSION_ELIMINATIONS=24", "spawnEnemyWave", "touchSensitivity", "nativeSetTouchSensitivity", "nativeSetSoundEnabled", "uSectorPalette", "std::mt19937 aiRandomEngine", "enemyReactionTimer",
     "enemyThinkInterval", "enemySlalomPhase", "enemySlalomFrequency", "enemySlalomStrength",
@@ -75,13 +75,13 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
               "RESTAURAR RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "NEON-VANGUARD", "STELLAR-REAPER",
-              "SITE ORION-9  •  0.4", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(88)", "ESQUIVA", "Joystick de movimento",
+              "SITE ORION-9  •  0.5", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "class DodgeControlButton", "drawText(\"ATIRAR\"", "ESQUIVA", "RELÉS  $relaysDone / 3", "INTERAGIR", "ALERTA BIOLÓGICO", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(76)", "ESQUIVA", "Joystick de movimento",
               "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS ATIVAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android renderer/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.4'" not in build or "versionCode 19" not in build:
+if "versionName '0.5'" not in build or "versionCode 20" not in build:
     raise SystemExit("Version 0.4 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
@@ -94,5 +94,10 @@ manager_header = Path("app/src/main/cpp/ProgressionManager.h").read_text()
 manager = Path("app/src/main/cpp/ProgressionManager.cpp").read_text()
 if "KILLS_PER_SECTOR = 20" not in manager_header or "sectorIndex_" not in manager:
     raise SystemExit("Sector progression manager does not define the 20-elimination unlock")
+if "FALHA DE CONTENÇÃO" in activity or "healthBar" in activity or "healthValue" in activity:
+    raise SystemExit("Legacy briefing panel or corner health HUD remains")
+if "briefing" in activity:
+    raise SystemExit("Legacy right-side menu briefing container remains")
+print("Minimal menu, text-only HUD, diegetic health bar and outline action controls checks OK.")
 print("Progression, sectors, character abilities, native settings and optimized build checks OK.")
 print("This check does not replace Android compilation or on-device testing.")
