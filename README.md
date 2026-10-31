@@ -1,4 +1,4 @@
-# NEON BREACH 0.8
+# NEON BREACH 0.9.1
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
@@ -12,6 +12,13 @@ A missão agora ocupa um complexo industrial 2×2: átrio central, ala de pesqui
 Kotlin gerencia a camada Android, o ciclo de vida e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O renderer importa modelos GLB com cgltf e texturas PNG com stb_image, usando módulos ambientais CC0 do Kenney. Não há engine tradicional.
 
 ## Log de atualizações
+
+### 0.9.1 — Integridade física e estabilidade
+- Corrige a sincronização do personagem com Jolt ao atravessar portas e ao receber recuo.
+- Aplica recuo como velocidade física amortecida, sem teletransportar a posição fora do CharacterVirtual.
+- Centraliza a topologia 2×2 de salas e a folga das portas em WorldLayout.h, compartilhada pelo runtime e pelos testes nativos.
+- Atualiza as portas físicas no mesmo passo em que o estado da sala é alterado.
+- Atualiza o Android para 0.9.1 / versionCode 25.
 
 ### 0.8 — Reconstrução visual e espacial do mundo
 - Integra um pipeline nativo glTF 2.0/GLB baseado em cgltf e carregamento de atlas PNG por stb_image, com buffers indexados e UVs no OpenGL ES 3.0.
