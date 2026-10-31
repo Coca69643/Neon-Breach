@@ -22,7 +22,7 @@ on:
       - '.github/workflows/android.yml'
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   build:
@@ -97,3 +97,30 @@ jobs:
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
+      - name: Publish public GitHub Release
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          cp app/build/outputs/apk/debug/app-debug.apk ORION-9.apk
+          sha256sum ORION-9.apk > ORION-9.apk.sha256
+
+          release_tag="orion-9-build-${GITHUB_RUN_NUMBER}"
+          release_title="ORION-9 v0.9.1 - build #${GITHUB_RUN_NUMBER}"
+          release_notes="Automated Android APK build.
+
+          Source commit: ${GITHUB_SHA}
+          Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
+
+          Download ORION-9.apk. The SHA-256 checksum is included alongside it."
+
+          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            gh release upload "$release_tag" ORION-9.apk ORION-9.apk.sha256 --repo "$GITHUB_REPOSITORY" --clobber
+            gh release edit "$release_tag" --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes" --latest
+          else
+            gh release create "$release_tag" ORION-9.apk ORION-9.apk.sha256 --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes" --latest
+          fi
+
+          echo "## APK publicado" >> "$GITHUB_STEP_SUMMARY"
+          echo "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/ORION-9.apk" >> "$GITHUB_STEP_SUMMARY"
