@@ -108,7 +108,7 @@ for kotlin_name, jni_symbol in jni_contracts:
     if jni_symbol not in cpp:
         raise SystemExit(f"Native JNI implementation missing: {jni_symbol}")
 
-library_match = re.search(r"System\.loadLibrary\("([^"]+)"\)", activity)
+library_match = re.search(r'System\.loadLibrary\("([^"]+)"\)', activity)
 cmake = read_text("app/src/main/cpp/CMakeLists.txt")
 library_target = re.search(r"add_library\(([^\s]+)\s+SHARED", cmake)
 if not library_match or not library_target or library_match.group(1) != library_target.group(1):
