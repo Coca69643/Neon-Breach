@@ -4,7 +4,8 @@
 namespace neonbreach {
 inline constexpr std::size_t kRoomCount=4;
 inline constexpr float kRoomHalfExtent=10.0f;
-inline constexpr float kPlayerCollisionRadius=0.30f;
+// Effective horizontal capsule radius (0.29 m shape radius + Jolt contact padding, rounded up).
+inline constexpr float kPlayerCollisionRadius=0.33f;
 inline constexpr float kGateHalfThickness=0.20f;
 inline constexpr float kDoorwayHalfSpan=2.10f;
 inline constexpr float kRoomTransitionOffset=kPlayerCollisionRadius+kGateHalfThickness+0.16f;
