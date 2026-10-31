@@ -27,6 +27,7 @@ required_files = [
     "gradle.properties",
     "app/build.gradle",
     "app/src/main/AndroidManifest.xml",
+    "app/src/main/res/values/strings.xml",
     "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
     "app/src/main/cpp/CMakeLists.txt",
@@ -54,14 +55,19 @@ if 'android:screenOrientation="landscape"' not in manifest:
     raise SystemExit("Android activity must be locked to landscape")
 if 'android:glEsVersion="0x00030000"' not in manifest:
     raise SystemExit("OpenGL ES 3.0 must be declared as a device feature")
+if 'android:label="@string/app_name"' not in manifest:
+    raise SystemExit("Android launcher label must use the app_name resource")
+app_strings = read_text("app/src/main/res/values/strings.xml")
+if '<string name="app_name">ORION-9</string>' not in app_strings:
+    raise SystemExit("Android-visible application name must be ORION-9")
 for icon_attr in ('android:icon="@drawable/ic_launcher"',
                   'android:roundIcon="@drawable/ic_launcher"'):
     if icon_attr not in manifest:
         raise SystemExit(f"Launcher icon reference is missing: {icon_attr}")
 
 icon = read_text("app/src/main/res/drawable/ic_launcher.xml")
-if 'android:viewportWidth="108"' not in icon or "#00DDF4" not in icon:
-    raise SystemExit("Launcher vector asset is missing or malformed")
+if 'android:viewportWidth="108"' not in icon or "#FFC95C" not in icon or "#4AD7E2" not in icon:
+    raise SystemExit("ORION-9 launcher vector asset is missing or malformed")
 
 gradle = read_text("app/build.gradle")
 application_id = re.search(r"applicationId\s+'([^']+)'", gradle)
@@ -79,6 +85,10 @@ if int(version_code.group(1)) < 1 or int(target_sdk.group(1)) < 35:
 activity = read_text("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt")
 if f"SITE ORION-9  •  {version_name.group(1)}" not in activity:
     raise SystemExit("In-game version label does not match Gradle versionName")
+if 'text("NEON BREACH"' in activity or 'text("NEON BREACH  /' in activity:
+    raise SystemExit("Obsolete Neon Breach product title remains in the Android UI")
+if 'text("ORION-9", 32f' not in activity:
+    raise SystemExit("Main menu title must identify the game as ORION-9")
 if not re.search(r"package\s+" + re.escape(namespace.group(1)) + r"\b", activity):
     raise SystemExit("Kotlin package does not match the Gradle namespace")
 
@@ -125,6 +135,8 @@ for token in (
     "neonbreach::kFacilityRoomLinks",
     "facilityPhysics.moveCharacter",
     "setPlayerWorldPosition",
+    "configureArena(false)",
+    "firstActiveTickLogged",
     "addPlayerKnockback",
     "syncPhysicsGates",
     "processRoomClear",
