@@ -19,6 +19,8 @@ C++17 remains conditional on measurable production value. The team will compare 
 - The player movement path now calls the existing Jolt CharacterVirtual controller.
 - Room floors, segmented perimeter walls, cover and energy gates are built into the same physics world from room/link metadata.
 - Doorway openings are generated as wall gaps; closed doors are separate Jolt gate bodies.
+- The stair mesh has a matching conservative solid collider until a measured ramp collider is authored; players cannot pass through it.
+- Jolt gravity is applied once by `CharacterVirtual::ExtendedUpdate`, avoiding a double-gravity update.
 - Camera position changed from (focusX, 26, focusZ + 6) to (focusX, 16, focusZ + 11), approximately 55 degrees elevation above the horizontal plane.
 - A CC0 asset acquisition manifest defines candidate packs and import constraints.
 
