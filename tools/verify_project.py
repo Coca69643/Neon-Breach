@@ -63,7 +63,7 @@ for token in (
     "stbi_load_from_memory", "drawImportedModel", "MODEL_ROOM_LARGE", "MODEL_ROOM_WIDE",
     "MODEL_CORRIDOR_WIDE", "MODEL_GATE_DOOR", "AAssetManager_fromJava", "uBaseTexture",
     "uUseBaseTexture", "uRoomBounds[4]", "uVisitedRoomMask", "roomInsideTopDownFrustum",
-    "roomLinkOpening", "RoomLink", "roomLinks[0]={0,1,0,1,-1,10.0f", "centersZ[4]={0.0f,0.0f,20.0f,20.0f", "room.halfWidth=10.0f;room.halfDepth=10.0f;", "roomIndex==0?1.0f:1.6666667f", "roomLinks[1]={1,2,1,1,-1,8.0f",
+    "roomLinkOpening", "RoomLink", "roomLinks[0]={0,1,0,1,-1,10.0f", "centersZ[4]={0.0f,0.0f,20.0f,20.0f", "room.halfWidth=10.0f;room.halfDepth=10.0f;", "roomIndex==0?1.0f:1.6666667f", "roomLinks[1]={1,2,1,1,-1,10.0f",
     "roomLinks[2]={2,3,0,-1,1,10.0f", "roomLinks[3]={3,0,1,-1,1,10.0f",
     "camera{cameraFocusX,26.0f", "unexplored",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
