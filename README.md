@@ -1,8 +1,8 @@
-# NEON BREACH 0.9.1
+# ORION-9 0.9.2
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
-**NEON BREACH** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
+**ORION-9** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
 
 O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração através das portas de energia das salas. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
 
@@ -12,6 +12,12 @@ A missão agora ocupa um complexo industrial 2×2: átrio central, ala de pesqui
 Kotlin gerencia a camada Android, o ciclo de vida e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O renderer importa modelos GLB com cgltf e texturas PNG com stb_image, usando módulos ambientais CC0 do Kenney. Não há engine tradicional.
 
 ## Log de atualizações
+
+### 0.9.2 — Identidade ORION-9 e inicialização física
+- Atualiza nome Android, título da interface e ícone do launcher para ORION-9.
+- Adia a construção do mundo Jolt até o início da missão, evitando reconstrução imediata do mundo físico que já era criado na tela inicial.
+- Adiciona marcadores de diagnóstico nas etapas de inicialização da arena, reconstrução da física e primeiro passo da simulação.
+- Atualiza o Android para 0.9.2 / versionCode 26.
 
 ### 0.9.1 — Integridade física e estabilidade
 - Corrige a sincronização do personagem com Jolt ao atravessar portas e ao receber recuo.
