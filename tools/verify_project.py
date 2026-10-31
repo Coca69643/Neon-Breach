@@ -133,8 +133,8 @@ if "briefing" in activity:
     raise SystemExit("Legacy right-side menu briefing container remains")
 if "std::array<Room,ROOM_COUNT> rooms" not in cpp or "void drawRoomEnergyDoor" not in cpp:
     raise SystemExit("Four-room dungeon data or energy-door renderer is missing")
-if "uActiveRoom" not in cpp or "explorationFog" not in cpp:
-    raise SystemExit("Exploration fog shader is missing")
+if "uVisitedRoomMask" not in cpp or "unexplored" not in cpp or "uRoomBounds[4]" not in cpp:
+    raise SystemExit("Visited-room exploration fog shader is missing")
 if "processRoomClear" not in cpp or "updateRoomTransition" not in cpp:
     raise SystemExit("Room-local waves or transition logic is missing")
 if "for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;" in cpp:
