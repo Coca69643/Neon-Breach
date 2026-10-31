@@ -809,6 +809,7 @@ class MainActivity : Activity() {
 
         init {
             setEGLContextClientVersion(3)
+            renderer.setAssetManager(context.assets)
             preserveEGLContextOnPause = false
             setRenderer(renderer)
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
@@ -910,6 +911,7 @@ class MainActivity : Activity() {
 }
 
 private class NativeRenderer : GLSurfaceView.Renderer {
+        fun setAssetManager(manager: android.content.res.AssetManager) = nativeSetAssetManager(manager)
         override fun onSurfaceCreated(
             gl: javax.microedition.khronos.opengles.GL10?,
             config: javax.microedition.khronos.egl.EGLConfig?
@@ -927,6 +929,7 @@ private class NativeRenderer : GLSurfaceView.Renderer {
         fun startNewMissionOnGlThread() = nativeStartNewMission()
         fun readSnapshot(): Int = nativeGetSnapshot()
 
+        private external fun nativeSetAssetManager(manager: android.content.res.AssetManager)
         private external fun nativeSurfaceCreated()
         private external fun nativeSurfaceChanged(width: Int, height: Int)
         private external fun nativeDrawFrame()

@@ -1,13 +1,21 @@
 #include <jni.h>
 #include "ProgressionManager.h"
 #include <GLES3/gl3.h>
+#include <android/asset_manager.h>
+#include <android/asset_manager_jni.h>
 #include <android/log.h>
+#define CGLTF_IMPLEMENTATION
+#include "third_party/cgltf.h"
+#define STB_IMAGE_IMPLEMENTATION
+#include "third_party/stb_image.h"
 #include <algorithm>
 #include <array>
 #include <atomic>
 #include <chrono>
 #include <cmath>
 #include <cstddef>
+#include <cstdint>
+#include <cstring>
 #include <random>
 #include <vector>
 
@@ -15,8 +23,10 @@ namespace {
 constexpr float PI = 3.14159265358979323846f;
 struct V3 { float x, y, z; };
 struct Mat4 { float v[16]; };
-struct Vertex { float px, py, pz, nx, ny, nz; };
+struct Vertex { float px, py, pz, nx, ny, nz, u, v; };
 struct Mesh { GLuint vao=0, vbo=0; GLsizei count=0; };
+struct ImportedPart { GLuint vao=0,vbo=0,ebo=0; GLsizei indexCount=0; V3 baseColor{1.0f,1.0f,1.0f}; bool textured=false; };
+struct ImportedModel { std::vector<ImportedPart> parts; float radius=1.0f; bool loaded=false; };
 struct Obstacle { float x,z,sx,sz,h; };
 constexpr int ROOM_COUNT=4;
 constexpr float ROOM_WIDTH=12.0f, ROOM_HALF_WIDTH=6.0f, ROOM_HALF_DEPTH=4.5f;
@@ -39,7 +49,12 @@ struct Shot {
 struct ProjectileInstance { float x,y,z,radius,r,g,b,glow; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
-GLint sectorPaletteLoc=-1, activeRoomLoc=-1;
+GLint sectorPaletteLoc=-1, activeRoomLoc=-1, baseTextureLoc=-1, useBaseTextureLoc=-1;
+GLuint worldAtlasTexture=0;
+AAssetManager* androidAssets=nullptr;
+enum WorldModelId { MODEL_ROOM_LARGE=0,MODEL_ROOM_WIDE=1,MODEL_ROOM_CORNER=2,MODEL_CORRIDOR_WIDE=3,MODEL_CORRIDOR_CORNER=4,MODEL_GATE_DOOR=5,MODEL_CABLES=6,MODEL_STAIRS_WIDE=7 };
+std::array<ImportedModel,8> worldModels{};
+bool worldAssetsReady=false;
 neonbreach::ProgressionManager progression;
 std::array<Room,ROOM_COUNT> rooms{};
 int activeRoom=0;
@@ -243,7 +258,7 @@ float playerSquashEnvelope(){
   if(!playerSquashActive)return 0.0f;
   return std::exp(-playerSquashAge/0.045f);
 }
-void addVertex(std::vector<Vertex>&v,V3 p,V3 n){v.push_back({p.x,p.y,p.z,n.x,n.y,n.z});}
+void addVertex(std::vector<Vertex>&v,V3 p,V3 n){v.push_back({p.x,p.y,p.z,n.x,n.y,n.z,p.x+0.5f,p.z+0.5f});}
 void addTri(std::vector<Vertex>&v,V3 a,V3 b,V3 c,V3 n){addVertex(v,a,n);addVertex(v,b,n);addVertex(v,c,n);}
 void face(std::vector<Vertex>&v,V3 a,V3 b,V3 c,V3 d,V3 n){
   addTri(v,a,b,c,n);addTri(v,a,c,d,n);
@@ -255,7 +270,126 @@ void uploadMesh(Mesh&m,const std::vector<Vertex>&vertices){
   glBufferData(GL_ARRAY_BUFFER,(GLsizeiptr)(vertices.size()*sizeof(Vertex)),vertices.data(),GL_STATIC_DRAW);
   glEnableVertexAttribArray(0);glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,px));
   glEnableVertexAttribArray(1);glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,nx));
+  glEnableVertexAttribArray(2);glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,u));
   glBindVertexArray(0);
+}
+std::vector<uint8_t> readAndroidAsset(const char*path){
+  std::vector<uint8_t> bytes;
+  if(!androidAssets||!path)return bytes;
+  AAsset*asset=AAssetManager_open(androidAssets,path,AASSET_MODE_BUFFER);
+  if(!asset)return bytes;
+  const off_t length=AAsset_getLength(asset);
+  if(length<=0||length>32*1024*1024){AAsset_close(asset);return bytes;}
+  bytes.resize((size_t)length);size_t offset=0;
+  while(offset<bytes.size()){
+    const int readCount=AAsset_read(asset,bytes.data()+offset,bytes.size()-offset);
+    if(readCount<=0)break;
+    offset+=(size_t)readCount;
+  }
+  AAsset_close(asset);if(offset!=bytes.size())bytes.clear();return bytes;
+}
+bool loadWorldAtlasTexture(){
+  const auto imageBytes=readAndroidAsset("world/kenney/Textures/colormap.png");
+  if(imageBytes.empty())return false;
+  int width=0,height=0,channels=0;
+  stbi_uc*pixels=stbi_load_from_memory(imageBytes.data(),(int)imageBytes.size(),&width,&height,&channels,4);
+  if(!pixels||width<=0||height<=0){if(pixels)stbi_image_free(pixels);return false;}
+  glGenTextures(1,&worldAtlasTexture);glBindTexture(GL_TEXTURE_2D,worldAtlasTexture);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_LINEAR_MIPMAP_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_S,GL_REPEAT);
+  glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_WRAP_T,GL_REPEAT);
+  glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA8,width,height,0,GL_RGBA,GL_UNSIGNED_BYTE,pixels);
+  glGenerateMipmap(GL_TEXTURE_2D);glBindTexture(GL_TEXTURE_2D,0);stbi_image_free(pixels);
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","CC0 world atlas loaded: %dx%d",width,height);
+  return true;
+}
+bool loadImportedModel(const char*assetPath,ImportedModel&model){
+  const auto fileBytes=readAndroidAsset(assetPath);if(fileBytes.empty())return false;
+  cgltf_options options{};cgltf_data*data=nullptr;
+  cgltf_result result=cgltf_parse(&options,fileBytes.data(),fileBytes.size(),&data);
+  if(result!=cgltf_result_success||!data)return false;
+  result=cgltf_load_buffers(&options,data,nullptr);
+  if(result!=cgltf_result_success){cgltf_free(data);return false;}
+  float maxRadius=1.0f;
+  for(cgltf_size nodeIndex=0;nodeIndex<data->nodes_count;nodeIndex++){
+    const cgltf_node*node=&data->nodes[nodeIndex];if(!node->mesh)continue;
+    float world[16];cgltf_node_transform_world(node,world);
+    for(cgltf_size primitiveIndex=0;primitiveIndex<node->mesh->primitives_count;primitiveIndex++){
+      const cgltf_primitive&primitive=node->mesh->primitives[primitiveIndex];
+      if(primitive.type!=cgltf_primitive_type_triangles)continue;
+      const cgltf_accessor*positions=cgltf_find_accessor(&primitive,cgltf_attribute_type_position,0);
+      const cgltf_accessor*normals=cgltf_find_accessor(&primitive,cgltf_attribute_type_normal,0);
+      const cgltf_accessor*uvs=cgltf_find_accessor(&primitive,cgltf_attribute_type_texcoord,0);
+      if(!positions||positions->count==0||positions->count>250000)continue;
+      std::vector<Vertex>vertices;vertices.reserve(positions->count);
+      for(cgltf_size vertexIndex=0;vertexIndex<positions->count;vertexIndex++){
+        float position[3]={0,0,0},normal[3]={0,1,0},uv[2]={0,0};
+        if(!cgltf_accessor_read_float(positions,vertexIndex,position,3))continue;
+        if(normals)cgltf_accessor_read_float(normals,vertexIndex,normal,3);
+        if(uvs)cgltf_accessor_read_float(uvs,vertexIndex,uv,2);
+        const V3 pos{
+          world[0]*position[0]+world[4]*position[1]+world[8]*position[2]+world[12],
+          world[1]*position[0]+world[5]*position[1]+world[9]*position[2]+world[13],
+          world[2]*position[0]+world[6]*position[1]+world[10]*position[2]+world[14]
+        };
+        const V3 n=norm({
+          world[0]*normal[0]+world[4]*normal[1]+world[8]*normal[2],
+          world[1]*normal[0]+world[5]*normal[1]+world[9]*normal[2],
+          world[2]*normal[0]+world[6]*normal[1]+world[10]*normal[2]
+        });
+        maxRadius=std::max(maxRadius,std::sqrt(dot(pos,pos)));
+        vertices.push_back({pos.x,pos.y,pos.z,n.x,n.y,n.z,uv[0],uv[1]});
+      }
+      if(vertices.empty())continue;
+      std::vector<uint32_t>indices;
+      if(primitive.indices){
+        indices.reserve(primitive.indices->count);
+        for(cgltf_size index=0;index<primitive.indices->count;index++)
+          indices.push_back((uint32_t)cgltf_accessor_read_index(primitive.indices,index));
+      }else{
+        indices.reserve(vertices.size());
+        for(uint32_t index=0;index<(uint32_t)vertices.size();index++)indices.push_back(index);
+      }
+      if(indices.empty()||indices.size()>750000)continue;
+      ImportedPart part{};
+      if(primitive.material&&primitive.material->has_pbr_metallic_roughness){
+        const auto&factor=primitive.material->pbr_metallic_roughness.base_color_factor;
+        part.baseColor={factor[0],factor[1],factor[2]};
+        part.textured=primitive.material->pbr_metallic_roughness.base_color_texture.texture!=nullptr;
+      }
+      glGenVertexArrays(1,&part.vao);glGenBuffers(1,&part.vbo);glGenBuffers(1,&part.ebo);
+      glBindVertexArray(part.vao);
+      glBindBuffer(GL_ARRAY_BUFFER,part.vbo);
+      glBufferData(GL_ARRAY_BUFFER,(GLsizeiptr)(vertices.size()*sizeof(Vertex)),vertices.data(),GL_STATIC_DRAW);
+      glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,part.ebo);
+      glBufferData(GL_ELEMENT_ARRAY_BUFFER,(GLsizeiptr)(indices.size()*sizeof(uint32_t)),indices.data(),GL_STATIC_DRAW);
+      glEnableVertexAttribArray(0);glVertexAttribPointer(0,3,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,px));
+      glEnableVertexAttribArray(1);glVertexAttribPointer(1,3,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,nx));
+      glEnableVertexAttribArray(2);glVertexAttribPointer(2,2,GL_FLOAT,GL_FALSE,sizeof(Vertex),(void*)offsetof(Vertex,u));
+      glBindVertexArray(0);part.indexCount=(GLsizei)indices.size();model.parts.push_back(part);
+    }
+  }
+  cgltf_free(data);model.radius=maxRadius;model.loaded=!model.parts.empty();
+  if(!model.loaded)__android_log_print(ANDROID_LOG_WARN,"NeonBreach","Unsupported or empty GLB: %s",assetPath);
+  return model.loaded;
+}
+void loadWorldAssets(){
+  worldModels={};worldAssetsReady=loadWorldAtlasTexture();
+  const char*paths[8]={
+    "world/kenney/room-large.glb","world/kenney/room-wide.glb","world/kenney/room-corner.glb",
+    "world/kenney/corridor-wide.glb","world/kenney/corridor-corner.glb","world/kenney/gate-door.glb",
+    "world/kenney/cables.glb","world/kenney/stairs-wide.glb"
+  };
+  bool requiredLoaded=true;
+  for(int i=0;i<8;i++){
+    const bool loaded=loadImportedModel(paths[i],worldModels[(size_t)i]);
+    if(i==MODEL_ROOM_LARGE||i==MODEL_ROOM_WIDE||i==MODEL_GATE_DOOR||i==MODEL_CORRIDOR_WIDE)
+      requiredLoaded=requiredLoaded&&loaded;
+  }
+  worldAssetsReady=worldAssetsReady&&requiredLoaded;
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Native GLB pipeline: atlas=%s required room assets=%s",
+      worldAtlasTexture?"loaded":"missing",requiredLoaded?"loaded":"fallback");
 }
 void createMeshes(){
   std::vector<Vertex> c;
@@ -319,18 +453,21 @@ GLuint make3DProgram(){
   const char*vs=R"(#version 300 es
   layout(location=0) in vec3 aPosition;
   layout(location=1) in vec3 aNormal;
+  layout(location=2) in vec2 aUV;
   uniform mat4 uMVP;uniform mat4 uModel;
-  out vec3 vWorld;out vec3 vNormal;
+  out vec3 vWorld;out vec3 vNormal;out vec2 vUV;
   void main(){
-    vec4 world=uModel*vec4(aPosition,1.0);vWorld=world.xyz;
+    vec4 world=uModel*vec4(aPosition,1.0);vWorld=world.xyz;vUV=aUV;
     vec3 sc=vec3(length(uModel[0].xyz),length(uModel[1].xyz),length(uModel[2].xyz));
     vNormal=normalize(mat3(uModel)*(aNormal/max(sc,vec3(0.0001))));
     gl_Position=uMVP*vec4(aPosition,1.0);
   })";
   const char*fs=R"(#version 300 es
   precision highp float;
-  in vec3 vWorld;in vec3 vNormal;
-  uniform vec3 uColor;uniform vec3 uGlow;uniform vec3 uCamera;uniform vec3 uSectorPalette;uniform int uActiveRoom;
+  in vec3 vWorld;in vec3 vNormal;in vec2 vUV;
+  uniform vec3 uColor;uniform vec3 uGlow;uniform vec3 uCamera;uniform vec3 uSectorPalette;
+  uniform sampler2D uBaseTexture;uniform int uUseBaseTexture;uniform int uActiveRoom;uniform int uVisitedRoomMask;
+  uniform vec4 uRoomBounds[4];
   out vec4 outColor;
   void main(){
     vec3 n=normalize(vNormal);vec3 light=normalize(vec3(-0.42,0.88,0.34));
@@ -348,14 +485,18 @@ GLuint make3DProgram(){
     float grain=fract(sin(dot(grainCell,vec2(12.9898,78.233)))*43758.5453);
     float mottling=0.94+0.11*grain;
     col*=mottling;
+    if(uUseBaseTexture==1)col*=texture(uBaseTexture,vUV).rgb;
     col+=uGlow+rim*(0.035+0.095*dot(uColor,vec3(0.333)));
     col+=uSectorPalette*0.035;
-    float distanceFog=clamp((length(uCamera-vWorld)-9.0)/25.0,0.0,0.42);
-    float worldRoom=floor((vWorld.x+6.0+0.001)/12.0);
-    float undiscoveredRoom=step(float(uActiveRoom)+0.5,worldRoom);
-    float activeGateEdge=1.0-smoothstep(0.20,0.58,abs(vWorld.x-(float(uActiveRoom)*12.0+6.0)));
-    float explorationFog=undiscoveredRoom*(1.0-0.82*activeGateEdge);
-    float fog=max(distanceFog,explorationFog*0.985);
+    float distanceFog=clamp((length(uCamera-vWorld)-20.0)/55.0,0.0,0.34);
+    int worldRoomIndex=-1;
+    for(int i=0;i<4;i++){
+      vec4 bounds=uRoomBounds[i];
+      if(vWorld.x>=bounds.x&&vWorld.x<=bounds.y&&vWorld.z>=bounds.z&&vWorld.z<=bounds.w)worldRoomIndex=i;
+    }
+    float unexplored=0.0;
+    if(worldRoomIndex>=0&&(uVisitedRoomMask&(1<<worldRoomIndex))==0)unexplored=0.965;
+    float fog=max(distanceFog,unexplored);
     col=mix(col,vec3(0.002,0.006,0.010),fog);
     outColor=vec4(col,1.0);
   })";
@@ -605,7 +746,23 @@ void draw(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,const Mat4&view,const
   glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,model.v);
   glUniform3f(colorLoc,color.x,color.y,color.z);glUniform3f(glowLoc,glow.x,glow.y,glow.z);
   glUniform3f(cameraLoc,camera.x,camera.y,camera.z);
+  glUniform1i(useBaseTextureLoc,0);
   glBindVertexArray(m.vao);glDrawArrays(GL_TRIANGLES,0,m.count);
+}
+void drawImportedModel(const ImportedModel&model,V3 position,V3 size,float yaw,const Mat4&view,const Mat4&proj,V3 camera){
+  if(!model.loaded||!program)return;
+  const Mat4 modelMatrix=multiply(translate(position.x,position.y,position.z),multiply(rotateY(yaw),scale(size.x,size.y,size.z)));
+  const Mat4 mvp=multiply(proj,multiply(view,modelMatrix));
+  glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,modelMatrix.v);
+  glUniform3f(cameraLoc,camera.x,camera.y,camera.z);glUniform1i(baseTextureLoc,0);
+  glActiveTexture(GL_TEXTURE0);glBindTexture(GL_TEXTURE_2D,worldAtlasTexture);
+  for(const auto&part:model.parts){
+    glUniform3f(colorLoc,part.baseColor.x,part.baseColor.y,part.baseColor.z);
+    glUniform3f(glowLoc,0.0f,0.0f,0.0f);
+    glUniform1i(useBaseTextureLoc,(part.textured&&worldAtlasTexture)?1:0);
+    glBindVertexArray(part.vao);glDrawElements(GL_TRIANGLES,part.indexCount,GL_UNSIGNED_INT,nullptr);
+  }
+  glBindVertexArray(0);glBindTexture(GL_TEXTURE_2D,0);glUniform1i(useBaseTextureLoc,0);
 }
 void box(V3 p,V3 s,V3 c,V3 glow,float yaw,const Mat4&v,const Mat4&pjt,V3 cam){draw(cubeMesh,p,s,c,glow,yaw,v,pjt,cam);}
 void orb(V3 p,V3 s,V3 c,V3 glow,const Mat4&v,const Mat4&pjt,V3 cam){draw(sphereMesh,p,s,c,glow,0,v,pjt,cam);}
@@ -615,6 +772,7 @@ void drawPose(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,float pitch,float
   Mat4 mvp=multiply(proj,multiply(view,model));
   glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,model.v);
   glUniform3f(colorLoc,color.x,color.y,color.z);glUniform3f(glowLoc,glow.x,glow.y,glow.z);glUniform3f(cameraLoc,camera.x,camera.y,camera.z);
+  glUniform1i(useBaseTextureLoc,0);
   glBindVertexArray(m.vao);glDrawArrays(GL_TRIANGLES,0,m.count);
 }
 void poseBox(V3 p,V3 s,V3 c,V3 glow,float yaw,float pitch,float roll,const Mat4&v,const Mat4&pjt,V3 cam){drawPose(cubeMesh,p,s,c,glow,yaw,pitch,roll,v,pjt,cam);}
@@ -1264,6 +1422,10 @@ void fixedUpdate(float dt){
 }
 } // namespace
 
+extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSetAssetManager(JNIEnv*env,jobject,jobject manager){
+  androidAssets=AAssetManager_fromJava(env,manager);
+  __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Android asset manager %s",androidAssets?"available":"missing");
+}
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
   // Initialize dungeon metadata once; EGL context recreation must not reset mission progress.
   if(!roomWorldInitialized)configureArena();
@@ -1279,6 +1441,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");
     sectorPaletteLoc=glGetUniformLocation(program,"uSectorPalette");
     activeRoomLoc=glGetUniformLocation(program,"uActiveRoom");
+    baseTextureLoc=glGetUniformLocation(program,"uBaseTexture");
+    useBaseTextureLoc=glGetUniformLocation(program,"uUseBaseTexture");
     colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");
     cameraLoc=glGetUniformLocation(program,"uCamera");
     postProgram=makePostProgram();
@@ -1289,6 +1453,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
       glGenVertexArrays(1,&postVao);
     }
     createMeshes();
+    loadWorldAssets();
   }else if(fallbackProgram){fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");glGenVertexArrays(1,&fallbackVao);}
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
