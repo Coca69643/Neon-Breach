@@ -16,7 +16,7 @@ Kotlin gerencia a camada Android, o ciclo de vida e os controles; C++17 com Open
 ### 0.8 — Reconstrução visual e espacial do mundo
 - Integra um pipeline nativo glTF 2.0/GLB baseado em cgltf e carregamento de atlas PNG por stb_image, com buffers indexados e UVs no OpenGL ES 3.0.
 - Importa o Kenney Modular Space Kit CC0: módulos de sala grande/larga, cantos, corredores, portas de energia, cabos e escadas; as licenças CC0 e MIT estão incluídas no repositório.
-- Substitui a sequência linear por um mapa 2×2: átrio central, pesquisa a leste, energia ao norte e contenção a oeste, ligados por quatro conexões em circuito.
+- Substitui a sequência linear por um mapa 2×2 contínuo de 40×40 unidades: átrio central, pesquisa a leste, energia ao norte e contenção a oeste, ligados por quatro corredores orientados.
 - Distribui relés, kits e ameaças pelas alas sem alterar os sistemas de combate e loot desta etapa.
 - Amplia a câmera top-down, adiciona culling aproximado por enquadramento e LOD de módulos distantes; salas não visitadas continuam ocultas pelo fog de exploração.
 - Atualiza a versão Android para 0.8 e versionCode 23.

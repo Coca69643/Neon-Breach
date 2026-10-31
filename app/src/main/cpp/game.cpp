@@ -674,11 +674,11 @@ void enterRoom(int roomIndex);
 void configureArena(){
   arenaVariant=missionSerial%3;missionSerial++;
   const float centersX[4]={0.0f,20.0f,20.0f,0.0f};
-  const float centersZ[4]={0.0f,0.0f,16.0f,16.0f};
+  const float centersZ[4]={0.0f,0.0f,20.0f,20.0f};
   for(int i=0;i<ROOM_COUNT;i++){
     Room&room=rooms[(size_t)i];
     room.centerX=centersX[i];room.centerZ=centersZ[i];
-    room.halfWidth=10.0f;room.halfDepth=i==0?10.0f:6.0f;
+    room.halfWidth=10.0f;room.halfDepth=10.0f;
     room.minX=room.centerX-room.halfWidth;room.maxX=room.centerX+room.halfWidth;
     room.minZ=room.centerZ-room.halfDepth;room.maxZ=room.centerZ+room.halfDepth;
     room.incomingLink=(i+ROOM_COUNT-1)%ROOM_COUNT;room.outgoingLink=i;
@@ -1153,7 +1153,7 @@ void drawRoomShell(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
     return;
   }
   const ImportedModel&module=roomIndex==0?worldModels[MODEL_ROOM_LARGE]:worldModels[MODEL_ROOM_WIDE];
-  if(module.loaded)drawImportedModel(module,{room.centerX,0.0f,room.centerZ},{1.0f,1.0f,1.0f},0.0f,view,proj,cam);
+  if(module.loaded)drawImportedModel(module,{room.centerX,0.0f,room.centerZ},{1.0f,1.0f,roomIndex==0?1.0f:1.6666667f},0.0f,view,proj,cam);
   else box({room.centerX,-0.25f,room.centerZ},{room.halfWidth*2.0f,0.44f,room.halfDepth*2.0f},
            {0.045f,0.055f,0.068f},{0.002f,0.004f,0.008f},0,view,proj,cam);
   if(worldModels[MODEL_CABLES].loaded){
@@ -1172,7 +1172,7 @@ void drawRoomShell(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
   // SITE ORION-9 — ORION INDUSTRIAL MODULES: central atrium and three specialized wings in a connected 2x2 loop.
   for(int i=0;i<ROOM_COUNT;i++)drawRoomShell(i,view,proj,cam);
-  const V3 linkPositions[4]={{10.0f,0.0f,0.0f},{20.0f,0.0f,8.0f},{10.0f,0.0f,16.0f},{0.0f,0.0f,10.0f}};
+  const V3 linkPositions[4]={{10.0f,0.0f,0.0f},{20.0f,0.0f,10.0f},{10.0f,0.0f,20.0f},{0.0f,0.0f,10.0f}};
   for(int linkIndex=0;linkIndex<ROOM_COUNT;linkIndex++){
     const RoomLink&link=roomLinks[(size_t)linkIndex];
     if(worldModels[MODEL_CORRIDOR_WIDE].loaded)
