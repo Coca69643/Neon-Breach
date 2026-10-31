@@ -690,10 +690,10 @@ void configureArena(){
     room.cover=*source;
     for(auto&o:room.cover){o.x+=room.centerX;o.z+=room.centerZ;}
   }
-  roomLinks[0]={0,1,0,-1,1,10.0f,0.0f,2.1f,false};
-  roomLinks[1]={1,2,1,-1,1,8.0f,20.0f,2.1f,false};
-  roomLinks[2]={2,3,0,1,-1,10.0f,16.0f,2.1f,false};
-  roomLinks[3]={3,0,1,1,-1,10.0f,0.0f,2.1f,false};
+  roomLinks[0]={0,1,0,1,-1,10.0f,0.0f,2.1f,false};
+  roomLinks[1]={1,2,1,1,-1,8.0f,20.0f,2.1f,false};
+  roomLinks[2]={2,3,0,-1,1,10.0f,16.0f,2.1f,false};
+  roomLinks[3]={3,0,1,-1,1,10.0f,0.0f,2.1f,false};
   obstacles=rooms[0].cover;activeRoom=0;roomWorldInitialized=true;
 }
 void resetMission(){
