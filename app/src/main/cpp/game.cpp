@@ -2,7 +2,6 @@
 #include "ProgressionManager.h"
 #include "PhysicsWorld.h"
 #include "WorldLayout.h"
-#include "VulkanRuntime.h"
 #include <GLES3/gl3.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
@@ -20,12 +19,9 @@
 #include <cstdint>
 #include <cstring>
 #include <random>
-#include <mutex>
 #include <vector>
 
 namespace {
-std::once_flag vulkanProbeOnce;
-bool vulkanPreflightReady = false;
 constexpr float PI = 3.14159265358979323846f;
 struct V3 { float x, y, z; };
 struct Mat4 { float v[16]; };
@@ -1543,14 +1539,6 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Android asset manager %s",androidAssets?"available":"missing");
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
-  // Vulkan is preflighted once before rendering. GLES remains the active backend until
-  // a real VkAndroidSurfaceKHR + swapchain path passes device testing.
-  std::call_once(vulkanProbeOnce, [] {
-    vulkanPreflightReady = neonbreach::probeVulkanRuntime();
-    __android_log_print(ANDROID_LOG_INFO, "ORION-9",
-        "Vulkan preflight: %s; GLES fallback remains active in this staged build",
-        vulkanPreflightReady ? "device qualified for surface-stage validation" : "not qualified; GLES retained");
-  });
   // Initialize dungeon metadata once; EGL context recreation must not reset mission progress.
   if(!roomWorldInitialized){configureArena(false);rooms[0].visited=true;}
   // EGL can recreate the context after resume: rebuild every GL object.
