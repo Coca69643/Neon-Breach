@@ -103,6 +103,7 @@ struct PhysicsWorld::Impl {
     };
     std::vector<GateState> gates;
     bool initialized = false;
+    bool firstCharacterUpdateLogged = false;
 
     BodyID addBox(const PhysicsBox &box) {
         if (!initialized || box.halfX <= 0.0f || box.halfY <= 0.0f || box.halfZ <= 0.0f)
@@ -187,7 +188,9 @@ bool PhysicsWorld::initialize() {
 void PhysicsWorld::rebuild(const std::vector<PhysicsBox> &staticBoxes,
                            const std::vector<PhysicsGate> &gateBoxes) {
     if (!initialize()) return;
+    __android_log_print(ANDROID_LOG_INFO,"ORION-9Physics","Physics rebuild begin: static=%zu gates=%zu",staticBoxes.size(),gateBoxes.size());
     impl_->clearGeometry();
+    impl_->firstCharacterUpdateLogged=false;
     impl_->staticBodies.reserve(staticBoxes.size());
     for (const PhysicsBox &box : staticBoxes) {
         BodyID id = impl_->addBox(box);
@@ -203,6 +206,8 @@ void PhysicsWorld::rebuild(const std::vector<PhysicsBox> &staticBoxes,
     }
     impl_->system.OptimizeBroadPhase();
     impl_->createCharacter(0.0f, 0.0f, 0.0f);
+    __android_log_print(ANDROID_LOG_INFO,"ORION-9Physics","Physics rebuild complete: static=%zu gates=%zu character=%s",
+        impl_->staticBodies.size(),impl_->gates.size(),impl_->character?"ready":"missing");
     __android_log_print(ANDROID_LOG_INFO, "NeonBreachPhysics",
         "Facility collision world rebuilt: %zu static colliders, %zu energy gates",
         impl_->staticBodies.size(), impl_->gates.size());
@@ -236,6 +241,10 @@ void PhysicsWorld::moveCharacter(float velocityX, float velocityZ, float deltaTi
     // ExtendedUpdate applies gravity exactly once using its gravity argument.
     const Vec3 velocity(velocityX, current.GetY(), velocityZ);
     impl_->character->SetLinearVelocity(velocity);
+    const bool logFirstUpdate=!impl_->firstCharacterUpdateLogged;
+    if(logFirstUpdate){
+        __android_log_print(ANDROID_LOG_INFO,"ORION-9Physics","CharacterVirtual ExtendedUpdate begin");
+    }
     CharacterVirtual::ExtendedUpdateSettings update;
     update.mStickToFloorStepDown = Vec3(0.0f, -0.56f, 0.0f);
     update.mWalkStairsStepUp = Vec3(0.0f, 0.38f, 0.0f);
@@ -249,6 +258,10 @@ void PhysicsWorld::moveCharacter(float velocityX, float velocityZ, float deltaTi
         impl_->system.GetDefaultLayerFilter(Layers::MOVING),
         {}, {},
         impl_->allocator);
+    if(logFirstUpdate){
+        impl_->firstCharacterUpdateLogged=true;
+        __android_log_print(ANDROID_LOG_INFO,"ORION-9Physics","CharacterVirtual ExtendedUpdate complete");
+    }
 }
 
 bool PhysicsWorld::getCharacterPosition(float &x, float &y, float &z) const {
