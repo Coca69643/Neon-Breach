@@ -2,6 +2,7 @@
 from pathlib import Path
 import re
 import sys
+import json
 
 required = [
     "settings.gradle", "build.gradle", "gradle.properties", "app/build.gradle",
@@ -9,6 +10,13 @@ required = [
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
     "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp",
     "app/src/main/cpp/ProgressionManager.h", "app/src/main/cpp/ProgressionManager.cpp",
+    "app/src/main/cpp/third_party/cgltf.h", "app/src/main/cpp/third_party/stb_image.h",
+    "app/src/main/assets/world/kenney/room-large.glb", "app/src/main/assets/world/kenney/room-wide.glb",
+    "app/src/main/assets/world/kenney/room-corner.glb", "app/src/main/assets/world/kenney/corridor-wide.glb",
+    "app/src/main/assets/world/kenney/corridor-corner.glb", "app/src/main/assets/world/kenney/gate-door.glb",
+    "app/src/main/assets/world/kenney/cables.glb", "app/src/main/assets/world/kenney/stairs-wide.glb",
+    "app/src/main/assets/world/kenney/Textures/colormap.png", "app/src/main/assets/world/kenney/LICENSE.txt",
+    "app/src/main/cpp/third_party/CGltf-LICENSE.txt", "app/src/main/cpp/third_party/STB-LICENSE.txt",
     "tools/validate_shaders.py",
 ]
 missing = [p for p in required if not Path(p).is_file()]
@@ -44,13 +52,20 @@ for token in (
     "smoothstep(0.18,1.20,radiusSq)", "postprocessReady",
     "updateCameraSpring", "cameraVelocityX", "cameraVelocityZ", "stiffness=72.0f",
     "updateCameraShake", "valueNoise", "triggerPlayerShotFeedback", "cameraShakeOffsetX",
-    "playerSquashEnvelope", "playerSquashAge", "drawPlayerHealthBar", "barWidth=0.78f", "requiredHold=2.0f", "updateHeldInteraction", "interactionHeld", "interactionTimer", "LOOT_OVERCLOCK", "LOOT_NANO_SHIELD", "LOOT_PIERCING_ROUNDS", "rewardRoll(LOOT_OVERCLOCK,LOOT_PIERCING_ROUNDS)", "nanoShieldCooldown=10.0f", "piercesRemaining>0", "drawLootChest", "chestSpawned=true", "ROOM_COUNT=4", "std::array<Room,ROOM_COUNT> rooms", "drawRoomShell", "drawRoomEnergyDoor", "drawRoomArrow", "roomGatePassable", "updateRoomTransition", "processRoomClear", "wavesTotal=(i==0||i==3)?2:1", "uniform int uActiveRoom", "explorationFog", "squashX=1.0f+0.105f*squash",
+    "playerSquashEnvelope", "playerSquashAge", "drawPlayerHealthBar", "barWidth=0.78f", "requiredHold=2.0f", "updateHeldInteraction", "interactionHeld", "interactionTimer", "LOOT_OVERCLOCK", "LOOT_NANO_SHIELD", "LOOT_PIERCING_ROUNDS", "rewardRoll(LOOT_OVERCLOCK,LOOT_PIERCING_ROUNDS)", "nanoShieldCooldown=10.0f", "piercesRemaining>0", "drawLootChest", "chestSpawned=true", "ROOM_COUNT=4", "std::array<Room,ROOM_COUNT> rooms", "drawRoomShell", "drawRoomEnergyDoor", "drawRoomArrow", "roomLinkOpening", "updateRoomTransition", "processRoomClear", "wavesTotal=(i==0||i==3)?2:1", "uniform int uActiveRoom", "unexplored", "squashX=1.0f+0.105f*squash",
     "squashZ=1.0f-0.080f*squash", "triggerCameraShake(0.13f,0.19f)",
     "#include <random>", "#include \"ProgressionManager.h\"", "ProgressionManager", "progression.registerElimination()", "TOTAL_MISSION_ELIMINATIONS=24", "spawnEnemyWave", "touchSensitivity", "nativeSetTouchSensitivity", "nativeSetSoundEnabled", "uSectorPalette", "std::mt19937 aiRandomEngine", "enemyReactionTimer",
     "enemyThinkInterval", "enemySlalomPhase", "enemySlalomFrequency", "enemySlalomStrength",
     "enemySteerX", "randomRange(0.0f,0.13f)", "enemySlalomFrequency[(size_t)i]",
     "createProjectileRenderer", "drawProjectilesInstanced", "glDrawElementsInstanced",
     "glVertexAttribDivisor", "GL_DYNAMIC_DRAW",
+    "loadWorldAssets", "loadImportedModel", "readAndroidAsset", "cgltf_parse", "cgltf_load_buffers",
+    "stbi_load_from_memory", "drawImportedModel", "MODEL_ROOM_LARGE", "MODEL_ROOM_WIDE",
+    "MODEL_CORRIDOR_WIDE", "MODEL_GATE_DOOR", "AAssetManager_fromJava", "uBaseTexture",
+    "uUseBaseTexture", "uRoomBounds[4]", "uVisitedRoomMask", "roomInsideTopDownFrustum",
+    "roomLinkOpening", "RoomLink", "roomLinks[0]={0,1,0,1,-1,10.0f", "roomLinks[1]={1,2,1,1,-1,8.0f",
+    "roomLinks[2]={2,3,0,-1,1,10.0f", "roomLinks[3]={3,0,1,-1,1,10.0f",
+    "camera{cameraFocusX,26.0f", "unexplored",
     "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
@@ -75,17 +90,35 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
               "SEGURE 2S  /  RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "NEON-VANGUARD", "STELLAR-REAPER",
-              "SITE ORION-9  •  0.7", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "class DodgeControlButton", "drawText(\"ATIRAR\"", "ESQUIVA", "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO", "SALA ${room + 1}/4", "PORTA ABERTA  /  SIGA A SETA", "SEGURE INTERAGIR POR 2S", "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR", "beginInteraction()", "endInteraction()", "INTERAGIR", "ALERTA  /  EVITE A ÁREA", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(76)", "ESQUIVA", "Joystick de movimento",
+              "SITE ORION-9  •  0.8", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "class DodgeControlButton", "drawText(\"ATIRAR\"", "ESQUIVA", "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO", "SALA ${room + 1}/4", "PORTA ABERTA  /  SIGA A SETA", "SEGURE INTERAGIR POR 2S", "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR", "beginInteraction()", "endInteraction()", "INTERAGIR", "ALERTA  /  EVITE A ÁREA", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(76)", "ESQUIVA", "Joystick de movimento",
               "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android UI/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.7'" not in build or "versionCode 22" not in build:
+if "versionName '0.8'" not in build or "versionCode 23" not in build:
     raise SystemExit("Version 0.4 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
+asset_dir = Path("app/src/main/assets/world/kenney")
+for asset_name in ("room-large.glb", "room-wide.glb", "room-corner.glb", "corridor-wide.glb", "corridor-corner.glb", "gate-door.glb", "cables.glb", "stairs-wide.glb"):
+    asset_path = asset_dir / asset_name
+    data = asset_path.read_bytes()
+    if len(data) < 20 or data[:4] != b"glTF" or int.from_bytes(data[4:8], "little") != 2:
+        raise SystemExit(f"Invalid glTF 2.0 asset: {asset_path}")
+    json_length = int.from_bytes(data[12:16], "little")
+    document = json.loads(data[20:20 + json_length].decode("utf-8").rstrip(" \\t\\r\\n\\0"))
+    if not document.get("meshes") or not document.get("accessors"):
+        raise SystemExit(f"GLB has no mesh/accessor content: {asset_path}")
+texture = (asset_dir / "Textures/colormap.png").read_bytes()
+if not texture.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10])):
+    raise SystemExit("Kenney environment texture atlas is not a valid PNG")
+if "CC0" not in (asset_dir / "LICENSE.txt").read_text():
+    raise SystemExit("Kenney CC0 license is missing")
+if "MIT" not in Path("app/src/main/cpp/third_party/CGltf-LICENSE.txt").read_text():
+    raise SystemExit("cgltf MIT license is missing")
+print("Native glTF 2.0 loader, CC0 room assets, atlas texture, 2x2 room graph, frustum culling and mobile LOD checks OK.")
 print(f"Project structure, icon, playable operative classes, containment outpost, objective flow, touch controls and Android UI checks OK ({len(required)} required files found).")
 cmake = Path("app/src/main/cpp/CMakeLists.txt").read_text()
 if "-O3" not in cmake:

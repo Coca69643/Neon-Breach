@@ -1,4 +1,4 @@
-# NEON BREACH 0.7
+# NEON BREACH 0.8
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 
@@ -6,12 +6,20 @@
 
 O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração através das portas de energia das salas. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
 
-A missão atravessa quatro salas retangulares conectadas, com seis ondas e 24 ameaças; os três relés concedem bônus de dano e um baú de suprimentos aguarda na quarta sala.
+A missão agora ocupa um complexo industrial 2×2: átrio central, ala de pesquisa, ala de energia e ala de contenção, conectados por corredores e portas. Os quatro módulos são exploráveis em circuito; combate, relés, saque e extração permanecem ativos.
 
 ## Sobre o jogo
-Kotlin gerencia a camada Android e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O projeto não depende de uma engine tradicional nem de modelos gráficos importados.
+Kotlin gerencia a camada Android, o ciclo de vida e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O renderer importa modelos GLB com cgltf e texturas PNG com stb_image, usando módulos ambientais CC0 do Kenney. Não há engine tradicional.
 
 ## Log de atualizações
+
+### 0.8 — Reconstrução visual e espacial do mundo
+- Integra um pipeline nativo glTF 2.0/GLB baseado em cgltf e carregamento de atlas PNG por stb_image, com buffers indexados e UVs no OpenGL ES 3.0.
+- Importa o Kenney Modular Space Kit CC0: módulos de sala grande/larga, cantos, corredores, portas de energia, cabos e escadas; as licenças CC0 e MIT estão incluídas no repositório.
+- Substitui a sequência linear por um mapa 2×2: átrio central, pesquisa a leste, energia ao norte e contenção a oeste, ligados por quatro conexões em circuito.
+- Distribui relés, kits e ameaças pelas alas sem alterar os sistemas de combate e loot desta etapa.
+- Amplia a câmera top-down, adiciona culling aproximado por enquadramento e LOD de módulos distantes; salas não visitadas continuam ocultas pelo fog de exploração.
+- Atualiza a versão Android para 0.8 e versionCode 23.
 
 ### 0.7 — Relés por interação, baú de suprimentos e modificadores (Passo 3)
 - Substitui a restauração instantânea dos relés por uma interação mantida por 2 segundos; o temporizador e a validação de alcance são executados no C++17 e são cancelados ao soltar ou sair do alcance.

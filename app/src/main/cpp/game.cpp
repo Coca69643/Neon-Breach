@@ -1170,7 +1170,7 @@ void drawRoomShell(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
   }
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
-  // ORION-9 v0.8: central atrium with research, power and containment wings in a connected loop.
+  // SITE ORION-9 — ORION INDUSTRIAL MODULES: central atrium and three specialized wings in a connected 2x2 loop.
   for(int i=0;i<ROOM_COUNT;i++)drawRoomShell(i,view,proj,cam);
   const V3 linkPositions[4]={{10.0f,0.0f,0.0f},{20.0f,0.0f,8.0f},{10.0f,0.0f,16.0f},{0.0f,0.0f,10.0f}};
   for(int linkIndex=0;linkIndex<ROOM_COUNT;linkIndex++){
