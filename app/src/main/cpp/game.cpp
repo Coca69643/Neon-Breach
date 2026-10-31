@@ -1,6 +1,7 @@
 #include <jni.h>
 #include "ProgressionManager.h"
 #include "PhysicsWorld.h"
+#include "WorldLayout.h"
 #include <GLES3/gl3.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
@@ -29,8 +30,9 @@ struct Mesh { GLuint vao=0, vbo=0; GLsizei count=0; };
 struct ImportedPart { GLuint vao=0,vbo=0,ebo=0; GLsizei indexCount=0; V3 baseColor{1.0f,1.0f,1.0f}; bool textured=false; };
 struct ImportedModel { std::vector<ImportedPart> parts; float radius=1.0f; bool loaded=false; };
 struct Obstacle { float x,z,sx,sz,h; };
-constexpr int ROOM_COUNT=4;
-constexpr float ROOM_DOOR_HALF_WIDTH=2.10f;
+constexpr int ROOM_COUNT=static_cast<int>(neonbreach::kRoomCount);
+constexpr float ROOM_DOOR_HALF_WIDTH=neonbreach::kDoorwayHalfSpan;
+using neonbreach::RoomLink;
 struct Room {
   float centerX=0.0f,centerZ=0.0f;
   float minX=-10.0f,maxX=10.0f,minZ=-10.0f,maxZ=10.0f;
@@ -41,7 +43,6 @@ struct Room {
   bool chestSpawned=false,chestOpened=false;
   std::array<Obstacle,4> cover{};
 };
-struct RoomLink { int from=0,to=0,axis=0,fromSide=1,toSide=-1; float plane=0.0f,crossCenter=0.0f,halfSpan=2.1f; bool open=false; };
 struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
 struct Shot {
   float x,y,z,vx,vz,life;
@@ -88,6 +89,7 @@ float cameraFocusX=0.0f, cameraFocusZ=0.0f;
 float cameraVelocityX=0.0f, cameraVelocityZ=0.0f;
 float cameraShakeAmplitude=0.0f, cameraShakeDecay=0.10f;
 float cameraShakeOffsetX=0.0f, cameraShakeOffsetY=0.0f;
+float knockbackVelocityX=0.0f,knockbackVelocityZ=0.0f;
 float playerSquashAge=0.15f;
 bool playerSquashActive=false;
 int missionSerial=0, arenaVariant=0;
@@ -187,6 +189,12 @@ void hurtPlayer(float amount){
   const float previousHealth=playerHealth;
   playerHealth=std::max(0.0f,playerHealth-amount*operativeDamageTakenMultiplier());
   if(playerHealth<previousHealth)triggerCameraShake(0.13f,0.19f);
+}
+void addPlayerKnockback(float velocityX,float velocityZ){
+  knockbackVelocityX+=velocityX;knockbackVelocityZ+=velocityZ;
+  const float speedSq=knockbackVelocityX*knockbackVelocityX+knockbackVelocityZ*knockbackVelocityZ;
+  constexpr float maxSpeed=6.0f;
+  if(speedSq>maxSpeed*maxSpeed){const float scale=maxSpeed/std::sqrt(speedSq);knockbackVelocityX*=scale;knockbackVelocityZ*=scale;}
 }
 
 V3 add(V3 a,V3 b){return {a.x+b.x,a.y+b.y,a.z+b.z};}
@@ -673,10 +681,18 @@ GLuint makeFallbackProgram(){
 }
 void spawnEnemyWave(int wave);
 void enterRoom(int roomIndex);
+void syncPhysicsGates(){
+  for(int gate=0;gate<ROOM_COUNT;gate++)
+    facilityPhysics.setGateOpen(static_cast<std::size_t>(gate),roomLinks[static_cast<std::size_t>(gate)].open);
+}
+void setPlayerWorldPosition(float x,float z){
+  playerX=x;playerZ=z;
+  if(facilityPhysics.ready())facilityPhysics.setCharacterPosition(x,z,0.0f);
+}
 void configureArena(){
   arenaVariant=missionSerial%3;missionSerial++;
-  const float centersX[4]={0.0f,20.0f,20.0f,0.0f};
-  const float centersZ[4]={0.0f,0.0f,20.0f,20.0f};
+  const auto &centersX=neonbreach::kRoomCenterX;
+  const auto &centersZ=neonbreach::kRoomCenterZ;
   for(int i=0;i<ROOM_COUNT;i++){
     Room&room=rooms[(size_t)i];
     room.centerX=centersX[i];room.centerZ=centersZ[i];
@@ -692,10 +708,7 @@ void configureArena(){
     room.cover=*source;
     for(auto&o:room.cover){o.x+=room.centerX;o.z+=room.centerZ;}
   }
-  roomLinks[0]={0,1,0,1,-1,10.0f,0.0f,2.1f,false};
-  roomLinks[1]={1,2,1,1,-1,10.0f,20.0f,2.1f,false};
-  roomLinks[2]={2,3,0,-1,1,10.0f,16.0f,2.1f,false};
-  roomLinks[3]={3,0,1,-1,1,10.0f,0.0f,2.1f,false};
+  roomLinks=neonbreach::kFacilityRoomLinks;
   obstacles=rooms[0].cover;activeRoom=0;roomWorldInitialized=true;
 
   // Build one collision world from the same room/link data used by the renderer.
@@ -733,7 +746,9 @@ void configureArena(){
     addEdge(room,1,-1,openings[2]);addEdge(room,1,1,openings[3]);
     for(const auto& o:room.cover)addBox(o.x,o.h*0.5f,o.z,o.sx*0.5f,o.h*0.5f,o.sz*0.5f);
     // The rendered stairs are not yet a walkable ramp. Keep their full footprint solid.
-    if(i==2)addBox(room.centerX-4.4f,0.55f,room.centerZ-3.2f,0.90f,0.55f,0.90f);
+    if(i==2)addBox(room.centerX+neonbreach::kStairsOffsetX,neonbreach::kStairsCollisionHalfHeight,
+                    room.centerZ+neonbreach::kStairsOffsetZ,neonbreach::kStairsFootprintHalfExtent,
+                    neonbreach::kStairsCollisionHalfHeight,neonbreach::kStairsFootprintHalfExtent);
   }
   for(const RoomLink& link:roomLinks){
     neonbreach::PhysicsGate gate;
@@ -747,9 +762,9 @@ void configureArena(){
 void resetMission(){
   progression.reset();activeWave=0;
   configureArena();
-  playerX=-6.0f;playerZ=-6.0f;playerHealth=1.0f;
+  setPlayerWorldPosition(-6.0f,-6.0f);playerHealth=1.0f;
+  knockbackVelocityX=knockbackVelocityZ=0.0f;
   cameraFocusX=playerX;cameraFocusZ=playerZ;
-  facilityPhysics.setCharacterPosition(playerX,playerZ,0.0f);
   cameraVelocityX=cameraVelocityZ=0.0f;
   cameraShakeAmplitude=cameraShakeOffsetX=cameraShakeOffsetY=0.0f;
   playerSquashAge=0.15f;playerSquashActive=false;
@@ -988,6 +1003,7 @@ void enterRoom(int roomIndex){
     roomLinks[(size_t)room.incomingLink].open=false;
     roomLinks[(size_t)room.outgoingLink].open=false;
     room.doorOpen=false;
+    syncPhysicsGates();
   }
   if(!room.visited){
     room.visited=true;
@@ -1005,15 +1021,21 @@ void updateRoomTransition(){
     if(activeRoom==link.from){
       const bool crossed=link.fromSide>0?coordinate>link.plane+0.22f:coordinate<link.plane-0.22f;
       if(crossed){
-        if(link.axis==0)playerX=link.plane+(float)link.fromSide*0.34f;
-        else playerZ=link.plane+(float)link.fromSide*0.34f;
+        float destinationX=playerX,destinationZ=playerZ;
+        if(link.axis==0)destinationX=link.plane+(float)link.fromSide*neonbreach::kRoomTransitionOffset;
+        else destinationZ=link.plane+(float)link.fromSide*neonbreach::kRoomTransitionOffset;
+        setPlayerWorldPosition(destinationX,destinationZ);
+        knockbackVelocityX=knockbackVelocityZ=0.0f;
         enterRoom(link.to);return;
       }
     }else if(activeRoom==link.to){
       const bool crossed=link.toSide>0?coordinate>link.plane+0.22f:coordinate<link.plane-0.22f;
       if(crossed){
-        if(link.axis==0)playerX=link.plane+(float)link.toSide*0.34f;
-        else playerZ=link.plane+(float)link.toSide*0.34f;
+        float destinationX=playerX,destinationZ=playerZ;
+        if(link.axis==0)destinationX=link.plane+(float)link.toSide*neonbreach::kRoomTransitionOffset;
+        else destinationZ=link.plane+(float)link.toSide*neonbreach::kRoomTransitionOffset;
+        setPlayerWorldPosition(destinationX,destinationZ);
+        knockbackVelocityX=knockbackVelocityZ=0.0f;
         enterRoom(link.from);return;
       }
     }
@@ -1037,6 +1059,7 @@ void processRoomClear(){
   roomLinks[(size_t)room.incomingLink].open=true;
   roomLinks[(size_t)room.outgoingLink].open=true;
   room.doorOpen=true;
+  syncPhysicsGates();
   triggerCameraShake(0.17f,0.34f);
 }
 bool nearActiveRelay(){
@@ -1220,7 +1243,10 @@ void drawRoomShell(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
     drawImportedModel(worldModels[MODEL_CABLES],{room.centerX+6.8f,0.03f,room.centerZ-room.halfDepth+1.4f},{2.0f,1.0f,1.7f},PI,view,proj,cam);
   }
   if(roomIndex==2&&worldModels[MODEL_STAIRS_WIDE].loaded)
-    drawImportedModel(worldModels[MODEL_STAIRS_WIDE],{room.centerX-4.4f,0.0f,room.centerZ-3.2f},{0.34f,0.34f,0.34f},0.0f,view,proj,cam);
+    drawImportedModel(worldModels[MODEL_STAIRS_WIDE],
+      {room.centerX+neonbreach::kStairsOffsetX,0.0f,room.centerZ+neonbreach::kStairsOffsetZ},
+      {neonbreach::kStairsVisualScale,neonbreach::kStairsVisualScale,neonbreach::kStairsVisualScale},
+      0.0f,view,proj,cam);
   for(const auto&o:room.cover){
     box({o.x,o.h*0.36f,o.z},{o.sx*0.9f,o.h*0.72f,o.sz*0.92f},
         {0.10f,0.13f,0.15f},{0.004f,0.008f,0.010f},0,view,proj,cam);
@@ -1369,18 +1395,20 @@ void fixedUpdate(float dt){
       if(mag>0.012f){moveDirX=dx/mag;moveDirZ=dy/mag;inputStrength=std::clamp(mag/0.15f,0.0f,1.0f);if(!aiming)facingYaw=std::atan2(moveDirX,moveDirZ);}
     }
     const float moveSpeed=dodgeTime>0.0f?8.2f:operativeMoveSpeed()*inputStrength;
-    const float velocityX=dodgeTime>0.0f?dodgeDirX*moveSpeed:(moving?moveDirX*moveSpeed:0.0f);
-    const float velocityZ=dodgeTime>0.0f?dodgeDirZ*moveSpeed:(moving?moveDirZ*moveSpeed:0.0f);
+    const float knockbackDamping=std::exp(-dt/0.18f);
+    knockbackVelocityX*=knockbackDamping;knockbackVelocityZ*=knockbackDamping;
+    const float velocityX=(dodgeTime>0.0f?dodgeDirX*moveSpeed:(moving?moveDirX*moveSpeed:0.0f))+knockbackVelocityX;
+    const float velocityZ=(dodgeTime>0.0f?dodgeDirZ*moveSpeed:(moving?moveDirZ*moveSpeed:0.0f))+knockbackVelocityZ;
     if(facilityPhysics.ready()){
       facilityPhysics.moveCharacter(velocityX,velocityZ,dt);
       float physicsX=playerX,physicsY=0.0f,physicsZ=playerZ;
       if(facilityPhysics.getCharacterPosition(physicsX,physicsY,physicsZ)){playerX=physicsX;playerZ=physicsZ;}
     }else{
       playerX+=velocityX*dt;playerZ+=velocityZ*dt;
-      resolveCollision(playerX,playerZ,0.30f);
+      resolveCollision(playerX,playerZ,neonbreach::kPlayerCollisionRadius);
     }
     if(dodgeTime>0.0f||(moving&&inputStrength>0.0f))updateRoomTransition();
-    for(int gate=0;gate<ROOM_COUNT;gate++)facilityPhysics.setGateOpen((size_t)gate,roomLinks[(size_t)gate].open);
+    syncPhysicsGates();
     if(aiming){const float ax=aimX-playerX,az=aimZ-playerZ;if(std::abs(ax)+std::abs(az)>0.001f)facingYaw=std::atan2(ax,az);}
     updateHeldInteraction(dt);
 
@@ -1432,7 +1460,7 @@ void fixedUpdate(float dt){
           else if(enemyAttackCooldown[(size_t)i]<=0.0f){
             enemyWindup[(size_t)i]+=enemyThinkInterval[(size_t)i];
             if(enemyWindup[(size_t)i]>=0.42f){
-              if(d<1.72f&&!invulnerableNow){hurtPlayer(0.24f);if(d>0.001f){playerX-=dx/safeD*0.22f;playerZ-=dz/safeD*0.22f;resolveCollision(playerX,playerZ,0.30f);}}
+              if(d<1.72f&&!invulnerableNow){hurtPlayer(0.24f);if(d>0.001f)addPlayerKnockback(-dx/safeD*3.2f,-dz/safeD*3.2f);}
               enemyAttackCooldown[(size_t)i]=1.55f;enemyWindup[(size_t)i]=0.0f;
             }
           }else enemyWindup[(size_t)i]=0.0f;
