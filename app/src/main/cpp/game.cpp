@@ -31,7 +31,6 @@ struct ImportedPart { GLuint vao=0,vbo=0,ebo=0; GLsizei indexCount=0; V3 baseCol
 struct ImportedModel { std::vector<ImportedPart> parts; float radius=1.0f; bool loaded=false; };
 struct Obstacle { float x,z,sx,sz,h; };
 constexpr int ROOM_COUNT=static_cast<int>(neonbreach::kRoomCount);
-constexpr float ROOM_DOOR_HALF_WIDTH=neonbreach::kDoorwayHalfSpan;
 using neonbreach::RoomLink;
 struct Room {
   float centerX=0.0f,centerZ=0.0f;
