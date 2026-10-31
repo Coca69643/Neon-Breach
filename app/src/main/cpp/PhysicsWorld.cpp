@@ -227,7 +227,8 @@ void PhysicsWorld::setCharacterPosition(float x, float z, float y) {
 void PhysicsWorld::moveCharacter(float velocityX, float velocityZ, float deltaTime) {
     if (!impl_ || !impl_->character || deltaTime <= 0.0f) return;
     const Vec3 current = impl_->character->GetLinearVelocity();
-    const Vec3 velocity(velocityX, current.GetY() - 9.81f * deltaTime, velocityZ);
+    // ExtendedUpdate applies gravity exactly once using its gravity argument.
+    const Vec3 velocity(velocityX, current.GetY(), velocityZ);
     impl_->character->SetLinearVelocity(velocity);
     CharacterVirtual::ExtendedUpdateSettings update;
     update.mStickToFloorStepDown = Vec3(0.0f, -0.56f, 0.0f);
