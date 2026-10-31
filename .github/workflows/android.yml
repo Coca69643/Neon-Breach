@@ -107,7 +107,9 @@ jobs:
           sha256sum ORION-9.apk > ORION-9.apk.sha256
 
           release_tag="orion-9-build-${GITHUB_RUN_NUMBER}"
-          release_title="ORION-9 v0.9.1 - build #${GITHUB_RUN_NUMBER}"
+          version_name="$(grep 'versionName' app/build.gradle | awk -F"'" '{print $2}' | head -n 1)"
+          test -n "$version_name"
+          release_title="ORION-9 v${version_name} - build #${GITHUB_RUN_NUMBER}"
           release_notes="Automated Android APK build.
 
           Source commit: ${GITHUB_SHA}
