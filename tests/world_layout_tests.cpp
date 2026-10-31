@@ -15,9 +15,13 @@ void testRoomLinksMeetTheirRoomEdges(){
   if(link.axis==0){
    assert(near(neonbreach::kRoomCenterX[link.from]+link.fromSide*neonbreach::kRoomHalfExtent,link.plane));
    assert(near(neonbreach::kRoomCenterX[link.to]+link.toSide*neonbreach::kRoomHalfExtent,link.plane));
+   assert(std::abs(link.crossCenter-neonbreach::kRoomCenterZ[link.from])+link.halfSpan<=neonbreach::kRoomHalfExtent);
+   assert(std::abs(link.crossCenter-neonbreach::kRoomCenterZ[link.to])+link.halfSpan<=neonbreach::kRoomHalfExtent);
   }else{
    assert(near(neonbreach::kRoomCenterZ[link.from]+link.fromSide*neonbreach::kRoomHalfExtent,link.plane));
    assert(near(neonbreach::kRoomCenterZ[link.to]+link.toSide*neonbreach::kRoomHalfExtent,link.plane));
+   assert(std::abs(link.crossCenter-neonbreach::kRoomCenterX[link.from])+link.halfSpan<=neonbreach::kRoomHalfExtent);
+   assert(std::abs(link.crossCenter-neonbreach::kRoomCenterX[link.to])+link.halfSpan<=neonbreach::kRoomHalfExtent);
   }
  }
 }
