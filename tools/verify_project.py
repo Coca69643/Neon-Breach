@@ -31,6 +31,8 @@ required_files = [
     "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
     "app/src/main/cpp/CMakeLists.txt",
+    "app/src/main/cpp/VulkanRuntime.h",
+    "app/src/main/cpp/VulkanRuntime.cpp",
     "app/src/main/cpp/game.cpp",
     "app/src/main/cpp/PhysicsWorld.h",
     "app/src/main/cpp/PhysicsWorld.cpp",
@@ -127,6 +129,14 @@ if "CMAKE_CXX_STANDARD 17" not in cmake and "cxx_std_17" not in cmake:
     raise SystemExit("Native target must compile as C++17")
 if "GIT_TAG v5.6.0" not in cmake:
     raise SystemExit("Jolt Physics dependency must remain version-pinned")
+vulkan_runtime = read_text("app/src/main/cpp/VulkanRuntime.cpp")
+if "VulkanRuntime.cpp" not in cmake or "find_library(dl-lib dl)" not in cmake:
+    raise SystemExit("Vulkan preflight must be part of the Android native target")
+for token in ('dlopen("libvulkan.so"', "VK_API_VERSION_1_1", "VK_KHR_android_surface", "VK_KHR_swapchain"):
+    if token not in vulkan_runtime:
+        raise SystemExit(f"Vulkan capability preflight is missing: {token}")
+if "android.hardware.vulkan.version" not in manifest or 'android:required="false"' not in manifest:
+    raise SystemExit("Vulkan must remain an optional device feature during staged migration")
 
 # These are cross-system contracts, not assertions about camera tuning or local variable names.
 for token in (
