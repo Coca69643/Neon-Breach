@@ -53,6 +53,7 @@ struct ProjectileInstance { float x,y,z,radius,r,g,b,glow; };
 
 GLuint program=0, fallbackProgram=0, fallbackVao=0;
 GLint sectorPaletteLoc=-1, activeRoomLoc=-1, baseTextureLoc=-1, useBaseTextureLoc=-1;
+GLint visitedMaskLoc=-1,roomBoundsLoc=-1;
 GLuint worldAtlasTexture=0;
 AAssetManager* androidAssets=nullptr;
 enum WorldModelId { MODEL_ROOM_LARGE=0,MODEL_ROOM_WIDE=1,MODEL_ROOM_CORNER=2,MODEL_CORRIDOR_WIDE=3,MODEL_CORRIDOR_CORNER=4,MODEL_GATE_DOOR=5,MODEL_CABLES=6,MODEL_STAIRS_WIDE=7 };
@@ -1095,97 +1096,89 @@ void drawLootChest(const Mat4&view,const Mat4&proj,V3 cam){
     poseOrb({x,0.75f+0.035f*std::sin(visualTime*1.8f),z},{0.11f,0.12f,0.11f},{1.0f,0.75f,0.16f},{0.12f,0.045f,0.002f},0,0,0,view,proj,cam);
   }
 }
-void drawRoomArrow(const Room&room,const Mat4&view,const Mat4&proj,V3 cam){
-  const float x=room.maxX-2.55f;
-  const V3 arrowColor{0.0f,0.78f,0.92f},arrowGlow{0.0f,0.075f,0.10f};
-  for(int stripe=0;stripe<2;stripe++){
-    const float offset=(float)stripe*0.72f;
-    box({x+offset,0.040f,0.0f},{0.48f,0.026f,0.11f},arrowColor,arrowGlow,0,view,proj,cam);
-  }
-  box({room.maxX-1.42f,0.045f,-0.30f},{0.88f,0.030f,0.085f},arrowColor,arrowGlow,-0.72f,view,proj,cam);
-  box({room.maxX-1.42f,0.045f,0.30f},{0.88f,0.030f,0.085f},arrowColor,arrowGlow,0.72f,view,proj,cam);
-}
-void drawRoomEnergyDoor(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
-  if(roomIndex<0||roomIndex>=ROOM_COUNT-1)return;
+bool roomInsideTopDownFrustum(int roomIndex){
   const Room&room=rooms[(size_t)roomIndex];
-  const float edge=room.maxX;
-  const V3 frame{0.15f,0.20f,0.23f},frameGlow{0.003f,0.008f,0.012f};
-  box({edge,0.78f,-3.05f},{0.28f,1.56f,2.90f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-  box({edge,0.78f, 3.05f},{0.28f,1.56f,2.90f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-  for(float side : {-1.0f,1.0f}){
-    box({edge,0.82f,side*1.30f},{0.34f,1.72f,0.22f},frame,frameGlow,0,view,proj,cam);
-    box({edge,0.84f,side*1.48f},{0.38f,1.52f,0.055f},{0.82f,0.31f,0.065f},{0.042f,0.007f,0.001f},0,view,proj,cam);
-  }
-  box({edge,1.70f,0.0f},{0.34f,0.18f,2.85f},frame,frameGlow,0,view,proj,cam);
-  if(!room.doorOpen){
-    const V3 energy{0.88f,0.12f,0.045f},glow{0.19f,0.012f,0.001f};
-    box({edge,0.84f,0.0f},{0.16f,1.48f,2.38f},{0.22f,0.035f,0.045f},glow,0,view,proj,cam);
-    for(int band=0;band<5;band++){
-      const float y=0.28f+(float)band*0.27f;
-      box({edge-0.095f,y,0.0f},{0.035f,0.028f,2.22f},energy,glow,0,view,proj,cam);
-    }
-    for(int side : {-1,1})box({edge-0.115f,0.82f,(float)side*0.93f},{0.035f,1.15f,0.045f},{1.0f,0.36f,0.08f},{0.10f,0.018f,0.001f},0,view,proj,cam);
+  if(roomIndex==activeRoom)return true;
+  const float dx=std::abs(room.centerX-cameraFocusX);
+  const float dz=std::abs(room.centerZ-cameraFocusZ);
+  const float aspect=(float)screenW/(float)std::max(1,screenH);
+  const float halfDepth=26.0f*std::tan(52.0f*PI/360.0f);
+  const float halfWidth=halfDepth*aspect;
+  const float radius=std::sqrt(room.halfWidth*room.halfWidth+room.halfDepth*room.halfDepth);
+  return dx<=halfWidth+radius&&dz<=halfDepth+radius;
+}
+void drawRoomArrow(int linkIndex,const Mat4&view,const Mat4&proj,V3 cam){
+  if(linkIndex<0||linkIndex>=ROOM_COUNT)return;
+  const RoomLink&link=roomLinks[(size_t)linkIndex];
+  const int side=link.from==activeRoom?link.fromSide:link.toSide;
+  const float inside=link.plane-(float)side*1.35f;
+  const V3 center=link.axis==0?V3{inside,0.045f,link.crossCenter}:V3{link.crossCenter,0.045f,inside};
+  const V3 arrowColor{0.0f,0.78f,0.94f},arrowGlow{0.0f,0.075f,0.10f};
+  const float yaw=link.axis==0?PI*0.5f:0.0f;
+  box(center,{0.72f,0.025f,0.12f},arrowColor,arrowGlow,yaw,view,proj,cam);
+  box({center.x+(link.axis==0?0.0f:0.43f),0.046f,center.z+(link.axis==0?0.43f:0.0f)},
+      {0.42f,0.025f,0.095f},arrowColor,arrowGlow,yaw+0.62f,view,proj,cam);
+  box({center.x+(link.axis==0?0.0f:-0.43f),0.046f,center.z+(link.axis==0?-0.43f:0.0f)},
+      {0.42f,0.025f,0.095f},arrowColor,arrowGlow,yaw-0.62f,view,proj,cam);
+}
+void drawRoomEnergyDoor(int linkIndex,const Mat4&view,const Mat4&proj,V3 cam){
+  if(linkIndex<0||linkIndex>=ROOM_COUNT)return;
+  const RoomLink&link=roomLinks[(size_t)linkIndex];
+  const V3 position=link.axis==0?V3{link.plane,0.0f,link.crossCenter}:V3{link.crossCenter,0.0f,link.plane};
+  const float yaw=link.axis==0?PI*0.5f:0.0f;
+  if(!link.open&&worldModels[MODEL_GATE_DOOR].loaded){
+    drawImportedModel(worldModels[MODEL_GATE_DOOR],position,{1.0f,1.0f,1.0f},yaw,view,proj,cam);
+  }else if(link.open){
+    box({position.x,0.025f,position.z},{link.axis==0?0.18f:4.1f,0.035f,link.axis==0?4.1f:0.18f},
+        {0.0f,0.43f,0.52f},{0.0f,0.045f,0.065f},0,view,proj,cam);
   }else{
-    box({edge,0.035f,0.0f},{0.24f,0.035f,2.44f},{0.0f,0.43f,0.52f},{0.0f,0.045f,0.065f},0,view,proj,cam);
+    box({position.x,0.82f,position.z},{link.axis==0?0.14f:4.2f,1.56f,link.axis==0?4.2f:0.14f},
+        {0.12f,0.045f,0.05f},{0.08f,0.008f,0.001f},0,view,proj,cam);
   }
 }
 void drawRoomShell(int roomIndex,const Mat4&view,const Mat4&proj,V3 cam){
   const Room&room=rooms[(size_t)roomIndex];
-  const float x=room.centerX;
-  const V3 floorColor=(roomIndex==0)?V3{0.14f,0.17f,0.18f}:
-      (roomIndex==1?V3{0.16f,0.14f,0.12f}:(roomIndex==2?V3{0.11f,0.15f,0.18f}:V3{0.16f,0.12f,0.14f}));
-  const V3 floorGlow=(roomIndex==0)?V3{0.003f,0.006f,0.008f}:
-      (roomIndex==1?V3{0.010f,0.004f,0.001f}:(roomIndex==2?V3{0.001f,0.006f,0.012f}:V3{0.010f,0.002f,0.004f}));
-  box({x,-0.25f,0.0f},{12.15f,0.44f,9.55f},{0.045f,0.055f,0.068f},{0.002f,0.004f,0.008f},0,view,proj,cam);
-  box({x,-0.006f,0.0f},{11.90f,0.035f,9.20f},floorColor,floorGlow,0,view,proj,cam);
-  for(int row=-2;row<=2;row++){
-    const float z=(float)row*1.48f;
-    box({x,0.014f,z},{11.65f,0.012f,0.022f},{0.055f,0.070f,0.082f},{0.001f,0.002f,0.004f},0,view,proj,cam);
+  if(!roomInsideTopDownFrustum(roomIndex))return;
+  const float dx=room.centerX-cameraFocusX,dz=room.centerZ-cameraFocusZ;
+  const float distance=std::sqrt(dx*dx+dz*dz);
+  if(distance>39.0f){
+    box({room.centerX,-0.18f,room.centerZ},{room.halfWidth*2.0f,0.30f,room.halfDepth*2.0f},
+        {0.075f,0.085f,0.095f},{0.001f,0.002f,0.003f},0,view,proj,cam);
+    return;
   }
-  for(int column=-2;column<=2;column++){
-    const float px=x+(float)column*2.0f;
-    box({px,0.014f,0.0f},{0.022f,0.012f,8.95f},{0.055f,0.070f,0.082f},{0.001f,0.002f,0.004f},0,view,proj,cam);
+  if(distance>27.0f){
+    // Far-room LOD: the architectural footprint remains visible; interior meshes are culled.
+    box({room.centerX,-0.08f,room.centerZ},{room.halfWidth*1.96f,0.16f,room.halfDepth*1.96f},
+        {0.12f,0.14f,0.15f},{0.002f,0.004f,0.005f},0,view,proj,cam);
+    return;
   }
-  for(int side : {-1,1}){
-    const float z=(float)side*4.62f;
-    box({x,0.78f,z},{12.08f,1.56f,0.28f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-    box({x,1.82f,z-(float)side*0.17f},{11.95f,0.10f,0.12f},{0.20f,0.25f,0.28f},{0.004f,0.008f,0.011f},0,view,proj,cam);
-    for(int panel=0;panel<5;panel++){
-      const float px=x-4.65f+(float)panel*2.30f;
-      box({px,0.88f,z-(float)side*0.16f},{0.95f,1.20f,0.045f},
-          (panel+roomIndex)%2==0?V3{0.11f,0.14f,0.16f}:V3{0.075f,0.10f,0.12f},
-          {0.001f,0.003f,0.005f},0,view,proj,cam);
-      if(panel%2==0)box({px,1.35f,z-(float)side*0.205f},{0.42f,0.045f,0.025f},
-          {0.84f,0.30f,0.065f},{0.035f,0.006f,0.001f},0,view,proj,cam);
-    }
+  const ImportedModel&module=roomIndex==0?worldModels[MODEL_ROOM_LARGE]:worldModels[MODEL_ROOM_WIDE];
+  if(module.loaded)drawImportedModel(module,{room.centerX,0.0f,room.centerZ},{1.0f,1.0f,1.0f},0.0f,view,proj,cam);
+  else box({room.centerX,-0.25f,room.centerZ},{room.halfWidth*2.0f,0.44f,room.halfDepth*2.0f},
+           {0.045f,0.055f,0.068f},{0.002f,0.004f,0.008f},0,view,proj,cam);
+  if(worldModels[MODEL_CABLES].loaded){
+    drawImportedModel(worldModels[MODEL_CABLES],{room.centerX-6.8f,0.03f,room.centerZ+room.halfDepth-1.4f},{2.0f,1.0f,1.7f},0.0f,view,proj,cam);
+    drawImportedModel(worldModels[MODEL_CABLES],{room.centerX+6.8f,0.03f,room.centerZ-room.halfDepth+1.4f},{2.0f,1.0f,1.7f},PI,view,proj,cam);
   }
-  for(int beam=0;beam<3;beam++){
-    const float px=x-3.8f+(float)beam*3.8f;
-    box({px,2.03f,0.0f},{0.12f,0.13f,8.30f},{0.19f,0.23f,0.26f},{0.003f,0.006f,0.008f},0,view,proj,cam);
-    box({px,1.955f,0.0f},{0.055f,0.025f,7.70f},
-        roomIndex%2==0?V3{0.13f,0.61f,0.66f}:V3{0.76f,0.28f,0.07f},
-        roomIndex%2==0?V3{0.008f,0.045f,0.052f}:V3{0.035f,0.006f,0.001f},0,view,proj,cam);
+  if(roomIndex==2&&worldModels[MODEL_STAIRS_WIDE].loaded)
+    drawImportedModel(worldModels[MODEL_STAIRS_WIDE],{room.centerX-4.4f,0.0f,room.centerZ-3.2f},{0.34f,0.34f,0.34f},0.0f,view,proj,cam);
+  for(const auto&o:room.cover){
+    box({o.x,o.h*0.36f,o.z},{o.sx*0.9f,o.h*0.72f,o.sz*0.92f},
+        {0.10f,0.13f,0.15f},{0.004f,0.008f,0.010f},0,view,proj,cam);
+    box({o.x,o.h*0.75f,o.z},{o.sx*0.72f,0.06f,o.sz*0.72f},
+        {0.23f,0.27f,0.27f},{0.003f,0.004f,0.004f},0,view,proj,cam);
   }
-  for(size_t i=0;i<room.cover.size();i++){
-    const auto&o=room.cover[i];const float yaw=(float)i*0.17f;
-    box({o.x,o.h*0.43f,o.z},{o.sx*1.12f,o.h*0.86f,o.sz*1.10f},{0.105f,0.135f,0.15f},{0.006f,0.010f,0.012f},yaw,view,proj,cam);
-    box({o.x,o.h*0.87f,o.z},{o.sx*0.84f,0.075f,o.sz*0.83f},{0.23f,0.27f,0.27f},{0.003f,0.004f,0.004f},yaw,view,proj,cam);
-    box({o.x,o.h*0.62f,o.z+o.sz*0.54f},{o.sx*0.64f,0.055f,0.035f},{0.80f,0.31f,0.08f},{0.035f,0.008f,0.001f},yaw,view,proj,cam);
-  }
-  const float consoleX=x+((roomIndex%2==0)?-4.9f:4.9f);
-  box({consoleX,0.72f,-1.85f},{0.48f,1.05f,0.76f},{0.055f,0.075f,0.09f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-  box({consoleX,1.05f,-1.85f},{0.035f,0.38f,0.48f},
-      roomIndex==0?V3{0.10f,0.65f,0.72f}:V3{0.80f,0.29f,0.08f},
-      {0.008f,0.035f,0.045f},0,view,proj,cam);
 }
 void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
-  // SITE ORION-9 — ORION INDUSTRIAL MODULES: four connected, procedurally textured containment rooms.
+  // ORION-9 v0.8: central atrium with research, power and containment wings in a connected loop.
   for(int i=0;i<ROOM_COUNT;i++)drawRoomShell(i,view,proj,cam);
-  box({rooms[0].minX,0.80f,0.0f},{0.30f,1.60f,9.35f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-  box({rooms[3].maxX,0.80f,0.0f},{0.30f,1.60f,9.35f},{0.075f,0.095f,0.12f},{0.002f,0.005f,0.008f},0,view,proj,cam);
-  for(int gate=0;gate<ROOM_COUNT-1;gate++){
-    drawRoomEnergyDoor(gate,view,proj,cam);
-    if(gate==activeRoom&&rooms[(size_t)gate].doorOpen)drawRoomArrow(rooms[(size_t)gate],view,proj,cam);
+  const V3 linkPositions[4]={{10.0f,0.0f,0.0f},{20.0f,0.0f,8.0f},{10.0f,0.0f,16.0f},{0.0f,0.0f,10.0f}};
+  for(int linkIndex=0;linkIndex<ROOM_COUNT;linkIndex++){
+    const RoomLink&link=roomLinks[(size_t)linkIndex];
+    if(worldModels[MODEL_CORRIDOR_WIDE].loaded)
+      drawImportedModel(worldModels[MODEL_CORRIDOR_WIDE],linkPositions[linkIndex],{0.58f,1.0f,0.58f},link.axis==0?PI*0.5f:0.0f,view,proj,cam);
+    drawRoomEnergyDoor(linkIndex,view,proj,cam);
+    if(link.open&&(link.from==activeRoom||link.to==activeRoom))drawRoomArrow(linkIndex,view,proj,cam);
   }
   drawLootChest(view,proj,cam);
   for(int i=0;i<3;i++){
@@ -1435,7 +1428,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
   // Initialize dungeon metadata once; EGL context recreation must not reset mission progress.
-  if(!roomWorldInitialized)configureArena();
+  if(!roomWorldInitialized){configureArena();rooms[0].visited=true;}
   // EGL can recreate the context after resume: rebuild every GL object.
   // EGL can recreate the context after resume: rebuild every GL object from a clean state.
   program=0;fallbackProgram=0;fallbackVao=0;postProgram=0;postVao=0;
@@ -1448,6 +1441,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");
     sectorPaletteLoc=glGetUniformLocation(program,"uSectorPalette");
     activeRoomLoc=glGetUniformLocation(program,"uActiveRoom");
+    visitedMaskLoc=glGetUniformLocation(program,"uVisitedRoomMask");
+    roomBoundsLoc=glGetUniformLocation(program,"uRoomBounds[0]");
     baseTextureLoc=glGetUniformLocation(program,"uBaseTexture");
     useBaseTextureLoc=glGetUniformLocation(program,"uUseBaseTexture");
     colorLoc=glGetUniformLocation(program,"uColor");glowLoc=glGetUniformLocation(program,"uGlow");
@@ -1478,8 +1473,8 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   frame=std::clamp(frame,0.0f,0.05f);visualTime+=frame;accumulator+=frame;
   const float step=1.0f/60.0f;
   while(accumulator>=step){fixedUpdate(step);accumulator-=step;}
-  const float desiredFocusX=gameMode==1?playerX*0.84f:((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
-  const float desiredFocusZ=gameMode==1?std::clamp(playerZ*0.55f,-2.25f,2.25f):((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusZ);
+  const float desiredFocusX=gameMode==1?playerX*0.90f:((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusX);
+  const float desiredFocusZ=gameMode==1?playerZ*0.90f:((gameMode==0||gameMode==3||gameMode==6)?0.0f:cameraFocusZ);
   updateCameraSpring(frame,desiredFocusX,desiredFocusZ);
   updateCameraShake(frame);
   const bool postprocessReady=program&&postProgram&&postVao&&sceneFramebuffer&&sceneColorTexture;
@@ -1490,12 +1485,12 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
     return;
   }
-  V3 camera{cameraFocusX,10.2f,cameraFocusZ+11.6f};
+  V3 camera{cameraFocusX,26.0f,cameraFocusZ+6.0f};
   Mat4 view=lookAt(camera,{cameraFocusX,0.0f,cameraFocusZ},{0.0f,1.0f,0.0f});
   // Screen-space view translation is inherited by every object MVP in this frame.
   view.v[12]+=cameraShakeOffsetX;
   view.v[13]+=cameraShakeOffsetY;
-  Mat4 proj=perspective(46.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,60.0f);
+  Mat4 proj=perspective(52.0f*PI/180.0f,(float)screenW/(float)screenH,0.1f,140.0f);
   glUseProgram(program);
   if(sectorPaletteLoc>=0){
     const V3 roomPalettes[4]={{0.025f,0.16f,0.22f},{0.28f,0.12f,0.025f},{0.04f,0.15f,0.27f},{0.24f,0.045f,0.075f}};
@@ -1503,6 +1498,17 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     glUniform3f(sectorPaletteLoc,tint.x,tint.y,tint.z);
   }
   if(activeRoomLoc>=0)glUniform1i(activeRoomLoc,activeRoom);
+  int visitedMask=0;float roomBounds[ROOM_COUNT*4]{};
+  for(int i=0;i<ROOM_COUNT;i++){
+    if(rooms[(size_t)i].visited)visitedMask|=(1<<i);
+    const Room&room=rooms[(size_t)i];
+    roomBounds[i*4]=room.minX;roomBounds[i*4+1]=room.maxX;
+    roomBounds[i*4+2]=room.minZ;roomBounds[i*4+3]=room.maxZ;
+  }
+  if(visitedMaskLoc>=0)glUniform1i(visitedMaskLoc,visitedMask);
+  if(roomBoundsLoc>=0)glUniform4fv(roomBoundsLoc,ROOM_COUNT,roomBounds);
+  if(baseTextureLoc>=0)glUniform1i(baseTextureLoc,0);
+  if(useBaseTextureLoc>=0)glUniform1i(useBaseTextureLoc,0);
   drawScene(view,proj,camera);
   if(lost||won){
     V3 color=won?V3{0.0f,0.9f,0.38f}:V3{1.0f,0.04f,0.10f};
