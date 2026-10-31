@@ -65,8 +65,8 @@ for token in (
     "uUseBaseTexture", "uRoomBounds[4]", "uVisitedRoomMask", "roomInsideTopDownFrustum",
     "roomLinkOpening", "RoomLink", "roomLinks[0]={0,1,0,1,-1,10.0f", "centersZ[4]={0.0f,0.0f,20.0f,20.0f", "room.halfWidth=10.0f;room.halfDepth=10.0f;", "roomIndex==0?1.0f:1.6666667f", "roomLinks[1]={1,2,1,1,-1,10.0f",
     "roomLinks[2]={2,3,0,-1,1,10.0f", "roomLinks[3]={3,0,1,-1,1,10.0f",
-    "camera{cameraFocusX,26.0f", "unexplored",
-    "nativeSurfaceCreated", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
+    "camera{cameraFocusX,16.0f", "unexplored",
+    "nativeSurfaceCreated", "#include \"PhysicsWorld.h\"", "facilityPhysics.moveCharacter", "facilityPhysics.setGateOpen", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
 ):
@@ -96,7 +96,7 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
         raise SystemExit(f"Android UI/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.8'" not in build or "versionCode 23" not in build:
+if "versionName '0.9'" not in build or "versionCode 24" not in build:
     raise SystemExit("Version 0.4 metadata missing")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
