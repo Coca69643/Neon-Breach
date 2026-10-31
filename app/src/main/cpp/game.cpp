@@ -92,6 +92,7 @@ float knockbackVelocityX=0.0f,knockbackVelocityZ=0.0f;
 float playerSquashAge=0.15f;
 bool playerSquashActive=false;
 int missionSerial=0, arenaVariant=0;
+bool firstActiveTickLogged=false;
 int operativeClass=0; // 0 Neon-Vanguard, 1 Stellar-Reaper
 std::array<float,4> enemyShotCooldown{};
 std::array<float,4> enemyWindup{};
@@ -688,7 +689,8 @@ void setPlayerWorldPosition(float x,float z){
   playerX=x;playerZ=z;
   if(facilityPhysics.ready())facilityPhysics.setCharacterPosition(x,z,0.0f);
 }
-void configureArena(){
+void configureArena(bool buildPhysics=true){
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","configureArena begin: buildPhysics=%d",buildPhysics?1:0);
   arenaVariant=missionSerial%3;missionSerial++;
   const auto &centersX=neonbreach::kRoomCenterX;
   const auto &centersZ=neonbreach::kRoomCenterZ;
@@ -709,6 +711,10 @@ void configureArena(){
   }
   roomLinks=neonbreach::kFacilityRoomLinks;
   obstacles=rooms[0].cover;activeRoom=0;roomWorldInitialized=true;
+  if(!buildPhysics){
+    __android_log_print(ANDROID_LOG_INFO,"ORION-9","Visual room topology ready; Jolt initialization deferred until mission start");
+    return;
+  }
 
   // Build one collision world from the same room/link data used by the renderer.
   // Door apertures are real gaps in wall geometry; closed energy gates are Jolt bodies.
@@ -756,9 +762,13 @@ void configureArena(){
       :neonbreach::PhysicsBox{link.crossCenter,0.88f,link.plane,link.halfSpan,0.88f,neonbreach::kGateHalfThickness};
     gate.open=link.open;gates.push_back(gate);
   }
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","Building mission physics: static=%zu gates=%zu",solids.size(),gates.size());
   facilityPhysics.rebuild(solids,gates);
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","Mission physics build complete: ready=%d",facilityPhysics.ready()?1:0);
 }
 void resetMission(){
+  firstActiveTickLogged=false;
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","Mission reset begin");
   progression.reset();activeWave=0;
   configureArena();
   setPlayerWorldPosition(-6.0f,-6.0f);playerHealth=1.0f;
@@ -779,6 +789,7 @@ void resetMission(){
   enemySteerX.fill(0.0f);enemySteerZ.fill(0.0f);enemyMoveScale.fill(1.0f);
   shots.fill({});
   enterRoom(0);
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","Mission reset complete: physicsReady=%d",facilityPhysics.ready()?1:0);
 }
 bool roomLinkOpening(int roomIndex,int axis,int side,float crossCoordinate,float radius){
   for(const auto&link:roomLinks){
@@ -1371,6 +1382,10 @@ void fixedUpdate(float dt){
     if(playerSquashAge>=0.15f){playerSquashAge=0.15f;playerSquashActive=false;}
   }
   if(gameMode!=1){publishSnapshot();return;}
+  if(!firstActiveTickLogged){
+    firstActiveTickLogged=true;
+    __android_log_print(ANDROID_LOG_INFO,"ORION-9","First gameplay tick: physicsReady=%d player=(%.2f,%.2f)",facilityPhysics.ready()?1:0,playerX,playerZ);
+  }
   elapsed+=dt;
   const bool invulnerableNow=dodgeTime>0.0f;
   dodgeCooldown=std::max(0.0f,dodgeCooldown-dt);dodgeTime=std::max(0.0f,dodgeTime-dt);shotCooldown=std::max(0.0f,shotCooldown-dt);
@@ -1525,7 +1540,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
   // Initialize dungeon metadata once; EGL context recreation must not reset mission progress.
-  if(!roomWorldInitialized){configureArena();rooms[0].visited=true;}
+  if(!roomWorldInitialized){configureArena(false);rooms[0].visited=true;}
   // EGL can recreate the context after resume: rebuild every GL object.
   // EGL can recreate the context after resume: rebuild every GL object from a clean state.
   program=0;fallbackProgram=0;fallbackVao=0;postProgram=0;postVao=0;
@@ -1637,7 +1652,9 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   }
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeStartNewMission(JNIEnv*,jobject){
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","JNI start mission requested");
   resetMission();gameMode=1;previousFrame=std::chrono::steady_clock::now();publishSnapshot();
+  __android_log_print(ANDROID_LOG_INFO,"ORION-9","JNI start mission completed");
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetOperative(JNIEnv*,jobject,jint selected){
   operativeClass=std::clamp((int)selected,0,1);publishSnapshot();
