@@ -135,6 +135,14 @@ struct PhysicsWorld::Impl {
         gates.clear();
     }
 
+    void refreshCharacterContacts() {
+        if (!character) return;
+        character->RefreshContacts(
+            system.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
+            system.GetDefaultLayerFilter(Layers::MOVING),
+            {}, {}, allocator);
+    }
+
     void createCharacter(float x, float z, float y) {
         Ref<CapsuleShape> capsule = new CapsuleShape(0.48f, 0.29f);
         Ref<CharacterVirtualSettings> settings = new CharacterVirtualSettings();
@@ -211,6 +219,7 @@ void PhysicsWorld::setGateOpen(std::size_t gateIndex, bool open) {
         gate.body = impl_->addBox(gate.box);
     }
     gate.open = open;
+    impl_->refreshCharacterContacts();
 }
 
 void PhysicsWorld::setCharacterPosition(float x, float z, float y) {
@@ -218,10 +227,7 @@ void PhysicsWorld::setCharacterPosition(float x, float z, float y) {
     if (!impl_->character) impl_->createCharacter(x, z, y);
     impl_->character->SetPosition(RVec3(x, y, z));
     impl_->character->SetLinearVelocity(Vec3::sZero());
-    impl_->character->RefreshContacts(
-        impl_->system.GetDefaultBroadPhaseLayerFilter(Layers::MOVING),
-        impl_->system.GetDefaultLayerFilter(Layers::MOVING),
-        {}, {}, impl_->allocator);
+    impl_->refreshCharacterContacts();
 }
 
 void PhysicsWorld::moveCharacter(float velocityX, float velocityZ, float deltaTime) {

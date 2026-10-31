@@ -9,6 +9,7 @@ on:
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/android.yml'
   push:
     branches: [main]
@@ -17,6 +18,7 @@ on:
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/android.yml'
 
 permissions:
@@ -72,6 +74,14 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install --yes glslang-tools
+      - name: Run native world layout tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -Iapp/src/main/cpp tests/world_layout_tests.cpp -o "$RUNNER_TEMP/world_layout_tests"
+          "$RUNNER_TEMP/world_layout_tests"
+      - name: Run native progression tests
+        run: |
+          c++ -std=c++17 -Wall -Wextra -Werror -Iapp/src/main/cpp tests/progression_manager_tests.cpp app/src/main/cpp/ProgressionManager.cpp -o "$RUNNER_TEMP/progression_manager_tests"
+          "$RUNNER_TEMP/progression_manager_tests"
       - name: Validate required source files
         run: python3 tools/verify_project.py
       - name: Compile embedded OpenGL ES shaders
