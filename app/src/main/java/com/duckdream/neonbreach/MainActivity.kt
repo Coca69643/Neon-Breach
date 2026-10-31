@@ -225,7 +225,7 @@ class MainActivity : Activity() {
             setPadding(0, dp(4), 0, dp(4))
         }
         addVertical(left, text("DUCK DREAM STUDIOS", 10f, cyan, true), 8)
-        addVertical(left, text("NEON BREACH", 32f, white, true), 1)
+        addVertical(left, text("ORION-9", 32f, white, true), 1)
         addVertical(left, View(this).apply { setBackgroundColor(cyan) }, 8, dp(176), dp(2))
         addVertical(left, text("PROTOCOLO DE CONTENÇÃO", 11f, muted, true), 8)
         addVertical(left, text("OPERADOR  ${operativeName()}", 12f, amber, true), 10)
@@ -236,7 +236,7 @@ class MainActivity : Activity() {
         addVertical(left, continueBtn, 6, dp(181), dp(33))
         addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 6, dp(181), dp(33))
         addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 6, dp(181), dp(33))
-        addVertical(left, text("SITE ORION-9  •  0.9.1", 9f, muted, true), 10)
+        addVertical(left, text("SITE ORION-9  •  0.9.2", 9f, muted, true), 10)
         layer.addView(left, FrameLayout.LayoutParams(dp(225), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
@@ -401,7 +401,7 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, 0)
             isClickable = false
         }
-        addVertical(left, text("NEON BREACH  /  SITE ORION-9", 10f, Color.argb(210, 72, 220, 232), true), 3)
+        addVertical(left, text("ORION-9  /  SITE", 10f, Color.argb(210, 72, 220, 232), true), 3)
         addVertical(left, text("OPERADOR  ${operativeName()}", 9f, Color.argb(190, 255, 183, 112), true), 5)
         relayStatus = text("RELÉS  0 / 3", 10f, hudColor, true)
         addVertical(left, relayStatus, 2)
