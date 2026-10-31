@@ -29,15 +29,18 @@ struct ImportedPart { GLuint vao=0,vbo=0,ebo=0; GLsizei indexCount=0; V3 baseCol
 struct ImportedModel { std::vector<ImportedPart> parts; float radius=1.0f; bool loaded=false; };
 struct Obstacle { float x,z,sx,sz,h; };
 constexpr int ROOM_COUNT=4;
-constexpr float ROOM_WIDTH=12.0f, ROOM_HALF_WIDTH=6.0f, ROOM_HALF_DEPTH=4.5f;
-constexpr float ROOM_DOOR_HALF_WIDTH=1.19f;
+constexpr float ROOM_DOOR_HALF_WIDTH=2.10f;
 struct Room {
-  float centerX=0.0f,minX=0.0f,maxX=0.0f,minZ=-ROOM_HALF_DEPTH,maxZ=ROOM_HALF_DEPTH;
+  float centerX=0.0f,centerZ=0.0f;
+  float minX=-10.0f,maxX=10.0f,minZ=-10.0f,maxZ=10.0f;
+  float halfWidth=10.0f,halfDepth=10.0f;
+  int incomingLink=3,outgoingLink=0;
   int wavesTotal=1,wavesSpawned=0;
   bool visited=false,cleared=false,doorOpen=false;
   bool chestSpawned=false,chestOpened=false;
   std::array<Obstacle,4> cover{};
 };
+struct RoomLink { int from=0,to=0,axis=0,fromSide=1,toSide=-1; float plane=0.0f,crossCenter=0.0f,halfSpan=2.1f; bool open=false; };
 struct Enemy { float x,z,hp,maxHp,speed,radius; int type; float yaw; };
 struct Shot {
   float x,y,z,vx,vz,life;
@@ -57,6 +60,7 @@ std::array<ImportedModel,8> worldModels{};
 bool worldAssetsReady=false;
 neonbreach::ProgressionManager progression;
 std::array<Room,ROOM_COUNT> rooms{};
+std::array<RoomLink,ROOM_COUNT> roomLinks{};
 int activeRoom=0;
 bool roomWorldInitialized=false;
 int activeWave=0;
@@ -137,17 +141,15 @@ constexpr std::array<Obstacle,4> ARENA_LAYOUT_C{{
   {0.95f,-0.90f,1.14f,0.82f,0.68f},
   {3.25f,1.35f,0.94f,0.90f,0.72f}
 }};
-constexpr float RELAY_X[3]={-4.15f,0.05f,4.22f};
-constexpr float RELAY_Z[3]={2.65f,-0.55f,2.35f};
-constexpr float EXIT_X=5.15f;
-constexpr float EXIT_Z=-3.52f;
+constexpr float RELAY_X[3]={-5.4f,25.2f,25.2f};
+constexpr float RELAY_Z[3]={4.2f,0.5f,20.2f};
 constexpr int TOTAL_MISSION_ELIMINATIONS=24;
-float activeExtractionX(){return rooms[3].centerX+4.15f;}
-float activeExtractionZ(){return -3.05f;}
-constexpr float POD_X[2]={-2.95f,3.55f};
-constexpr float POD_Z[2]={-3.32f,0.10f};
-constexpr float HAZARD_X[2]={-1.20f,3.85f};
-constexpr float HAZARD_Z[2]={-1.55f,-1.35f};
+float activeExtractionX(){return rooms[3].centerX+5.8f;}
+float activeExtractionZ(){return rooms[3].centerZ+1.6f;}
+constexpr float POD_X[2]={-1.8f,26.4f};
+constexpr float POD_Z[2]={-6.1f,3.4f};
+constexpr float HAZARD_X[2]={15.5f,24.7f};
+constexpr float HAZARD_Z[2]={-1.2f,17.0f};
 std::array<bool,2> podCollected{{false,false}};
 std::array<float,2> hazardCooldown{{0.0f,0.0f}};
 float operativeMoveSpeed(){return operativeClass==1?5.10f:4.25f;}
@@ -670,30 +672,34 @@ void spawnEnemyWave(int wave);
 void enterRoom(int roomIndex);
 void configureArena(){
   arenaVariant=missionSerial%3;missionSerial++;
+  const float centersX[4]={0.0f,20.0f,20.0f,0.0f};
+  const float centersZ[4]={0.0f,0.0f,16.0f,16.0f};
   for(int i=0;i<ROOM_COUNT;i++){
     Room&room=rooms[(size_t)i];
-    room.centerX=(float)i*ROOM_WIDTH;
-    room.minX=room.centerX-ROOM_HALF_WIDTH;
-    room.maxX=room.centerX+ROOM_HALF_WIDTH;
-    room.minZ=-ROOM_HALF_DEPTH;
-    room.maxZ=ROOM_HALF_DEPTH;
+    room.centerX=centersX[i];room.centerZ=centersZ[i];
+    room.halfWidth=10.0f;room.halfDepth=i==0?10.0f:6.0f;
+    room.minX=room.centerX-room.halfWidth;room.maxX=room.centerX+room.halfWidth;
+    room.minZ=room.centerZ-room.halfDepth;room.maxZ=room.centerZ+room.halfDepth;
+    room.incomingLink=(i+ROOM_COUNT-1)%ROOM_COUNT;room.outgoingLink=i;
     room.wavesTotal=(i==0||i==3)?2:1;
     room.wavesSpawned=0;room.visited=false;room.cleared=false;room.doorOpen=false;
     room.chestSpawned=false;room.chestOpened=false;
     const int layout=(i+arenaVariant)%3;
     const std::array<Obstacle,4>*source=layout==0?&ARENA_LAYOUT_A:(layout==1?&ARENA_LAYOUT_B:&ARENA_LAYOUT_C);
     room.cover=*source;
-    for(auto&o:room.cover)o.x+=room.centerX;
+    for(auto&o:room.cover){o.x+=room.centerX;o.z+=room.centerZ;}
   }
-  obstacles=rooms[0].cover;
-  activeRoom=0;
-  roomWorldInitialized=true;
+  roomLinks[0]={0,1,0,1,-1,10.0f,0.0f,2.1f,false};
+  roomLinks[1]={1,2,1,1,-1,8.0f,20.0f,2.1f,false};
+  roomLinks[2]={2,3,0,-1,1,10.0f,16.0f,2.1f,false};
+  roomLinks[3]={3,0,1,-1,1,10.0f,0.0f,2.1f,false};
+  obstacles=rooms[0].cover;activeRoom=0;roomWorldInitialized=true;
 }
 void resetMission(){
   progression.reset();activeWave=0;
   configureArena();
-  playerX=-5.15f;playerZ=-3.25f;playerHealth=1.0f;
-  cameraFocusX=std::clamp(playerX*0.68f,-3.8f,3.8f);cameraFocusZ=std::clamp(playerZ*0.55f,-2.25f,2.25f);
+  playerX=-6.0f;playerZ=-6.0f;playerHealth=1.0f;
+  cameraFocusX=playerX;cameraFocusZ=playerZ;
   cameraVelocityX=cameraVelocityZ=0.0f;
   cameraShakeAmplitude=cameraShakeOffsetX=cameraShakeOffsetY=0.0f;
   playerSquashAge=0.15f;playerSquashActive=false;
@@ -710,18 +716,20 @@ void resetMission(){
   shots.fill({});
   enterRoom(0);
 }
-bool roomGatePassable(int gateIndex,float z,float radius){
-  return gateIndex>=0&&gateIndex<ROOM_COUNT-1
-      &&rooms[(size_t)gateIndex].doorOpen
-      &&std::abs(z)<ROOM_DOOR_HALF_WIDTH-radius;
+bool roomLinkOpening(int roomIndex,int axis,int side,float crossCoordinate,float radius){
+  for(const auto&link:roomLinks){
+    const bool connected=(link.from==roomIndex&&link.axis==axis&&link.fromSide==side)
+        ||(link.to==roomIndex&&link.axis==axis&&link.toSide==side);
+    if(connected&&link.open&&std::abs(crossCoordinate-link.crossCenter)<link.halfSpan-radius)return true;
+  }
+  return false;
 }
 void resolveCollision(float&x,float&z,float radius){
   const Room&room=rooms[(size_t)activeRoom];
-  const bool westDoorOpen=activeRoom>0&&roomGatePassable(activeRoom-1,z,radius);
-  const bool eastDoorOpen=activeRoom<ROOM_COUNT-1&&roomGatePassable(activeRoom,z,radius);
-  z=std::clamp(z,room.minZ+radius,room.maxZ-radius);
-  if(!westDoorOpen)x=std::max(x,room.minX+radius);
-  if(!eastDoorOpen)x=std::min(x,room.maxX-radius);
+  if(!roomLinkOpening(activeRoom,0,-1,z,radius))x=std::max(x,room.minX+radius);
+  if(!roomLinkOpening(activeRoom,0, 1,z,radius))x=std::min(x,room.maxX-radius);
+  if(!roomLinkOpening(activeRoom,1,-1,x,radius))z=std::max(z,room.minZ+radius);
+  if(!roomLinkOpening(activeRoom,1, 1,x,radius))z=std::min(z,room.maxZ-radius);
   for(const auto&o:room.cover){
     float qx=std::clamp(x,o.x-o.sx*0.5f,o.x+o.sx*0.5f),qz=std::clamp(z,o.z-o.sz*0.5f,o.z+o.sz*0.5f);
     float dx=x-qx,dz=z-qz,d2=dx*dx+dz*dz;
@@ -738,16 +746,6 @@ void resolveCollision(float&x,float&z,float radius){
       }
     }
   }
-}
-void draw(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,const Mat4&view,const Mat4&proj,V3 camera){
-  if(!program||!m.vao)return;
-  Mat4 model=multiply(translate(pos.x,pos.y,pos.z),multiply(rotateY(yaw),scale(size.x,size.y,size.z)));
-  Mat4 mvp=multiply(proj,multiply(view,model));
-  glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,model.v);
-  glUniform3f(colorLoc,color.x,color.y,color.z);glUniform3f(glowLoc,glow.x,glow.y,glow.z);
-  glUniform3f(cameraLoc,camera.x,camera.y,camera.z);
-  glUniform1i(useBaseTextureLoc,0);
-  glBindVertexArray(m.vao);glDrawArrays(GL_TRIANGLES,0,m.count);
 }
 void drawImportedModel(const ImportedModel&model,V3 position,V3 size,float yaw,const Mat4&view,const Mat4&proj,V3 camera){
   if(!model.loaded||!program)return;
@@ -913,7 +911,7 @@ void spawnEnemyWave(int wave){
     const float speedBase=type==0?1.10f:(type==1?0.72f:(type==2?1.35f:1.62f));
     const float radius=type==1?0.48f:((type==2||type==3)?0.31f:0.36f);
     const float jitter=0.18f*std::sin((float)wave*1.7f+(float)i*2.4f+(float)activeRoom);
-    enemies[i]={room.centerX+x0[i]+jitter,z0[i]+0.18f*std::cos((float)wave+(float)i+roomWave),hpBase*healthScale,hpBase*healthScale,speedBase*speedScale,radius,type,PI};
+    enemies[i]={room.centerX+x0[i]+jitter,room.centerZ+z0[i]+0.18f*std::cos((float)wave+(float)i+roomWave),hpBase*healthScale,hpBase*healthScale,speedBase*speedScale,radius,type,PI};
     enemyShotCooldown[i]=randomRange(0.45f,1.10f);
     enemyWindup[i]=0.0f;enemyAttackCooldown[i]=randomRange(0.25f,0.75f);
     enemyThinkInterval[i]=randomRange(0.075f,0.145f);enemyReactionTimer[i]=randomRange(0.0f,0.13f);
@@ -926,7 +924,11 @@ void enterRoom(int roomIndex){
   activeRoom=std::clamp(roomIndex,0,ROOM_COUNT-1);
   Room&room=rooms[(size_t)activeRoom];
   obstacles=room.cover;
-  if(!room.cleared&&activeRoom>0)rooms[(size_t)(activeRoom-1)].doorOpen=false;
+  if(!room.cleared){
+    roomLinks[(size_t)room.incomingLink].open=false;
+    roomLinks[(size_t)room.outgoingLink].open=false;
+    room.doorOpen=false;
+  }
   if(!room.visited){
     room.visited=true;
     spawnEnemyWave(activeWave+1);
@@ -934,17 +936,26 @@ void enterRoom(int roomIndex){
   triggerCameraShake(0.095f,0.24f);
 }
 void updateRoomTransition(){
-  if(activeRoom<ROOM_COUNT-1){
-    const Room&room=rooms[(size_t)activeRoom];
-    if(room.doorOpen&&playerX>room.maxX+0.24f&&std::abs(playerZ)<ROOM_DOOR_HALF_WIDTH-0.30f){
-      enterRoom(activeRoom+1);
-      return;
-    }
-  }
-  if(activeRoom>0){
-    const Room&previous=rooms[(size_t)(activeRoom-1)];
-    if(previous.doorOpen&&playerX<rooms[(size_t)activeRoom].minX-0.24f&&std::abs(playerZ)<ROOM_DOOR_HALF_WIDTH-0.30f){
-      enterRoom(activeRoom-1);
+  for(int linkIndex=0;linkIndex<ROOM_COUNT;linkIndex++){
+    const RoomLink&link=roomLinks[(size_t)linkIndex];
+    if(!link.open)continue;
+    const float coordinate=link.axis==0?playerX:playerZ;
+    const float orthogonal=link.axis==0?playerZ:playerX;
+    if(std::abs(orthogonal-link.crossCenter)>=link.halfSpan-0.32f)continue;
+    if(activeRoom==link.from){
+      const bool crossed=link.fromSide>0?coordinate>link.plane+0.22f:coordinate<link.plane-0.22f;
+      if(crossed){
+        if(link.axis==0)playerX=link.plane+(float)link.fromSide*0.34f;
+        else playerZ=link.plane+(float)link.fromSide*0.34f;
+        enterRoom(link.to);return;
+      }
+    }else if(activeRoom==link.to){
+      const bool crossed=link.toSide>0?coordinate>link.plane+0.22f:coordinate<link.plane-0.22f;
+      if(crossed){
+        if(link.axis==0)playerX=link.plane+(float)link.toSide*0.34f;
+        else playerZ=link.plane+(float)link.toSide*0.34f;
+        enterRoom(link.from);return;
+      }
     }
   }
 }
@@ -959,18 +970,14 @@ void processRoomClear(){
   }
   room.cleared=true;
   if(activeRoom==ROOM_COUNT-1&&!room.chestSpawned){
-    room.chestSpawned=true;
-    room.chestOpened=false;
+    room.chestSpawned=true;room.chestOpened=false;
     triggerCameraShake(0.13f,0.28f);
-    __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Supply chest spawned in the final room");
+    __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Supply chest spawned in the final containment wing");
   }
-  if(activeRoom>0)rooms[(size_t)(activeRoom-1)].doorOpen=true;
-  if(activeRoom<ROOM_COUNT-1){
-    room.doorOpen=true;
-    triggerCameraShake(0.17f,0.34f);
-  }else{
-    triggerCameraShake(0.22f,0.42f);
-  }
+  roomLinks[(size_t)room.incomingLink].open=true;
+  roomLinks[(size_t)room.outgoingLink].open=true;
+  room.doorOpen=true;
+  triggerCameraShake(0.17f,0.34f);
 }
 bool nearActiveRelay(){
   for(int i=0;i<3;i++){
@@ -991,7 +998,7 @@ bool nearFieldPod(){
 bool nearLootChest(){
   const Room&room=rooms[(size_t)(ROOM_COUNT-1)];
   if(activeRoom!=ROOM_COUNT-1||!room.chestSpawned||room.chestOpened)return false;
-  const float dx=playerX-room.centerX,dz=playerZ;
+  const float dx=playerX-room.centerX,dz=playerZ-room.centerZ;
   return dx*dx+dz*dz<1.65f*1.65f;
 }
 int nearestRelayInteractionTarget(){
@@ -1070,7 +1077,7 @@ void drawPlayerHealthBar(const Mat4&view,const Mat4&proj,V3 cam){
 void drawLootChest(const Mat4&view,const Mat4&proj,V3 cam){
   const Room&room=rooms[(size_t)(ROOM_COUNT-1)];
   if(!room.chestSpawned)return;
-  const float x=room.centerX,z=0.0f;
+  const float x=room.centerX,z=room.centerZ;
   const V3 gold{0.92f,0.56f,0.10f},goldGlow{0.095f,0.032f,0.002f};
   const V3 alloy{0.095f,0.12f,0.14f},darkGlow{0.004f,0.006f,0.008f};
   box({x,0.19f,z},{1.16f,0.34f,0.86f},alloy,darkGlow,0,view,proj,cam);
@@ -1274,11 +1281,11 @@ void drawScene(const Mat4&view,const Mat4&proj,V3 cam){
 }
 bool projectileBlocked(float x,float z){
   const Room&room=rooms[(size_t)activeRoom];
-  if(z<room.minZ||z>room.maxZ)return true;
-  if(x<room.minX&&!roomGatePassable(activeRoom-1,z,0.02f))return true;
-  if(x>room.maxX&&!roomGatePassable(activeRoom,z,0.02f))return true;
+  if(x<room.minX&&!roomLinkOpening(activeRoom,0,-1,z,0.02f))return true;
+  if(x>room.maxX&&!roomLinkOpening(activeRoom,0, 1,z,0.02f))return true;
+  if(z<room.minZ&&!roomLinkOpening(activeRoom,1,-1,x,0.02f))return true;
+  if(z>room.maxZ&&!roomLinkOpening(activeRoom,1, 1,x,0.02f))return true;
   for(const auto&o:room.cover)if(std::abs(x-o.x)<=o.sx*0.5f+0.055f&&std::abs(z-o.z)<=o.sz*0.5f+0.055f)return true;
-  if(activeRoom<ROOM_COUNT-1&&!room.doorOpen&&x>=room.maxX-0.16f&&std::abs(z)<ROOM_DOOR_HALF_WIDTH)return true;
   return false;
 }
 void fixedUpdate(float dt){
