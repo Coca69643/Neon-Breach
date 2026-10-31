@@ -8,7 +8,8 @@ required = [
     "settings.gradle", "build.gradle", "gradle.properties", "app/build.gradle",
     "app/src/main/AndroidManifest.xml", "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
-    "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp",
+    "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp", "app/src/main/cpp/WorldLayout.h",
+    "tests/world_layout_tests.cpp",
     "app/src/main/cpp/ProgressionManager.h", "app/src/main/cpp/ProgressionManager.cpp",
     "app/src/main/cpp/third_party/cgltf.h", "app/src/main/cpp/third_party/stb_image.h",
     "app/src/main/assets/world/kenney/room-large.glb", "app/src/main/assets/world/kenney/room-wide.glb",
@@ -52,7 +53,7 @@ for token in (
     "smoothstep(0.18,1.20,radiusSq)", "postprocessReady",
     "updateCameraSpring", "cameraVelocityX", "cameraVelocityZ", "stiffness=72.0f",
     "updateCameraShake", "valueNoise", "triggerPlayerShotFeedback", "cameraShakeOffsetX",
-    "playerSquashEnvelope", "playerSquashAge", "drawPlayerHealthBar", "barWidth=0.78f", "requiredHold=2.0f", "updateHeldInteraction", "interactionHeld", "interactionTimer", "LOOT_OVERCLOCK", "LOOT_NANO_SHIELD", "LOOT_PIERCING_ROUNDS", "rewardRoll(LOOT_OVERCLOCK,LOOT_PIERCING_ROUNDS)", "nanoShieldCooldown=10.0f", "piercesRemaining>0", "drawLootChest", "chestSpawned=true", "ROOM_COUNT=4", "std::array<Room,ROOM_COUNT> rooms", "drawRoomShell", "drawRoomEnergyDoor", "drawRoomArrow", "roomLinkOpening", "updateRoomTransition", "processRoomClear", "wavesTotal=(i==0||i==3)?2:1", "uniform int uActiveRoom", "unexplored", "squashX=1.0f+0.105f*squash",
+    "playerSquashEnvelope", "playerSquashAge", "drawPlayerHealthBar", "barWidth=0.78f", "requiredHold=2.0f", "updateHeldInteraction", "interactionHeld", "interactionTimer", "LOOT_OVERCLOCK", "LOOT_NANO_SHIELD", "LOOT_PIERCING_ROUNDS", "rewardRoll(LOOT_OVERCLOCK,LOOT_PIERCING_ROUNDS)", "nanoShieldCooldown=10.0f", "piercesRemaining>0", "drawLootChest", "chestSpawned=true", "neonbreach::kRoomCount", "std::array<Room,ROOM_COUNT> rooms", "drawRoomShell", "drawRoomEnergyDoor", "drawRoomArrow", "roomLinkOpening", "updateRoomTransition", "processRoomClear", "wavesTotal=(i==0||i==3)?2:1", "uniform int uActiveRoom", "unexplored", "squashX=1.0f+0.105f*squash",
     "squashZ=1.0f-0.080f*squash", "triggerCameraShake(0.13f,0.19f)",
     "#include <random>", "#include \"ProgressionManager.h\"", "ProgressionManager", "progression.registerElimination()", "TOTAL_MISSION_ELIMINATIONS=24", "spawnEnemyWave", "touchSensitivity", "nativeSetTouchSensitivity", "nativeSetSoundEnabled", "uSectorPalette", "std::mt19937 aiRandomEngine", "enemyReactionTimer",
     "enemyThinkInterval", "enemySlalomPhase", "enemySlalomFrequency", "enemySlalomStrength",
@@ -63,10 +64,8 @@ for token in (
     "stbi_load_from_memory", "drawImportedModel", "MODEL_ROOM_LARGE", "MODEL_ROOM_WIDE",
     "MODEL_CORRIDOR_WIDE", "MODEL_GATE_DOOR", "AAssetManager_fromJava", "uBaseTexture",
     "uUseBaseTexture", "uRoomBounds[4]", "uVisitedRoomMask", "roomInsideTopDownFrustum",
-    "roomLinkOpening", "RoomLink", "roomLinks[0]={0,1,0,1,-1,10.0f", "centersZ[4]={0.0f,0.0f,20.0f,20.0f", "room.halfWidth=10.0f;room.halfDepth=10.0f;", "roomIndex==0?1.0f:1.6666667f", "roomLinks[1]={1,2,1,1,-1,10.0f",
-    "roomLinks[2]={2,3,0,-1,1,10.0f", "roomLinks[3]={3,0,1,-1,1,10.0f",
-    "camera{cameraFocusX,16.0f", "unexplored",
-    "nativeSurfaceCreated", "#include \"PhysicsWorld.h\"", "facilityPhysics.moveCharacter", "facilityPhysics.setGateOpen", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
+    "roomLinkOpening", "RoomLink", "roomLinks=neonbreach::kFacilityRoomLinks", "room.halfWidth=neonbreach::kRoomHalfExtent;room.halfDepth=neonbreach::kRoomHalfExtent;", "roomIndex==0?1.0f:1.6666667f", "neonbreach::kRoomTransitionOffset", "unexplored",
+    "nativeSurfaceCreated", "#include \"PhysicsWorld.h\"", "#include \"WorldLayout.h\"", "facilityPhysics.moveCharacter", "facilityPhysics.setGateOpen", "setPlayerWorldPosition", "addPlayerKnockback", "syncPhysicsGates", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
     "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
     "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
 ):
@@ -90,14 +89,22 @@ for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
               "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
               "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
               "SEGURE 2S  /  RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "NEON-VANGUARD", "STELLAR-REAPER",
-              "SITE ORION-9  •  0.9", "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "class DodgeControlButton", "drawText(\"ATIRAR\"", "ESQUIVA", "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO", "SALA ${room + 1}/4", "PORTA ABERTA  /  SIGA A SETA", "SEGURE INTERAGIR POR 2S", "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR", "beginInteraction()", "endInteraction()", "INTERAGIR", "ALERTA  /  EVITE A ÁREA", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(76)", "ESQUIVA", "Joystick de movimento",
+              "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "class DodgeControlButton", "drawText(\"ATIRAR\"", "ESQUIVA", "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO", "SALA ${room + 1}/4", "PORTA ABERTA  /  SIGA A SETA", "SEGURE INTERAGIR POR 2S", "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR", "beginInteraction()", "endInteraction()", "INTERAGIR", "ALERTA  /  EVITE A ÁREA", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(76)", "ESQUIVA", "Joystick de movimento",
               "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS", "VIBRAÇÃO DE INTERFACE"):
     if token not in activity:
         raise SystemExit(f"Android UI/input check failed: {token} missing")
 
 build = Path("app/build.gradle").read_text()
-if "versionName '0.9'" not in build or "versionCode 24" not in build:
-    raise SystemExit("Version 0.4 metadata missing")
+version_name_match = re.search(r"versionName\s+'([^']+)'", build)
+version_code_match = re.search(r"versionCode\s+(\d+)", build)
+if not version_name_match or not version_code_match:
+    raise SystemExit("Android version metadata is missing")
+version_name = version_name_match.group(1)
+version_code = int(version_code_match.group(1))
+if version_code < 1:
+    raise SystemExit("Android versionCode must be positive")
+if f"SITE ORION-9  •  {version_name}" not in activity:
+    raise SystemExit("In-game build label does not match Gradle versionName")
 if not re.search(r"targetSdk\s+35", build):
     raise SystemExit("Android target SDK 35 is not configured")
 
@@ -118,7 +125,14 @@ if "CC0" not in (asset_dir / "LICENSE.txt").read_text():
     raise SystemExit("Kenney CC0 license is missing")
 if "MIT" not in Path("app/src/main/cpp/third_party/CGltf-LICENSE.txt").read_text():
     raise SystemExit("cgltf MIT license is missing")
-print("Native glTF 2.0 loader, CC0 room assets, atlas texture, 2x2 room graph, frustum culling and mobile LOD checks OK.")
+world_layout = Path("app/src/main/cpp/WorldLayout.h").read_text()
+for token in ("kFacilityRoomLinks", "kRoomTransitionOffset", "kDoorwayHalfSpan"):
+    if token not in world_layout:
+        raise SystemExit(f"Shared world layout contract is missing: {token}")
+physics = Path("app/src/main/cpp/PhysicsWorld.cpp").read_text()
+if "refreshCharacterContacts" not in physics:
+    raise SystemExit("Physics contacts are not refreshed after gate or teleport changes")
+print("Native glTF 2.0 loader, CC0 room assets, atlas texture, shared room graph and mobile LOD checks OK.")
 print(f"Project structure, icon, playable operative classes, containment outpost, objective flow, touch controls and Android UI checks OK ({len(required)} required files found).")
 cmake = Path("app/src/main/cpp/CMakeLists.txt").read_text()
 if "-O3" not in cmake:
