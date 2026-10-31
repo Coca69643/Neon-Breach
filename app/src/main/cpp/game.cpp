@@ -1,5 +1,6 @@
 #include <jni.h>
 #include "ProgressionManager.h"
+#include "PhysicsWorld.h"
 #include <GLES3/gl3.h>
 #include <android/asset_manager.h>
 #include <android/asset_manager_jni.h>
@@ -60,6 +61,7 @@ enum WorldModelId { MODEL_ROOM_LARGE=0,MODEL_ROOM_WIDE=1,MODEL_ROOM_CORNER=2,MOD
 std::array<ImportedModel,8> worldModels{};
 bool worldAssetsReady=false;
 neonbreach::ProgressionManager progression;
+neonbreach::PhysicsWorld facilityPhysics;
 std::array<Room,ROOM_COUNT> rooms{};
 std::array<RoomLink,ROOM_COUNT> roomLinks{};
 int activeRoom=0;
@@ -695,12 +697,57 @@ void configureArena(){
   roomLinks[2]={2,3,0,-1,1,10.0f,16.0f,2.1f,false};
   roomLinks[3]={3,0,1,-1,1,10.0f,0.0f,2.1f,false};
   obstacles=rooms[0].cover;activeRoom=0;roomWorldInitialized=true;
+
+  // Build one collision world from the same room/link data used by the renderer.
+  // Door apertures are real gaps in wall geometry; closed energy gates are Jolt bodies.
+  std::vector<neonbreach::PhysicsBox> solids;
+  std::vector<neonbreach::PhysicsGate> gates;
+  auto addBox=[&](float x,float y,float z,float hx,float hy,float hz){
+    solids.push_back({x,y,z,hx,hy,hz});
+  };
+  auto addEdge=[&](const Room& room,int axis,int side,int openingLink){
+    const float plane=axis==0?(side<0?room.minX:room.maxX):(side<0?room.minZ:room.maxZ);
+    const float lo=axis==0?room.minZ:room.minX;
+    const float hi=axis==0?room.maxZ:room.maxX;
+    const float center=openingLink>=0?roomLinks[(size_t)openingLink].crossCenter:(lo+hi)*0.5f;
+    const float half=openingLink>=0?roomLinks[(size_t)openingLink].halfSpan:0.0f;
+    auto segment=[&](float a,float b){
+      if(b-a<0.20f)return;
+      const float mid=(a+b)*0.5f,span=(b-a)*0.5f;
+      if(axis==0)addBox(plane,0.95f,mid,0.22f,0.95f,span);
+      else addBox(mid,0.95f,plane,span,0.95f,0.22f);
+    };
+    if(openingLink>=0){segment(lo,center-half);segment(center+half,hi);}
+    else segment(lo,hi);
+  };
+  for(int i=0;i<ROOM_COUNT;i++){
+    const Room& room=rooms[(size_t)i];
+    addBox(room.centerX,-0.34f,room.centerZ,room.halfWidth,0.28f,room.halfDepth);
+    int openings[4]={-1,-1,-1,-1}; // x-, x+, z-, z+
+    for(int k=0;k<ROOM_COUNT;k++){
+      const RoomLink& link=roomLinks[(size_t)k];
+      if(link.from==i)openings[link.axis==0?(link.fromSide<0?0:1):(link.fromSide<0?2:3)]=k;
+      if(link.to==i)openings[link.axis==0?(link.toSide<0?0:1):(link.toSide<0?2:3)]=k;
+    }
+    addEdge(room,0,-1,openings[0]);addEdge(room,0,1,openings[1]);
+    addEdge(room,1,-1,openings[2]);addEdge(room,1,1,openings[3]);
+    for(const auto& o:room.cover)addBox(o.x,o.h*0.5f,o.z,o.sx*0.5f,o.h*0.5f,o.sz*0.5f);
+  }
+  for(const RoomLink& link:roomLinks){
+    neonbreach::PhysicsGate gate;
+    gate.box=link.axis==0
+      ?neonbreach::PhysicsBox{link.plane,0.88f,link.crossCenter,0.20f,0.88f,link.halfSpan}
+      :neonbreach::PhysicsBox{link.crossCenter,0.88f,link.plane,link.halfSpan,0.88f,0.20f};
+    gate.open=link.open;gates.push_back(gate);
+  }
+  facilityPhysics.rebuild(solids,gates);
 }
 void resetMission(){
   progression.reset();activeWave=0;
   configureArena();
   playerX=-6.0f;playerZ=-6.0f;playerHealth=1.0f;
   cameraFocusX=playerX;cameraFocusZ=playerZ;
+  facilityPhysics.setCharacterPosition(playerX,playerZ,0.0f);
   cameraVelocityX=cameraVelocityZ=0.0f;
   cameraShakeAmplitude=cameraShakeOffsetX=cameraShakeOffsetY=0.0f;
   playerSquashAge=0.15f;playerSquashActive=false;
@@ -1319,8 +1366,19 @@ void fixedUpdate(float dt){
       const float mag=std::sqrt(dx*dx+dy*dy);
       if(mag>0.012f){moveDirX=dx/mag;moveDirZ=dy/mag;inputStrength=std::clamp(mag/0.15f,0.0f,1.0f);if(!aiming)facingYaw=std::atan2(moveDirX,moveDirZ);}
     }
-    if(dodgeTime>0.0f){playerX+=dodgeDirX*8.2f*dt;playerZ+=dodgeDirZ*8.2f*dt;resolveCollision(playerX,playerZ,0.30f);updateRoomTransition();}
-    else if(moving&&inputStrength>0.0f){playerX+=moveDirX*operativeMoveSpeed()*inputStrength*dt;playerZ+=moveDirZ*operativeMoveSpeed()*inputStrength*dt;resolveCollision(playerX,playerZ,0.30f);updateRoomTransition();}
+    const float moveSpeed=dodgeTime>0.0f?8.2f:operativeMoveSpeed()*inputStrength;
+    const float velocityX=dodgeTime>0.0f?dodgeDirX*moveSpeed:(moving?moveDirX*moveSpeed:0.0f);
+    const float velocityZ=dodgeTime>0.0f?dodgeDirZ*moveSpeed:(moving?moveDirZ*moveSpeed:0.0f);
+    if(facilityPhysics.ready()){
+      facilityPhysics.moveCharacter(velocityX,velocityZ,dt);
+      float physicsX=playerX,physicsY=0.0f,physicsZ=playerZ;
+      if(facilityPhysics.getCharacterPosition(physicsX,physicsY,physicsZ)){playerX=physicsX;playerZ=physicsZ;}
+    }else{
+      playerX+=velocityX*dt;playerZ+=velocityZ*dt;
+      resolveCollision(playerX,playerZ,0.30f);
+    }
+    if(dodgeTime>0.0f||(moving&&inputStrength>0.0f))updateRoomTransition();
+    for(int gate=0;gate<ROOM_COUNT;gate++)facilityPhysics.setGateOpen((size_t)gate,roomLinks[(size_t)gate].open);
     if(aiming){const float ax=aimX-playerX,az=aimZ-playerZ;if(std::abs(ax)+std::abs(az)>0.001f)facingYaw=std::atan2(ax,az);}
     updateHeldInteraction(dt);
 
@@ -1495,7 +1553,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
     return;
   }
-  V3 camera{cameraFocusX,26.0f,cameraFocusZ+6.0f};
+  V3 camera{cameraFocusX,16.0f,cameraFocusZ+11.0f};
   Mat4 view=lookAt(camera,{cameraFocusX,0.0f,cameraFocusZ},{0.0f,1.0f,0.0f});
   // Screen-space view translation is inherited by every object MVP in this frame.
   view.v[12]+=cameraShakeOffsetX;
