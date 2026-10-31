@@ -1,166 +1,184 @@
 #!/usr/bin/env python3
+"""Structural validation for the native Android game.
+
+Behavioral rules that can be tested without Android/Jolt live in tests/*.cpp.
+This script checks repository integrity, Android/JNI contracts, asset validity,
+and build metadata; it intentionally does not lock camera values or implementation
+variable names to arbitrary source-string snapshots.
+"""
 from pathlib import Path
+import json
 import re
 import sys
-import json
 
-required = [
-    "settings.gradle", "build.gradle", "gradle.properties", "app/build.gradle",
-    "app/src/main/AndroidManifest.xml", "app/src/main/res/drawable/ic_launcher.xml",
+ROOT = Path(__file__).resolve().parents[1]
+
+
+def read_text(relative: str) -> str:
+    path = ROOT / relative
+    if not path.is_file():
+        raise SystemExit(f"Required file is missing: {relative}")
+    return path.read_text(encoding="utf-8")
+
+
+required_files = [
+    "settings.gradle",
+    "build.gradle",
+    "gradle.properties",
+    "app/build.gradle",
+    "app/src/main/AndroidManifest.xml",
+    "app/src/main/res/drawable/ic_launcher.xml",
     "app/src/main/java/com/duckdream/neonbreach/MainActivity.kt",
-    "app/src/main/cpp/CMakeLists.txt", "app/src/main/cpp/game.cpp", "app/src/main/cpp/WorldLayout.h",
-    "tests/world_layout_tests.cpp",
-    "app/src/main/cpp/ProgressionManager.h", "app/src/main/cpp/ProgressionManager.cpp",
-    "app/src/main/cpp/third_party/cgltf.h", "app/src/main/cpp/third_party/stb_image.h",
-    "app/src/main/assets/world/kenney/room-large.glb", "app/src/main/assets/world/kenney/room-wide.glb",
-    "app/src/main/assets/world/kenney/room-corner.glb", "app/src/main/assets/world/kenney/corridor-wide.glb",
-    "app/src/main/assets/world/kenney/corridor-corner.glb", "app/src/main/assets/world/kenney/gate-door.glb",
-    "app/src/main/assets/world/kenney/cables.glb", "app/src/main/assets/world/kenney/stairs-wide.glb",
-    "app/src/main/assets/world/kenney/Textures/colormap.png", "app/src/main/assets/world/kenney/LICENSE.txt",
-    "app/src/main/cpp/third_party/CGltf-LICENSE.txt", "app/src/main/cpp/third_party/STB-LICENSE.txt",
+    "app/src/main/cpp/CMakeLists.txt",
+    "app/src/main/cpp/game.cpp",
+    "app/src/main/cpp/PhysicsWorld.h",
+    "app/src/main/cpp/PhysicsWorld.cpp",
+    "app/src/main/cpp/WorldLayout.h",
+    "app/src/main/cpp/ProgressionManager.h",
+    "app/src/main/cpp/ProgressionManager.cpp",
+    "app/src/main/cpp/third_party/cgltf.h",
+    "app/src/main/cpp/third_party/stb_image.h",
+    "app/src/main/cpp/third_party/CGltf-LICENSE.txt",
+    "app/src/main/cpp/third_party/STB-LICENSE.txt",
+    "app/src/main/cpp/third_party/Jolt-LICENSE.txt",
     "tools/validate_shaders.py",
+    "tests/world_layout_tests.cpp",
+    "tests/progression_manager_tests.cpp",
 ]
-missing = [p for p in required if not Path(p).is_file()]
-if missing:
-    print("Missing required project files:")
-    print("\n".join(missing))
-    raise SystemExit(1)
+for relative in required_files:
+    if not (ROOT / relative).is_file():
+        raise SystemExit(f"Required file is missing: {relative}")
 
-manifest = Path("app/src/main/AndroidManifest.xml").read_text()
-if 'screenOrientation="landscape"' not in manifest:
-    raise SystemExit("Landscape orientation is not configured")
-if 'glEsVersion="0x00030000"' not in manifest:
-    raise SystemExit("OpenGL ES 3.0 feature is not declared")
-for attr in ('android:icon="@drawable/ic_launcher"', 'android:roundIcon="@drawable/ic_launcher"'):
-    if attr not in manifest:
-        raise SystemExit(f"Launcher icon configuration missing: {attr}")
-icon = Path("app/src/main/res/drawable/ic_launcher.xml").read_text()
-if 'android:viewportWidth="108"' not in icon or '#00DDF4' not in icon:
-    raise SystemExit("Launcher icon vector is missing or malformed")
+manifest = read_text("app/src/main/AndroidManifest.xml")
+if 'android:screenOrientation="landscape"' not in manifest:
+    raise SystemExit("Android activity must be locked to landscape")
+if 'android:glEsVersion="0x00030000"' not in manifest:
+    raise SystemExit("OpenGL ES 3.0 must be declared as a device feature")
+for icon_attr in ('android:icon="@drawable/ic_launcher"',
+                  'android:roundIcon="@drawable/ic_launcher"'):
+    if icon_attr not in manifest:
+        raise SystemExit(f"Launcher icon reference is missing: {icon_attr}")
 
-cpp = Path("app/src/main/cpp/game.cpp").read_text()
+icon = read_text("app/src/main/res/drawable/ic_launcher.xml")
+if 'android:viewportWidth="108"' not in icon or "#00DDF4" not in icon:
+    raise SystemExit("Launcher vector asset is missing or malformed")
+
+gradle = read_text("app/build.gradle")
+application_id = re.search(r"applicationId\s+'([^']+)'", gradle)
+namespace = re.search(r"namespace\s+'([^']+)'", gradle)
+version_name = re.search(r"versionName\s+'([^']+)'", gradle)
+version_code = re.search(r"versionCode\s+(\d+)", gradle)
+target_sdk = re.search(r"targetSdk\s+(\d+)", gradle)
+if not all((application_id, namespace, version_name, version_code, target_sdk)):
+    raise SystemExit("Gradle Android metadata is incomplete")
+if application_id.group(1) != namespace.group(1):
+    raise SystemExit("applicationId and namespace must remain aligned")
+if int(version_code.group(1)) < 1 or int(target_sdk.group(1)) < 35:
+    raise SystemExit("Android versionCode or targetSdk is invalid")
+
+activity = read_text("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt")
+if f"SITE ORION-9  •  {version_name.group(1)}" not in activity:
+    raise SystemExit("In-game version label does not match Gradle versionName")
+if not re.search(r"package\s+" + re.escape(namespace.group(1)) + r"\b", activity):
+    raise SystemExit("Kotlin package does not match the Gradle namespace")
+
+cpp = read_text("app/src/main/cpp/game.cpp")
+physics = read_text("app/src/main/cpp/PhysicsWorld.cpp")
+world_layout = read_text("app/src/main/cpp/WorldLayout.h")
+progression_header = read_text("app/src/main/cpp/ProgressionManager.h")
+progression_cpp = read_text("app/src/main/cpp/ProgressionManager.cpp")
+
+# Keep the native integration surface explicit across Kotlin and JNI.
+jni_contracts = [
+    ("nativeSetAssetManager", "Java_com_duckdream_neonbreach_NativeRenderer_nativeSetAssetManager"),
+    ("nativeSurfaceCreated", "Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated"),
+    ("nativeSurfaceChanged", "Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged"),
+    ("nativeDrawFrame", "Java_com_duckdream_neonbreach_NativeRenderer_nativeDrawFrame"),
+    ("nativeSetMode", "Java_com_duckdream_neonbreach_NativeRenderer_nativeSetMode"),
+    ("nativeStartNewMission", "Java_com_duckdream_neonbreach_NativeRenderer_nativeStartNewMission"),
+    ("nativeGetSnapshot", "Java_com_duckdream_neonbreach_NativeRenderer_nativeGetSnapshot"),
+    ("nativeTouch", "Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeTouch"),
+    ("nativeSetOperative", "Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetOperative"),
+    ("nativeSetTouchSensitivity", "Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetTouchSensitivity"),
+    ("nativeSetSoundEnabled", "Java_com_duckdream_neonbreach_MainActivity_00024GameSurface_nativeSetSoundEnabled"),
+]
+for kotlin_name, jni_symbol in jni_contracts:
+    if f"external fun {kotlin_name}" not in activity:
+        raise SystemExit(f"Kotlin native declaration missing: {kotlin_name}")
+    if jni_symbol not in cpp:
+        raise SystemExit(f"Native JNI implementation missing: {jni_symbol}")
+
+library_match = re.search(r"System\.loadLibrary\("([^"]+)"\)", activity)
+cmake = read_text("app/src/main/cpp/CMakeLists.txt")
+library_target = re.search(r"add_library\(([^\s]+)\s+SHARED", cmake)
+if not library_match or not library_target or library_match.group(1) != library_target.group(1):
+    raise SystemExit("Kotlin loadLibrary name and CMake shared-library target differ")
+if "CMAKE_CXX_STANDARD 17" not in cmake and "cxx_std_17" not in cmake:
+    raise SystemExit("Native target must compile as C++17")
+if "GIT_TAG v5.6.0" not in cmake:
+    raise SystemExit("Jolt Physics dependency must remain version-pinned")
+
+# These are cross-system contracts, not assertions about camera tuning or local variable names.
 for token in (
-    "#version 300 es", "layout(location=0)", "uMVP", "uModel",
-    "perspective(", "glEnable(GL_DEPTH_TEST)", "createMeshes",
-    "fixedUpdate", "resolveCollision", "makeFallbackProgram",
-    "drawPose", "drawHumanoid", "rotateX", "rotateZ",
-    "projectileBlocked", "ARENA_LAYOUT_B", "ARENA_LAYOUT_C",
-    "dodgeCooldown", "enemyShotCooldown", "enemyWindup", "organicMesh", "drawCreature", "nearFieldPod", "nearActiveHazard", "HAZARD_X", "moveDirZ=dy/mag",
-    "operativeClass", "operativeMoveSpeed", "operativeShotDamage", "operativeDamageTakenMultiplier", "nativeSetOperative", "SITE ORION-9",
-    "ORION INDUSTRIAL MODULES", "updateCameraSpring", "cameraFocusX", "cameraFocusZ",
-    "band=diffuse>0.72?1.0:(diffuse>0.34?0.72:0.43)", "makePostProgram",
-    "createSceneTarget", "GL_FRAMEBUFFER_COMPLETE", "GL_RGBA8", "vec2 chromaticOffset",
-    "smoothstep(0.18,1.20,radiusSq)", "postprocessReady",
-    "updateCameraSpring", "cameraVelocityX", "cameraVelocityZ", "stiffness=72.0f",
-    "updateCameraShake", "valueNoise", "triggerPlayerShotFeedback", "cameraShakeOffsetX",
-    "playerSquashEnvelope", "playerSquashAge", "drawPlayerHealthBar", "barWidth=0.78f", "requiredHold=2.0f", "updateHeldInteraction", "interactionHeld", "interactionTimer", "LOOT_OVERCLOCK", "LOOT_NANO_SHIELD", "LOOT_PIERCING_ROUNDS", "rewardRoll(LOOT_OVERCLOCK,LOOT_PIERCING_ROUNDS)", "nanoShieldCooldown=10.0f", "piercesRemaining>0", "drawLootChest", "chestSpawned=true", "neonbreach::kRoomCount", "std::array<Room,ROOM_COUNT> rooms", "drawRoomShell", "drawRoomEnergyDoor", "drawRoomArrow", "roomLinkOpening", "updateRoomTransition", "processRoomClear", "wavesTotal=(i==0||i==3)?2:1", "uniform int uActiveRoom", "unexplored", "squashX=1.0f+0.105f*squash",
-    "squashZ=1.0f-0.080f*squash", "triggerCameraShake(0.13f,0.19f)",
-    "#include <random>", "#include \"ProgressionManager.h\"", "ProgressionManager", "progression.registerElimination()", "TOTAL_MISSION_ELIMINATIONS=24", "spawnEnemyWave", "touchSensitivity", "nativeSetTouchSensitivity", "nativeSetSoundEnabled", "uSectorPalette", "std::mt19937 aiRandomEngine", "enemyReactionTimer",
-    "enemyThinkInterval", "enemySlalomPhase", "enemySlalomFrequency", "enemySlalomStrength",
-    "enemySteerX", "randomRange(0.0f,0.13f)", "enemySlalomFrequency[(size_t)i]",
-    "createProjectileRenderer", "drawProjectilesInstanced", "glDrawElementsInstanced",
-    "glVertexAttribDivisor", "GL_DYNAMIC_DRAW",
-    "loadWorldAssets", "loadImportedModel", "readAndroidAsset", "cgltf_parse", "cgltf_load_buffers",
-    "stbi_load_from_memory", "drawImportedModel", "MODEL_ROOM_LARGE", "MODEL_ROOM_WIDE",
-    "MODEL_CORRIDOR_WIDE", "MODEL_GATE_DOOR", "AAssetManager_fromJava", "uBaseTexture",
-    "uUseBaseTexture", "uRoomBounds[4]", "uVisitedRoomMask", "roomInsideTopDownFrustum",
-    "roomLinkOpening", "RoomLink", "roomLinks=neonbreach::kFacilityRoomLinks", "room.halfWidth=neonbreach::kRoomHalfExtent;room.halfDepth=neonbreach::kRoomHalfExtent;", "roomIndex==0?1.0f:1.6666667f", "neonbreach::kRoomTransitionOffset", "unexplored",
-    "nativeSurfaceCreated", "#include \"PhysicsWorld.h\"", "#include \"WorldLayout.h\"", "facilityPhysics.moveCharacter", "facilityPhysics.setGateOpen", "setPlayerWorldPosition", "addPlayerKnockback", "syncPhysicsGates", "nativeSurfaceChanged", "nativeDrawFrame", "nativeTouch",
-    "nativeSetMode", "nativeStartNewMission", "nativeGetSnapshot",
-    "relayMask==0x7", "action==7", "if(action==8)", "if(action==9)", "firing&&shotCooldown<=0.0f", "publishedSnapshot",
+    '#include "WorldLayout.h"',
+    '#include "PhysicsWorld.h"',
+    "neonbreach::kFacilityRoomLinks",
+    "facilityPhysics.moveCharacter",
+    "setPlayerWorldPosition",
+    "addPlayerKnockback",
+    "syncPhysicsGates",
+    "processRoomClear",
+    "updateRoomTransition",
 ):
     if token not in cpp:
-        raise SystemExit(f"3D renderer check failed: {token} missing")
-scene_start = cpp.index("void drawScene")
-scene_end = cpp.index("bool projectileBlocked", scene_start)
-scene = cpp[scene_start:scene_end]
-if "drawTree(" in scene or "drawPlant(" in scene:
-    raise SystemExit("Old forest props remain in the active scene renderer")
+        raise SystemExit(f"Runtime integration contract is missing: {token}")
+for token in ("kRoomCount", "kFacilityRoomLinks", "kRoomTransitionOffset", "kDoorwayHalfSpan"):
+    if token not in world_layout:
+        raise SystemExit(f"Shared world-layout contract is missing: {token}")
+if "refreshCharacterContacts" not in physics:
+    raise SystemExit("Physics contact refresh is missing after gate and teleport changes")
 
-if re.search(r"uResolutionY|vec2\s+q\s*=", cpp):
-    raise SystemExit("Stale/incomplete shader code detected")
-if re.search(r"\bactive\b", cpp):
-    raise SystemExit("GLSL ES reserved identifier 'active' detected")
-if "glBufferData" not in cpp or "glVertexAttribPointer" not in cpp:
-    raise SystemExit("3D mesh vertex-buffer setup missing")
+if "KILLS_PER_SECTOR = 20" not in progression_header or "sectorIndex_" not in progression_cpp:
+    raise SystemExit("Progression manager contract is incomplete")
 
-activity = Path("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt").read_text()
-for token in ("setEGLContextClientVersion(3)", "RENDERMODE_CONTINUOUSLY",
-              "ACTION_POINTER_DOWN", "ACTION_POINTER_UP", "movePointerId", "aimPointerId",
-              "INICIAR OPERAÇÃO", "CONFIGURAÇÕES", "PAUSA",
-              "SEGURE 2S  /  RELÉ", "KIT MÉDICO", "SELECIONE SEU OPERADOR", "ESCOLHER OPERADOR", "NEON-VANGUARD", "STELLAR-REAPER",
-              "SOM DE JOGO", "SENSIBILIDADE DO TOQUE", "Faixa ajustável de 50% a 150%.", "class DodgeControlButton", "drawText(\"ATIRAR\"", "ESQUIVA", "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO", "SALA ${room + 1}/4", "PORTA ABERTA  /  SIGA A SETA", "SEGURE INTERAGIR POR 2S", "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR", "beginInteraction()", "endInteraction()", "INTERAGIR", "ALERTA  /  EVITE A ÁREA", "ATIRAR", "FireControlButton", "Mantenha pressionado para disparo contínuo.", "ARRASTE O LADO DIREITO", "gameView.setFiring(shouldFire)", "ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE", "dp(76)", "ESQUIVA", "Joystick de movimento",
-              "EXTRAÇÃO CONCLUÍDA", "AMEAÇAS", "VIBRAÇÃO DE INTERFACE"):
-    if token not in activity:
-        raise SystemExit(f"Android UI/input check failed: {token} missing")
-
-build = Path("app/build.gradle").read_text()
-version_name_match = re.search(r"versionName\s+'([^']+)'", build)
-version_code_match = re.search(r"versionCode\s+(\d+)", build)
-if not version_name_match or not version_code_match:
-    raise SystemExit("Android version metadata is missing")
-version_name = version_name_match.group(1)
-version_code = int(version_code_match.group(1))
-if version_code < 1:
-    raise SystemExit("Android versionCode must be positive")
-if f"SITE ORION-9  •  {version_name}" not in activity:
-    raise SystemExit("In-game build label does not match Gradle versionName")
-if not re.search(r"targetSdk\s+35", build):
-    raise SystemExit("Android target SDK 35 is not configured")
-
-asset_dir = Path("app/src/main/assets/world/kenney")
-for asset_name in ("room-large.glb", "room-wide.glb", "room-corner.glb", "corridor-wide.glb", "corridor-corner.glb", "gate-door.glb", "cables.glb", "stairs-wide.glb"):
-    asset_path = asset_dir / asset_name
+asset_root = ROOT / "app/src/main/assets/world/kenney"
+asset_names = (
+    "room-large.glb",
+    "room-wide.glb",
+    "room-corner.glb",
+    "corridor-wide.glb",
+    "corridor-corner.glb",
+    "gate-door.glb",
+    "cables.glb",
+    "stairs-wide.glb",
+)
+for asset_name in asset_names:
+    asset_path = asset_root / asset_name
     data = asset_path.read_bytes()
-    if len(data) < 20 or data[:4] != b"glTF" or int.from_bytes(data[4:8], "little") != 2:
-        raise SystemExit(f"Invalid glTF 2.0 asset: {asset_path}")
+    if len(data) < 20 or data[:4] != b"glTF":
+        raise SystemExit(f"Invalid GLB header: {asset_path}")
+    if int.from_bytes(data[4:8], "little") != 2:
+        raise SystemExit(f"Asset is not glTF 2.0: {asset_path}")
     json_length = int.from_bytes(data[12:16], "little")
-    document = json.loads(data[20:20 + json_length].decode("utf-8").rstrip(" \\t\\r\\n\\0"))
+    json_end = 20 + json_length
+    if json_end > len(data):
+        raise SystemExit(f"GLB JSON chunk exceeds file size: {asset_path}")
+    document = json.loads(data[20:json_end].decode("utf-8").rstrip(" \t\r\n\0"))
     if not document.get("meshes") or not document.get("accessors"):
         raise SystemExit(f"GLB has no mesh/accessor content: {asset_path}")
-texture = (asset_dir / "Textures/colormap.png").read_bytes()
-if not texture.startswith(bytes([137, 80, 78, 71, 13, 10, 26, 10])):
-    raise SystemExit("Kenney environment texture atlas is not a valid PNG")
-if "CC0" not in (asset_dir / "LICENSE.txt").read_text():
+
+texture = (asset_root / "Textures/colormap.png").read_bytes()
+if not texture.startswith(bytes((137, 80, 78, 71, 13, 10, 26, 10))):
+    raise SystemExit("Kenney environment atlas is not a valid PNG")
+if "CC0" not in read_text("app/src/main/assets/world/kenney/LICENSE.txt"):
     raise SystemExit("Kenney CC0 license is missing")
-if "MIT" not in Path("app/src/main/cpp/third_party/CGltf-LICENSE.txt").read_text():
+if "MIT" not in read_text("app/src/main/cpp/third_party/CGltf-LICENSE.txt"):
     raise SystemExit("cgltf MIT license is missing")
-world_layout = Path("app/src/main/cpp/WorldLayout.h").read_text()
-for token in ("kFacilityRoomLinks", "kRoomTransitionOffset", "kDoorwayHalfSpan"):
-    if token not in world_layout:
-        raise SystemExit(f"Shared world layout contract is missing: {token}")
-physics = Path("app/src/main/cpp/PhysicsWorld.cpp").read_text()
-if "refreshCharacterContacts" not in physics:
-    raise SystemExit("Physics contacts are not refreshed after gate or teleport changes")
-print("Native glTF 2.0 loader, CC0 room assets, atlas texture, shared room graph and mobile LOD checks OK.")
-print(f"Project structure, icon, playable operative classes, containment outpost, objective flow, touch controls and Android UI checks OK ({len(required)} required files found).")
-cmake = Path("app/src/main/cpp/CMakeLists.txt").read_text()
-if "-O3" not in cmake:
-    raise SystemExit("Native optimized build flag -O3 is missing")
-manager_header = Path("app/src/main/cpp/ProgressionManager.h").read_text()
-manager = Path("app/src/main/cpp/ProgressionManager.cpp").read_text()
-if "KILLS_PER_SECTOR = 20" not in manager_header or "sectorIndex_" not in manager:
-    raise SystemExit("Sector progression manager does not define the 20-elimination unlock")
-if "FALHA DE CONTENÇÃO" in activity or "healthBar" in activity or "healthValue" in activity:
-    raise SystemExit("Legacy briefing panel or corner health HUD remains")
-if "briefing" in activity:
-    raise SystemExit("Legacy right-side menu briefing container remains")
-if "std::array<Room,ROOM_COUNT> rooms" not in cpp or "void drawRoomEnergyDoor" not in cpp:
-    raise SystemExit("Four-room dungeon data or energy-door renderer is missing")
-if "uVisitedRoomMask" not in cpp or "unexplored" not in cpp or "uRoomBounds[4]" not in cpp:
-    raise SystemExit("Visited-room exploration fog shader is missing")
-if "processRoomClear" not in cpp or "updateRoomTransition" not in cpp:
-    raise SystemExit("Room-local waves or transition logic is missing")
-if "for(int i=0;i<3;i++){if(relayMask&(1<<i))continue;" in cpp:
-    raise SystemExit("Relays must no longer restore on a single tap")
-if "fun beginInteraction() = sendTouch(11" not in activity or "fun endInteraction() = sendTouch(12" not in activity:
-    raise SystemExit("Held interaction JNI lifecycle is missing")
-if "if(action==11)" not in cpp or "if(action==12)" not in cpp:
-    raise SystemExit("Native held interaction begin/end actions are missing")
-if "rooms[3].chestOpened" not in cpp or "LOOT_NANO_SHIELD" not in cpp:
-    raise SystemExit("Final chest or loot modifier effects are missing")
-print("Two-second relay hold, +15% relay damage, final supply chest and randomized permanent loot checks OK.")
-print("Four connected rooms, locked energy doors, local waves, floor arrows and exploration fog checks OK.")
-print("Minimal menu, text-only HUD, diegetic health bar and outline action controls checks OK.")
-print("Progression, sectors, character abilities, native settings and optimized build checks OK.")
-print("This check does not replace Android compilation or on-device testing.")
+if "MIT" not in read_text("app/src/main/cpp/third_party/STB-LICENSE.txt"):
+    raise SystemExit("stb_image license notice is missing")
+if "MIT" not in read_text("app/src/main/cpp/third_party/Jolt-LICENSE.txt"):
+    raise SystemExit("Jolt license notice is missing")
+
+print(f"Repository integrity, Android/JNI contracts, pinned native dependencies and GLB/CC0 assets OK ({len(required_files)} required files).")
+print(f"Android package: {application_id.group(1)} | version: {version_name.group(1)} ({version_code.group(1)}) | target SDK: {target_sdk.group(1)}")
+print("This structural check does not replace native tests, APK compilation, runtime testing or physical-device validation.")
