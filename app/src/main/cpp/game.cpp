@@ -696,7 +696,7 @@ void configureArena(){
   for(int i=0;i<ROOM_COUNT;i++){
     Room&room=rooms[(size_t)i];
     room.centerX=centersX[i];room.centerZ=centersZ[i];
-    room.halfWidth=10.0f;room.halfDepth=10.0f;
+    room.halfWidth=neonbreach::kRoomHalfExtent;room.halfDepth=neonbreach::kRoomHalfExtent;
     room.minX=room.centerX-room.halfWidth;room.maxX=room.centerX+room.halfWidth;
     room.minZ=room.centerZ-room.halfDepth;room.maxZ=room.centerZ+room.halfDepth;
     room.incomingLink=(i+ROOM_COUNT-1)%ROOM_COUNT;room.outgoingLink=i;
@@ -753,8 +753,8 @@ void configureArena(){
   for(const RoomLink& link:roomLinks){
     neonbreach::PhysicsGate gate;
     gate.box=link.axis==0
-      ?neonbreach::PhysicsBox{link.plane,0.88f,link.crossCenter,0.20f,0.88f,link.halfSpan}
-      :neonbreach::PhysicsBox{link.crossCenter,0.88f,link.plane,link.halfSpan,0.88f,0.20f};
+      ?neonbreach::PhysicsBox{link.plane,0.88f,link.crossCenter,neonbreach::kGateHalfThickness,0.88f,link.halfSpan}
+      :neonbreach::PhysicsBox{link.crossCenter,0.88f,link.plane,link.halfSpan,0.88f,neonbreach::kGateHalfThickness};
     gate.open=link.open;gates.push_back(gate);
   }
   facilityPhysics.rebuild(solids,gates);
@@ -1407,7 +1407,7 @@ void fixedUpdate(float dt){
       playerX+=velocityX*dt;playerZ+=velocityZ*dt;
       resolveCollision(playerX,playerZ,neonbreach::kPlayerCollisionRadius);
     }
-    if(dodgeTime>0.0f||(moving&&inputStrength>0.0f))updateRoomTransition();
+    if(dodgeTime>0.0f||(moving&&inputStrength>0.0f)||std::abs(knockbackVelocityX)+std::abs(knockbackVelocityZ)>0.05f)updateRoomTransition();
     syncPhysicsGates();
     if(aiming){const float ax=aimX-playerX,az=aimZ-playerZ;if(std::abs(ax)+std::abs(az)>0.001f)facingYaw=std::atan2(ax,az);}
     updateHeldInteraction(dt);
