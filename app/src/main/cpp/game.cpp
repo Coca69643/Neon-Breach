@@ -732,6 +732,8 @@ void configureArena(){
     addEdge(room,0,-1,openings[0]);addEdge(room,0,1,openings[1]);
     addEdge(room,1,-1,openings[2]);addEdge(room,1,1,openings[3]);
     for(const auto& o:room.cover)addBox(o.x,o.h*0.5f,o.z,o.sx*0.5f,o.h*0.5f,o.sz*0.5f);
+    // The rendered stairs are not yet a walkable ramp. Keep their full footprint solid.
+    if(i==2)addBox(room.centerX-4.4f,0.55f,room.centerZ-3.2f,0.90f,0.55f,0.90f);
   }
   for(const RoomLink& link:roomLinks){
     neonbreach::PhysicsGate gate;
