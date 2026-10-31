@@ -748,6 +748,16 @@ void resolveCollision(float&x,float&z,float radius){
     }
   }
 }
+void draw(Mesh&m,V3 pos,V3 size,V3 color,V3 glow,float yaw,const Mat4&view,const Mat4&proj,V3 camera){
+  if(!program||!m.vao)return;
+  Mat4 model=multiply(translate(pos.x,pos.y,pos.z),multiply(rotateY(yaw),scale(size.x,size.y,size.z)));
+  Mat4 mvp=multiply(proj,multiply(view,model));
+  glUniformMatrix4fv(mvpLoc,1,GL_FALSE,mvp.v);glUniformMatrix4fv(modelLoc,1,GL_FALSE,model.v);
+  glUniform3f(colorLoc,color.x,color.y,color.z);glUniform3f(glowLoc,glow.x,glow.y,glow.z);
+  glUniform3f(cameraLoc,camera.x,camera.y,camera.z);
+  glUniform1i(useBaseTextureLoc,0);
+  glBindVertexArray(m.vao);glDrawArrays(GL_TRIANGLES,0,m.count);
+}
 void drawImportedModel(const ImportedModel&model,V3 position,V3 size,float yaw,const Mat4&view,const Mat4&proj,V3 camera){
   if(!model.loaded||!program)return;
   const Mat4 modelMatrix=multiply(translate(position.x,position.y,position.z),multiply(rotateY(yaw),scale(size.x,size.y,size.z)));
