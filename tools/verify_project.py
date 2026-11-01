@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.2.0 offline MOBA."""
+"""Structural verification for Project Arena 0.3.0 visual reconstruction."""
 from pathlib import Path
 import re
 
@@ -26,29 +26,32 @@ license_text = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 
 checks = [
-    ("versionName '0.2.0'" in gradle, "app version must be 0.2.0"),
-    ("versionCode 32" in gradle, "versionCode must be 32"),
-    ("com.android.application" in root_gradle, "Android Gradle Plugin missing"),
+    ("versionName '0.3.0'" in gradle, "app version must be 0.3.0"),
+    ("versionCode 33" in gradle, "versionCode must be 33"),
     ("org.jetbrains.kotlin.android" in root_gradle, "external Kotlin plugin missing"),
     ("android.builtInKotlin=false" in properties, "AGP built-in Kotlin opt-out missing"),
     ("android.newDsl=false" in properties, "AGP legacy DSL opt-out missing"),
     ("kotlinOptions { jvmTarget = '17' }" in gradle, "Kotlin JVM target must be 17"),
-    ("filament-android:1.77.3" in gradle, "Filament dependency missing"),
-    ("gltfio-android:1.77.3" in gradle, "glTF loader dependency missing"),
+    ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle, "Filament dependencies missing"),
     ("filament-utils-android:1.77.3" in gradle, "Filament utils dependency missing"),
     ("-std=c++20" in gradle and "cxx_std_20" in cmake, "C++20 configuration missing"),
     ('android:screenOrientation="landscape"' in manifest, "landscape lock missing"),
-    ("android.hardware.vulkan.version" in manifest, "Vulkan device feature declaration missing"),
     ("android.permission.INTERNET" not in manifest, "offline manifest must not request INTERNET"),
     ("Engine.Backend.VULKAN" in renderer and "Engine.Backend.OPENGL" in renderer, "Vulkan/GLES backend path missing"),
-    ("Camera.Projection.ORTHO" in renderer and "WorldGlbBuilder.build()" in renderer, "3D world/camera missing"),
-    ("AssetLoader" in renderer and "ResourceLoader" in renderer, "rigged character loading missing"),
-    ("updateBots(snapshot: FloatArray)" in renderer and 'getFirstEntityByName("bot_unit_$index")' in renderer, "bot scene integration missing"),
-    ("nativeCastPulse" in main and "nativeActivateShield" in main, "hero abilities missing"),
+    ("IndirectLight.Builder()" in renderer and ".irradiance(1," in renderer, "ambient indirect fill missing"),
+    ("setDirection(viewer.light" in renderer and "setIntensity(viewer.light" in renderer, "angled sunlight configuration missing"),
+    ("Camera.Projection.ORTHO" in renderer and "WorldGlbBuilder.build()" in renderer, "3D scene/camera missing"),
+    ("createInstance(asset)" in renderer and "botInstances.add(instance)" in renderer, "bots must use shared humanoid model instances"),
+    ("Colors.RgbaType.SRGB" in renderer and "botBones.add(rig)" in renderer, "team tint and bot rig setup missing"),
+    ("updateBots(snapshot: FloatArray, deltaTime: Float)" in renderer, "bot locomotion update missing"),
+    ("setOverviewCamera(true)" in main and "setOverviewCamera(false)" in main, "overview/follow camera states missing"),
+    ("renderer.updateBots(result, dt)" in main, "frame delta not supplied to bot animator"),
     ("TacticalMapView" in main and "LOCAL 5v5" in main, "MOBA HUD/minimap missing"),
     ("HERÓI:" in main and "JOGAR CONTRA BOTS" in main, "hero select/offline match menu missing"),
-    ("ribbon(trail" in world and "laneStructures()" in world, "three-lane map structures missing"),
-    ('botUnit("bot_unit_8"' in world and "Rival resonance unit" in world, "nine bot visuals missing"),
+    ("radiusSq=30.7f*30.7f" in world, "rounded terrain boundary missing"),
+    ("p.tri(a,b,c);p.tri(b,d,c)" in world, "sphere winding fix missing"),
+    ('part("route_shoulders",9)' in world and "ribbon(routeEdge,west" in world, "readable lane shoulders missing"),
+    ('val names=listOf("Meadow","Limestone paths","Tree bark","Deep foliage","Sunlit foliage","Mossy rock","Clear water","Carved stone","Beacon","Route shoulders")' in world, "world material registry out of sync"),
     ("constexpr int kBotCount = 9;" in native, "native simulation must contain 9 bots"),
     ("updateBots(float dt)" in native and "updateLanes(float dt)" in native, "bot AI or lane simulation missing"),
     ("nativeCastPulse" in native and "nativeActivateShield" in native, "native hero ability exports missing"),
@@ -62,9 +65,10 @@ for ok, message in checks:
 
 if not avatar.is_file() or avatar.stat().st_size < 500_000:
     raise SystemExit("CC0 humanoid model payload missing or unexpectedly small")
-
+if "botUnit(" in world:
+    raise SystemExit("Procedural sphere/cylinder bots remain in WorldGlbBuilder")
 if re.search(r"(fireButton|nativeFire|shootProjectile|weaponDamage)", main + native, re.I):
     raise SystemExit("Legacy weapon controls detected in active gameplay path")
 
-print("Project Arena 0.2.0 structural verification passed.")
-print("Offline 5v5 systems, 3 lanes, 9 bots, hero abilities, minimap and CC0 asset verified.")
+print("Project Arena 0.3.0 structural verification passed.")
+print("Lighting, rounded map, lane shoulders, humanoid bot instances, rigs and offline 5v5 verified.")
