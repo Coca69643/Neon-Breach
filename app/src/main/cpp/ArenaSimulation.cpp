@@ -56,6 +56,12 @@ float gBoostCooldown = 0.0f;
 float gPulseCooldown = 0.0f;
 float gShieldCooldown = 0.0f;
 float gShieldTime = 0.0f;
+float gPulseVisualTime = 0.0f;
+float gPulseCaptureTime = 0.0f;
+float gLastMoveX = 0.0f;
+float gLastMoveZ = 1.0f;
+float gDashX = 0.0f;
+float gDashZ = 1.0f;
 float gPlayerDisrupted = 0.0f;
 float gBotScoreBlue = 0.0f;
 float gBotScoreRed = 0.0f;
@@ -139,6 +145,12 @@ void resetSimulation() {
     gPulseCooldown = 0.0f;
     gShieldCooldown = 0.0f;
     gShieldTime = 0.0f;
+    gPulseVisualTime = 0.0f;
+    gPulseCaptureTime = 0.0f;
+    gLastMoveX = 0.0f;
+    gLastMoveZ = 1.0f;
+    gDashX = 0.0f;
+    gDashZ = 1.0f;
     gPlayerDisrupted = 0.0f;
     gBotScoreBlue = 0.0f;
     gBotScoreRed = 0.0f;
@@ -168,16 +180,27 @@ void disableBot(Bot &bot, int index, int sourceTeam) {
 }
 
 void movePlayer(float inputX, float inputZ, float dt) {
-    const float inputLength = std::sqrt(inputX * inputX + inputZ * inputZ);
+    float inputLength = std::sqrt(inputX * inputX + inputZ * inputZ);
+    const bool dashing = gBoostTime > 0.0f;
+    if (dashing) {
+        inputX = gDashX;
+        inputZ = gDashZ;
+        inputLength = 1.0f;
+    }
     if (inputLength > 1.0f) {
         inputX /= inputLength;
         inputZ /= inputLength;
+        inputLength = 1.0f;
     }
-    const float speed = gBoostTime > 0.0f ? kPlayerBoostSpeed : kPlayerWalkSpeed;
+    if (!dashing && inputLength > 0.08f) {
+        gLastMoveX = inputX;
+        gLastMoveZ = inputZ;
+    }
+    const float speed = dashing ? kPlayerBoostSpeed * 1.18f : kPlayerWalkSpeed;
     const float targetX = inputX * speed;
     const float targetZ = inputZ * speed;
     if (inputLength > 0.08f) {
-        const float blend = 1.0f - std::exp(-16.0f * dt);
+        const float blend = dashing ? 1.0f : 1.0f - std::exp(-16.0f * dt);
         gPlayerVx += (targetX - gPlayerVx) * blend;
         gPlayerVz += (targetZ - gPlayerVz) * blend;
     } else {
@@ -331,7 +354,9 @@ void updateLanes(float dt) {
         const bool playerOnObjective = laneForX(gPlayerX) == lane &&
             std::abs(gPlayerZ) < 3.6f && gPlayerDisrupted <= 0.0f;
         const float playerSupport = playerOnObjective
-            ? (gShieldTime > 0.0f ? 1.85f : 1.15f) : 0.0f;
+            ? 1.15f + (gShieldTime > 0.0f ? 0.85f : 0.0f)
+                     + (gPulseCaptureTime > 0.0f ? 0.90f : 0.0f)
+            : 0.0f;
         const float creepAdvantage =
             static_cast<float>(gBlueCreeps[static_cast<std::size_t>(lane)]
                              - gRedCreeps[static_cast<std::size_t>(lane)]) * 0.12f;
@@ -363,6 +388,8 @@ void simulate(float inputX, float inputZ, float dt) {
     gPulseCooldown = std::max(0.0f, gPulseCooldown - dt);
     gShieldCooldown = std::max(0.0f, gShieldCooldown - dt);
     gShieldTime = std::max(0.0f, gShieldTime - dt);
+    gPulseVisualTime = std::max(0.0f, gPulseVisualTime - dt);
+    gPulseCaptureTime = std::max(0.0f, gPulseCaptureTime - dt);
     gPlayerDisrupted = std::max(0.0f, gPlayerDisrupted - dt);
 
     if (gPlayerDisrupted <= 0.0f) movePlayer(inputX, inputZ, dt);
@@ -389,20 +416,26 @@ Java_com_duckdream_neonbreach_MainActivity_nativeSelectHero(JNIEnv *, jobject, j
 }
 
 extern "C" JNIEXPORT jboolean JNICALL
-Java_com_duckdream_neonbreach_MainActivity_nativeActivateDash(JNIEnv *, jobject) {
+Java_com_duckdream_neonbreach_MainActivity_nativeActivateDash(JNIEnv *, jobject, jfloat inputX, jfloat inputZ) {
     std::scoped_lock lock(gMutex);
     if (!gInitialized) resetSimulation();
     if (gBoostCooldown > 0.0f || gPlayerDisrupted > 0.0f) return JNI_FALSE;
-    const float speed = std::sqrt(gPlayerVx * gPlayerVx + gPlayerVz * gPlayerVz);
-    if (speed < 0.25f) {
-        gPlayerVx = 0.0f;
-        gPlayerVz = -kPlayerWalkSpeed;
+    float directionLength = std::sqrt(inputX * inputX + inputZ * inputZ);
+    if (directionLength < 0.08f) {
+        inputX = gLastMoveX;
+        inputZ = gLastMoveZ;
+        directionLength = std::sqrt(inputX * inputX + inputZ * inputZ);
     }
-    const float scale = kPlayerBoostSpeed / std::max(
-        std::sqrt(gPlayerVx * gPlayerVx + gPlayerVz * gPlayerVz), 0.001f);
-    gPlayerVx *= scale;
-    gPlayerVz *= scale;
-    gBoostTime = 0.48f;
+    if (directionLength < 0.08f) {
+        inputX = 0.0f;
+        inputZ = 1.0f;
+        directionLength = 1.0f;
+    }
+    gDashX = inputX / directionLength;
+    gDashZ = inputZ / directionLength;
+    gPlayerVx = gDashX * kPlayerBoostSpeed;
+    gPlayerVz = gDashZ * kPlayerBoostSpeed;
+    gBoostTime = 0.46f;
     gBoostCooldown = 5.0f;
     return JNI_TRUE;
 }
@@ -422,11 +455,10 @@ Java_com_duckdream_neonbreach_MainActivity_nativeCastPulse(JNIEnv *, jobject) {
             ++affected;
         }
     }
-    if (affected == 0) {
-        const int lane = laneForX(gPlayerX);
-        gLaneProgress[static_cast<std::size_t>(lane)] =
-            std::min(1.0f, gLaneProgress[static_cast<std::size_t>(lane)] + 0.035f);
+    if (affected == 0 && std::abs(gPlayerZ) < 4.0f) {
+        gPulseCaptureTime = 2.4f;
     }
+    gPulseVisualTime = 0.68f;
     gPulseCooldown = gSelectedHero == 2 ? 7.0f : 9.0f;
     return JNI_TRUE;
 }
@@ -447,7 +479,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
     std::scoped_lock lock(gMutex);
     simulate(inputX, inputZ, deltaTime);
 
-    std::array<jfloat, 60> values{};
+    std::array<jfloat, 72> values{};
     values[0] = gPlayerX;
     values[1] = terrainHeight(gPlayerX, gPlayerZ);
     values[2] = gPlayerZ;
@@ -477,6 +509,12 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
         const LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(i)];
         values[static_cast<std::size_t>(36 + i * 2)] = unit.position.x;
         values[static_cast<std::size_t>(37 + i * 2)] = unit.position.z;
+    }
+    values[60] = gShieldCooldown;
+    values[61] = gPulseVisualTime;
+    values[62] = gBoostTime;
+    for (int i = 0; i < kBotCount; ++i) {
+        values[static_cast<std::size_t>(63 + i)] = gBots[static_cast<std::size_t>(i)].disabled;
     }
 
     jfloatArray result = env->NewFloatArray(static_cast<jsize>(values.size()));
