@@ -21,7 +21,6 @@ constexpr float kPlayerWalkSpeed = 5.6f;
 constexpr float kPlayerBoostSpeed = 9.2f;
 constexpr float kPlayerRadius = 0.42f;
 constexpr float kBotSpeed = 2.7f;
-constexpr float kPi = 3.14159265358979323846f;
 
 std::mutex gMutex;
 std::array<Bot, kBotCount> gBots{};
@@ -72,8 +71,9 @@ void resetBot(Bot &bot, int index) {
     const bool blue = bot.team == 0;
     const float homeZ = blue ? -17.5f : 17.5f;
     const float side = (index % 2 == 0) ? -0.9f : 0.9f;
+    const float formationOffset = index == 3 ? 3.0f : (index == 8 ? -3.0f : 0.0f);
     bot.position = {kLaneX[static_cast<std::size_t>(bot.lane)] + side,
-                    homeZ + (blue ? side : -side)};
+                    homeZ + (blue ? side : -side) + (blue ? formationOffset : -formationOffset)};
     bot.velocity = {0.0f, 0.0f};
     bot.disabled = 0.0f;
     bot.actionCooldown = 1.0f + static_cast<float>(index % 3);
