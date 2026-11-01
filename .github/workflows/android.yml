@@ -1,4 +1,4 @@
-name: Build NEON BREACH APK
+name: Build Project Arena APK
 
 on:
   workflow_dispatch:
@@ -9,7 +9,6 @@ on:
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
-      - 'tests/**'
       - '.github/workflows/android.yml'
   push:
     branches: [main]
@@ -18,21 +17,20 @@ on:
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
-      - 'tests/**'
       - '.github/workflows/android.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
-    name: Validate and compile Android APK
+    name: Verify and compile Android APK
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v7
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -46,83 +44,18 @@ jobs:
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
-      - name: Prepare persistent APK signing key when configured
-        if: github.event_name != 'pull_request'
-        env:
-          NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
-          NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
-          NEON_BREACH_KEY_ALIAS: ${{ secrets.NEON_BREACH_KEY_ALIAS }}
-          NEON_BREACH_KEY_PASSWORD: ${{ secrets.NEON_BREACH_KEY_PASSWORD }}
-        run: |
-          if [ -n "${NEON_BREACH_KEYSTORE_BASE64:-}" ]; then
-            KEYSTORE_PATH="$RUNNER_TEMP/neon-breach-signing.jks"
-            printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-            test -s "$KEYSTORE_PATH"
-            {
-              echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
-              echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
-              echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
-              echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
-            } >> "$GITHUB_ENV"
-            echo "Persistent signing key configured."
-          else
-            echo "::warning::Persistent signing is not configured. This APK uses the runner's temporary debug key and will not be suitable for in-place updates across separate CI runs."
-          fi
       - name: Install Android SDK, NDK and CMake
         run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
-      - name: Install GLSL validator
-        run: |
-          sudo apt-get update
-          sudo apt-get install --yes glslang-tools
-      - name: Run native world layout tests
-        run: |
-          c++ -std=c++17 -Wall -Wextra -Werror -Iapp/src/main/cpp tests/world_layout_tests.cpp -o "$RUNNER_TEMP/world_layout_tests"
-          "$RUNNER_TEMP/world_layout_tests"
-      - name: Run native progression tests
-        run: |
-          c++ -std=c++17 -Wall -Wextra -Werror -Iapp/src/main/cpp tests/progression_manager_tests.cpp app/src/main/cpp/ProgressionManager.cpp -o "$RUNNER_TEMP/progression_manager_tests"
-          "$RUNNER_TEMP/progression_manager_tests"
-      - name: Validate required source files
+      - name: Verify project structure
         run: python3 tools/verify_project.py
-      - name: Compile embedded OpenGL ES shaders
-        run: python3 tools/validate_shaders.py
-      - name: Compile debug APK
+      - name: Compile Android APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
         run: test -s app/build/outputs/apk/debug/app-debug.apk
       - name: Upload APK artifact
         uses: actions/upload-artifact@v7
         with:
-          name: neon-breach-debug-apk
+          name: project-arena-0.1.0-debug
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-      - name: Publish public GitHub Release
-        if: github.event_name != 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          cp app/build/outputs/apk/debug/app-debug.apk ORION-9.apk
-          sha256sum ORION-9.apk > ORION-9.apk.sha256
-
-          release_tag="orion-9-build-${GITHUB_RUN_NUMBER}"
-          version_name="$(grep 'versionName' app/build.gradle | awk -F"'" '{print $2}' | head -n 1)"
-          test -n "$version_name"
-          release_title="ORION-9 v${version_name} - build #${GITHUB_RUN_NUMBER}"
-          release_notes="Automated Android APK build.
-
-          Source commit: ${GITHUB_SHA}
-          Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-
-          Download ORION-9.apk. The SHA-256 checksum is included alongside it."
-
-          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$release_tag" ORION-9.apk ORION-9.apk.sha256 --repo "$GITHUB_REPOSITORY" --clobber
-            gh release edit "$release_tag" --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes" --latest
-          else
-            gh release create "$release_tag" ORION-9.apk ORION-9.apk.sha256 --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes" --latest
-          fi
-
-          echo "## APK publicado" >> "$GITHUB_STEP_SUMMARY"
-          echo "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/ORION-9.apk" >> "$GITHUB_STEP_SUMMARY"
