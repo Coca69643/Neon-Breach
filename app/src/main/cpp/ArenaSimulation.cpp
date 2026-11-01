@@ -19,7 +19,6 @@ constexpr int kBotCount = 9;
 constexpr std::array<float, 3> kLaneX{{-12.0f, 0.0f, 12.0f}};
 constexpr float kPlayerWalkSpeed = 5.6f;
 constexpr float kPlayerBoostSpeed = 9.2f;
-constexpr float kPlayerRadius = 0.42f;
 constexpr float kBotSpeed = 2.7f;
 
 std::mutex gMutex;
