@@ -190,12 +190,34 @@ class MainActivity : Activity() {
 
     private fun showMenu() {
         transition(AppState.MENU)
-        if (::renderer.isInitialized) renderer.setOverviewCamera(true)
+        if (::renderer.isInitialized) {
+            renderer.setOverviewCamera(true)
+            renderer.setHeroAppearance(selectedHero)
+        }
+        var touchStartX = 0f
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(10, 5, 12, 18))
             isClickable = true
             isFocusable = true
-            setOnClickListener { startMatch() }
+            setOnTouchListener { _, event ->
+                when (event.actionMasked) {
+                    MotionEvent.ACTION_DOWN -> {
+                        touchStartX = event.x
+                        true
+                    }
+                    MotionEvent.ACTION_UP -> {
+                        val swipe = event.x - touchStartX
+                        if (kotlin.math.abs(swipe) > dp(42)) {
+                            selectedHero = (selectedHero + if (swipe < 0f) 1 else HEROES.size - 1) % HEROES.size
+                            showMenu()
+                        } else {
+                            startMatch()
+                        }
+                        true
+                    }
+                    else -> true
+                }
+            }
         }
         val title = label("ARENA", 17f, Color.WHITE, true).apply {
             setShadowLayer(8f, 0f, 3f, Color.BLACK)
@@ -203,6 +225,13 @@ class MainActivity : Activity() {
         layer.addView(title, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
             marginStart = dp(24)
             topMargin = dp(18)
+        })
+        val hero = label(HEROES[selectedHero].substringBefore(" / "), 10f, Color.rgb(203, 230, 226), true).apply {
+            setShadowLayer(6f, 0f, 2f, Color.BLACK)
+        }
+        layer.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(24)
+            topMargin = dp(43)
         })
         val prompt = label("TOQUE PARA JOGAR", 12f, Color.WHITE, true).apply {
             gravity = Gravity.CENTER
