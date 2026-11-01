@@ -53,35 +53,76 @@ internal object WorldGlbBuilder {
     private fun quad(p:Part,a:FloatArray,b:FloatArray,c:FloatArray,d:FloatArray) {
         tri(p,a,c,b);tri(p,b,c,d)
     }
+    private lateinit var grassLight: Part
+    private lateinit var grassDark: Part
+    private lateinit var cliffs: Part
+
+    private fun insideIsland(x: Float, z: Float): Boolean {
+        val angle = atan2(z / 31f, x / 35f)
+        val edge = 1f + 0.035f * sin(angle * 5f) + 0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
+        val radius = sqrt((x / 35f).pow(2) + (z / 31f).pow(2))
+        return radius <= edge
+    }
+
     private fun terrainMesh() {
-        val steps = 80
-        val size = 64f
-        val start = -32f
-        val ids = Array(steps + 1) { IntArray(steps + 1) }
-        val coords = FloatArray(steps + 1) { start + size * it / steps }
-        for (z in 0..steps) {
-            for (x in 0..steps) {
-                val wx = coords[x]
-                val wz = coords[z]
-                val normal = norm(wx, wz)
-                ids[z][x] = terrain.vertex(
-                    wx, h(wx, wz), wz,
-                    normal[0], normal[1], normal[2]
-                )
+        val steps = 104
+        val size = 76f
+        val start = -38f
+        val cell = size / steps
+        for (zi in 0 until steps) {
+            val z0 = start + zi * cell
+            val z1 = z0 + cell
+            for (xi in 0 until steps) {
+                val x0 = start + xi * cell
+                val x1 = x0 + cell
+                val cx = (x0 + x1) * 0.5f
+                val cz = (z0 + z1) * 0.5f
+                if (!insideIsland(cx, cz)) continue
+                val part = when {
+                    sin(cx * 0.43f + cz * 0.17f) + cos(cz * 0.31f - cx * 0.12f) > 0.72f -> grassLight
+                    sin(cx * 0.21f - cz * 0.33f) + cos(cx * 0.37f + cz * 0.28f) < -0.86f -> grassDark
+                    else -> terrain
+                }
+                val p00 = floatArrayOf(x0, h(x0, z0), z0)
+                val p10 = floatArrayOf(x1, h(x1, z0), z0)
+                val p01 = floatArrayOf(x0, h(x0, z1), z1)
+                val p11 = floatArrayOf(x1, h(x1, z1), z1)
+                tri(part, p00, p01, p10, norm(x0,z0), norm(x0,z1), norm(x1,z0))
+                tri(part, p10, p01, p11, norm(x1,z0), norm(x0,z1), norm(x1,z1))
             }
         }
-        for (z in 0 until steps) {
-            for (x in 0 until steps) {
-                val a = ids[z][x]
-                val b = ids[z][x + 1]
-                val c = ids[z + 1][x]
-                val d = ids[z + 1][x + 1]
-                terrain.tri(a, c, b)
-                terrain.tri(b, c, d)
+        val segments = 220
+        for (i in 0 until segments) {
+            val a0 = 2f * PI.toFloat() * i / segments
+            val a1 = 2f * PI.toFloat() * (i + 1) / segments
+            fun edgePoint(angle: Float): FloatArray {
+                val wobble = 1f + 0.035f * sin(angle * 5f) + 0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
+                val x = 35f * wobble * cos(angle)
+                val z = 31f * wobble * sin(angle)
+                return floatArrayOf(x, h(x,z) - 0.02f, z)
             }
+            val topA = edgePoint(a0)
+            val topB = edgePoint(a1)
+            val bottomA = floatArrayOf(topA[0] * 1.025f, -3.8f, topA[2] * 1.025f)
+            val bottomB = floatArrayOf(topB[0] * 1.025f, -3.8f, topB[2] * 1.025f)
+            tri(cliffs, topA, bottomA, topB)
+            tri(cliffs, topB, bottomA, bottomB)
         }
     }
 
+    private fun ringMesh(p: Part, innerRadius: Float, outerRadius: Float) {
+        val segments = 64
+        for (i in 0 until segments) {
+            val a0 = 2f * PI.toFloat() * i / segments
+            val a1 = 2f * PI.toFloat() * (i + 1) / segments
+            val ia = floatArrayOf(innerRadius * cos(a0), 0.09f, innerRadius * sin(a0))
+            val oa = floatArrayOf(outerRadius * cos(a0), 0.09f, outerRadius * sin(a0))
+            val ib = floatArrayOf(innerRadius * cos(a1), 0.09f, innerRadius * sin(a1))
+            val ob = floatArrayOf(outerRadius * cos(a1), 0.09f, outerRadius * sin(a1))
+            tri(p, ia, oa, ib)
+            tri(p, oa, ob, ib)
+        }
+    }
     private fun ribbon(p: Part, points: List<FloatArray>, width: Float, lift: Float) {
         fun sample(t: Float): FloatArray {
             val f = t.coerceIn(0f, 0.99999f) * (points.size - 1)
@@ -130,10 +171,17 @@ internal object WorldGlbBuilder {
     fun build():ByteArray {
         parts.clear()
         terrain=part("meadow_terrain",0)
-        trail=part("limestone_lane_surface",1)
-        val routeEdge=part("lane_edge_stone",2)
-        val water=part("crossing_river",3)
+        grassLight=part("sunlit_grass",1)
+        grassDark=part("deep_grass",2)
+        trail=part("limestone_lane_surface",3)
+        val routeEdge=part("lane_edge_stone",4)
+        val water=part("crossing_river",5)
+        cliffs=part("island_rock_rim",6)
+        val pulse=part("pulse_ring",7)
+        val shield=part("shield_ring",8)
         terrainMesh()
+        ringMesh(pulse,0.88f,1.08f)
+        ringMesh(shield,0.98f,1.15f)
         val west=listOf(floatArrayOf(-12f,-29f),floatArrayOf(-13f,-19f),floatArrayOf(-12f,-9f),floatArrayOf(-11f,0f),floatArrayOf(-12f,9f),floatArrayOf(-13f,19f),floatArrayOf(-12f,29f))
         val center=listOf(floatArrayOf(0f,-29f),floatArrayOf(0.8f,-19f),floatArrayOf(0f,-9f),floatArrayOf(0f,0f),floatArrayOf(-0.6f,9f),floatArrayOf(0.5f,19f),floatArrayOf(0f,29f))
         val east=listOf(floatArrayOf(12f,-29f),floatArrayOf(13f,-19f),floatArrayOf(12f,-9f),floatArrayOf(11f,0f),floatArrayOf(12f,9f),floatArrayOf(13f,19f),floatArrayOf(12f,29f))
@@ -141,8 +189,13 @@ internal object WorldGlbBuilder {
         ribbon(routeEdge,west,3.05f,0.025f);ribbon(trail,west,2.38f,0.075f)
         ribbon(routeEdge,center,3.15f,0.025f);ribbon(trail,center,2.48f,0.075f)
         ribbon(routeEdge,east,3.05f,0.025f);ribbon(trail,east,2.38f,0.075f)
-        val river=listOf(floatArrayOf(-31f,0.4f),floatArrayOf(-20f,-0.2f),floatArrayOf(-10f,0.25f),floatArrayOf(0f,0f),floatArrayOf(10f,-0.25f),floatArrayOf(20f,0.2f),floatArrayOf(31f,-0.35f))
-        ribbon(water,river,1.55f,-0.12f)
+        val river=listOf(
+            floatArrayOf(-34f,1.1f),floatArrayOf(-28f,0.55f),floatArrayOf(-21f,0.05f),
+            floatArrayOf(-15f,-0.45f),floatArrayOf(-9f,-0.22f),floatArrayOf(-3f,0.25f),
+            floatArrayOf(4f,0.38f),floatArrayOf(10f,0.02f),floatArrayOf(16f,-0.38f),
+            floatArrayOf(23f,-0.18f),floatArrayOf(29f,0.22f),floatArrayOf(34f,0.8f)
+        )
+        ribbon(water,river,1.72f,-0.15f)
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -168,19 +221,24 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Temperate meadow","Pale limestone roads","Roadside stone edging","Shallow river")
+        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura")
         val colors=listOf(
-            listOf(0.25f,0.31f,0.19f,1f),
-            listOf(0.56f,0.51f,0.40f,1f),
-            listOf(0.19f,0.20f,0.16f,1f),
-            listOf(0.12f,0.30f,0.34f,1f))
+            listOf(0.16f,0.24f,0.10f,1f),
+            listOf(0.22f,0.31f,0.13f,1f),
+            listOf(0.08f,0.15f,0.07f,1f),
+            listOf(0.42f,0.36f,0.26f,1f),
+            listOf(0.18f,0.16f,0.12f,1f),
+            listOf(0.06f,0.14f,0.18f,1f),
+            listOf(0.12f,0.11f,0.09f,1f),
+            listOf(0.08f,0.56f,0.95f,1f),
+            listOf(0.76f,0.56f,0.13f,1f))
         val materials=names.mapIndexed{i,name->
-            val emission=""
-            "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":${if(i==3)0.34f else 0.88f}}$emission}"
+            val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
+            "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.7"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.8"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
