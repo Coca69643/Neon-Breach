@@ -66,7 +66,7 @@ checks=[
 ("updateLaneUnits(dt);" in native,"physical lane units are not simulated"),
 ("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"immersive menu check failed"),
 ("CC0" in asset_register and "KayKit" in asset_register,"KayKit asset register missing"),
-("CC0 1.0 Universal" in kaykit_license and "CC0 1.0 Universal" in quaternius_license,"CC0 license files missing"),
+("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license,"CC0 license files missing"),
 ("KayKit" in readme and "offline" in readme.lower() and "KayKit" in changelog,"0.7.0 docs missing"),
 ]
 for ok,msg in checks:
