@@ -72,6 +72,7 @@ class MainActivity : Activity() {
                 if (result.size >= 34) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[3], dt)
+                    renderer.updateBots(result)
                     tacticalMap.setSnapshot(result)
 
                     val time = result[4].toInt().coerceAtLeast(0)
