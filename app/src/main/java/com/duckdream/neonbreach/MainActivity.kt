@@ -195,6 +195,7 @@ class MainActivity : Activity() {
 
     private fun showMenu() {
         transition(AppState.MENU)
+        if (::renderer.isInitialized) renderer.setOverviewCamera(true)
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(45, 7, 17, 23))
         }
@@ -241,6 +242,7 @@ class MainActivity : Activity() {
     }
 
     private fun showHud() {
+        if (::renderer.isInitialized) renderer.setOverviewCamera(false)
         val layer = FrameLayout(this)
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -329,21 +331,26 @@ class MainActivity : Activity() {
         moveX = 0f
         moveZ = 0f
         transition(AppState.PAUSED)
+        if (::renderer.isInitialized) renderer.setOverviewCamera(true)
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(170, 7, 17, 23))
         }
         val box = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER
+            setPadding(dp(22), dp(20), dp(22), dp(20))
         }
-        box.addView(label("PARTIDA PAUSADA", 26f, Color.WHITE, true))
+        box.addView(label("PARTIDA PAUSADA", 26f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+        })
         box.addView(actionButton("CONTINUAR") {
             transition(AppState.RUNNING)
             showHud()
         }, LinearLayout.LayoutParams(dp(220), dp(48)).apply { topMargin = dp(18) })
         box.addView(actionButton("VOLTAR AO MENU") { showMenu() },
             LinearLayout.LayoutParams(dp(220), dp(48)).apply { topMargin = dp(10) })
-        layer.addView(box, FrameLayout.LayoutParams(-1, -1))
+        layer.addView(box, FrameLayout.LayoutParams(dp(500), -2, Gravity.CENTER))
         replaceLayer(layer)
     }
 
@@ -352,6 +359,7 @@ class MainActivity : Activity() {
         moveX = 0f
         moveZ = 0f
         transition(AppState.RESULT)
+        if (::renderer.isInitialized) renderer.setOverviewCamera(true)
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(190, 7, 18, 24))
         }
