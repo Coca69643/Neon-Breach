@@ -43,6 +43,11 @@ class MainActivity : Activity() {
     private lateinit var stateLabel: TextView
     private lateinit var matchLabel: TextView
     private lateinit var tacticalMap: TacticalMapView
+    private lateinit var abilityHint: TextView
+    private lateinit var dashActionButton: TextView
+    private lateinit var pulseActionButton: TextView
+    private lateinit var shieldActionButton: TextView
+    private var abilityFeedbackUntilNanos = 0L
     private var screenLayer: View? = null
     private var state = AppState.BOOT
     private var moveX = 0f
@@ -50,11 +55,11 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(60)
+    private var lastSnapshot = FloatArray(72)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
-    private external fun nativeActivateDash(): Boolean
+    private external fun nativeActivateDash(inputX: Float, inputZ: Float): Boolean
     private external fun nativeCastPulse(): Boolean
     private external fun nativeActivateShield(): Boolean
     private external fun nativeStep(inputX: Float, inputZ: Float, deltaTime: Float): FloatArray
@@ -68,12 +73,27 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 60) {
+                if (result.size >= 72) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
                     renderer.updateCreeps(result, dt)
+                    renderer.updateEffects(result)
                     tacticalMap.setSnapshot(result)
+                    dashActionButton.text = abilityButtonText("IMPULSO", result[9])
+                    pulseActionButton.text = abilityButtonText("PULSO", result[8])
+                    shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
+                    dashActionButton.alpha = if (result[9] > 0.05f) 0.62f else 1f
+                    pulseActionButton.alpha = if (result[8] > 0.05f) 0.62f else 1f
+                    shieldActionButton.alpha = if (result[60] > 0.05f) 0.62f else 1f
+                    if (System.nanoTime() > abilityFeedbackUntilNanos) {
+                        abilityHint.text = when {
+                            result[7] > 0.05f -> "ESCUDO ATIVO • bônus de captura na rota"
+                            result[61] > 0.05f -> "PULSO • rivais próximos interrompidos"
+                            result[62] > 0.05f -> "IMPULSO • avanço direcional"
+                            else -> "PULSO interrompe • ESCUDO fortalece captura"
+                        }
+                    }
 
                     val time = result[4].toInt().coerceAtLeast(0)
                     matchLabel.text = String.format("%02d:%02d   •   LOCAL 5v5", time / 60, time % 60)
@@ -272,8 +292,10 @@ class MainActivity : Activity() {
         }
         matchLabel = label("00:00", 10f, Color.WHITE, true)
         objectiveLabel = label("CONQUISTE 2 ROTAS", 10f, Color.rgb(192, 235, 221), true)
+        abilityHint = label("PULSO interrompe • ESCUDO fortalece captura", 8f, Color.rgb(244, 217, 148), true)
         top.addView(matchLabel)
         top.addView(objectiveLabel)
+        top.addView(abilityHint)
         objectiveProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 50
@@ -314,26 +336,42 @@ class MainActivity : Activity() {
             bottomMargin = dp(14)
         })
 
-        layer.addView(actionButton("IMPULSO") {
-            stateLabel.text = if (nativeActivateDash()) "IMPULSO" else "RECARGANDO"
-        }, FrameLayout.LayoutParams(dp(88), dp(42), Gravity.BOTTOM or Gravity.END).apply {
+        dashActionButton = actionButton("IMPULSO") {
+            val activated = nativeActivateDash(moveX, moveZ)
+            showAbilityFeedback(if (activated) "IMPULSO • avanço na direção do joystick" else "IMPULSO • aguarde a recarga")
+        }
+        layer.addView(dashActionButton, FrameLayout.LayoutParams(dp(108), dp(44), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(12)
             bottomMargin = dp(16)
         })
-        layer.addView(actionButton("PULSO") {
-            stateLabel.text = if (nativeCastPulse()) "PULSO" else "RECARGANDO"
-        }, FrameLayout.LayoutParams(dp(82), dp(42), Gravity.BOTTOM or Gravity.END).apply {
-            marginEnd = dp(108)
+
+        pulseActionButton = actionButton("PULSO") {
+            val activated = nativeCastPulse()
+            showAbilityFeedback(if (activated) "PULSO • interrompe rivais próximos; na rota, reforça a captura" else "PULSO • aguarde a recarga")
+        }
+        layer.addView(pulseActionButton, FrameLayout.LayoutParams(dp(104), dp(44), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(128)
             bottomMargin = dp(16)
         })
-        layer.addView(actionButton("ESCUDO") {
-            stateLabel.text = if (nativeActivateShield()) "ESCUDO" else "RECARGANDO"
-        }, FrameLayout.LayoutParams(dp(88), dp(36), Gravity.BOTTOM or Gravity.END).apply {
+
+        shieldActionButton = actionButton("ESCUDO") {
+            val activated = nativeActivateShield()
+            showAbilityFeedback(if (activated) "ESCUDO • bônus de captura por tempo limitado" else "ESCUDO • aguarde a recarga")
+        }
+        layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(12)
-            bottomMargin = dp(64)
+            bottomMargin = dp(68)
         })
         tacticalMap.setSnapshot(lastSnapshot)
         replaceLayer(layer)
+    }
+
+    private fun abilityButtonText(name: String, cooldown: Float): String =
+        if (cooldown > 0.05f) "$name  ${kotlin.math.ceil(cooldown).toInt()}s" else name
+
+    private fun showAbilityFeedback(message: String) {
+        abilityHint.text = message
+        abilityFeedbackUntilNanos = System.nanoTime() + 1_600_000_000L
     }
 
     private fun signed(value: Int): String = when {
