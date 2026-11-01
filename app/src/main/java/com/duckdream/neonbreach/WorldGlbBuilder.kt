@@ -4,7 +4,6 @@ import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.*
-import kotlin.random.Random
 
 /** Runtime terrain, lane surfaces and a shallow river. Environment props are CC0 glTF instances loaded by FilamentGameRenderer. */
 internal object WorldGlbBuilder {
@@ -53,70 +52,6 @@ internal object WorldGlbBuilder {
     }
     private fun quad(p:Part,a:FloatArray,b:FloatArray,c:FloatArray,d:FloatArray) {
         tri(p,a,c,b);tri(p,b,c,d)
-    }
-    private fun sphere(p:Part,cx:Float,cy:Float,cz:Float,rx:Float,ry:Float,rz:Float,
-                       rings:Int=9,segs:Int=14,rough:Float=0f) {
-        val ids=Array(rings+1){IntArray(segs+1)}
-        for(r in 0..rings) for(s in 0..segs) {
-            val t=PI.toFloat()*r/rings;val a=2f*PI.toFloat()*s/segs
-            val jitter=1f+rough*(0.45f*sin(a*3f+t*2f)*sin(t*4f)+0.3f*cos(a*5f-t*3f)*sin(t))
-            val sx=cos(a)*sin(t);val sy=cos(t);val sz=sin(a)*sin(t)
-            val nx=sx/rx;val ny=sy/ry;val nz=sz/rz
-            val nl=sqrt(nx*nx+ny*ny+nz*nz).coerceAtLeast(0.0001f)
-            ids[r][s]=p.vertex(cx+sx*rx*jitter,cy+sy*ry*jitter,cz+sz*rz*jitter,nx/nl,ny/nl,nz/nl)
-        }
-        for(r in 0 until rings) for(s in 0 until segs) {
-            val a=ids[r][s];val b=ids[r][s+1];val c=ids[r+1][s];val d=ids[r+1][s+1]
-            // Reverse the old winding: the previous indices faced inward and were culled,
-            // which made foliage, rocks and rounded props render as black silhouettes.
-            p.tri(a,b,c);p.tri(b,d,c)
-        }
-    }
-    private fun cylinder(p:Part,x:Float,z:Float,y0:Float,y1:Float,r0:Float,r1:Float,sides:Int=12) {
-        val lo=IntArray(sides+1);val hi=IntArray(sides+1)
-        for(i in 0..sides) {
-            val a=2f*PI.toFloat()*i/sides;val cs=cos(a);val sn=sin(a)
-            lo[i]=p.vertex(x+cs*r0,y0,z+sn*r0,cs,0.05f,sn)
-            hi[i]=p.vertex(x+cs*r1,y1,z+sn*r1,cs,0.05f,sn)
-        }
-        for(i in 0 until sides){p.tri(lo[i],hi[i],lo[i+1]);p.tri(lo[i+1],hi[i],hi[i+1])}
-    }
-
-    private fun terrainMesh() {
-        val steps=80;val size=64f;val start=-32f
-        val ids=Array(steps+1){IntArray(steps+1)}
-        val worldX=FloatArray(steps+1){start+size*it/steps}
-        val worldZ=FloatArray(steps+1){start+size*it/steps}
-        for(z in 0..steps) for(x in 0..steps) {
-            val wx=worldX[x];val wz=worldZ[z]
-            val n=norm(wx,wz);ids[z][x]=terrain.vertex(wx,h(wx,wz),wz,n[0],n[1],n[2])
-        }
-        for(z in 0 until steps)for(x in 0 until steps){
-            val x0=worldX[x];val x1=worldX[x+1]
-            val z0=worldZ[z];val z1=worldZ[z+1]
-            // Keep the playable field broad and rectangular; lane layout, not an island edge, defines the arena.
-            val a=ids[z][x];val b=ids[z][x+1];val c=ids[z+1][x];val d=ids[z+1][x+1]
-            terrain.tri(a,c,b);terrain.tri(b,c,d)
-        }
-    }
-    private fun ribbon(p:Part,points:List<FloatArray>,width:Float,lift:Float) {
-        fun at(t:Float):FloatArray {
-            val f=t.coerceIn(0f,0.99999f)*(points.size-1);val i=floor(f).toInt();val u=f-i
-            val p0=points[(i-1).coerceAtLeast(0)];val p1=points[i]
-            val p2=points[(i+1).coerceAtMost(points.lastIndex)];val p3=points[(i+2).coerceAtMost(points.lastIndex)]
-            fun cat(a:Float,b:Float,c:Float,d:Float)=0.5f*((2f*b)+(-a+c)*u+(2f*a-5f*b+4f*c-d)*u*u+(-a+3f*b-3f*c+d)*u*u*u)
-            return floatArrayOf(cat(p0[0],p1[0],p2[0],p3[0]),cat(p0[1],p1[1],p2[1],p3[1]))
-        }
-        var pl:FloatArray?=null;var pr:FloatArray?=null
-        for(i in 0..180){
-            val t=i/180f;val c=at(t);val a=at((t-0.003f).coerceAtLeast(0f));val b=at((t+0.003f).coerceAtMost(1f))
-            val dx=b[0]-a[0];val dz=b[1]-a[1];val l=sqrt(dx*dx+dz*dz).coerceAtLeast(0.0001f)
-            val sx=-dz/l;val sz=dx/l;val y=h(c[0],c[1])+lift
-            val left=floatArrayOf(c[0]+sx*width,y,c[1]+sz*width)
-            val right=floatArrayOf(c[0]-sx*width,y,c[1]-sz*width)
-            if(pl!=null&&pr!=null)quad(p,pl!!,left,pr!!,right)
-            pl=left;pr=right
-        }
     }
     private fun floatBytes(v:List<Float>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putFloat(it)}}.array()
     private fun intBytes(v:List<Int>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putInt(it)}}.array()
