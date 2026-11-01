@@ -63,10 +63,14 @@ float distance(Vec2 a, Vec2 b) {
 }
 
 float terrainHeight(float x, float z) {
-    const float hill = 0.48f * std::exp(-((x - 10.0f) * (x - 10.0f)
-                                  + (z - 8.0f) * (z - 8.0f)) / 95.0f);
-    return 0.40f * std::sin(x * 0.18f) * std::cos(z * 0.14f)
-         + 0.20f * std::sin((x + z) * 0.29f) + hill;
+    const float westRidge = 1.05f * std::exp(-((x + 23.0f) * (x + 23.0f)) / 52.0f)
+        * (0.45f + 0.55f * std::cos(z * 0.075f));
+    const float eastRidge = 0.92f * std::exp(-((x - 23.0f) * (x - 23.0f)) / 58.0f)
+        * (0.45f + 0.55f * std::cos(z * 0.07f));
+    const float centralRise = 0.48f * std::exp(-((x - 1.0f) * (x - 1.0f)
+        + (z - 1.0f) * (z - 1.0f)) / 90.0f);
+    return 0.36f * std::sin(x * 0.18f) * std::cos(z * 0.14f)
+        + 0.18f * std::sin((x + z) * 0.29f) + westRidge + eastRidge + centralRise;
 }
 
 int laneForX(float x) {
