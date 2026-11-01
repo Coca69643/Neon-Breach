@@ -254,7 +254,7 @@ internal class FilamentGameRenderer(
 
     private fun updateCamera(aspect: Float) {
         val vertical = 22.5
-        val horizontal = vertical * aspect.coerceAtLeast(1.0)
+        val horizontal = vertical * aspect.toDouble().coerceAtLeast(1.0)
         viewer.camera.setProjection(
             Camera.Projection.ORTHO,
             -horizontal, horizontal, -vertical, vertical, 0.1, 120.0
