@@ -56,12 +56,30 @@ internal object WorldGlbBuilder {
     private lateinit var grassLight: Part
     private lateinit var grassDark: Part
     private lateinit var cliffs: Part
+    private lateinit var earth: Part
+    private lateinit var rock: Part
 
     private fun insideIsland(x: Float, z: Float): Boolean {
         val angle = atan2(z / 31f, x / 35f)
         val edge = 1f + 0.035f * sin(angle * 5f) + 0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
         val radius = sqrt((x / 35f).pow(2) + (z / 31f).pow(2))
         return radius <= edge
+    }
+
+    private fun riverCenterZ(x: Float): Float {
+        val points = arrayOf(
+            floatArrayOf(-34f,1.1f), floatArrayOf(-28f,0.55f), floatArrayOf(-21f,0.05f),
+            floatArrayOf(-15f,-0.45f), floatArrayOf(-9f,-0.22f), floatArrayOf(-3f,0.25f),
+            floatArrayOf(4f,0.38f), floatArrayOf(10f,0.02f), floatArrayOf(16f,-0.38f),
+            floatArrayOf(23f,-0.18f), floatArrayOf(29f,0.22f), floatArrayOf(34f,0.8f)
+        )
+        for (i in 0 until points.lastIndex) {
+            if (x <= points[i + 1][0]) {
+                val t = ((x - points[i][0]) / (points[i + 1][0] - points[i][0])).coerceIn(0f, 1f)
+                return points[i][1] + (points[i + 1][1] - points[i][1]) * t
+            }
+        }
+        return points.last()[1]
     }
 
     private fun terrainMesh() {
@@ -78,8 +96,13 @@ internal object WorldGlbBuilder {
                 val cx = (x0 + x1) * 0.5f
                 val cz = (z0 + z1) * 0.5f
                 if (!insideIsland(cx, cz)) continue
+                // Carve a river bed into the terrain; water is no longer hidden below the meadow mesh.
+                if (abs(cz - riverCenterZ(cx)) < 2.05f && abs(cx) < 33.5f) continue
+                val noise = sin(cx * 0.43f + cz * 0.17f) + cos(cz * 0.31f - cx * 0.12f)
                 val part = when {
-                    sin(cx * 0.43f + cz * 0.17f) + cos(cz * 0.31f - cx * 0.12f) > 0.72f -> grassLight
+                    abs(cx) > 17f && abs(cz) < 23f && noise > -0.25f -> rock
+                    abs(cx) > 18f && noise < -0.35f -> earth
+                    noise > 0.72f -> grassLight
                     sin(cx * 0.21f - cz * 0.33f) + cos(cx * 0.37f + cz * 0.28f) < -0.86f -> grassDark
                     else -> terrain
                 }
@@ -174,6 +197,8 @@ internal object WorldGlbBuilder {
         grassLight=part("sunlit_grass",1)
         grassDark=part("deep_grass",2)
         trail=part("limestone_lane_surface",3)
+        earth=part("packed_earth",9)
+        rock=part("exposed_stone",10)
         val routeEdge=part("lane_edge_stone",4)
         val water=part("crossing_river",5)
         cliffs=part("island_rock_rim",6)
@@ -195,7 +220,7 @@ internal object WorldGlbBuilder {
             floatArrayOf(4f,0.38f),floatArrayOf(10f,0.02f),floatArrayOf(16f,-0.38f),
             floatArrayOf(23f,-0.18f),floatArrayOf(29f,0.22f),floatArrayOf(34f,0.8f)
         )
-        ribbon(water,river,1.72f,-0.15f)
+        ribbon(water,river,1.72f,0.10f)
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -221,7 +246,7 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura")
+        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone")
         val colors=listOf(
             listOf(0.16f,0.24f,0.10f,1f),
             listOf(0.22f,0.31f,0.13f,1f),
@@ -231,7 +256,9 @@ internal object WorldGlbBuilder {
             listOf(0.06f,0.14f,0.18f,1f),
             listOf(0.12f,0.11f,0.09f,1f),
             listOf(0.08f,0.56f,0.95f,1f),
-            listOf(0.76f,0.56f,0.13f,1f))
+            listOf(0.76f,0.56f,0.13f,1f),
+            listOf(0.31f,0.20f,0.11f,1f),
+            listOf(0.29f,0.30f,0.27f,1f))
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
