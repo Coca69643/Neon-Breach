@@ -51,7 +51,6 @@ float gPlayerZ = -19.0f;
 float gPlayerVx = 0.0f;
 float gPlayerVz = 0.0f;
 float gElapsed = 0.0f;
-float gWaveTimer = 0.0f;
 float gBoostTime = 0.0f;
 float gBoostCooldown = 0.0f;
 float gPulseCooldown = 0.0f;
@@ -135,7 +134,6 @@ void resetSimulation() {
     gPlayerVx = 0.0f;
     gPlayerVz = 0.0f;
     gElapsed = 0.0f;
-    gWaveTimer = 0.0f;
     gCreepClashTimer = 0.0f;
     gBoostTime = 0.0f;
     gBoostCooldown = 0.0f;
@@ -318,7 +316,6 @@ void updateLaneUnits(float dt) {
 }
 
 void updateLanes(float dt) {
-    gWaveTimer += dt;
     updateLaneUnits(dt);
 
     for (int lane = 0; lane < 3; ++lane) {
