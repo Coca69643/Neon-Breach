@@ -45,7 +45,14 @@ jobs:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
       - name: Install Android SDK, NDK and CMake
-        run: sdkmanager --install "platforms;android-37" "build-tools;36.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+        run: |
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT}}"
+          test -d "$SDK_ROOT/platforms/android-37.0"
+          # SDK Manager publishes API 37 as android-37.0 while AGP's compileSdk
+          # resolver looks for android-37. Keep both names pointed at the same platform.
+          ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
+          test -d "$SDK_ROOT/platforms/android-37"
       - name: Verify project structure
         run: python3 tools/verify_project.py
       - name: Compile Android APK
