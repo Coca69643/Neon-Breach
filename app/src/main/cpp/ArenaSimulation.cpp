@@ -26,8 +26,8 @@ constexpr float kBotSpeed = 2.45f;
 constexpr float kBotAcceleration = 8.5f;
 constexpr float kBotArrivalSpeedScale = 1.85f;
 constexpr float kBotArrivalSnap = 0.12f;
-constexpr std::array<float, 4> kBlueRouteZ{{-11.0f, -3.4f, 4.0f, 11.0f}};
-constexpr std::array<float, 4> kRedRouteZ{{11.0f, 3.4f, -4.0f, -11.0f}};
+constexpr std::array<float, 5> kBlueRouteZ{{-19.0f, -9.0f, -3.0f, 0.0f, 0.0f}};
+constexpr std::array<float, 5> kRedRouteZ{{19.0f, 9.0f, 3.0f, 0.0f, 0.0f}};
 constexpr float kBotFormationSpacing = 1.3f;
 
 std::mutex gMutex;
@@ -78,7 +78,6 @@ int laneForX(float x) {
 void resetBot(Bot &bot, int index) {
     const bool blue = bot.team == 0;
     const float homeZ = blue ? -19.0f : 19.0f;
-    bot.slot = (index % 2 == 0) ? -1 : 1;
     const float lateral = static_cast<float>(bot.slot) * kBotFormationSpacing;
     const float depth = static_cast<float>((index / 3) % 2) * 1.4f;
     bot.position = {
@@ -116,10 +115,12 @@ void resetSimulation() {
     // Four autonomous allies and five autonomous opponents.
     constexpr std::array<int, kBotCount> teams{{0, 0, 0, 0, 1, 1, 1, 1, 1}};
     constexpr std::array<int, kBotCount> lanes{{0, 1, 2, 1, 0, 1, 2, 0, 2}};
+    constexpr std::array<int, kBotCount> slots{{-1, -1, -1, 1, -1, -1, -1, 1, 1}};
     for (int i = 0; i < kBotCount; ++i) {
         Bot &bot = gBots[static_cast<std::size_t>(i)];
         bot.team = teams[static_cast<std::size_t>(i)];
         bot.lane = lanes[static_cast<std::size_t>(i)];
+        bot.slot = slots[static_cast<std::size_t>(i)];
         resetBot(bot, i);
     }
     gInitialized = true;
@@ -216,7 +217,7 @@ void moveBotTo(Bot &bot, Vec2 goal, float dt) {
 
 float routeTargetZ(const Bot &bot) {
     const auto &route = bot.team == 0 ? kBlueRouteZ : kRedRouteZ;
-    return route[static_cast<std::size_t>(std::clamp(bot.routeStep, 0, 3))];
+    return route[static_cast<std::size_t>(std::clamp(bot.routeStep, 0, 4))];
 }
 
 void updateBots(float dt) {
@@ -233,11 +234,12 @@ void updateBots(float dt) {
             bot.startDelay = std::max(0.0f, bot.startDelay - dt);
             continue;
         }
+        const float teamOffset = bot.team == 0 ? -0.72f : 0.72f;
         const float targetX = kLaneX[static_cast<std::size_t>(bot.lane)]
-                            + static_cast<float>(bot.slot) * kBotFormationSpacing;
+                            + static_cast<float>(bot.slot) * kBotFormationSpacing + teamOffset;
         const Vec2 goal{targetX, routeTargetZ(bot)};
         moveBotTo(bot, goal, dt);
-        if (distance(bot.position, goal) <= kBotArrivalSnap && bot.routeStep < 3) {
+        if (distance(bot.position, goal) <= kBotArrivalSnap && bot.routeStep < 4) {
             ++bot.routeStep;
         }
         bot.position.x = std::clamp(bot.position.x, -23.5f, 23.5f);
@@ -277,21 +279,21 @@ void updateLanes(float dt) {
             if (bot.lane != lane || bot.disabled > 0.0f) continue;
             // Route control is scored in a fixed central zone, not a score-driven
             // moving front; NPC navigation and objective progress are decoupled.
-            if (std::abs(bot.position.z) > 8.0f) continue;
+            if (std::abs(bot.position.z) > 2.8f) continue;
             if (bot.team == 0) ++blueHeroes;
             else ++redHeroes;
         }
-        const float playerSupport =
-            (laneForX(gPlayerX) == lane &&
-             std::abs(gPlayerZ) < 7.0f &&
-             gPlayerDisrupted <= 0.0f) ? 0.75f : 0.0f;
+        const bool playerOnObjective = laneForX(gPlayerX) == lane &&
+            std::abs(gPlayerZ) < 3.6f && gPlayerDisrupted <= 0.0f;
+        const float playerSupport = playerOnObjective
+            ? (gShieldTime > 0.0f ? 1.85f : 1.15f) : 0.0f;
         const float creepAdvantage =
             static_cast<float>(gBlueCreeps[static_cast<std::size_t>(lane)]
                              - gRedCreeps[static_cast<std::size_t>(lane)]) * 0.12f;
         const float pressure = static_cast<float>(blueHeroes - redHeroes)
                              + playerSupport + creepAdvantage;
         gLaneProgress[static_cast<std::size_t>(lane)] =
-            std::clamp(gLaneProgress[static_cast<std::size_t>(lane)] + pressure * 0.0018f * dt,
+            std::clamp(gLaneProgress[static_cast<std::size_t>(lane)] + pressure * 0.0085f * dt,
                        -1.0f, 1.0f);
     }
 
