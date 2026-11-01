@@ -35,8 +35,10 @@ internal object WorldGlbBuilder {
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
     private fun h(x:Float,z:Float):Float {
-        val mound=0.48f*exp(-((x-10f).pow(2)+(z-8f).pow(2))/95f)
-        return 0.40f*sin(x*0.18f)*cos(z*0.14f)+0.20f*sin((x+z)*0.29f)+mound
+        val westRidge = 1.05f * exp(-((x + 23f).pow(2)) / 52f) * (0.45f + 0.55f * cos(z * 0.075f))
+        val eastRidge = 0.92f * exp(-((x - 23f).pow(2)) / 58f) * (0.45f + 0.55f * cos(z * 0.07f))
+        val centralRise = 0.48f * exp(-((x - 1f).pow(2) + (z - 1f).pow(2)) / 90f)
+        return 0.36f*sin(x*0.18f)*cos(z*0.14f)+0.18f*sin((x+z)*0.29f)+westRidge+eastRidge+centralRise
     }
     private fun norm(x:Float,z:Float):FloatArray {
         val e=0.04f
@@ -89,7 +91,7 @@ internal object WorldGlbBuilder {
     }
 
     private fun terrainMesh() {
-        val steps=80;val size=64f;val start=-32f;val radiusSq=30.7f*30.7f
+        val steps=80;val size=64f;val start=-32f
         val ids=Array(steps+1){IntArray(steps+1)}
         val worldX=FloatArray(steps+1){start+size*it/steps}
         val worldZ=FloatArray(steps+1){start+size*it/steps}
@@ -100,9 +102,7 @@ internal object WorldGlbBuilder {
         for(z in 0 until steps)for(x in 0 until steps){
             val x0=worldX[x];val x1=worldX[x+1]
             val z0=worldZ[z];val z1=worldZ[z+1]
-            // Clip the terrain to a broad rounded island instead of exposing a square edge.
-            if(x0*x0+z0*z0>radiusSq || x1*x1+z0*z0>radiusSq ||
-                x0*x0+z1*z1>radiusSq || x1*x1+z1*z1>radiusSq) continue
+            // Keep the playable field broad and rectangular; lane layout, not an island edge, defines the arena.
             val a=ids[z][x];val b=ids[z][x+1];val c=ids[z+1][x];val d=ids[z+1][x+1]
             terrain.tri(a,c,b);terrain.tri(b,c,d)
         }
@@ -132,12 +132,12 @@ internal object WorldGlbBuilder {
             val x=r.nextFloat()*48f-24f;val z=r.nextFloat()*48f-24f
             val laneClearance=minOf(abs(x+12f),abs(x),abs(x-12f))
             if(x*x+z*z>65f && laneClearance>4.6f){
-                val s=0.78f+r.nextFloat()*0.55f;val y=h(x,z)
+                val s=0.64f+r.nextFloat()*0.36f;val y=h(x,z)
                 cylinder(bark,x,z,y,y+2.5f*s,0.34f*s,0.15f*s)
-                val crown=y+2.9f*s
-                sphere(leaves,x,crown,z,1.55f*s,1.65f*s,1.45f*s,12,18,0.07f)
-                sphere(leavesLit,x-0.62f*s,crown+0.28f*s,z+0.42f*s,0.90f*s,1.05f*s,0.88f*s,10,16,0.06f)
-                sphere(leaves,x+0.68f*s,crown+0.18f*s,z-0.36f*s,0.92f*s,1.0f*s,0.90f*s,10,16,0.06f)
+                val crown=y+2.55f*s
+                sphere(leaves,x,crown,z,1.12f*s,1.34f*s,1.12f*s,12,18,0.07f)
+                sphere(leavesLit,x-0.48f*s,crown+0.18f*s,z+0.34f*s,0.70f*s,0.82f*s,0.68f*s,10,16,0.06f)
+                sphere(leaves,x+0.52f*s,crown+0.12f*s,z-0.30f*s,0.72f*s,0.82f*s,0.70f*s,10,16,0.06f)
             }
         }
         repeat(60){
@@ -240,7 +240,7 @@ internal object WorldGlbBuilder {
         }
         val names=listOf("Meadow","Limestone paths","Tree bark","Deep foliage","Sunlit foliage","Mossy rock","Clear water","Carved stone","Beacon","Route shoulders")
         val colors=listOf(
-            listOf(0.19f,0.31f,0.13f,1f),listOf(0.43f,0.38f,0.26f,1f),
+            listOf(0.15f,0.24f,0.11f,1f),listOf(0.43f,0.38f,0.26f,1f),
             listOf(0.20f,0.13f,0.075f,1f),listOf(0.065f,0.19f,0.10f,1f),
             listOf(0.22f,0.34f,0.12f,1f),listOf(0.25f,0.29f,0.25f,1f),
             listOf(0.035f,0.30f,0.34f,1f),listOf(0.48f,0.48f,0.39f,1f),
