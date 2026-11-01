@@ -84,6 +84,11 @@ internal class FilamentGameRenderer(
     private var cameraY = 0f
     private var phase = 0f
     private var playerYaw = 0f
+    private var activeHero = 0
+    private var pulseRingRoot = 0
+    private var shieldRingRoot = 0
+    private val botMaterialSets = ArrayList<List<MaterialInstance>>(9)
+    private val botDisabledState = BooleanArray(9)
     private var sceneLoaded = false
     private var overviewCamera = true
     private val botInstances = ArrayList<FilamentInstance>(9)
@@ -165,7 +170,17 @@ internal class FilamentGameRenderer(
     private fun loadWorld() {
         val world = WorldGlbBuilder.build()
         viewer.loadModelGlb(ByteBuffer.wrap(world))
-        check(viewer.asset != null) { "MOBA world GLB failed to load" }
+        val asset = viewer.asset ?: error("MOBA world GLB failed to load")
+        val transforms = engine.transformManager
+        asset.entities.forEach { entity ->
+            when (asset.getName(entity)) {
+                "pulse_ring" -> pulseRingRoot = transforms.getInstance(entity)
+                "shield_ring" -> shieldRingRoot = transforms.getInstance(entity)
+            }
+        }
+        check(pulseRingRoot != 0 && shieldRingRoot != 0) {
+            "World ability markers were not created"
+        }
     }
 
     private fun loadKayKitEnvironment() {
@@ -277,6 +292,7 @@ internal class FilamentGameRenderer(
                 ?: throw IllegalStateException("Could not instance bot humanoid $index")
             botInstances.add(instance)
             botAnimators.add(instance.animator)
+            botMaterialSets.add(instance.materialInstances.toList())
             viewer.scene.addEntities(instance.entities)
             val rootInstance = transforms.getInstance(instance.root)
             require(rootInstance != 0) { "Bot humanoid root transform is missing: $index" }
@@ -294,18 +310,7 @@ internal class FilamentGameRenderer(
             botBones.add(rig)
             applyRestPose(rig)
             instance.animator.updateBoneMatrices()
-            val tint = if (index < 4) {
-                floatArrayOf(0.34f, 0.82f, 0.78f, 1f)
-            } else {
-                floatArrayOf(0.92f, 0.40f, 0.29f, 1f)
-            }
-            instance.materialInstances.forEach { material ->
-                runCatching {
-                    material.setParameter("baseColorFactor", Colors.RgbaType.SRGB, tint[0], tint[1], tint[2], tint[3])
-                }.onFailure { error ->
-                    Log.w(TAG, "Bot material tint fallback for instance $index", error)
-                }
-            }
+            applyBotTint(index, disabled = false)
         }
 
         // Twelve smaller, animated lane units: two per team on each of the three routes.
@@ -398,23 +403,44 @@ internal class FilamentGameRenderer(
 
     fun update(x: Float, y: Float, z: Float, velocityX: Float, velocityZ: Float, deltaTime: Float) {
         if (!sceneLoaded) return
-        val blend = (deltaTime * 5.5f).coerceIn(0f, 1f)
+        val speed = kotlin.math.sqrt(velocityX * velocityX + velocityZ * velocityZ)
+        if (speed > 0.18f) playerYaw = kotlin.math.atan2(velocityX, velocityZ)
+
+        // Keep the hero in the lower-middle safe area: never underneath the left joystick.
+        // The camera tracks a biased focus point ahead and to the hero's right.
+        val forwardX = sin(playerYaw)
+        val forwardZ = cos(playerYaw)
+        val rightX = cos(playerYaw)
+        val rightZ = -sin(playerYaw)
+        val targetX = x + rightX * 2.2f + forwardX * 3.8f
+        val targetZ = z + rightZ * 2.2f + forwardZ * 3.8f
+        val blend = (1f - kotlin.math.exp(-deltaTime * 6.5f)).coerceIn(0f, 1f)
         if (!overviewCamera) {
-            cameraX += (x - cameraX) * blend
-            cameraZ += (z - cameraZ) * blend
+            cameraX += (targetX - cameraX) * blend
+            cameraZ += (targetZ - cameraZ) * blend
             cameraY += (y - cameraY) * blend
         }
 
         overviewCamera = false
-        val speed = kotlin.math.sqrt(velocityX * velocityX + velocityZ * velocityZ)
-        if (speed > 0.18f) playerYaw = kotlin.math.atan2(velocityX, velocityZ)
         val yaw = playerYaw
-        val c = cos(yaw) * characterScale
-        val s = sin(yaw) * characterScale
-        val rootY = cameraY - characterMinY * characterScale
+        val widthScale = when (activeHero) {
+            1 -> 1.18f
+            2 -> 0.84f
+            else -> 0.96f
+        }
+        val heightScale = when (activeHero) {
+            1 -> 0.94f
+            2 -> 1.13f
+            else -> 1.04f
+        }
+        val scaleX = characterScale * widthScale
+        val scaleY = characterScale * heightScale
+        val c = cos(yaw) * scaleX
+        val s = sin(yaw) * scaleX
+        val rootY = cameraY - characterMinY * scaleY
         val matrix = floatArrayOf(
             c, 0f, -s, 0f,
-            0f, characterScale, 0f, 0f,
+            0f, scaleY, 0f, 0f,
             s, 0f, c, 0f,
             x, rootY, z, 1f
         )
@@ -423,17 +449,18 @@ internal class FilamentGameRenderer(
         val moving = (speed / 5.6f).coerceIn(0f, 1f)
         phase += deltaTime * (7.0f + speed * 1.45f)
         val stride = sin(phase) * moving
-        // A relaxed, lowered shoulder pose replaces the source model's T-pose.
-        animateBone("upperarm_l", -0.92f - stride * 0.30f)
-        animateBone("upperarm_r", 0.92f + stride * 0.30f)
-        animateBone("lowerarm_l", 0.50f + max(0f, stride) * 0.16f)
-        animateBone("lowerarm_r", 0.50f + max(0f, -stride) * 0.16f)
-        animateBone("thigh_l", stride * 0.62f)
-        animateBone("thigh_r", -stride * 0.62f)
-        animateBone("calf_l", max(0f, -stride) * 0.52f)
-        animateBone("calf_r", max(0f, stride) * 0.52f)
-        animateBone("spine_01", sin(phase * 2f) * 0.025f * moving)
-        animateBone("spine_02", -sin(phase * 2f) * 0.018f * moving)
+        val idle = sin(phase * 0.72f)
+        animateBone("upperarm_l", -0.90f - stride * 0.34f + idle * 0.025f)
+        animateBone("upperarm_r", 0.90f + stride * 0.34f - idle * 0.025f)
+        animateBone("lowerarm_l", 0.48f + max(0f, stride) * 0.19f)
+        animateBone("lowerarm_r", 0.48f + max(0f, -stride) * 0.19f)
+        animateBone("thigh_l", stride * 0.68f)
+        animateBone("thigh_r", -stride * 0.68f)
+        animateBone("calf_l", max(0f, -stride) * 0.55f)
+        animateBone("calf_r", max(0f, stride) * 0.55f)
+        animateBone("spine_01", 0.014f + sin(phase * 0.75f) * 0.018f + sin(phase * 2f) * 0.025f * moving)
+        animateBone("spine_02", -0.010f - sin(phase * 0.75f) * 0.014f)
+        animateBone("neck_01", sin(phase * 0.45f) * 0.018f)
         playerAnimator?.updateBoneMatrices()
 
         updateCamera(cameraAspect)
@@ -448,16 +475,66 @@ internal class FilamentGameRenderer(
     private fun setMinionTransform(index: Int, x: Float, z: Float, yaw: Float) {
         val root = minionRootInstances.getOrNull(index) ?: return
         if (root == 0) return
-        val scale = characterScale * minionScale
-        val c = cos(yaw) * scale
-        val sn = sin(yaw) * scale
-        val y = terrainHeight(x, z) - characterMinY * scale
+        val width = when (index % 3) { 0 -> 0.88f; 1 -> 1.04f; else -> 0.96f }
+        val height = when (index % 3) { 0 -> 1.08f; 1 -> 0.92f; else -> 1.0f }
+        val scaleX = characterScale * minionScale * width
+        val scaleY = characterScale * minionScale * height
+        val c = cos(yaw) * scaleX
+        val sn = sin(yaw) * scaleX
+        val y = terrainHeight(x, z) - characterMinY * scaleY
         engine.transformManager.setTransform(root, floatArrayOf(
             c, 0f, -sn, 0f,
-            0f, scale, 0f, 0f,
+            0f, scaleY, 0f, 0f,
             sn, 0f, c, 0f,
             x, y, z, 1f
         ))
+    }
+
+    private fun applyBotTint(index: Int, disabled: Boolean) {
+        val team = if (index < 4) 0 else 1
+        val variant = index % 4
+        val tint = when {
+            disabled -> floatArrayOf(0.36f, 0.39f, 0.40f, 1f)
+            team == 0 && variant == 0 -> floatArrayOf(0.18f, 0.42f, 0.72f, 1f)
+            team == 0 && variant == 1 -> floatArrayOf(0.20f, 0.58f, 0.76f, 1f)
+            team == 0 && variant == 2 -> floatArrayOf(0.24f, 0.52f, 0.62f, 1f)
+            team == 0 -> floatArrayOf(0.30f, 0.60f, 0.78f, 1f)
+            variant == 0 -> floatArrayOf(0.68f, 0.22f, 0.18f, 1f)
+            variant == 1 -> floatArrayOf(0.80f, 0.32f, 0.20f, 1f)
+            variant == 2 -> floatArrayOf(0.62f, 0.24f, 0.28f, 1f)
+            else -> floatArrayOf(0.80f, 0.38f, 0.25f, 1f)
+        }
+        botMaterialSets.getOrNull(index).orEmpty().forEach { material ->
+            runCatching {
+                material.setParameter("baseColorFactor", Colors.RgbaType.SRGB, tint[0], tint[1], tint[2], tint[3])
+            }.onFailure { error -> Log.w(TAG, "Bot tint update failed for $index", error) }
+        }
+    }
+
+    private fun setRingTransform(root: Int, x: Float, y: Float, z: Float, scale: Float) {
+        if (root == 0) return
+        engine.transformManager.setTransform(root, floatArrayOf(
+            scale, 0f, 0f, 0f,
+            0f, 1f, 0f, 0f,
+            0f, 0f, scale, 0f,
+            x, y, z, 1f
+        ))
+    }
+
+    fun updateEffects(snapshot: FloatArray) {
+        if (!sceneLoaded || snapshot.size < 72) return
+        val x = snapshot[0]
+        val y = terrainHeight(x, snapshot[2]) + 0.095f
+        val z = snapshot[2]
+        val pulseRemaining = snapshot[61].coerceAtLeast(0f)
+        if (pulseRemaining > 0.01f) {
+            val progress = (1f - pulseRemaining / 0.68f).coerceIn(0f, 1f)
+            setRingTransform(pulseRingRoot, x, y + 0.015f, z, 0.75f + progress * 6.0f)
+        } else {
+            setRingTransform(pulseRingRoot, x, y, z, 0.001f)
+        }
+        val shieldActive = snapshot[7] > 0.01f
+        setRingTransform(shieldRingRoot, x, y + 0.025f, z, if (shieldActive) 1.55f else 0.001f)
     }
 
     fun setMinionsVisible(visible: Boolean) {
@@ -487,14 +564,16 @@ internal class FilamentGameRenderer(
             setMinionTransform(index, x, z, yaw)
             val rig = minionBones.getOrNull(index).orEmpty()
             val stride = sin(minionAnimationPhase + index * 0.37f) * moving
-            animatePose(rig["upperarm_l"], -0.92f - stride * 0.18f)
-            animatePose(rig["upperarm_r"], 0.92f + stride * 0.18f)
-            animatePose(rig["lowerarm_l"], 0.50f)
-            animatePose(rig["lowerarm_r"], 0.50f)
-            animatePose(rig["thigh_l"], stride * 0.55f)
-            animatePose(rig["thigh_r"], -stride * 0.55f)
-            animatePose(rig["calf_l"], max(0f, -stride) * 0.42f)
-            animatePose(rig["calf_r"], max(0f, stride) * 0.42f)
+            val idle = sin(minionAnimationPhase * 0.58f + index * 0.6f)
+            animatePose(rig["upperarm_l"], -0.90f - stride * 0.22f + idle * 0.018f)
+            animatePose(rig["upperarm_r"], 0.90f + stride * 0.22f - idle * 0.018f)
+            animatePose(rig["lowerarm_l"], 0.48f)
+            animatePose(rig["lowerarm_r"], 0.48f)
+            animatePose(rig["thigh_l"], stride * 0.60f)
+            animatePose(rig["thigh_r"], -stride * 0.60f)
+            animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
+            animatePose(rig["calf_r"], max(0f, stride) * 0.45f)
+            animatePose(rig["spine_01"], idle * 0.014f)
             minionAnimators.getOrNull(index)?.updateBoneMatrices()
             previous[0] = x
             previous[1] = z
@@ -517,13 +596,16 @@ internal class FilamentGameRenderer(
             val moving = (speed / 2.7f).coerceIn(0f, 1f)
             val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
                 else if (index < 4) 0f else Math.PI.toFloat()
-            val y = terrainHeight(x, z) - characterMinY * characterScale * botScale
-            val scale = characterScale * botScale
-            val c = cos(yaw) * scale
-            val sinYaw = sin(yaw) * scale
+            val widthFactor = when (index % 3) { 0 -> 1.10f; 1 -> 0.88f; else -> 0.97f }
+            val heightFactor = when (index % 3) { 0 -> 0.94f; 1 -> 1.10f; else -> 1.0f }
+            val scaleX = characterScale * botScale * widthFactor
+            val scaleY = characterScale * botScale * heightFactor
+            val y = terrainHeight(x, z) - characterMinY * scaleY
+            val c = cos(yaw) * scaleX
+            val sinYaw = sin(yaw) * scaleX
             val matrix = floatArrayOf(
                 c, 0f, -sinYaw, 0f,
-                0f, scale, 0f, 0f,
+                0f, scaleY, 0f, 0f,
                 sinYaw, 0f, c, 0f,
                 x, y, z, 1f
             )
@@ -539,7 +621,15 @@ internal class FilamentGameRenderer(
             animatePose(rig["thigh_r"], -stride * 0.60f)
             animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
             animatePose(rig["calf_r"], max(0f, stride) * 0.45f)
-            animatePose(rig["spine_01"], sin(botAnimationPhase * 2f + index) * 0.02f * moving)
+            val idle = sin(botAnimationPhase * 0.58f + index * 0.43f)
+            animatePose(rig["spine_01"], 0.012f + idle * 0.016f + sin(botAnimationPhase * 2f + index) * 0.02f * moving)
+            animatePose(rig["spine_02"], -idle * 0.012f)
+            animatePose(rig["neck_01"], sin(botAnimationPhase * 0.36f + index) * 0.015f)
+            val disabled = snapshot.size >= 72 && snapshot[63 + index] > 0.0f
+            if (botDisabledState[index] != disabled) {
+                applyBotTint(index, disabled)
+                botDisabledState[index] = disabled
+            }
             botAnimators.getOrNull(index)?.updateBoneMatrices()
             previous[0] = x
             previous[1] = z
@@ -593,10 +683,11 @@ internal class FilamentGameRenderer(
     }
 
     fun setHeroAppearance(hero: Int) {
-        val tint = when (hero.coerceIn(0, 2)) {
-            1 -> floatArrayOf(0.88f, 0.62f, 0.28f, 1.0f) // Bastion: warm gold
-            2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f) // Kairo: violet
-            else -> floatArrayOf(0.30f, 0.78f, 0.82f, 1.0f) // Lyra: cyan
+        activeHero = hero.coerceIn(0, 2)
+        val tint = when (activeHero) {
+            1 -> floatArrayOf(0.88f, 0.62f, 0.28f, 1.0f)
+            2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f)
+            else -> floatArrayOf(0.78f, 0.91f, 0.77f, 1.0f)
         }
         playerMaterials.forEach { material ->
             runCatching {
@@ -634,14 +725,14 @@ internal class FilamentGameRenderer(
     private fun updateCamera(aspect: Float) {
         val forwardX = sin(playerYaw)
         val forwardZ = cos(playerYaw)
-        val distance = if (overviewCamera) 7.6f else 9.2f
-        val height = if (overviewCamera) 4.4f else 5.2f
-        val lookAhead = if (overviewCamera) 0.45f else 1.8f
+        val distance = if (overviewCamera) 7.6f else 12.8f
+        val height = if (overviewCamera) 4.4f else 7.2f
+        val lookAhead = if (overviewCamera) 0.45f else 0.55f
         val eyeX = cameraX - forwardX * distance
         val eyeZ = cameraZ - forwardZ * distance
         val lookX = cameraX + forwardX * lookAhead
         val lookZ = cameraZ + forwardZ * lookAhead
-        val fov = if (overviewCamera) 46.0 else 53.0
+        val fov = if (overviewCamera) 46.0 else 55.0
         viewer.camera.setProjection(
             fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 150.0,
             Camera.Fov.VERTICAL
