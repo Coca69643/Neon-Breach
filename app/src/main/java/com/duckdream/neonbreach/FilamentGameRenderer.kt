@@ -53,6 +53,7 @@ internal class FilamentGameRenderer(
     private var cameraY = 0f
     private var phase = 0f
     private var sceneLoaded = false
+    private val botTransformInstances = IntArray(9)
 
     init {
         if (!filamentInitialized) {
@@ -113,6 +114,15 @@ internal class FilamentGameRenderer(
     private fun loadWorld() {
         val world = WorldGlbBuilder.build()
         viewer.loadModelGlb(ByteBuffer.wrap(world))
+        val worldAsset = viewer.asset ?: throw IllegalStateException("MOBA world GLB failed to load")
+        val transforms = engine.transformManager
+        for (index in 0 until botTransformInstances.size) {
+            val entity = worldAsset.getFirstEntityByName("bot_unit_$index")
+            require(entity != 0) { "Missing local bot visual $index" }
+            val instance = transforms.getInstance(entity)
+            require(instance != 0) { "Missing bot transform $index" }
+            botTransformInstances[index] = instance
+        }
     }
 
     private fun loadCharacter() {
@@ -191,6 +201,34 @@ internal class FilamentGameRenderer(
         animateBone("upperarm_r", sin(phase) * 0.28f * moving)
 
         updateCamera(cameraAspect)
+    }
+
+    fun updateBots(snapshot: FloatArray) {
+        if (!sceneLoaded || snapshot.size < 34) return
+        val transforms = engine.transformManager
+        for (index in botTransformInstances.indices) {
+            val instance = botTransformInstances[index]
+            if (instance == 0) continue
+            val x = snapshot[16 + index * 2]
+            val z = snapshot[17 + index * 2]
+            val y = terrainHeight(x, z)
+            val yaw = if (index < 4) 0f else Math.PI.toFloat()
+            val c = cos(yaw)
+            val s = sin(yaw)
+            val matrix = floatArrayOf(
+                c, 0f, -s, 0f,
+                0f, 1f, 0f, 0f,
+                s, 0f, c, 0f,
+                x, y, z, 1f
+            )
+            transforms.setTransform(instance, matrix)
+        }
+    }
+
+    private fun terrainHeight(x: Float, z: Float): Float {
+        val hill = 0.48f * kotlin.math.exp(-((x - 10f) * (x - 10f) + (z - 8f) * (z - 8f)) / 95f)
+        return 0.40f * sin(x * 0.18f) * cos(z * 0.14f) +
+            0.20f * sin((x + z) * 0.29f) + hill
     }
 
     private fun animateBone(name: String, angle: Float) {
