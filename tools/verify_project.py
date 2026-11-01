@@ -24,7 +24,7 @@ readme = read("README.md")
 changelog = read("CHANGELOG.md")
 license_text = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
-icon = ROOT / "app/src/main/res/drawable-nodpi/ic_launcher.webp"
+icon = ROOT / "app/src/main/res/drawable/ic_launcher.xml"
 
 checks = [
     ("versionName '0.4.0'" in gradle, "app version must be 0.4.0"),
@@ -66,8 +66,8 @@ if "gPlayerX" in bot_ai or "gPlayerZ" in bot_ai:
     raise SystemExit("Bot movement still depends on player position")
 if "other.position" in bot_ai or "targetPlayer" in bot_ai or "targetBot" in bot_ai:
     raise SystemExit("Moving-target chase logic remains in bot AI")
-if not icon.is_file() or icon.stat().st_size < 8_000:
-    raise SystemExit("Project Arena launcher icon file missing or too small")
+if not icon.is_file() or "fortress" not in icon.read_text(encoding="utf-8").lower():
+    raise SystemExit("Project Arena launcher vector is missing its own visual identity")
 if not avatar.is_file() or avatar.stat().st_size < 500_000:
     raise SystemExit("CC0 humanoid model payload missing or unexpectedly small")
 if "botUnit(" in world:
