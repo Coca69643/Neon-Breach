@@ -14,6 +14,8 @@ import com.google.android.filament.gltfio.FilamentAsset
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.EntityManager
+import com.google.android.filament.gltfio.FilamentInstance
+import com.google.android.filament.utils.Colors
 import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.Utils
 import java.nio.ByteBuffer
@@ -53,7 +55,10 @@ internal class FilamentGameRenderer(
     private var cameraY = 0f
     private var phase = 0f
     private var sceneLoaded = false
-    private val botTransformInstances = IntArray(9)
+    private var overviewCamera = true
+    private val botInstances = ArrayList<FilamentInstance>(9)
+    private val botRootInstances = IntArray(9)
+    private val botScale = 0.86f
 
     init {
         if (!filamentInitialized) {
@@ -71,9 +76,16 @@ internal class FilamentGameRenderer(
         backendName = created.third
 
         skybox = Skybox.Builder()
-            .color(floatArrayOf(0.10f, 0.17f, 0.19f, 1f))
+            .color(floatArrayOf(0.34f, 0.48f, 0.50f, 1f))
             .build(engine)
         viewer.scene.skybox = skybox
+
+        // ModelViewer supplies a sun, but its default direction is straight down.
+        // Angle it across the map so foliage, towers and lane walls gain readable form.
+        engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
+        engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
+        engine.lightManager.setIntensity(viewer.light, 105_000.0f)
+        viewer.camera.setExposure(16.0, 1.0 / 125.0, 100.0)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
             hdrColorBuffer = View.QualityLevel.LOW
@@ -114,15 +126,7 @@ internal class FilamentGameRenderer(
     private fun loadWorld() {
         val world = WorldGlbBuilder.build()
         viewer.loadModelGlb(ByteBuffer.wrap(world))
-        val worldAsset = viewer.asset ?: throw IllegalStateException("MOBA world GLB failed to load")
-        val transforms = engine.transformManager
-        for (index in 0 until botTransformInstances.size) {
-            val entity = worldAsset.getFirstEntityByName("bot_unit_$index")
-            require(entity != 0) { "Missing local bot visual $index" }
-            val instance = transforms.getInstance(entity)
-            require(instance != 0) { "Missing bot transform $index" }
-            botTransformInstances[index] = instance
-        }
+        check(viewer.asset != null) { "MOBA world GLB failed to load" }
     }
 
     private fun loadCharacter() {
@@ -141,6 +145,32 @@ internal class FilamentGameRenderer(
             characterResources!!.addResourceData(uri, ByteBuffer.wrap(data))
         }
         characterResources!!.loadResources(asset)
+
+        // Reuse the CC0 rigged humanoid as the actual bot character model.
+        // Filament instances share mesh buffers and textures instead of duplicating GPU geometry.
+        val transforms = engine.transformManager
+        for (index in 0 until 9) {
+            val instance = characterLoader!!.createInstance(asset)
+                ?: throw IllegalStateException("Could not instance bot humanoid $index")
+            botInstances.add(instance)
+            viewer.scene.addEntities(instance.entities)
+            val rootInstance = transforms.getInstance(instance.root)
+            require(rootInstance != 0) { "Bot humanoid root transform is missing: $index" }
+            botRootInstances[index] = rootInstance
+            val tint = if (index < 4) {
+                floatArrayOf(0.34f, 0.82f, 0.78f, 1f)
+            } else {
+                floatArrayOf(0.92f, 0.40f, 0.29f, 1f)
+            }
+            instance.materialInstances.forEach { material ->
+                runCatching {
+                    material.setParameter("baseColorFactor", Colors.RgbaType.SRGB, tint[0], tint[1], tint[2], tint[3])
+                }.onFailure { error ->
+                    Log.w(TAG, "Bot material tint fallback for instance $index", error)
+                }
+            }
+        }
+
         asset.releaseSourceData()
         viewer.scene.addEntities(asset.entities)
 
@@ -175,10 +205,13 @@ internal class FilamentGameRenderer(
     fun update(x: Float, y: Float, z: Float, speed: Float, deltaTime: Float) {
         if (!sceneLoaded) return
         val blend = (deltaTime * 5.5f).coerceIn(0f, 1f)
-        cameraX += (x - cameraX) * blend
-        cameraZ += (z - cameraZ) * blend
-        cameraY += (y - cameraY) * blend
+        if (!overviewCamera) {
+            cameraX += (x - cameraX) * blend
+            cameraZ += (z - cameraZ) * blend
+            cameraY += (y - cameraY) * blend
+        }
 
+        overviewCamera = false
         val yaw = if (speed > 0.18f) kotlin.math.atan2(-x, -z) else 0f
         val c = cos(yaw) * characterScale
         val s = sin(yaw) * characterScale
@@ -206,19 +239,20 @@ internal class FilamentGameRenderer(
     fun updateBots(snapshot: FloatArray) {
         if (!sceneLoaded || snapshot.size < 34) return
         val transforms = engine.transformManager
-        for (index in botTransformInstances.indices) {
-            val instance = botTransformInstances[index]
+        for (index in botRootInstances.indices) {
+            val instance = botRootInstances[index]
             if (instance == 0) continue
             val x = snapshot[16 + index * 2]
             val z = snapshot[17 + index * 2]
-            val y = terrainHeight(x, z)
+            val y = terrainHeight(x, z) - characterMinY * characterScale * botScale
             val yaw = if (index < 4) 0f else Math.PI.toFloat()
-            val c = cos(yaw)
-            val s = sin(yaw)
+            val scale = characterScale * botScale
+            val c = cos(yaw) * scale
+            val sinYaw = sin(yaw) * scale
             val matrix = floatArrayOf(
-                c, 0f, -s, 0f,
-                0f, 1f, 0f, 0f,
-                s, 0f, c, 0f,
+                c, 0f, -sinYaw, 0f,
+                0f, scale, 0f, 0f,
+                sinYaw, 0f, c, 0f,
                 x, y, z, 1f
             )
             transforms.setTransform(instance, matrix)
@@ -252,16 +286,28 @@ internal class FilamentGameRenderer(
         engine.transformManager.setTransform(bone.instance, out)
     }
 
+    fun setOverviewCamera(overview: Boolean) {
+        overviewCamera = overview
+        if (overview) {
+            cameraX = 0f
+            cameraZ = 0f
+            cameraY = terrainHeight(0f, 0f)
+        }
+        updateCamera(cameraAspect)
+    }
+
     private fun updateCamera(aspect: Float) {
-        val vertical = 22.5
+        val vertical = if (overviewCamera) 21.0 else 18.5
         val horizontal = vertical * aspect.toDouble().coerceAtLeast(1.0)
+        val targetX = if (overviewCamera) 0f else cameraX
+        val targetZ = if (overviewCamera) 0f else cameraZ
         viewer.camera.setProjection(
             Camera.Projection.ORTHO,
-            -horizontal, horizontal, -vertical, vertical, 0.1, 120.0
+            -horizontal, horizontal, -vertical, vertical, 0.1, 160.0
         )
         viewer.camera.lookAt(
-            cameraX.toDouble(), (cameraY + 31.0).toDouble(), (cameraZ + 24.0).toDouble(),
-            cameraX.toDouble(), cameraY.toDouble(), cameraZ.toDouble(),
+            targetX.toDouble(), (cameraY + 27.0).toDouble(), (targetZ + 19.0).toDouble(),
+            targetX.toDouble(), cameraY.toDouble(), targetZ.toDouble(),
             0.0, 1.0, 0.0
         )
     }
@@ -269,6 +315,8 @@ internal class FilamentGameRenderer(
     fun destroy() {
         try {
             character?.let { asset ->
+                botInstances.forEach { viewer.scene.removeEntities(it.entities) }
+                botInstances.clear()
                 viewer.scene.removeEntities(asset.entities)
                 characterLoader?.destroyAsset(asset)
             }
