@@ -57,6 +57,14 @@ internal class FilamentGameRenderer(
     private var playerInstance: FilamentInstance? = null
     private var playerAnimator: Animator? = null
     private val botAnimators = ArrayList<Animator>(9)
+    private val minionInstances = ArrayList<FilamentInstance>(12)
+    private val minionAnimators = ArrayList<Animator>(12)
+    private val minionRootInstances = IntArray(12)
+    private val minionBones = ArrayList<Map<String, BonePose>>(12)
+    private val minionLastPositions = Array(12) { floatArrayOf(Float.NaN, Float.NaN) }
+    private var minionAnimationPhase = 0f
+    private val minionScale = 0.72f
+    private var minionsVisible = false
     private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
@@ -300,6 +308,43 @@ internal class FilamentGameRenderer(
             }
         }
 
+        // Twelve smaller, animated lane units: two per team on each of the three routes.
+        // Their meshes and material atlas are shared with the hero instances.
+        for (index in 0 until 12) {
+            val instance = characterLoader!!.createInstance(asset)
+                ?: throw IllegalStateException("Could not instance lane unit $index")
+            minionInstances.add(instance)
+            minionAnimators.add(instance.animator)
+            val rootInstance = transforms.getInstance(instance.root)
+            require(rootInstance != 0) { "Lane unit root transform is missing: $index" }
+            minionRootInstances[index] = rootInstance
+            val rig = LinkedHashMap<String, BonePose>()
+            for (name in boneNames) {
+                val joint = instance.entities.firstOrNull { asset.getName(it) == name } ?: 0
+                if (joint != 0) {
+                    val jointInstance = transforms.getInstance(joint)
+                    if (jointInstance != 0) {
+                        rig[name] = BonePose(jointInstance, transforms.getTransform(jointInstance, null))
+                    }
+                }
+            }
+            minionBones.add(rig)
+            applyRestPose(rig)
+            instance.animator.updateBoneMatrices()
+            val tint = if (index < 6) {
+                floatArrayOf(0.42f, 0.72f, 0.88f, 1f)
+            } else {
+                floatArrayOf(0.88f, 0.52f, 0.43f, 1f)
+            }
+            instance.materialInstances.forEach { material ->
+                runCatching {
+                    material.setParameter("baseColorFactor", Colors.RgbaType.SRGB, tint[0], tint[1], tint[2], tint[3])
+                }.onFailure { error ->
+                    Log.w(TAG, "Lane unit material tint fallback for instance $index", error)
+                }
+            }
+        }
+
         // The player is a real FilamentInstance too, so its materials can be styled
         // independently from the nine shared-geometry bot instances.
         playerInstance = characterLoader!!.createInstance(asset)
@@ -315,6 +360,17 @@ internal class FilamentGameRenderer(
         val height = max(0.1f, half[1] * 2f)
         characterScale = 1.92f / height
         characterMinY = center[1] - half[1]
+
+        for (index in minionRootInstances.indices) {
+            val local = index % 6
+            val lane = local % 3
+            val slot = local / 3
+            val team = if (index < 6) 0 else 1
+            val side = if (slot == 0) -0.75f else 0.75f
+            val teamOffset = if (team == 0) -0.48f else 0.48f
+            val z = if (team == 0) -23.5f - slot * 1.2f else 23.5f + slot * 1.2f
+            setMinionTransform(index, kLaneX(lane) + side + teamOffset, z, if (team == 0) 0f else Math.PI.toFloat())
+        }
 
         characterRootInstance = transforms.getInstance(player.root)
         require(characterRootInstance != 0) { "Humanoid player root transform is missing" }
@@ -381,6 +437,68 @@ internal class FilamentGameRenderer(
         playerAnimator?.updateBoneMatrices()
 
         updateCamera(cameraAspect)
+    }
+
+    private fun kLaneX(lane: Int): Float = when (lane) {
+        0 -> -12f
+        1 -> 0f
+        else -> 12f
+    }
+
+    private fun setMinionTransform(index: Int, x: Float, z: Float, yaw: Float) {
+        val root = minionRootInstances.getOrNull(index) ?: return
+        if (root == 0) return
+        val scale = characterScale * minionScale
+        val c = cos(yaw) * scale
+        val sn = sin(yaw) * scale
+        val y = terrainHeight(x, z) - characterMinY * scale
+        engine.transformManager.setTransform(root, floatArrayOf(
+            c, 0f, -sn, 0f,
+            0f, scale, 0f, 0f,
+            sn, 0f, c, 0f,
+            x, y, z, 1f
+        ))
+    }
+
+    fun setMinionsVisible(visible: Boolean) {
+        if (!sceneLoaded || minionsVisible == visible) return
+        if (visible) {
+            minionInstances.forEach { viewer.scene.addEntities(it.entities) }
+        } else {
+            minionInstances.forEach { viewer.scene.removeEntities(it.entities) }
+        }
+        minionsVisible = visible
+    }
+
+    fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
+        if (!sceneLoaded || snapshot.size < 60) return
+        minionAnimationPhase += deltaTime * 7.2f
+        for (index in minionInstances.indices) {
+            val x = snapshot[36 + index * 2]
+            val z = snapshot[37 + index * 2]
+            val previous = minionLastPositions[index]
+            val dx = if (previous[0].isNaN()) 0f else x - previous[0]
+            val dz = if (previous[1].isNaN()) 0f else z - previous[1]
+            val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
+            val moving = (speed / 2.55f).coerceIn(0f, 1f)
+            val team = if (index < 6) 0 else 1
+            val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
+                else if (team == 0) 0f else Math.PI.toFloat()
+            setMinionTransform(index, x, z, yaw)
+            val rig = minionBones.getOrNull(index).orEmpty()
+            val stride = sin(minionAnimationPhase + index * 0.37f) * moving
+            animatePose(rig["upperarm_l"], -0.92f - stride * 0.18f)
+            animatePose(rig["upperarm_r"], 0.92f + stride * 0.18f)
+            animatePose(rig["lowerarm_l"], 0.50f)
+            animatePose(rig["lowerarm_r"], 0.50f)
+            animatePose(rig["thigh_l"], stride * 0.55f)
+            animatePose(rig["thigh_r"], -stride * 0.55f)
+            animatePose(rig["calf_l"], max(0f, -stride) * 0.42f)
+            animatePose(rig["calf_r"], max(0f, stride) * 0.42f)
+            minionAnimators.getOrNull(index)?.updateBoneMatrices()
+            previous[0] = x
+            previous[1] = z
+        }
     }
 
     fun updateBots(snapshot: FloatArray, deltaTime: Float) {
@@ -539,6 +657,10 @@ internal class FilamentGameRenderer(
         try {
             botInstances.forEach { viewer.scene.removeEntities(it.entities) }
             botInstances.clear()
+            minionInstances.forEach { viewer.scene.removeEntities(it.entities) }
+            minionInstances.clear()
+            minionAnimators.clear()
+            minionBones.clear()
             worldInstances.forEach { viewer.scene.removeEntities(it.entities) }
             worldInstances.clear()
             worldAssets.values.forEach { asset -> worldAssetLoader?.destroyAsset(asset) }
@@ -554,6 +676,7 @@ internal class FilamentGameRenderer(
             playerAnimator = null
             playerMaterials.clear()
             botAnimators.clear()
+            minionLastPositions.forEach { it[0] = Float.NaN; it[1] = Float.NaN }
             character?.let { asset -> characterLoader?.destroyAsset(asset) }
             character = null
             botBones.clear()
