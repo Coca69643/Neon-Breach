@@ -1,22 +1,26 @@
-# Projeto Arena 0.5.0
+# Projeto Arena 0.6.0
 
-MOBA 3D Android, landscape e offline, com partidas locais contra bots.
+Arena 3D nativa para Android, partidas locais 5v5 contra bots, totalmente offline e em landscape.
 
-## IA 0.5.0
-- Cada bot possui rota persistente com waypoints fixos, velocidade individual e atraso inicial.
-- Navegação não lê a posição do jogador nem o progresso do placar das rotas.
-- Avanço monotônico por waypoints, frenagem de chegada e slots laterais por rota.
-- Progresso de cada rota é calculado numa zona central fixa, sem mover os destinos dos bots.
-- Herói orienta-se pela velocidade vetorial e conserva a última direção quando parado.
+## Revisão 0.6.0
+- Câmera de jogo em perspectiva, próxima ao herói e com seguimento pela direção de movimento.
+- Herói e bots ampliados no enquadramento.
+- Menu imersivo com personagem em destaque e uma única ação de entrada.
+- HUD reduzido a cronômetro, progresso do objetivo, minimapa e controles essenciais.
+- Campo de jogo retangular, com relevo mais pronunciado e três corredores.
+- Bots avançam até zonas de controle, ocupam posições laterais por equipe e permanecem disputando o objetivo em vez de atravessar a arena em órbita.
+- Escudo passa a reforçar a captura enquanto estiver ativo; pulso interrompe temporariamente bots adversários próximos; impulso melhora reposicionamento.
 
-## Identidade
-Ícone original com silhueta de herói mascarado, visor violeta/ciano e três rotas convergentes. O ícone legado do ORION-9 não é usado.
-
-## Arquitetura
+## Stack
 - Android nativo Kotlin + C++20/NDK.
-- Filament 1.77.3, Vulkan com fallback OpenGL ES.
-- Partida local offline, sem login, servidor ou permissão de internet.
-- Landscape obrigatório, controles touch e câmera de acompanhamento.
+- Filament 1.77.3, Vulkan e fallback OpenGL ES.
+- Modelos humanoides Quaternius CC0 instanciados.
+- Sem login, servidor ou permissão de internet.
 
-## Limitações
-A IA atual faz avanço e disputa de zona por rota; ainda não representa uma IA MOBA completa. O teste de movimento, enquadramento, FPS sustentado e temperatura precisa ser feito no Realme C53.
+## Distribuição
+- applicationId preservado: com.duckdream.neonbreach.
+- versionCode 36 / versionName 0.6.0.
+- Builds de distribuição usam a chave persistente configurada nos secrets NEON_BREACH_*; builds de PR não são distribuíveis porque não recebem os secrets.
+
+## Validação pendente
+Compilação e testes estruturais não substituem teste físico. A câmera, visibilidade de bots, resposta do controle, legibilidade, FPS sustentado e temperatura precisam ser verificados no Realme C53.
