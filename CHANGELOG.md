@@ -33,7 +33,9 @@
 ### Build e assinatura
 - versionCode 37 / versionName 0.7.0; applicationId preservado: com.duckdream.neonbreach.
 - O workflow exige a chave persistente NEON_BREACH_* em builds de distribuição e verifica package/version/signature.
-- APK 0.7.0: aguardando compilação e verificação do workflow; nenhum artefato desta versão é considerado entregue antes dessa confirmação.
+- Build 0.7.0 verificado no GitHub Actions: run #207 (41344752150), commit `5ffed19af12e7c2c0c7cb72e9a2010de91e8777e`; todas as etapas concluídas com sucesso, incluindo compilação, validação de package/version e assinatura persistente.
+- Artefato: `project-arena-0.7.0-update` (artifact ID 13098268857); APK extraído e inspecionado: 17.451.555 bytes; SHA-256 `37444976d7372bd9cf381720ca07299752dafe447e45c283e92344551bc23533`.
+- O APK está disponível para teste; a validação em dispositivo físico continua pendente.
 
 ## [0.6.0] — 2026-11-01
 - Câmera em perspectiva próxima ao herói, follow camera, menu imersivo e HUD compacto.
