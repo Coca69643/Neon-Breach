@@ -9,6 +9,7 @@ import kotlin.random.Random
 /** Runtime glTF builder for a continuous, organic outdoor arena. */
 internal object WorldGlbBuilder {
     private data class Part(val name:String, val material:Int,
+        val tx:Float = 0f, val ty:Float = 0f, val tz:Float = 0f,
         val p:MutableList<Float> = ArrayList(),
         val n:MutableList<Float> = ArrayList(),
         val ix:MutableList<Int> = ArrayList()) {
@@ -33,6 +34,16 @@ internal object WorldGlbBuilder {
     private lateinit var grass:Part
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
+    private fun botUnit(name:String,mat:Int,x:Float,z:Float) {
+        val p=Part(name,mat,x,h(x,z),z)
+        parts.add(p)
+        cylinder(p,0f,0f,0.08f,0.96f,0.36f,0.27f,12)
+        sphere(p,0f,1.28f,0f,0.29f,0.32f,0.29f,9,14,0.025f)
+        sphere(p,0f,0.88f,-0.035f,0.42f,0.28f,0.34f,9,14,0.035f)
+        cylinder(p,-0.42f,0f,0.58f,1.10f,0.10f,0.085f,8)
+        cylinder(p,0.42f,0f,0.58f,1.10f,0.10f,0.085f,8)
+        cylinder(p,0f,0f,0.05f,0.17f,0.47f,0.47f,16)
+    }
     private fun h(x:Float,z:Float):Float {
         val mound=0.48f*exp(-((x-10f).pow(2)+(z-8f).pow(2))/95f)
         return 0.40f*sin(x*0.18f)*cos(z*0.14f)+0.20f*sin((x+z)*0.29f)+mound
@@ -152,6 +163,20 @@ internal object WorldGlbBuilder {
             if(x*x+z*z>60f){val s=0.35f+r.nextFloat()*0.72f;sphere(stones,x,h(x,z)+s*0.32f,z,s*0.95f,s*0.54f,s*0.72f,8,12,0.16f)}
         }
     }
+    private fun laneStructures() {
+        for(x in listOf(-12f,0f,12f)) {
+            for(z in listOf(-10.5f,10.5f)) {
+                val y=h(x,z)
+                cylinder(shrine,x,z,y+0.05f,y+1.15f,0.72f,0.46f,12)
+                cylinder(beacon,x,z,y+1.10f,y+1.52f,0.34f,0.25f,12)
+                sphere(beacon,x,y+1.72f,z,0.34f,0.34f,0.34f,8,12)
+            }
+            val blueY=h(x,-22f)
+            val redY=h(x,22f)
+            cylinder(shrine,x,-22f,blueY,blueY+1.7f,1.0f,0.72f,16)
+            cylinder(shrine,x,22f,redY,redY+1.7f,1.0f,0.72f,16)
+        }
+    }
     private fun shrineAndWater() {
         ribbon(stream,listOf(floatArrayOf(-28f,-20f),floatArrayOf(-21f,-14f),floatArrayOf(-17f,-4f),floatArrayOf(-12f,6f),floatArrayOf(-7f,13f),floatArrayOf(2f,17f),floatArrayOf(13f,18f),floatArrayOf(24f,15f),floatArrayOf(29f,8f)),0.82f,-0.06f)
         val y=h(0f,0f)
@@ -176,9 +201,20 @@ internal object WorldGlbBuilder {
         stream=part("water_stream",6);shrine=part("central_stone_shrine",7);beacon=part("capture_beacon",8)
         grass=part("grass_details",4)
         terrainMesh()
-        ribbon(trail,listOf(floatArrayOf(-28f,-13f),floatArrayOf(-19f,-11f),floatArrayOf(-12f,-8f),floatArrayOf(-6f,-3f),floatArrayOf(0f,0f),floatArrayOf(7f,4f),floatArrayOf(14f,8f),floatArrayOf(22f,11f),floatArrayOf(29f,10f)),1.85f,0.04f)
-        ribbon(trail,listOf(floatArrayOf(-22f,20f),floatArrayOf(-14f,15f),floatArrayOf(-7f,8f),floatArrayOf(0f,0f),floatArrayOf(6f,-7f),floatArrayOf(14f,-12f),floatArrayOf(24f,-17f)),1.18f,0.045f)
+        ribbon(trail,listOf(floatArrayOf(-12f,-27f),floatArrayOf(-13f,-18f),floatArrayOf(-12f,-9f),floatArrayOf(-11f,0f),floatArrayOf(-12f,9f),floatArrayOf(-13f,18f),floatArrayOf(-12f,27f)),1.45f,0.045f)
+        ribbon(trail,listOf(floatArrayOf(0f,-27f),floatArrayOf(0.8f,-18f),floatArrayOf(0f,-9f),floatArrayOf(0f,0f),floatArrayOf(-0.6f,9f),floatArrayOf(0.5f,18f),floatArrayOf(0f,27f)),1.55f,0.05f)
+        ribbon(trail,listOf(floatArrayOf(12f,-27f),floatArrayOf(13f,-18f),floatArrayOf(12f,-9f),floatArrayOf(11f,0f),floatArrayOf(12f,9f),floatArrayOf(13f,18f),floatArrayOf(12f,27f)),1.45f,0.045f)
         treesAndShrubs();rocks();shrineAndWater()
+        laneStructures()
+        botUnit("bot_unit_0",9,-12.9f,-18.4f)
+        botUnit("bot_unit_1",9,0.9f,-16.6f)
+        botUnit("bot_unit_2",9,11.1f,-18.4f)
+        botUnit("bot_unit_3",9,0.9f,-16.6f)
+        botUnit("bot_unit_4",10,-12.9f,18.4f)
+        botUnit("bot_unit_5",10,0.9f,16.6f)
+        botUnit("bot_unit_6",10,11.1f,18.4f)
+        botUnit("bot_unit_7",10,-11.1f,16.6f)
+        botUnit("bot_unit_8",10,11.1f,18.4f)
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -201,16 +237,16 @@ internal object WorldGlbBuilder {
             if(meshes.isNotEmpty())meshes.append(',')
             meshes.append("{\"name\":\"" + p.name + "\",\"primitives\":[{\"attributes\":{\"POSITION\":$ai,\"NORMAL\":${ai+1}},\"indices\":${ai+2},\"material\":${p.material}}]}")
             if(nodes.isNotEmpty())nodes.append(',')
-            nodes.append("{\"mesh\":$index}")
+            nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Meadow","Limestone paths","Tree bark","Deep foliage","Sunlit foliage","Mossy rock","Clear water","Carved stone","Beacon")
+        val names=listOf("Meadow","Limestone paths","Tree bark","Deep foliage","Sunlit foliage","Mossy rock","Clear water","Carved stone","Beacon","Allied resonance unit","Rival resonance unit")
         val colors=listOf(
             listOf(0.19f,0.31f,0.13f,1f),listOf(0.43f,0.38f,0.26f,1f),
             listOf(0.20f,0.13f,0.075f,1f),listOf(0.065f,0.19f,0.10f,1f),
             listOf(0.22f,0.34f,0.12f,1f),listOf(0.25f,0.29f,0.25f,1f),
             listOf(0.035f,0.30f,0.34f,1f),listOf(0.48f,0.48f,0.39f,1f),
-            listOf(0.20f,0.77f,0.72f,1f))
+            listOf(0.20f,0.77f,0.72f,1f),listOf(0.16f,0.72f,0.75f,1f),listOf(0.78f,0.25f,0.16f,1f))
         val materials=names.mapIndexed{i,name->
             val emission=if(i==8)",\"emissiveFactor\":[0.10,0.65,0.58]" else ""
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":${if(i==6)0.24f else 0.88f}}$emission}"
