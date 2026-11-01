@@ -149,7 +149,7 @@ void movePlayer(float inputX, float inputZ, float dt) {
     const float targetX = inputX * speed;
     const float targetZ = inputZ * speed;
     if (inputLength > 0.08f) {
-        const float blend = std::min(1.0f, 19.0f * dt / std::max(speed, 1.0f));
+        const float blend = 1.0f - std::exp(-16.0f * dt);
         gPlayerVx += (targetX - gPlayerVx) * blend;
         gPlayerVz += (targetZ - gPlayerVz) * blend;
     } else {
@@ -160,12 +160,9 @@ void movePlayer(float inputX, float inputZ, float dt) {
 
     gPlayerX += gPlayerVx * dt;
     gPlayerZ += gPlayerVz * dt;
-    const float radius = std::sqrt(gPlayerX * gPlayerX + gPlayerZ * gPlayerZ);
-    if (radius > 24.7f) {
-        const float scale = 24.7f / std::max(radius, 0.001f);
-        gPlayerX *= scale;
-        gPlayerZ *= scale;
-    }
+    // Match the rectangular battlefield bounds; do not constrain the player to a circular island.
+    gPlayerX = std::clamp(gPlayerX, -29.0f, 29.0f);
+    gPlayerZ = std::clamp(gPlayerZ, -29.0f, 29.0f);
 
     // The three lane walls are soft obstacles around the central structures.
     for (const Vec2 obstacle : std::array<Vec2, 8>{{
@@ -246,8 +243,8 @@ void updateBots(float dt) {
         if (distance(bot.position, goal) <= kBotArrivalSnap && bot.routeStep < 4) {
             ++bot.routeStep;
         }
-        bot.position.x = std::clamp(bot.position.x, -23.5f, 23.5f);
-        bot.position.z = std::clamp(bot.position.z, -23.5f, 23.5f);
+        bot.position.x = std::clamp(bot.position.x, -28.5f, 28.5f);
+        bot.position.z = std::clamp(bot.position.z, -28.5f, 28.5f);
     }
 }
 
