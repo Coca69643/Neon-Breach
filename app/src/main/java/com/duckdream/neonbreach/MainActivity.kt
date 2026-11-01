@@ -203,7 +203,7 @@ class MainActivity : Activity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        left.addView(label("DUCK DREAM STUDIOS  /  0.2.0", 10f, Color.rgb(190, 223, 224), true))
+        left.addView(label("DUCK DREAM STUDIOS  /  0.4.0", 10f, Color.rgb(190, 223, 224), true))
         left.addView(label("PROJETO ARENA", 32f, Color.WHITE, true).apply {
             setPadding(0, dp(8), 0, dp(4))
         })
