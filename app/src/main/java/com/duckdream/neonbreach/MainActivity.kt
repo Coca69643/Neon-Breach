@@ -81,7 +81,7 @@ class MainActivity : Activity() {
                     renderer.updateCreeps(result, dt)
                     renderer.updateEffects(result)
                     tacticalMap.setSnapshot(result)
-                    healthLabel.text = "VIDA  100%  •  ATAQUE AUTOMÁTICO"
+                    healthLabel.text = "VIDA  ${result.getOrElse(72) { 100f }.toInt().coerceIn(0, 100)}%  •  ATAQUE AUTOMÁTICO"
                     dashActionButton.text = abilityButtonText("IMPULSO", result[9])
                     pulseActionButton.text = abilityButtonText("PULSO", result[8])
                     shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
