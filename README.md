@@ -8,6 +8,7 @@ Arena 3D nativa para Android, partidas locais 5v5 contra bots, totalmente offlin
 - Menu imersivo com personagem em destaque e uma única ação de entrada.
 - HUD reduzido a cronômetro, progresso do objetivo, minimapa e controles essenciais.
 - Campo de jogo retangular, com relevo mais pronunciado e três corredores.
+- Limites de movimento retangulares e aceleração touch mais responsiva.
 - Bots avançam até zonas de controle, ocupam posições laterais por equipe e permanecem disputando o objetivo em vez de atravessar a arena em órbita.
 - Escudo passa a reforçar a captura enquanto estiver ativo; pulso interrompe temporariamente bots adversários próximos; impulso melhora reposicionamento.
 
