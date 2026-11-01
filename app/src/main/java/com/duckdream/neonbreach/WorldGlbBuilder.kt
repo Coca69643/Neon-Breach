@@ -6,7 +6,7 @@ import java.nio.ByteOrder
 import kotlin.math.*
 import kotlin.random.Random
 
-/** Runtime glTF builder for a continuous, organic outdoor arena. */
+/** Runtime terrain, lane surfaces and a shallow river. Environment props are CC0 glTF instances loaded by FilamentGameRenderer. */
 internal object WorldGlbBuilder {
     private data class Part(val name:String, val material:Int,
         val tx:Float = 0f, val ty:Float = 0f, val tz:Float = 0f,
@@ -24,14 +24,6 @@ internal object WorldGlbBuilder {
     private val parts=ArrayList<Part>()
     private lateinit var terrain:Part
     private lateinit var trail:Part
-    private lateinit var bark:Part
-    private lateinit var leaves:Part
-    private lateinit var leavesLit:Part
-    private lateinit var stones:Part
-    private lateinit var stream:Part
-    private lateinit var shrine:Part
-    private lateinit var beacon:Part
-    private lateinit var grass:Part
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
     private fun h(x:Float,z:Float):Float {
@@ -126,93 +118,26 @@ internal object WorldGlbBuilder {
             pl=left;pr=right
         }
     }
-    private fun treesAndShrubs() {
-        val r=Random(20261031)
-        repeat(34){
-            val x=r.nextFloat()*48f-24f;val z=r.nextFloat()*48f-24f
-            val laneClearance=minOf(abs(x+12f),abs(x),abs(x-12f))
-            if(x*x+z*z>65f && laneClearance>4.6f){
-                val s=0.64f+r.nextFloat()*0.36f;val y=h(x,z)
-                cylinder(bark,x,z,y,y+2.5f*s,0.34f*s,0.15f*s)
-                val crown=y+2.55f*s
-                sphere(leaves,x,crown,z,1.12f*s,1.34f*s,1.12f*s,12,18,0.07f)
-                sphere(leavesLit,x-0.48f*s,crown+0.18f*s,z+0.34f*s,0.70f*s,0.82f*s,0.68f*s,10,16,0.06f)
-                sphere(leaves,x+0.52f*s,crown+0.12f*s,z-0.30f*s,0.72f*s,0.82f*s,0.70f*s,10,16,0.06f)
-            }
-        }
-        repeat(60){
-            val x=r.nextFloat()*50f-25f;val z=r.nextFloat()*50f-25f
-            val laneClearance=minOf(abs(x+12f),abs(x),abs(x-12f))
-            if(x*x+z*z>25f && laneClearance>3.8f){val s=0.35f+r.nextFloat()*0.48f;sphere(leaves,x,h(x,z)+0.45f*s,z,0.75f*s,0.58f*s,0.78f*s,8,12,0.08f)}
-        }
-        repeat(140){
-            val x=r.nextFloat()*50f-25f;val z=r.nextFloat()*50f-25f
-            if(x*x+z*z>30f){
-                val y=h(x,z)+0.035f
-                repeat(3){k->
-                    val a=k*2.1f+r.nextFloat()*0.4f;val dx=cos(a)*0.2f;val dz=sin(a)*0.2f
-                    val tip=floatArrayOf(x+cos(a+0.8f)*0.12f,y+0.45f+r.nextFloat()*0.22f,z+sin(a+0.8f)*0.12f)
-                    tri(grass,floatArrayOf(x-dx,y,z-dz),floatArrayOf(x+dx,y,z+dz),tip)
-                }
-            }
-        }
-    }
-    private fun rocks() {
-        val r=Random(74)
-        repeat(50){
-            val x=r.nextFloat()*48f-24f;val z=r.nextFloat()*48f-24f
-            val laneClearance=minOf(abs(x+12f),abs(x),abs(x-12f))
-            if(x*x+z*z>60f && laneClearance>3.2f){val s=0.35f+r.nextFloat()*0.72f;sphere(stones,x,h(x,z)+s*0.32f,z,s*0.95f,s*0.54f,s*0.72f,8,12,0.16f)}
-        }
-    }
-    private fun laneStructures() {
-        for(x in listOf(-12f,0f,12f)) {
-            for(z in listOf(-10.5f,10.5f)) {
-                val y=h(x,z)
-                cylinder(shrine,x,z,y+0.05f,y+1.15f,0.72f,0.46f,12)
-                cylinder(beacon,x,z,y+1.10f,y+1.52f,0.34f,0.25f,12)
-                sphere(beacon,x,y+1.72f,z,0.34f,0.34f,0.34f,8,12)
-            }
-            val blueY=h(x,-22f)
-            val redY=h(x,22f)
-            cylinder(shrine,x,-22f,blueY,blueY+1.7f,1.0f,0.72f,16)
-            cylinder(shrine,x,22f,redY,redY+1.7f,1.0f,0.72f,16)
-        }
-    }
-    private fun shrineAndWater() {
-        ribbon(stream,listOf(floatArrayOf(-28f,-20f),floatArrayOf(-21f,-14f),floatArrayOf(-17f,-4f),floatArrayOf(-12f,6f),floatArrayOf(-7f,13f),floatArrayOf(2f,17f),floatArrayOf(13f,18f),floatArrayOf(24f,15f),floatArrayOf(29f,8f)),0.82f,-0.06f)
-        val y=h(0f,0f)
-        cylinder(shrine,0f,0f,y+0.04f,y+0.34f,3.8f,3.8f,48)
-        cylinder(shrine,0f,0f,y+0.34f,y+0.49f,2.7f,2.7f,48)
-        cylinder(beacon,0f,0f,y+0.50f,y+3.5f,0.26f,0.18f,24)
-        for(i in 0 until 8){
-            val a=2f*PI.toFloat()*i/8f;val x=cos(a)*3.25f;val z=sin(a)*3.25f
-            cylinder(shrine,x,z,h(x,z)+0.28f,h(x,z)+1.4f,0.34f,0.28f,10)
-            sphere(beacon,x,h(x,z)+1.52f,z,0.24f,0.26f,0.24f,8,12)
-        }
-        sphere(beacon,0f,y+3.7f,0f,0.68f,0.68f,0.68f,16,24)
-    }
     private fun floatBytes(v:List<Float>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putFloat(it)}}.array()
     private fun intBytes(v:List<Int>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putInt(it)}}.array()
     private fun align(out:ByteArrayOutputStream){while(out.size()%4!=0)out.write(0)}
 
     fun build():ByteArray {
         parts.clear()
-        terrain=part("continuous_terrain",0);trail=part("curved_paths",1);bark=part("tree_trunks",2)
-        leaves=part("tree_canopies",3);leavesLit=part("sunlit_canopies",4);stones=part("natural_rocks",5)
-        stream=part("water_stream",6);shrine=part("central_stone_shrine",7);beacon=part("capture_beacon",8)
-        grass=part("grass_details",4)
+        terrain=part("meadow_terrain",0)
+        trail=part("limestone_lane_surface",1)
+        val routeEdge=part("lane_edge_stone",2)
+        val water=part("crossing_river",3)
         terrainMesh()
         val west=listOf(floatArrayOf(-12f,-29f),floatArrayOf(-13f,-19f),floatArrayOf(-12f,-9f),floatArrayOf(-11f,0f),floatArrayOf(-12f,9f),floatArrayOf(-13f,19f),floatArrayOf(-12f,29f))
         val center=listOf(floatArrayOf(0f,-29f),floatArrayOf(0.8f,-19f),floatArrayOf(0f,-9f),floatArrayOf(0f,0f),floatArrayOf(-0.6f,9f),floatArrayOf(0.5f,19f),floatArrayOf(0f,29f))
         val east=listOf(floatArrayOf(12f,-29f),floatArrayOf(13f,-19f),floatArrayOf(12f,-9f),floatArrayOf(11f,0f),floatArrayOf(12f,9f),floatArrayOf(13f,19f),floatArrayOf(12f,29f))
-        // Dark shoulders and a lighter stone running surface make all three lanes readable.
-        val routeEdge=part("route_shoulders",9)
-        ribbon(routeEdge,west,2.45f,0.025f);ribbon(trail,west,1.78f,0.065f)
-        ribbon(routeEdge,center,2.55f,0.025f);ribbon(trail,center,1.86f,0.07f)
-        ribbon(routeEdge,east,2.45f,0.025f);ribbon(trail,east,1.78f,0.065f)
-        treesAndShrubs();rocks();shrineAndWater()
-        laneStructures()
+        // Three wide continuous lanes. All natural props, bases, towers and flags are real CC0 glTF models.
+        ribbon(routeEdge,west,3.05f,0.025f);ribbon(trail,west,2.38f,0.075f)
+        ribbon(routeEdge,center,3.15f,0.025f);ribbon(trail,center,2.48f,0.075f)
+        ribbon(routeEdge,east,3.05f,0.025f);ribbon(trail,east,2.38f,0.075f)
+        val river=listOf(floatArrayOf(-31f,0.4f),floatArrayOf(-20f,-0.2f),floatArrayOf(-10f,0.25f),floatArrayOf(0f,0f),floatArrayOf(10f,-0.25f),floatArrayOf(20f,0.2f),floatArrayOf(31f,-0.35f))
+        ribbon(water,river,1.55f,-0.12f)
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -238,20 +163,19 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Meadow","Limestone paths","Tree bark","Deep foliage","Sunlit foliage","Mossy rock","Clear water","Carved stone","Beacon","Route shoulders")
+        val names=listOf("Temperate meadow","Pale limestone roads","Roadside stone edging","Shallow river")
         val colors=listOf(
-            listOf(0.15f,0.24f,0.11f,1f),listOf(0.43f,0.38f,0.26f,1f),
-            listOf(0.20f,0.13f,0.075f,1f),listOf(0.065f,0.19f,0.10f,1f),
-            listOf(0.22f,0.34f,0.12f,1f),listOf(0.25f,0.29f,0.25f,1f),
-            listOf(0.035f,0.30f,0.34f,1f),listOf(0.48f,0.48f,0.39f,1f),
-            listOf(0.20f,0.77f,0.72f,1f),listOf(0.10f,0.14f,0.13f,1f))
+            listOf(0.25f,0.31f,0.19f,1f),
+            listOf(0.56f,0.51f,0.40f,1f),
+            listOf(0.19f,0.20f,0.16f,1f),
+            listOf(0.12f,0.30f,0.34f,1f))
         val materials=names.mapIndexed{i,name->
-            val emission=if(i==8)",\"emissiveFactor\":[0.10,0.65,0.58]" else ""
+            val emission=""
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":${if(i==6)0.24f else 0.88f}}$emission}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.1"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.7"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
