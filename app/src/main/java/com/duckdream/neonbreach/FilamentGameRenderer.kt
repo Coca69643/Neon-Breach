@@ -43,6 +43,7 @@ internal class FilamentGameRenderer(
     private var characterResources: ResourceLoader? = null
     private var characterProvider: UbershaderProvider? = null
     private var character: FilamentAsset? = null
+    private var playerInstance: FilamentInstance? = null
     private var characterRootInstance = 0
     private var characterScale = 1f
     private var characterMinY = 0f
@@ -193,8 +194,12 @@ internal class FilamentGameRenderer(
             }
         }
 
-        asset.releaseSourceData()
-        viewer.scene.addEntities(asset.entities)
+        // The player is a real FilamentInstance too, so its materials can be styled
+        // independently from the nine shared-geometry bot instances.
+        playerInstance = characterLoader!!.createInstance(asset)
+            ?: throw IllegalStateException("Could not create the player humanoid instance")
+        val player = playerInstance!!
+        viewer.scene.addEntities(player.entities)
 
         val half = asset.boundingBox.getHalfExtent(null)
         val center = asset.boundingBox.getCenter(null)
@@ -202,16 +207,17 @@ internal class FilamentGameRenderer(
         characterScale = 1.92f / height
         characterMinY = center[1] - half[1]
 
-        characterRootInstance = transforms.getInstance(asset.root)
-        require(characterRootInstance != 0) { "Humanoid root transform is missing" }
+        characterRootInstance = transforms.getInstance(player.root)
+        require(characterRootInstance != 0) { "Humanoid player root transform is missing" }
 
         for (name in boneNames) {
-            val entity = asset.getFirstEntityByName(name)
+            val entity = player.entities.firstOrNull { asset.getName(it) == name } ?: 0
             if (entity != 0) {
                 val instance = transforms.getInstance(entity)
                 if (instance != 0) bones[name] = BonePose(instance, transforms.getTransform(instance, null))
             }
         }
+        asset.releaseSourceData()
         Log.i(TAG, "CC0 humanoid loaded: " + asset.entities.size + " entities, " + bones.size + " animated joints")
     }
 
@@ -336,7 +342,7 @@ internal class FilamentGameRenderer(
             2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f) // Kairo: violet
             else -> floatArrayOf(0.30f, 0.78f, 0.82f, 1.0f) // Lyra: cyan
         }
-        character?.materialInstances?.forEach { material ->
+        playerInstance?.materialInstances?.forEach { material ->
             runCatching {
                 material.setParameter(
                     "baseColorFactor", Colors.RgbaType.SRGB,
@@ -393,12 +399,11 @@ internal class FilamentGameRenderer(
 
     fun destroy() {
         try {
-            character?.let { asset ->
-                botInstances.forEach { viewer.scene.removeEntities(it.entities) }
-                botInstances.clear()
-                viewer.scene.removeEntities(asset.entities)
-                characterLoader?.destroyAsset(asset)
-            }
+            botInstances.forEach { viewer.scene.removeEntities(it.entities) }
+            botInstances.clear()
+            playerInstance?.let { viewer.scene.removeEntities(it.entities) }
+            playerInstance = null
+            character?.let { asset -> characterLoader?.destroyAsset(asset) }
             character = null
             botBones.clear()
             characterResources?.destroy()
