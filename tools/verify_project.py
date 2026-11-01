@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.3.0 visual reconstruction."""
+"""Structural verification for Project Arena 0.4.0 independent bot navigation."""
 from pathlib import Path
 import re
 
@@ -24,10 +24,11 @@ readme = read("README.md")
 changelog = read("CHANGELOG.md")
 license_text = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
+icon = ROOT / "app/src/main/res/drawable-nodpi/ic_launcher.webp"
 
 checks = [
-    ("versionName '0.3.0'" in gradle, "app version must be 0.3.0"),
-    ("versionCode 33" in gradle, "versionCode must be 33"),
+    ("versionName '0.4.0'" in gradle, "app version must be 0.4.0"),
+    ("versionCode 34" in gradle, "versionCode must be 34"),
     ("org.jetbrains.kotlin.android" in root_gradle, "external Kotlin plugin missing"),
     ("android.builtInKotlin=false" in properties, "AGP built-in Kotlin opt-out missing"),
     ("android.newDsl=false" in properties, "AGP legacy DSL opt-out missing"),
@@ -37,24 +38,21 @@ checks = [
     ("-std=c++20" in gradle and "cxx_std_20" in cmake, "C++20 configuration missing"),
     ('android:screenOrientation="landscape"' in manifest, "landscape lock missing"),
     ("android.permission.INTERNET" not in manifest, "offline manifest must not request INTERNET"),
+    ('android:icon="@drawable/ic_launcher"' in manifest, "launcher icon reference missing"),
     ("Engine.Backend.VULKAN" in renderer and "Engine.Backend.OPENGL" in renderer, "Vulkan/GLES backend path missing"),
-    ("IndirectLight.Builder()" in renderer and ".irradiance(1," in renderer, "ambient indirect fill missing"),
-    ("setDirection(viewer.light" in renderer and "setIntensity(viewer.light" in renderer, "angled sunlight configuration missing"),
-    ("Camera.Projection.ORTHO" in renderer and "WorldGlbBuilder.build()" in renderer, "3D scene/camera missing"),
-    ("createInstance(asset)" in renderer and "botInstances.add(instance)" in renderer, "bots must use shared humanoid model instances"),
-    ("Colors.RgbaType.SRGB" in renderer and "botBones.add(rig)" in renderer, "team tint and bot rig setup missing"),
+    ("IndirectLight.Builder()" in renderer, "indirect lighting missing"),
+    ("createInstance(asset)" in renderer and "botInstances.add(instance)" in renderer, "shared humanoid instances missing"),
     ("updateBots(snapshot: FloatArray, deltaTime: Float)" in renderer, "bot locomotion update missing"),
-    ("setOverviewCamera(true)" in main and "setOverviewCamera(false)" in main, "overview/follow camera states missing"),
-    ("renderer.updateBots(result, dt)" in main, "frame delta not supplied to bot animator"),
+    ("renderer.updateBots(result, dt)" in main, "bot frame delta not supplied"),
     ("TacticalMapView" in main and "LOCAL 5v5" in main, "MOBA HUD/minimap missing"),
     ("HERÓI:" in main and "JOGAR CONTRA BOTS" in main, "hero select/offline match menu missing"),
-    ("radiusSq=30.7f*30.7f" in world, "rounded terrain boundary missing"),
-    ("p.tri(a,b,c);p.tri(b,d,c)" in world, "sphere winding fix missing"),
-    ('part("route_shoulders",9)' in world and "ribbon(routeEdge,west" in world, "readable lane shoulders missing"),
-    ('val names=listOf("Meadow","Limestone paths","Tree bark","Deep foliage","Sunlit foliage","Mossy rock","Clear water","Carved stone","Beacon","Route shoulders")' in world, "world material registry out of sync"),
-    ("constexpr int kBotCount = 9;" in native, "native simulation must contain 9 bots"),
-    ("updateBots(float dt)" in native and "updateLanes(float dt)" in native, "bot AI or lane simulation missing"),
-    ("nativeCastPulse" in native and "nativeActivateShield" in native, "native hero ability exports missing"),
+    ("struct Bot" in native and "int slot = 0;" in native, "persistent bot lane slot missing"),
+    ("laneFrontZ(int lane)" in native, "lane front target missing"),
+    ("moveBotTo(Bot &bot, Vec2 goal, float dt)" in native, "arrive/braking navigation missing"),
+    ("kBotAcceleration" in native and "kBotArrivalSpeedScale" in native, "arrival braking constants missing"),
+    ("resetBot(bot, i)" in native, "bot recovery/respawn flow missing"),
+    ("std::abs(bot.position.z - frontline) > 8.0f" in native, "lane pressure must use frontline presence"),
+    ("updateBots(float dt)" in native and "updateLanes(float dt)" in native, "bot navigation or lane simulation missing"),
     ("gBlueCreeps" in native and "gRedCreeps" in native and "gLaneProgress" in native, "lane wave/objective state missing"),
     ("offline 5v5" in readme.lower() and "offline 5v5" in changelog.lower(), "offline MOBA docs/changelog missing"),
     ("CC0 1.0 Universal" in license_text, "Quaternius CC0 license missing"),
@@ -63,6 +61,13 @@ for ok, message in checks:
     if not ok:
         raise SystemExit("Verification failed: " + message)
 
+bot_ai = native[native.index("void updateBots(float dt) {"):native.index("void updateLanes(float dt) {")]
+if "gPlayerX" in bot_ai or "gPlayerZ" in bot_ai:
+    raise SystemExit("Bot movement still depends on player position")
+if "other.position" in bot_ai or "targetPlayer" in bot_ai or "targetBot" in bot_ai:
+    raise SystemExit("Moving-target chase logic remains in bot AI")
+if not icon.is_file() or icon.stat().st_size < 8_000:
+    raise SystemExit("Project Arena launcher icon file missing or too small")
 if not avatar.is_file() or avatar.stat().st_size < 500_000:
     raise SystemExit("CC0 humanoid model payload missing or unexpectedly small")
 if "botUnit(" in world:
@@ -70,5 +75,5 @@ if "botUnit(" in world:
 if re.search(r"(fireButton|nativeFire|shootProjectile|weaponDamage)", main + native, re.I):
     raise SystemExit("Legacy weapon controls detected in active gameplay path")
 
-print("Project Arena 0.3.0 structural verification passed.")
-print("Lighting, rounded map, lane shoulders, humanoid bot instances, rigs and offline 5v5 verified.")
+print("Project Arena 0.4.0 structural verification passed.")
+print("Independent lane AI, arrive braking, no player chase, icon and offline 5v5 verified.")
