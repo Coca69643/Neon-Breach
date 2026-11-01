@@ -53,6 +53,76 @@ internal object WorldGlbBuilder {
     private fun quad(p:Part,a:FloatArray,b:FloatArray,c:FloatArray,d:FloatArray) {
         tri(p,a,c,b);tri(p,b,c,d)
     }
+    private fun terrainMesh() {
+        val steps = 80
+        val size = 64f
+        val start = -32f
+        val ids = Array(steps + 1) { IntArray(steps + 1) }
+        val coords = FloatArray(steps + 1) { start + size * it / steps }
+        for (z in 0..steps) {
+            for (x in 0..steps) {
+                val wx = coords[x]
+                val wz = coords[z]
+                val normal = norm(wx, wz)
+                ids[z][x] = terrain.vertex(
+                    wx, h(wx, wz), wz,
+                    normal[0], normal[1], normal[2]
+                )
+            }
+        }
+        for (z in 0 until steps) {
+            for (x in 0 until steps) {
+                val a = ids[z][x]
+                val b = ids[z][x + 1]
+                val c = ids[z + 1][x]
+                val d = ids[z + 1][x + 1]
+                terrain.tri(a, c, b)
+                terrain.tri(b, c, d)
+            }
+        }
+    }
+
+    private fun ribbon(p: Part, points: List<FloatArray>, width: Float, lift: Float) {
+        fun sample(t: Float): FloatArray {
+            val f = t.coerceIn(0f, 0.99999f) * (points.size - 1)
+            val i = floor(f).toInt()
+            val u = f - i
+            val p0 = points[(i - 1).coerceAtLeast(0)]
+            val p1 = points[i]
+            val p2 = points[(i + 1).coerceAtMost(points.lastIndex)]
+            val p3 = points[(i + 2).coerceAtMost(points.lastIndex)]
+            fun cat(a: Float, b: Float, c: Float, d: Float): Float =
+                0.5f * ((2f * b) + (-a + c) * u +
+                    (2f * a - 5f * b + 4f * c - d) * u * u +
+                    (-a + 3f * b - 3f * c + d) * u * u * u)
+            return floatArrayOf(
+                cat(p0[0], p1[0], p2[0], p3[0]),
+                cat(p0[1], p1[1], p2[1], p3[1])
+            )
+        }
+        var previousLeft: FloatArray? = null
+        var previousRight: FloatArray? = null
+        for (i in 0..180) {
+            val t = i / 180f
+            val center = sample(t)
+            val before = sample((t - 0.003f).coerceAtLeast(0f))
+            val after = sample((t + 0.003f).coerceAtMost(1f))
+            val dx = after[0] - before[0]
+            val dz = after[1] - before[1]
+            val length = sqrt(dx * dx + dz * dz).coerceAtLeast(0.0001f)
+            val sideX = -dz / length
+            val sideZ = dx / length
+            val y = h(center[0], center[1]) + lift
+            val left = floatArrayOf(center[0] + sideX * width, y, center[1] + sideZ * width)
+            val right = floatArrayOf(center[0] - sideX * width, y, center[1] - sideZ * width)
+            if (previousLeft != null && previousRight != null) {
+                quad(p, previousLeft!!, left, previousRight!!, right)
+            }
+            previousLeft = left
+            previousRight = right
+        }
+    }
+
     private fun floatBytes(v:List<Float>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putFloat(it)}}.array()
     private fun intBytes(v:List<Int>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putInt(it)}}.array()
     private fun align(out:ByteArrayOutputStream){while(out.size()%4!=0)out.write(0)}
@@ -106,7 +176,7 @@ internal object WorldGlbBuilder {
             listOf(0.12f,0.30f,0.34f,1f))
         val materials=names.mapIndexed{i,name->
             val emission=""
-            "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":${if(i==6)0.24f else 0.88f}}$emission}"
+            "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":${if(i==3)0.34f else 0.88f}}$emission}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
