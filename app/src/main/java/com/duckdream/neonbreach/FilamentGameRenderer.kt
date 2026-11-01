@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.SurfaceView
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
+import com.google.android.filament.Colors
 import com.google.android.filament.IndirectLight
 import com.google.android.filament.Skybox
 import com.google.android.filament.View
@@ -16,7 +17,6 @@ import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
 import com.google.android.filament.EntityManager
 import com.google.android.filament.gltfio.FilamentInstance
-import com.google.android.filament.utils.Colors
 import com.google.android.filament.utils.ModelViewer
 import com.google.android.filament.utils.Utils
 import java.nio.ByteBuffer
@@ -60,6 +60,9 @@ internal class FilamentGameRenderer(
     private var overviewCamera = true
     private val botInstances = ArrayList<FilamentInstance>(9)
     private val botRootInstances = IntArray(9)
+    private val botBones = ArrayList<Map<String, BonePose>>(9)
+    private val lastBotPositions = Array(9) { floatArrayOf(Float.NaN, Float.NaN) }
+    private var botAnimationPhase = 0f
     private val botScale = 0.86f
 
     init {
@@ -92,7 +95,7 @@ internal class FilamentGameRenderer(
         engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
         engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
         engine.lightManager.setIntensity(viewer.light, 105_000.0f)
-        viewer.camera.setExposure(16.0, 1.0 / 125.0, 100.0)
+        viewer.camera.setExposure(16.0f, 1.0f / 125.0f, 100.0f)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
             hdrColorBuffer = View.QualityLevel.LOW
@@ -164,6 +167,17 @@ internal class FilamentGameRenderer(
             val rootInstance = transforms.getInstance(instance.root)
             require(rootInstance != 0) { "Bot humanoid root transform is missing: $index" }
             botRootInstances[index] = rootInstance
+            val rig = LinkedHashMap<String, BonePose>()
+            for (name in boneNames) {
+                val joint = instance.entities.firstOrNull { asset.getName(it) == name } ?: 0
+                if (joint != 0) {
+                    val jointInstance = transforms.getInstance(joint)
+                    if (jointInstance != 0) {
+                        rig[name] = BonePose(jointInstance, transforms.getTransform(jointInstance, null))
+                    }
+                }
+            }
+            botBones.add(rig)
             val tint = if (index < 4) {
                 floatArrayOf(0.34f, 0.82f, 0.78f, 1f)
             } else {
@@ -187,7 +201,6 @@ internal class FilamentGameRenderer(
         characterScale = 1.72f / height
         characterMinY = center[1] - half[1]
 
-        val transforms = engine.transformManager
         characterRootInstance = transforms.getInstance(asset.root)
         require(characterRootInstance != 0) { "Humanoid root transform is missing" }
 
@@ -243,16 +256,23 @@ internal class FilamentGameRenderer(
         updateCamera(cameraAspect)
     }
 
-    fun updateBots(snapshot: FloatArray) {
+    fun updateBots(snapshot: FloatArray, deltaTime: Float) {
         if (!sceneLoaded || snapshot.size < 34) return
         val transforms = engine.transformManager
+        botAnimationPhase += deltaTime * 8.0f
         for (index in botRootInstances.indices) {
-            val instance = botRootInstances[index]
-            if (instance == 0) continue
+            val rootInstance = botRootInstances[index]
+            if (rootInstance == 0) continue
             val x = snapshot[16 + index * 2]
             val z = snapshot[17 + index * 2]
+            val previous = lastBotPositions[index]
+            val dx = if (previous[0].isNaN()) 0f else x - previous[0]
+            val dz = if (previous[1].isNaN()) 0f else z - previous[1]
+            val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
+            val moving = (speed / 2.7f).coerceIn(0f, 1f)
+            val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
+                else if (index < 4) 0f else Math.PI.toFloat()
             val y = terrainHeight(x, z) - characterMinY * characterScale * botScale
-            val yaw = if (index < 4) 0f else Math.PI.toFloat()
             val scale = characterScale * botScale
             val c = cos(yaw) * scale
             val sinYaw = sin(yaw) * scale
@@ -262,7 +282,17 @@ internal class FilamentGameRenderer(
                 sinYaw, 0f, c, 0f,
                 x, y, z, 1f
             )
-            transforms.setTransform(instance, matrix)
+            transforms.setTransform(rootInstance, matrix)
+
+            val rig = botBones.getOrNull(index).orEmpty()
+            animatePose(rig["thigh_l"], sin(botAnimationPhase + index) * 0.48f * moving)
+            animatePose(rig["thigh_r"], -sin(botAnimationPhase + index) * 0.48f * moving)
+            animatePose(rig["calf_l"], max(0f, -sin(botAnimationPhase + index)) * 0.40f * moving)
+            animatePose(rig["calf_r"], max(0f, sin(botAnimationPhase + index)) * 0.40f * moving)
+            animatePose(rig["upperarm_l"], -sin(botAnimationPhase + index) * 0.25f * moving)
+            animatePose(rig["upperarm_r"], sin(botAnimationPhase + index) * 0.25f * moving)
+            previous[0] = x
+            previous[1] = z
         }
     }
 
@@ -273,7 +303,11 @@ internal class FilamentGameRenderer(
     }
 
     private fun animateBone(name: String, angle: Float) {
-        val bone = bones[name] ?: return
+        animatePose(bones[name], angle)
+    }
+
+    private fun animatePose(bone: BonePose?, angle: Float) {
+        if (bone == null) return
         val c = cos(angle)
         val s = sin(angle)
         val rotation = floatArrayOf(
@@ -328,6 +362,7 @@ internal class FilamentGameRenderer(
                 characterLoader?.destroyAsset(asset)
             }
             character = null
+            botBones.clear()
             characterResources?.destroy()
             characterLoader?.destroy()
             characterProvider?.destroy()
