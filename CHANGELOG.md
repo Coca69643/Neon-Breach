@@ -33,4 +33,9 @@
 
 ### Verificação da entrega
 - O APK só será considerado publicado quando o workflow terminar com sucesso, verificar o arquivo app-debug.apk e enviar o artefato project-arena-0.2.0-debug.
-- Resultado do workflow e artefato: pendentes até a conclusão do build 0.2.0.
+- Workflow GitHub Actions #120 (run 41270411291): concluído com sucesso em 2026-11-01.
+- Passaram: verificação estrutural, `gradle assembleDebug`, verificação de existência do APK e upload do artefato.
+- Artefato publicado: `project-arena-0.2.0-debug`; APK extraído e validado como pacote Android ZIP íntegro.
+- APK entregue: 16.602.227 bytes; SHA-256 `0438fea6b91bfb2943841b2718d0de10e4c290f79d02e429b3367f0d3b8a689b`.
+- Run: https://github.com/Coca69643/Neon-Breach/actions/runs/41270411291
+- Teste em aparelho físico, renderização Vulkan/GLES no Realme C53, FPS sustentado e temperatura: ainda pendentes.
