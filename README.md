@@ -1,6 +1,6 @@
 # Projeto Arena 0.4.0
 
-MOBA 3D mobile para Android, landscape e totalmente offline, com partidas 5v5 contra bots.
+MOBA 3D mobile para Android: partidas **offline 5v5** em landscape contra bots.
 
 ## IA e navegação 0.4.0
 - Cada bot mantém rota, equipe, faixa e slot de formação durante a partida.
