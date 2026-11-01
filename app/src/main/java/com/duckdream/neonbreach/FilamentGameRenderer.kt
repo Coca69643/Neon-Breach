@@ -202,7 +202,7 @@ internal class FilamentGameRenderer(
             ?: throw IllegalStateException("Could not create the player humanoid instance")
         val player = playerInstance!!
         playerMaterials.clear()
-        playerMaterials.addAll(player.materialInstances)
+        player.materialInstances.forEach { playerMaterials.add(it) }
         viewer.scene.addEntities(player.entities)
 
         val half = asset.boundingBox.getHalfExtent(null)
