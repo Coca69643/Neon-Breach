@@ -1,34 +1,22 @@
-# Projeto Arena 0.4.0
+# Projeto Arena 0.5.0
 
-MOBA 3D mobile para Android: partidas **offline 5v5** em landscape contra bots.
+MOBA 3D Android, landscape e offline, com partidas locais contra bots.
 
-## IA e navegação 0.4.0
-- Cada bot mantém rota, equipe, faixa e slot de formação durante a partida.
-- Navegação de chegada com frenagem: reduz a velocidade conforme se aproxima do ponto-alvo e para ao alcançá-lo.
-- NPCs não usam a posição do jogador como alvo e não recalculam perseguição a cada frame.
-- O input do joystick altera somente a movimentação do herói.
-- Bots desativados retornam à sua formação após o tempo de recuperação.
-- Pressão de rota usa presença real na zona frontal.
+## IA 0.5.0
+- Cada bot possui rota persistente com waypoints fixos, velocidade individual e atraso inicial.
+- Navegação não lê a posição do jogador nem o progresso do placar das rotas.
+- Avanço monotônico por waypoints, frenagem de chegada e slots laterais por rota.
+- Progresso de cada rota é calculado numa zona central fixa, sem mover os destinos dos bots.
+- Herói orienta-se pela velocidade vetorial e conserva a última direção quando parado.
 
-## Partida offline
-- 1 jogador + 4 bots aliados contra 5 bots adversários.
-- Três rotas com pressão independente e ondas simplificadas de tropas.
-- Três arquétipos: Lyra, Bastion e Kairo.
-- Habilidades fictícias sem armas: impulso, pulso de ressonância e barreira.
-- Sem login, servidor, matchmaking ou permissão de internet.
-
-## Identidade visual
-- Ícone próprio com fortaleza, três rotas e núcleo azul.
-- Nome do aplicativo: Projeto Arena.
+## Identidade
+Ícone original com silhueta de herói mascarado, visor violeta/ciano e três rotas convergentes. O ícone legado do ORION-9 não é usado.
 
 ## Arquitetura
-- Android nativo: lifecycle, UI e controles touch em Kotlin.
-- C++20 via NDK/CMake: simulação, IA local, rotas e habilidades.
-- Filament 1.77.3: renderização 3D, Vulkan preferencial e fallback OpenGL ES.
-- Humanoide Quaternius CC0 compartilhado entre as instâncias do herói e bots.
-
-## Build
-O workflow valida estrutura, compila Kotlin/C++20 para arm64-v8a e armeabi-v7a, confirma a existência do APK debug e publica project-arena-0.4.0-debug. O CI confirma compilação, não substitui teste no Realme C53.
+- Android nativo Kotlin + C++20/NDK.
+- Filament 1.77.3, Vulkan com fallback OpenGL ES.
+- Partida local offline, sem login, servidor ou permissão de internet.
+- Landscape obrigatório, controles touch e câmera de acompanhamento.
 
 ## Limitações
-A IA de rotas ainda é uma base simplificada, sem tomada de decisão tática complexa. Visuais, papéis individuais de heróis, objetivos e tropas precisam de novas iterações. Renderização, FPS prolongado, memória e temperatura no Realme C53 ainda precisam de teste físico.
+A IA atual faz avanço e disputa de zona por rota; ainda não representa uma IA MOBA completa. O teste de movimento, enquadramento, FPS sustentado e temperatura precisa ser feito no Realme C53.
