@@ -44,13 +44,34 @@ jobs:
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
+      - name: Prepare persistent APK signing key
+        if: github.event_name != 'pull_request'
+        env:
+          NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
+          NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
+          NEON_BREACH_KEY_ALIAS: ${{ secrets.NEON_BREACH_KEY_ALIAS }}
+          NEON_BREACH_KEY_PASSWORD: ${{ secrets.NEON_BREACH_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${NEON_BREACH_KEYSTORE_BASE64:-}" || { echo "::error::Persistent signing secret is missing; refusing to publish an update APK."; exit 1; }
+          test -n "${NEON_BREACH_KEYSTORE_PASSWORD:-}"
+          test -n "${NEON_BREACH_KEY_ALIAS:-}"
+          test -n "${NEON_BREACH_KEY_PASSWORD:-}"
+          KEYSTORE_PATH="$RUNNER_TEMP/project-arena-signing.jks"
+          printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          {
+            echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
+            echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
+            echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Persistent signing key loaded."
       - name: Install Android SDK, NDK and CMake
         run: |
           sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT}}"
           test -d "$SDK_ROOT/platforms/android-37.0"
-          # SDK Manager publishes API 37 as android-37.0 while AGP's compileSdk
-          # resolver looks for android-37. Keep both names pointed at the same platform.
           ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
           test -d "$SDK_ROOT/platforms/android-37"
       - name: Verify project structure
@@ -59,10 +80,11 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
         run: test -s app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload APK artifact
+      - name: Upload signed update APK
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.5.0-debug
+          name: project-arena-0.6.0-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
