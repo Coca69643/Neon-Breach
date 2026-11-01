@@ -363,8 +363,7 @@ internal class FilamentGameRenderer(
         val lookZ = cameraZ + forwardZ * lookAhead
         val fov = if (overviewCamera) 46.0 else 53.0
         viewer.camera.setProjection(
-            Camera.Projection.PERSPECTIVE,
-            fov, aspect.toDouble().coerceAtLeast(1.0 / 1.0), 0.1, 150.0,
+            fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 150.0,
             Camera.Fov.VERTICAL
         )
         viewer.camera.lookAt(
