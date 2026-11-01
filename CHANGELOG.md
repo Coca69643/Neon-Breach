@@ -27,7 +27,12 @@
 - A navegação é determinística por rota; decisões táticas avançadas, papéis complexos e objetivos completos ainda precisam de evolução.
 - CI comprova compilação e integridade do pacote, não a ausência visual de órbitas em todos os cenários.
 - Teste físico no Realme C53 continua obrigatório para validar movimento, renderização, FPS e temperatura.
-- APK 0.5.0 será marcado como entregue somente após o workflow compilar, verificar o APK e publicar o artefato correspondente.
+- GitHub Actions run #150 (41337264801): compilação concluída com sucesso; verificação estrutural, APK e upload do artefato passaram.
+- Artefato: project-arena-0.5.0-debug; baixado e extraído do run #150.
+- APK: 16.602.733 bytes; integridade ZIP, DEX, bibliotecas nativas arm64-v8a/armeabi-v7a e recurso do ícone verificados.
+- SHA-256 do APK: 4c9caca39745c31375b458f70642a3c0dd32ccb7b96171c9939f5cbcb8c9e4fe.
+- Run: https://github.com/Coca69643/Neon-Breach/actions/runs/41337264801
+- Teste físico no Realme C53 e validação visual do movimento ainda pendentes.
 
 ## [0.4.0] — 2026-11-01
 - Primeira separação de navegação dos bots em relação ao jogador, com slots de formação e frenagem de chegada.
