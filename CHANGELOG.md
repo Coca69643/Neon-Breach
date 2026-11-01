@@ -1,41 +1,33 @@
 # Changelog — Projeto Arena
 
-## [0.2.0] — 2026-11-01
+## [0.3.0] — 2026-11-01
 
-### Mudança de direção
-- A linha evolui de uma arena individual de captura para um MOBA 3D com partidas locais **offline 5v5**.
-- A arquitetura de partida não depende de conta, login, matchmaking, servidor ou conexão com a internet.
-- A identidade visual e os nomes de heróis são originais/provisórios; Deadlock é referência de estrutura de gênero, não de conteúdo copiado.
+### Reconstrução visual
+- Corrigida a ordem dos índices das esferas; a malha anterior estava com winding invertido, fazendo o backface culling descartar a face externa de copas, rochas e props arredondados.
+- Adicionada iluminação indireta por harmônicos esféricos e ajustada a luz solar do Filament para uma direção oblíqua, com exposição de câmera explícita.
+- Paleta do céu e do cenário ajustada para leitura diurna; vegetação e superfícies arredondadas deixam de depender de faces internas.
+- Terreno recortado para perímetro orgânico arredondado, removendo a borda quadrada do mapa.
+- Três rotas ganharam ombros escuros e faixas centrais de pedra, com folga de vegetação para manter corredores legíveis.
+- Bots deixaram de ser montagens de cilindros/esferas: agora são instâncias do humanoide Quaternius CC0 que já acompanha o APK, com matiz por equipe e animação procedural de locomoção no rig.
+- Câmera de overview enquadra o mapa no menu, pausa e resultado; câmera de partida acompanha o jogador.
+- Painel de pausa centralizado com largura controlada para evitar o título colado à borda.
 
-### Adicionado
+### Mantido
 - Partida local 5v5: jogador + quatro bots aliados contra cinco bots adversários.
-- Três rotas jogáveis (oeste, centro e leste), cada uma com pressão e condição de conquista independentes.
-- IA local para bots: avanço por rota, seleção de alvos próximos, interrupção de oponentes e retorno à formação após desativação.
-- Ondas simplificadas de tropas locais que afetam a pressão de cada rota.
-- Três arquétipos selecionáveis: Lyra (suporte), Bastion (defesa) e Kairo (mobilidade).
-- Habilidades estilizadas sem armas: impulso de mobilidade, pulso de ressonância em área e barreira defensiva.
-- HUD de partida com cronômetro, placar, progresso das rotas e minimapa tático.
-- Nove unidades visuais adicionais integradas ao cenário glTF para representar os bots.
-- Estruturas defensivas distribuídas pelas três rotas.
-
-### Base técnica
-- Android nativo, paisagem obrigatória, renderização Filament 1.77.3 com Vulkan e fallback OpenGL ES.
-- Simulação de partida em C++20; interface, ciclo de vida e controles em Kotlin.
-- Compilador Kotlin externo 2.4.10 configurado para alinhar o build às bibliotecas Filament, com Kotlin integrado do AGP 9 desativado nesta linha.
-- Gradle 9.6.0, Android Gradle Plugin 9.5.0 e compileSdk 37.
-- CI exige verificação estrutural, compilação, existência do APK e upload do artefato.
+- Três rotas com pressão independente, ondas simplificadas de tropas, três heróis e habilidades fictícias sem armas.
+- Android nativo landscape, Filament 1.77.3, Kotlin e C++20.
+- Vulkan preferencial e fallback OpenGL ES.
 
 ### Limitações conhecidas
-- Esta é a primeira fatia funcional da partida offline, não um MOBA de produção: IA, tropas, economia e pressão de rotas são simplificadas.
-- Ainda não há seleção extensa de heróis, loja, árvore de progressão, objetivos neutros avançados, campanha ou rede.
-- Os avatares dos bots são representações low-poly próprias; não reutilizam o rig completo do personagem principal.
-- Vulkan/GLES, estabilidade, memória, temperatura e FPS prolongado ainda precisam ser testados no Realme C53. Build de CI não equivale a teste físico no aparelho.
+- A IA, a economia das tropas e a pressão de rotas continuam simplificadas.
+- Os bots compartilham o mesmo modelo humanoide base e diferem por cor/equipe; ainda não há elenco de silhuetas exclusivas.
+- Build e renderização ainda precisam ser verificados. Mesmo com CI aprovado, enquadramento, qualidade visual, Vulkan/GLES, FPS sustentado e temperatura exigem teste físico no Realme C53.
 
 ### Verificação da entrega
-- Condição de publicação satisfeita: workflow concluído com sucesso, arquivo app-debug.apk verificado e artefato project-arena-0.2.0-debug enviado.
-- Workflow GitHub Actions #120 (run 41270411291): concluído com sucesso em 2026-11-01.
-- Passaram: verificação estrutural, `gradle assembleDebug`, verificação de existência do APK e upload do artefato.
-- Artefato publicado: `project-arena-0.2.0-debug`; APK extraído e validado como pacote Android ZIP íntegro.
-- APK entregue: 16.602.227 bytes; SHA-256 `0438fea6b91bfb2943841b2718d0de10e4c290f79d02e429b3367f0d3b8a689b`.
-- Run: https://github.com/Coca69643/Neon-Breach/actions/runs/41270411291
-- Teste em aparelho físico, renderização Vulkan/GLES no Realme C53, FPS sustentado e temperatura: ainda pendentes.
+- APK 0.3.0: aguardando workflow de compilação, verificação de app-debug.apk e upload project-arena-0.3.0-debug.
+- Run e checksum serão registrados somente depois da conclusão do build.
+
+## [0.2.0] — 2026-11-01
+- Primeira fatia de MOBA offline 5v5, com três rotas, bots, três arquétipos de herói, habilidades de ressonância/defesa e minimapa.
+- Base Android nativa em landscape com Filament 1.77.3, Kotlin e simulação C++20.
+- Build de CI #120 gerou o primeiro APK 0.2.0. A inspeção visual posterior reprovou a apresentação e motivou a reconstrução da versão 0.3.0.
