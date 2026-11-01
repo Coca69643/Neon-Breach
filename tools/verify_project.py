@@ -62,7 +62,7 @@ checks=[
 ("botAnimators.getOrNull(index)?.updateBoneMatrices()" in renderer,"bot skinning matrices not updated"),
 ("fun updateCreeps(snapshot: FloatArray, deltaTime: Float)" in renderer,"minion renderer update missing"),
 ("fun setMinionsVisible(visible: Boolean)" in renderer,"minion scene visibility management missing"),
-("FloatArray(60)" in main and "result.size >= 60" in main,"Kotlin snapshot must contain 60 floats"),
+("FloatArray(73)" in main and "result.size >= 73" in main,"Kotlin snapshot must contain 73 floats"),
 ("renderer.updateCreeps(result, dt)" in main,"lane units not connected to renderer"),
 ("renderer.setMinionsVisible(true)" in main,"minions not shown during match"),
 ("kLaneUnitCount = 12" in native and "void updateLaneUnits(float dt)" in native,"12 physical lane units missing"),
