@@ -22,6 +22,7 @@
 
 ### Interface
 - Menu reduzido a personagem em destaque, marca curta e toque para jogar.
+- Seleção de Lyra, Bastion e Kairo por deslize horizontal, sem botões extras; cada escolha altera a tonalidade do herói e o perfil das habilidades.
 - Removidos versão antiga hardcoded, tagline, regras, notas de tecnologia e botões de seleção no menu.
 - HUD reduzido para cronômetro, progresso, minimapa, joystick, pausa e três habilidades.
 
