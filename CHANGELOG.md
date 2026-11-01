@@ -10,6 +10,8 @@
 ### Campo e IA local
 - Campo retangular contínuo; removido o recorte circular que produzia uma borda serrilhada de ilha.
 - Relevo do terreno ampliado e paleta do chão menos saturada.
+- Limites do jogador alinhados ao retângulo do mapa; removida a antiga colisão radial.
+- Aceleração do joystick ajustada para resposta mais imediata, mantendo desaceleração progressiva.
 - Árvores e copas reduzidas para evitar volumes esféricos gigantes dominando a leitura.
 - Bots avançam para zonas centrais fixas e permanecem disputando a captura.
 - Slots laterais por rota e por equipe evitam sobreposição entre unidades no objetivo.
