@@ -32,7 +32,7 @@
 - Vulkan/GLES, estabilidade, memória, temperatura e FPS prolongado ainda precisam ser testados no Realme C53. Build de CI não equivale a teste físico no aparelho.
 
 ### Verificação da entrega
-- O APK só será considerado publicado quando o workflow terminar com sucesso, verificar o arquivo app-debug.apk e enviar o artefato project-arena-0.2.0-debug.
+- Condição de publicação satisfeita: workflow concluído com sucesso, arquivo app-debug.apk verificado e artefato project-arena-0.2.0-debug enviado.
 - Workflow GitHub Actions #120 (run 41270411291): concluído com sucesso em 2026-11-01.
 - Passaram: verificação estrutural, `gradle assembleDebug`, verificação de existência do APK e upload do artefato.
 - Artefato publicado: `project-arena-0.2.0-debug`; APK extraído e validado como pacote Android ZIP íntegro.
