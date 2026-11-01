@@ -39,7 +39,7 @@ checks=[
 ("android.permission.INTERNET" not in manifest,"offline app must not request internet"),
 ('android:icon="@drawable/ic_launcher"' in manifest,"custom launcher icon not referenced"),
 ("<vector" in icon and "#6C4DFF" in icon and "#8FEAFF" in icon and "ORION" not in icon,"custom hero icon missing"),
-("Camera.Projection.PERSPECTIVE" in renderer and "Camera.Fov.VERTICAL" in renderer,"third-person perspective camera missing"),
+("viewer.camera.setProjection(\n            fov, aspect.toDouble()" in renderer and "Camera.Fov.VERTICAL" in renderer,"third-person perspective camera missing"),
 ("val distance = if (overviewCamera) 7.6f else 9.2f" in renderer,"camera distance tuning missing"),
 ("characterScale = 1.92f / height" in renderer and "botScale = 1.0f" in renderer,"character framing scale missing"),
 ("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"minimal menu check failed"),
