@@ -537,7 +537,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
     std::scoped_lock lock(gMutex);
     simulate(inputX, inputZ, deltaTime);
 
-    std::array<jfloat, 72> values{};
+    std::array<jfloat, 73> values{};
     values[0] = gPlayerX;
     values[1] = terrainHeight(gPlayerX, gPlayerZ);
     values[2] = gPlayerZ;
@@ -571,7 +571,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
     values[60] = gShieldCooldown;
     values[61] = gPulseVisualTime;
     values[62] = gBoostTime;
-    values[72 - 1] = gPlayerHealth;
+    values[72] = gPlayerHealth;
     for (int i = 0; i < kBotCount; ++i) {
         values[static_cast<std::size_t>(63 + i)] = gBots[static_cast<std::size_t>(i)].disabled;
     }
