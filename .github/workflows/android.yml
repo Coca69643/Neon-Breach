@@ -80,6 +80,12 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
         run: test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify package, version and APK signature
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='36' versionName='0.6.0'"
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
