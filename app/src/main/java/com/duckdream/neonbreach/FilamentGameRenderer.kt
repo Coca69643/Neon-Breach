@@ -40,6 +40,15 @@ internal class FilamentGameRenderer(
     private val viewer: ModelViewer
     private var skybox: Skybox? = null
     private var indirectLight: IndirectLight? = null
+    private var worldProvider: UbershaderProvider? = null
+    private var worldAssetLoader: AssetLoader? = null
+    private var worldResourceLoader: ResourceLoader? = null
+    private val worldAssets = LinkedHashMap<String, FilamentAsset>()
+    private val worldInstances = ArrayList<FilamentInstance>()
+    private data class WorldPlacement(
+        val model: String, val x: Float, val z: Float,
+        val scale: Float, val yaw: Float = 0f, val yOffset: Float = 0f
+    )
 
     private var characterLoader: AssetLoader? = null
     private var characterResources: ResourceLoader? = null
@@ -118,6 +127,7 @@ internal class FilamentGameRenderer(
         viewer.view.antiAliasing = View.AntiAliasing.FXAA
 
         loadWorld()
+        loadKayKitEnvironment()
         loadCharacter()
         updateCamera(16f / 9f)
         sceneLoaded = true
@@ -148,6 +158,90 @@ internal class FilamentGameRenderer(
         val world = WorldGlbBuilder.build()
         viewer.loadModelGlb(ByteBuffer.wrap(world))
         check(viewer.asset != null) { "MOBA world GLB failed to load" }
+    }
+
+    private fun loadKayKitEnvironment() {
+        val modelNames = listOf(
+            "castle_blue", "castle_red",
+            "tower_blue", "tower_red",
+            "home_blue", "home_red",
+            "church_blue", "church_red",
+            "bridge_a", "trees_a",
+            "flag_blue", "flag_red"
+        )
+        worldProvider = UbershaderProvider(engine)
+        worldAssetLoader = AssetLoader(engine, worldProvider!!, EntityManager.get())
+        worldResourceLoader = ResourceLoader(engine)
+
+        for (name in modelNames) {
+            val json = context.assets.open("world/kaykit/$name.gltf")
+                .bufferedReader().use { it.readText() }
+            val asset = worldAssetLoader!!.createAsset(ByteBuffer.wrap(json.toByteArray(Charsets.UTF_8)))
+                ?: throw IllegalStateException("KayKit CC0 model failed to parse: $name")
+            worldAssets[name] = asset
+            for (uri in asset.resourceUris) {
+                if (!worldResourceLoader!!.hasResourceData(uri)) {
+                    val bytes = context.assets.open("world/kaykit/$uri").use { it.readBytes() }
+                    worldResourceLoader!!.addResourceData(uri, ByteBuffer.wrap(bytes))
+                }
+            }
+            worldResourceLoader!!.loadResources(asset)
+        }
+
+        val placements = buildList {
+            add(WorldPlacement("castle_blue", 0f, -27.3f, 1.0f))
+            add(WorldPlacement("castle_red", 0f, 27.3f, 1.0f, Math.PI.toFloat()))
+            add(WorldPlacement("home_blue", -4.5f, -24.0f, 2.05f))
+            add(WorldPlacement("home_blue", 4.5f, -24.0f, 2.05f))
+            add(WorldPlacement("home_red", -4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("home_red", 4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("church_blue", -8.0f, -25.3f, 1.55f))
+            add(WorldPlacement("church_red", 8.0f, 25.3f, 1.55f, Math.PI.toFloat()))
+
+            for (x in listOf(-12f, 0f, 12f)) {
+                add(WorldPlacement("tower_blue", x, -12.2f, 1.9f))
+                add(WorldPlacement("tower_red", x, 12.2f, 1.9f, Math.PI.toFloat()))
+                add(WorldPlacement("bridge_a", x, 0f, 1.55f))
+                add(WorldPlacement("flag_blue", x, -3.1f, 5.0f))
+                add(WorldPlacement("flag_red", x, 3.1f, 5.0f, Math.PI.toFloat()))
+            }
+
+            // Woodland pockets sit between the three playable roads, not on top of them.
+            listOf(
+                floatArrayOf(-22f, -17f), floatArrayOf(-22f, 17f),
+                floatArrayOf(-6.5f, -18f), floatArrayOf(-6.5f, 18f),
+                floatArrayOf(6.5f, -18f), floatArrayOf(6.5f, 18f),
+                floatArrayOf(22f, -17f), floatArrayOf(22f, 17f),
+                floatArrayOf(-18f, -5.5f), floatArrayOf(18f, 5.5f)
+            ).forEachIndexed { index, p ->
+                val yaw = (index % 4) * 0.55f
+                add(WorldPlacement("trees_a", p[0], p[1], 2.3f, yaw))
+            }
+        }
+
+        val transforms = engine.transformManager
+        for (placement in placements) {
+            val asset = worldAssets[placement.model]
+                ?: throw IllegalStateException("Missing imported KayKit asset: ${placement.model}")
+            val instance = worldAssetLoader!!.createInstance(asset)
+                ?: throw IllegalStateException("Could not instance KayKit model: ${placement.model}")
+            worldInstances.add(instance)
+            viewer.scene.addEntities(instance.entities)
+            val root = transforms.getInstance(instance.root)
+            check(root != 0) { "KayKit transform root missing: ${placement.model}" }
+            val c = cos(placement.yaw) * placement.scale
+            val sn = sin(placement.yaw) * placement.scale
+            val y = terrainHeight(placement.x, placement.z) + placement.yOffset
+            transforms.setTransform(root, floatArrayOf(
+                c, 0f, -sn, 0f,
+                0f, placement.scale, 0f, 0f,
+                sn, 0f, c, 0f,
+                placement.x, y, placement.z, 1f
+            ))
+        }
+
+        worldAssets.values.forEach { it.releaseSourceData() }
+        Log.i(TAG, "KayKit CC0 environment loaded: ${worldAssets.size} models, ${worldInstances.size} placements")
     }
 
     private fun loadCharacter() {
@@ -335,9 +429,13 @@ internal class FilamentGameRenderer(
     }
 
     private fun terrainHeight(x: Float, z: Float): Float {
-        val hill = 0.48f * kotlin.math.exp(-((x - 10f) * (x - 10f) + (z - 8f) * (z - 8f)) / 95f)
-        return 0.40f * sin(x * 0.18f) * cos(z * 0.14f) +
-            0.20f * sin((x + z) * 0.29f) + hill
+        val westRidge = 1.05f * kotlin.math.exp(-((x + 23f) * (x + 23f)) / 52f) *
+            (0.45f + 0.55f * cos(z * 0.075f))
+        val eastRidge = 0.92f * kotlin.math.exp(-((x - 23f) * (x - 23f)) / 58f) *
+            (0.45f + 0.55f * cos(z * 0.07f))
+        val centralRise = 0.48f * kotlin.math.exp(-((x - 1f) * (x - 1f) + (z - 1f) * (z - 1f)) / 90f)
+        return 0.36f * sin(x * 0.18f) * cos(z * 0.14f) +
+            0.18f * sin((x + z) * 0.29f) + westRidge + eastRidge + centralRise
     }
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
@@ -441,6 +539,16 @@ internal class FilamentGameRenderer(
         try {
             botInstances.forEach { viewer.scene.removeEntities(it.entities) }
             botInstances.clear()
+            worldInstances.forEach { viewer.scene.removeEntities(it.entities) }
+            worldInstances.clear()
+            worldAssets.values.forEach { asset -> worldAssetLoader?.destroyAsset(asset) }
+            worldAssets.clear()
+            worldResourceLoader?.destroy()
+            worldResourceLoader = null
+            worldAssetLoader?.destroy()
+            worldAssetLoader = null
+            worldProvider?.destroy()
+            worldProvider = null
             playerInstance?.let { viewer.scene.removeEntities(it.entities) }
             playerInstance = null
             playerAnimator = null
