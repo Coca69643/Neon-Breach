@@ -5,7 +5,8 @@ Arena 3D nativa para Android, partidas locais 5v5 contra bots, totalmente offlin
 ## Revisão 0.6.0
 - Câmera de jogo em perspectiva, próxima ao herói e com seguimento pela direção de movimento.
 - Herói e bots ampliados no enquadramento.
-- Menu imersivo com personagem em destaque e uma única ação de entrada.
+- Menu imersivo com personagem em destaque, toque para entrar e seleção de herói por deslize.
+- Três perfis selecionáveis: Lyra, Bastion e Kairo, com cores e parâmetros de habilidade distintos.
 - HUD reduzido a cronômetro, progresso do objetivo, minimapa e controles essenciais.
 - Campo de jogo retangular, com relevo mais pronunciado e três corredores.
 - Limites de movimento retangulares e aceleração touch mais responsiva.
