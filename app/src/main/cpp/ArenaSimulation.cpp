@@ -12,18 +12,22 @@ struct Bot {
     int team = 0;
     int lane = 1;
     int slot = 0;
+    int routeStep = 0;
     float disabled = 0.0f;
+    float startDelay = 0.0f;
+    float speedScale = 1.0f;
 };
 
 constexpr int kBotCount = 9;
 constexpr std::array<float, 3> kLaneX{{-12.0f, 0.0f, 12.0f}};
 constexpr float kPlayerWalkSpeed = 5.6f;
 constexpr float kPlayerBoostSpeed = 9.2f;
-constexpr float kBotSpeed = 2.55f;
+constexpr float kBotSpeed = 2.45f;
 constexpr float kBotAcceleration = 8.5f;
 constexpr float kBotArrivalSpeedScale = 1.85f;
 constexpr float kBotArrivalSnap = 0.12f;
-constexpr float kLaneFrontLimit = 11.0f;
+constexpr std::array<float, 4> kBlueRouteZ{{-11.0f, -3.4f, 4.0f, 11.0f}};
+constexpr std::array<float, 4> kRedRouteZ{{11.0f, 3.4f, -4.0f, -11.0f}};
 constexpr float kBotFormationSpacing = 1.3f;
 
 std::mutex gMutex;
@@ -82,7 +86,10 @@ void resetBot(Bot &bot, int index) {
         homeZ + (blue ? depth : -depth)
     };
     bot.velocity = {0.0f, 0.0f};
+    bot.routeStep = 0;
     bot.disabled = 0.0f;
+    bot.startDelay = 0.12f * static_cast<float>(index % 5);
+    bot.speedScale = 0.84f + 0.055f * static_cast<float>(index % 5);
 }
 
 void resetSimulation() {
@@ -176,49 +183,14 @@ void movePlayer(float inputX, float inputZ, float dt) {
     }
 }
 
-float laneFrontZ(int lane) {
-    return std::clamp(
-        gLaneProgress[static_cast<std::size_t>(lane)] * kLaneFrontLimit,
-        -kLaneFrontLimit, kLaneFrontLimit);
-}
-
-void moveBotTo(Bot &bot, Vec2 goal, float dt) {
-    const Vec2 delta{goal.x - bot.position.x, goal.z - bot.position.z};
-    const float distanceToGoal = length(delta);
-    if (distanceToGoal <= kBotArrivalSnap) {
-        bot.position = goal;
-        bot.velocity = {0.0f, 0.0f};
-        return;
-    }
-
-    const float brakingSpeed = std::sqrt(
-        2.0f * kBotAcceleration * distanceToGoal);
-    const float desiredSpeed = std::min(
-        kBotSpeed,
-        std::min(brakingSpeed, distanceToGoal * kBotArrivalSpeedScale));
-    const float inverseDistance = 1.0f / std::max(distanceToGoal, 0.001f);
-    const Vec2 desiredVelocity{
-        delta.x * inverseDistance * desiredSpeed,
-        delta.z * inverseDistance * desiredSpeed
-    };
-    const float blend = 1.0f - std::exp(-kBotAcceleration * dt);
-    bot.velocity.x += (desiredVelocity.x - bot.velocity.x) * blend;
-    bot.velocity.z += (desiredVelocity.z - bot.velocity.z) * blend;
-
-    bot.position.x += bot.velocity.x * dt;
-    bot.position.z += bot.velocity.z * dt;
-
-    const Vec2 remaining{goal.x - bot.position.x, goal.z - bot.position.z};
-    if (remaining.x * delta.x + remaining.z * delta.z <= 0.0f) {
-        bot.position = goal;
-        bot.velocity = {0.0f, 0.0f};
-    }
+float routeTargetZ(const Bot &bot) {
+    const auto &route = bot.team == 0 ? kBlueRouteZ : kRedRouteZ;
+    return route[static_cast<std::size_t>(std::clamp(bot.routeStep, 0, 3))];
 }
 
 void updateBots(float dt) {
-    // Bots are lane agents, not homing projectiles. Their navigation target is a
-    // stable formation slot on the current lane front, never the player transform
-    // or another moving unit. This prevents target-switching and orbital pursuit.
+    // Each unit advances along a fixed lane route with its own delay and speed.
+    // Its path never reads the player transform or the lane-score value.
     for (int i = 0; i < kBotCount; ++i) {
         Bot &bot = gBots[static_cast<std::size_t>(i)];
         if (bot.disabled > 0.0f) {
@@ -226,18 +198,17 @@ void updateBots(float dt) {
             if (bot.disabled == 0.0f) resetBot(bot, i);
             continue;
         }
-
-        const bool blue = bot.team == 0;
-        const float frontline = laneFrontZ(bot.lane);
-        const float slot = static_cast<float>(bot.slot);
-        const float targetX =
-            kLaneX[static_cast<std::size_t>(bot.lane)] + slot * kBotFormationSpacing;
-        const float targetZ = frontline + (blue ? -3.6f : 3.6f) + slot * 0.65f;
-        const Vec2 goal{targetX, targetZ};
-
-        // Tiny deterministic lane-side bias keeps units in their assigned channel.
-        // No unit performs direct pursuit of the player or another unit.
+        if (bot.startDelay > 0.0f) {
+            bot.startDelay = std::max(0.0f, bot.startDelay - dt);
+            continue;
+        }
+        const float targetX = kLaneX[static_cast<std::size_t>(bot.lane)]
+                            + static_cast<float>(bot.slot) * kBotFormationSpacing;
+        const Vec2 goal{targetX, routeTargetZ(bot)};
         moveBotTo(bot, goal, dt);
+        if (distance(bot.position, goal) <= kBotArrivalSnap && bot.routeStep < 3) {
+            ++bot.routeStep;
+        }
         bot.position.x = std::clamp(bot.position.x, -23.5f, 23.5f);
         bot.position.z = std::clamp(bot.position.z, -23.5f, 23.5f);
     }
@@ -271,18 +242,17 @@ void updateLanes(float dt) {
     for (int lane = 0; lane < 3; ++lane) {
         int blueHeroes = 0;
         int redHeroes = 0;
-        const float frontline = laneFrontZ(lane);
         for (const Bot &bot : gBots) {
             if (bot.lane != lane || bot.disabled > 0.0f) continue;
-            // Only units that have actually reached the clash zone contribute
-            // lane pressure. Spawned units waiting at base do not count as presence.
-            if (std::abs(bot.position.z - frontline) > 8.0f) continue;
+            // Route control is scored in a fixed central zone, not a score-driven
+            // moving front; NPC navigation and objective progress are decoupled.
+            if (std::abs(bot.position.z) > 8.0f) continue;
             if (bot.team == 0) ++blueHeroes;
             else ++redHeroes;
         }
         const float playerSupport =
             (laneForX(gPlayerX) == lane &&
-             std::abs(gPlayerZ - frontline) < 7.0f &&
+             std::abs(gPlayerZ) < 7.0f &&
              gPlayerDisrupted <= 0.0f) ? 0.75f : 0.0f;
         const float creepAdvantage =
             static_cast<float>(gBlueCreeps[static_cast<std::size_t>(lane)]
@@ -399,7 +369,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
     std::scoped_lock lock(gMutex);
     simulate(inputX, inputZ, deltaTime);
 
-    std::array<jfloat, 34> values{};
+    std::array<jfloat, 36> values{};
     values[0] = gPlayerX;
     values[1] = terrainHeight(gPlayerX, gPlayerZ);
     values[2] = gPlayerZ;
@@ -422,6 +392,9 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
         values[static_cast<std::size_t>(16 + i * 2)] = bot.position.x;
         values[static_cast<std::size_t>(17 + i * 2)] = bot.position.z;
     }
+
+    values[34] = gPlayerVx;
+    values[35] = gPlayerVz;
 
     jfloatArray result = env->NewFloatArray(static_cast<jsize>(values.size()));
     if (result != nullptr) {
