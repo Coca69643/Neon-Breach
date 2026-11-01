@@ -1,49 +1,41 @@
 # Changelog — Projeto Arena
 
+## [0.7.0] — 2026-11-01
+
+### Ambiente CC0 — reconstrução do mapa
+- Removidos do cenário os geradores de árvores, pedras, cones, copas esféricas, altar e beacon gigante da versão anterior.
+- Importados 12 modelos glTF do KayKit Medieval Hexagon Pack: castelos azul/vermelho, torres azul/vermelho, casas, igrejas, pontes, árvores agrupadas e bandeiras das equipes.
+- Licença CC0 1.0 arquivada em ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt.
+- Somente modelos ambientais foram importados; não foram incluídos itens ou sistemas armados.
+- O mapa passa a ter duas bases, três rotas pavimentadas, rio transversal, três pontes, torres defensivas e bandeiras como pontos de controle.
+- O atlas hexagons_medieval.png é compartilhado por todos os modelos via ResourceLoader; os nomes binários originais foram preservados para resolver as URIs glTF.
+- WorldGlbBuilder agora gera somente terreno, bordas de estrada, superfície de pedra e água; a arquitetura e vegetação são modelos 3D CC0 instanciados pelo Filament.
+
+### Personagens, animação e tropas
+- Corrigida a T-pose: o renderer agora aplica postura de repouso com ombros baixos e cotovelos flexionados.
+- Depois de cada atualização de ossos, Animator.updateBoneMatrices() envia a pose para as malhas com skinning do Filament.
+- Herói, nove bots e doze tropas usam instâncias independentes do rig, com ciclos esqueléticos de locomoção e postura de repouso.
+- Adicionadas doze tropas físicas, duas por equipe em cada uma das três rotas; suas posições são simuladas em C++ e enviadas pelo snapshot JNI de 60 valores.
+- As tropas avançam para pontos de encontro e permanecem na zona; a presença delas contribui para a leitura e pontuação das rotas.
+
+### Mantido
+- Android nativo em landscape, Kotlin + C++20/NDK e Filament 1.77.3.
+- Partidas locais offline 5v5, três rotas, câmera em perspectiva seguindo o herói e controles touch.
+- Três perfis selecionáveis: Lyra, Bastion e Kairo.
+
+### Limitações conhecidas
+- O elenco ainda compartilha uma geometria humanoide base; a diferenciação visual ocorre por equipe, escala e perfil, não por malhas exclusivas.
+- A animação é esquelética procedural no rig e ainda não tem clipes exclusivos por personagem.
+- As tropas não têm uma IA de combate completa; avançam e disputam presença na zona.
+- Os bots de herói ainda seguem rotas/zonas, sem uma estratégia avançada de formação e objetivos.
+- Qualidade visual, estabilidade Vulkan/GLES, FPS sustentado e temperatura precisam de teste no Realme C53.
+
+### Build e assinatura
+- versionCode 37 / versionName 0.7.0; applicationId preservado: com.duckdream.neonbreach.
+- O workflow exige a chave persistente NEON_BREACH_* em builds de distribuição e verifica package/version/signature.
+- APK 0.7.0: aguardando compilação e verificação do workflow; nenhum artefato desta versão é considerado entregue antes dessa confirmação.
+
 ## [0.6.0] — 2026-11-01
-
-### Câmera e escala
-- Substituída a câmera ortográfica elevada por câmera perspectiva de ação, próxima ao personagem e seguindo sua orientação.
-- Aumentada a escala visual do herói e dos bots no enquadramento.
-- Menu agora enquadra o herói no cenário, em vez de exibir a arena inteira sem protagonista.
-
-### Campo e IA local
-- Campo retangular contínuo; removido o recorte circular que produzia uma borda serrilhada de ilha.
-- Relevo do terreno ampliado e paleta do chão menos saturada.
-- Limites do jogador alinhados ao retângulo do mapa; removida a antiga colisão radial.
-- Aceleração do joystick ajustada para resposta mais imediata, mantendo desaceleração progressiva.
-- Árvores e copas reduzidas para evitar volumes esféricos gigantes dominando a leitura.
-- Bots avançam para zonas centrais fixas e permanecem disputando a captura.
-- Slots laterais por rota e por equipe evitam sobreposição entre unidades no objetivo.
-- A pontuação considera presença na zona real de captura, não apenas passagem ampla pelo meio da rota.
-- Ritmo de captura ajustado para partidas locais mais curtas.
-- Escudo agora aumenta a contribuição do jogador na captura enquanto ativo.
-- Pulso mantém interrupção temporária de bots próximos; impulso serve para reposicionamento.
-
-### Interface
-- Menu reduzido a personagem em destaque, marca curta e toque para jogar.
-- Seleção de Lyra, Bastion e Kairo por deslize horizontal, sem botões extras; cada escolha altera a tonalidade do herói e o perfil das habilidades.
-- Removidos versão antiga hardcoded, tagline, regras, notas de tecnologia e botões de seleção no menu.
-- HUD reduzido para cronômetro, progresso, minimapa, joystick, pausa e três habilidades.
-
-### Instalação e assinatura
-- applicationId preservado: com.duckdream.neonbreach.
-- versionCode 36 / versionName 0.6.0.
-- Restaurada assinatura persistente com os quatro secrets NEON_BREACH_* do repositório.
-- Workflow de PR continua compilando para validação, mas não publica APK instalável; apenas workflow_dispatch usa a chave persistente e publica o APK de atualização.
-- O Android exige applicationId igual, certificado de assinatura compatível e versionCode não inferior para instalar por cima. Como as versões anteriores de PR usaram chaves temporárias do runner, pode ser necessária uma única desinstalação antes de adotar a primeira build assinada de forma persistente. Depois disso, a mesma chave será reutilizada em futuras atualizações.
-
-### Build 0.6.0 verificado
-- GitHub Actions run #177 (41339726525): sucesso em todas as etapas.
-- Chave persistente NEON_BREACH_* carregada no workflow de push.
-- APK gerado, applicationId/versionCode/versionName validados por aapt e assinatura validada por apksigner.
-- Artefato publicado: project-arena-0.6.0-update.
-- APK: 16.602.823 bytes.
-- SHA-256: 3e2fbd192569af35796c4589e6c558cf1cf17a7866de247f3463955167740bd2.
-- DEX e bibliotecas nativas arm64-v8a e armeabi-v7a presentes.
-- Execução: https://github.com/Coca69643/Neon-Breach/actions/runs/41339726525.
-
-### Validação pendente
-- A compilação CI não confirma qualidade visual nem jogabilidade em aparelho real.
-- Câmera, movimento, ocupação dos objetivos, bots visíveis, FPS e temperatura ainda precisam de teste no Realme C53.
-- Esta revisão é um MOBA-lite offline de captura e controle de zonas; ainda não tem a complexidade de um MOBA comercial completo.
+- Câmera em perspectiva próxima ao herói, follow camera, menu imersivo e HUD compacto.
+- Campo retangular com rotas de captura, IA de bots baseada em waypoints, habilidades de suporte/impulso/escudo.
+- Assinatura persistente e build 0.6.0 verificada (run #177).

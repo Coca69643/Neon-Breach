@@ -1,13 +1,16 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.6.0."""
+"""Structural and asset-integrity verification for Project Arena 0.7.0."""
 from pathlib import Path
+import json
 import re
+
 ROOT = Path(__file__).resolve().parents[1]
 def read(path):
     file = ROOT / path
     if not file.is_file():
         raise SystemExit("Missing required file: " + path)
     return file.read_text(encoding="utf-8", errors="replace")
+
 gradle=read("app/build.gradle")
 root_gradle=read("build.gradle")
 props=read("gradle.properties")
@@ -21,15 +24,21 @@ icon=read("app/src/main/res/drawable/ic_launcher.xml")
 workflow=read(".github/workflows/android.yml")
 readme=read("README.md")
 changelog=read("CHANGELOG.md")
-license_text=read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
+asset_register=read("ASSETS/README.md")
+kaykit_license=read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
+quaternius_license=read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar=ROOT/"app/src/main/assets/characters/quaternius-character.glb.b64"
+world_assets=ROOT/"app/src/main/assets/world/kaykit"
+
 checks=[
-("versionName '0.6.0'" in gradle,"versionName must be 0.6.0"),
-("versionCode 36" in gradle,"versionCode must be 36"),
+("versionName '0.7.0'" in gradle,"versionName must be 0.7.0"),
+("versionCode 37" in gradle,"versionCode must be 37"),
 ("applicationId 'com.duckdream.neonbreach'" in gradle,"applicationId must remain stable"),
 ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle,"persistent signing config missing"),
 ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow,"workflow must require persistent signing"),
-("if: github.event_name != 'pull_request'" in workflow,"PR artifacts must not be distributed"),
+("if: github.event_name != 'pull_request'" in workflow,"PR builds must not publish update APKs"),
+("versionCode='37' versionName='0.7.0'" in workflow,"APK package/version verification is stale"),
+("project-arena-0.7.0-update" in workflow,"artifact name must be 0.7.0"),
 ("org.jetbrains.kotlin.android" in root_gradle,"external Kotlin plugin missing"),
 ("android.builtInKotlin=false" in props and "android.newDsl=false" in props,"AGP migration flags missing"),
 ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle,"Filament dependencies missing"),
@@ -38,37 +47,64 @@ checks=[
 ('android:screenOrientation="landscape"' in manifest,"landscape lock missing"),
 ("android.permission.INTERNET" not in manifest,"offline app must not request internet"),
 ('android:icon="@drawable/ic_launcher"' in manifest,"custom launcher icon not referenced"),
-("<vector" in icon and "#6C4DFF" in icon and "#8FEAFF" in icon and "ORION" not in icon,"custom hero icon missing"),
-("viewer.camera.setProjection(\n            fov, aspect.toDouble()" in renderer and "Camera.Fov.VERTICAL" in renderer,"third-person perspective camera missing"),
-("val distance = if (overviewCamera) 7.6f else 9.2f" in renderer,"camera distance tuning missing"),
-("characterScale = 1.92f / height" in renderer and "botScale = 1.0f" in renderer,"character framing scale missing"),
-("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"minimal menu check failed"),
-("ACTION_UP" in main and "HEROES.size - 1" in main and "setHeroAppearance(selectedHero)" in main,"swipe hero selection missing"),
-("fun setHeroAppearance(hero: Int)" in renderer and "Bastion: warm gold" in renderer,"hero appearance variants missing"),
-("dp(190)" in main and "dp(116)" in main,"compact HUD/controls missing"),
-("kBlueRouteZ{{-19.0f, -9.0f, -3.0f, 0.0f, 0.0f}}" in native and "kRedRouteZ{{19.0f, 9.0f, 3.0f, 0.0f, 0.0f}}" in native,"capture hold waypoints missing"),
-("std::abs(bot.position.z) > 2.8f" in native,"capture zone radius missing"),
-("gPlayerX = std::clamp(gPlayerX, -29.0f, 29.0f);" in native and "gPlayerZ = std::clamp(gPlayerZ, -29.0f, 29.0f);" in native,"player movement still has circular boundary"),
-("std::exp(-16.0f * dt)" in native,"responsive player acceleration missing"),
-("gShieldTime > 0.0f ? 1.85f : 1.15f" in native,"shield objective bonus missing"),
-("radiusSq" not in world and "playable field broad and rectangular" in world,"circular arena clipping remains"),
-("westRidge" in world and "westRidge" in native,"terrain height mismatch"),
-("FloatArray(36)" in main and "result.size >= 36" in main,"Kotlin snapshot size mismatch"),
-("values[34] = gPlayerVx;" in native and "values[35] = gPlayerVz;" in native,"player velocity not exposed"),
-("createInstance(asset)" in renderer and "botInstances.add(instance)" in renderer,"humanoid instances missing"),
-("offline" in readme.lower() and "offline" in changelog.lower(),"offline project docs missing"),
-("CC0 1.0 Universal" in license_text,"CC0 asset license missing"),
+("<vector" in icon and "#6C4DFF" in icon and "#8FEAFF" in icon and "ORION" not in icon,"custom launcher icon missing"),
+("loadKayKitEnvironment()" in renderer and "world/kaykit/" in renderer,"CC0 3D environment loader missing"),
+("worldAssetLoader!!.createAsset" in renderer and "worldResourceLoader!!.loadResources(asset)" in renderer,"Filament glTF loading path missing"),
+("viewer.scene.addEntities(instance.entities)" in renderer and "WorldPlacement(" in renderer,"instanced 3D environment props missing"),
+("KayKit CC0 environment loaded" in renderer,"environment asset count log missing"),
+("Camera.Fov.VERTICAL" in renderer and "viewer.camera.setProjection(" in renderer,"perspective follow camera missing"),
+("applyRestPose" in renderer and "playerAnimator?.updateBoneMatrices()" in renderer,"player skeletal skinning update missing"),
+("botAnimators.getOrNull(index)?.updateBoneMatrices()" in renderer,"bot skinning matrices not updated"),
+("fun updateCreeps(snapshot: FloatArray, deltaTime: Float)" in renderer,"minion renderer update missing"),
+("fun setMinionsVisible(visible: Boolean)" in renderer,"minion scene visibility management missing"),
+("FloatArray(60)" in main and "result.size >= 60" in main,"Kotlin snapshot must contain 60 floats"),
+("renderer.updateCreeps(result, dt)" in main,"lane units not connected to renderer"),
+("renderer.setMinionsVisible(true)" in main,"minions not shown during match"),
+("kLaneUnitCount = 12" in native and "void updateLaneUnits(float dt)" in native,"12 physical lane units missing"),
+("std::array<jfloat, 60> values{};" in native,"native snapshot must contain 60 floats"),
+("36 + i * 2" in native and "37 + i * 2" in native,"lane unit coordinates missing from JNI snapshot"),
+("updateLaneUnits(dt);" in native,"physical lane units are not simulated"),
+("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"immersive menu check failed"),
+("CC0" in asset_register and "KayKit" in asset_register,"KayKit asset register missing"),
+("CC0 1.0 Universal" in kaykit_license and "CC0 1.0 Universal" in quaternius_license,"CC0 license files missing"),
+("KayKit" in readme and "offline" in readme.lower() and "KayKit" in changelog,"0.7.0 docs missing"),
 ]
 for ok,msg in checks:
     if not ok: raise SystemExit("Verification failed: "+msg)
+
+model_names=[
+"castle_blue","castle_red","tower_blue","tower_red","home_blue","home_red",
+"church_blue","church_red","bridge_a","trees_a","flag_blue","flag_red"
+]
+if not world_assets.is_dir():
+    raise SystemExit("KayKit world asset directory missing")
+for name in model_names:
+    gltf=world_assets/(name+".gltf")
+    if not gltf.is_file():
+        raise SystemExit("Missing CC0 glTF model: "+gltf.name)
+    try:
+        data=json.loads(gltf.read_text(encoding="utf-8"))
+    except Exception as error:
+        raise SystemExit("Invalid GLTF JSON "+gltf.name+": "+str(error))
+    for resource in data.get("buffers",[])+data.get("images",[]):
+        uri=resource.get("uri")
+        if uri and not (world_assets/uri).is_file():
+            raise SystemExit("Missing GLTF resource "+uri+" required by "+name)
+atlas=world_assets/"hexagons_medieval.png"
+if not atlas.is_file() or atlas.stat().st_size<1000:
+    raise SystemExit("Shared KayKit texture atlas missing")
+if "private fun sphere(" in world or "private fun cylinder(" in world:
+    raise SystemExit("Legacy procedural sphere/cylinder geometry remains")
+if "treesAndShrubs" in world or "shrineAndWater" in world:
+    raise SystemExit("Legacy procedural RP-like environment remains")
 start=native.index("void updateBots(float dt) {")
 end=native.index("void updateLanes(float dt) {",start)
 ai=native[start:end]
 if "gPlayerX" in ai or "gPlayerZ" in ai or "gLaneProgress" in ai:
-    raise SystemExit("Bot navigation still depends on player or objective score")
+    raise SystemExit("Bot navigation still depends on player or lane score")
 if re.search(r"(fireButton|nativeFire|shootProjectile|weaponDamage)",main+native,re.I):
     raise SystemExit("Disallowed weapon mechanic found in active gameplay path")
 if not avatar.is_file() or avatar.stat().st_size<500_000:
-    raise SystemExit("CC0 humanoid asset missing")
-print("Project Arena 0.6.0 structural verification passed.")
-print("Perspective camera, hero framing, capture-hold AI, rectangular terrain, shield objective effect and persistent signing verified.")
+    raise SystemExit("Quaternius CC0 humanoid GLB missing")
+print("Project Arena 0.7.0 structural verification passed.")
+print("KayKit CC0 models/resources, stone lanes, river, skeletal skinning and visible lane units verified.")
