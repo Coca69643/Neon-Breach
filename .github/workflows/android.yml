@@ -11,7 +11,7 @@ on:
       - 'tools/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main]
+    branches: [main, rebuild/team-objective-moba-v0.1]
     paths:
       - 'app/**'
       - '*.gradle'
