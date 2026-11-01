@@ -11,15 +11,20 @@ struct Bot {
     Vec2 velocity{};
     int team = 0;
     int lane = 1;
+    int slot = 0;
     float disabled = 0.0f;
-    float actionCooldown = 0.0f;
 };
 
 constexpr int kBotCount = 9;
 constexpr std::array<float, 3> kLaneX{{-12.0f, 0.0f, 12.0f}};
 constexpr float kPlayerWalkSpeed = 5.6f;
 constexpr float kPlayerBoostSpeed = 9.2f;
-constexpr float kBotSpeed = 2.7f;
+constexpr float kBotSpeed = 2.55f;
+constexpr float kBotAcceleration = 8.5f;
+constexpr float kBotArrivalSpeedScale = 1.85f;
+constexpr float kBotArrivalSnap = 0.12f;
+constexpr float kLaneFrontLimit = 11.0f;
+constexpr float kBotFormationSpacing = 1.3f;
 
 std::mutex gMutex;
 std::array<Bot, kBotCount> gBots{};
@@ -68,14 +73,16 @@ int laneForX(float x) {
 
 void resetBot(Bot &bot, int index) {
     const bool blue = bot.team == 0;
-    const float homeZ = blue ? -17.5f : 17.5f;
-    const float side = (index % 2 == 0) ? -0.9f : 0.9f;
-    const float formationOffset = index == 3 ? 3.0f : (index == 8 ? -3.0f : 0.0f);
-    bot.position = {kLaneX[static_cast<std::size_t>(bot.lane)] + side,
-                    homeZ + (blue ? side : -side) + (blue ? formationOffset : -formationOffset)};
+    const float homeZ = blue ? -19.0f : 19.0f;
+    bot.slot = (index % 2 == 0) ? -1 : 1;
+    const float lateral = static_cast<float>(bot.slot) * kBotFormationSpacing;
+    const float depth = static_cast<float>((index / 3) % 2) * 1.4f;
+    bot.position = {
+        kLaneX[static_cast<std::size_t>(bot.lane)] + lateral,
+        homeZ + (blue ? depth : -depth)
+    };
     bot.velocity = {0.0f, 0.0f};
     bot.disabled = 0.0f;
-    bot.actionCooldown = 1.0f + static_cast<float>(index % 3);
 }
 
 void resetSimulation() {
@@ -112,12 +119,12 @@ void resetSimulation() {
 }
 
 void disableBot(Bot &bot, int index, int sourceTeam) {
+    (void)index;
     if (bot.disabled > 0.0f) return;
     bot.disabled = 2.4f;
     bot.velocity = {0.0f, 0.0f};
     if (sourceTeam == 0) gBotScoreBlue += 1.0f;
     else gBotScoreRed += 1.0f;
-    bot.actionCooldown = 3.5f + static_cast<float>(index % 2);
 }
 
 void movePlayer(float inputX, float inputZ, float dt) {
@@ -169,87 +176,70 @@ void movePlayer(float inputX, float inputZ, float dt) {
     }
 }
 
-void updateBots(float dt) {
-    for (int i = 0; i < kBotCount; ++i) {
-        Bot &bot = gBots[static_cast<std::size_t>(i)];
-        bot.disabled = std::max(0.0f, bot.disabled - dt);
-        bot.actionCooldown = std::max(0.0f, bot.actionCooldown - dt);
-        if (bot.disabled > 0.0f) continue;
+float laneFrontZ(int lane) {
+    return std::clamp(
+        gLaneProgress[static_cast<std::size_t>(lane)] * kLaneFrontLimit,
+        -kLaneFrontLimit, kLaneFrontLimit);
+}
 
-        const bool blue = bot.team == 0;
-        Vec2 target{kLaneX[static_cast<std::size_t>(bot.lane)], blue ? 22.0f : -22.0f};
-        float bestDistance = 7.0f;
-        int targetBot = -1;
-        bool targetPlayer = false;
-
-        for (int j = 0; j < kBotCount; ++j) {
-            const Bot &other = gBots[static_cast<std::size_t>(j)];
-            if (other.team == bot.team || other.disabled > 0.0f) continue;
-            const float d = distance(bot.position, other.position);
-            if (d < bestDistance) {
-                bestDistance = d;
-                target = other.position;
-                targetBot = j;
-                targetPlayer = false;
-            }
-        }
-
-        if (!blue) {
-            const float playerDistance = distance(bot.position, {gPlayerX, gPlayerZ});
-            if (playerDistance < bestDistance && gPlayerDisrupted <= 0.0f) {
-                bestDistance = playerDistance;
-                target = {gPlayerX, gPlayerZ};
-                targetBot = -1;
-                targetPlayer = true;
-            }
-        }
-
-        Vec2 desired{0.0f, 0.0f};
-        if (bestDistance < 7.0f) {
-            const Vec2 delta{target.x - bot.position.x, target.z - bot.position.z};
-            const float d = std::max(length(delta), 0.001f);
-            desired = {delta.x / d, delta.z / d};
-        } else {
-            const float dx = kLaneX[static_cast<std::size_t>(bot.lane)] - bot.position.x;
-            const float dz = (blue ? 22.0f : -22.0f) - bot.position.z;
-            const float d = std::max(std::sqrt(dx * dx + dz * dz), 0.001f);
-            desired = {dx / d, dz / d};
-        }
-
-        const float blend = std::min(1.0f, dt * 3.0f);
-        bot.velocity.x += (desired.x * kBotSpeed - bot.velocity.x) * blend;
-        bot.velocity.z += (desired.z * kBotSpeed - bot.velocity.z) * blend;
-        bot.position.x += bot.velocity.x * dt;
-        bot.position.z += bot.velocity.z * dt;
-        bot.position.x = std::clamp(bot.position.x, -23.0f, 23.0f);
-        bot.position.z = std::clamp(bot.position.z, -23.0f, 23.0f);
-
-        if (bestDistance < 3.1f && bot.actionCooldown <= 0.0f) {
-            if (targetBot >= 0) {
-                disableBot(gBots[static_cast<std::size_t>(targetBot)], targetBot, bot.team);
-            } else if (targetPlayer && gShieldTime <= 0.0f) {
-                gPlayerDisrupted = 1.15f;
-                gBotScoreRed += 1.0f;
-                gPlayerX = -12.0f;
-                gPlayerZ = -19.0f;
-                gPlayerVx = 0.0f;
-                gPlayerVz = 0.0f;
-            }
-            bot.actionCooldown = 4.2f;
-        }
+void moveBotTo(Bot &bot, Vec2 goal, float dt) {
+    const Vec2 delta{goal.x - bot.position.x, goal.z - bot.position.z};
+    const float distanceToGoal = length(delta);
+    if (distanceToGoal <= kBotArrivalSnap) {
+        bot.position = goal;
+        bot.velocity = {0.0f, 0.0f};
+        return;
     }
 
+    const float brakingSpeed = std::sqrt(
+        2.0f * kBotAcceleration * distanceToGoal);
+    const float desiredSpeed = std::min(
+        kBotSpeed,
+        std::min(brakingSpeed, distanceToGoal * kBotArrivalSpeedScale));
+    const float inverseDistance = 1.0f / std::max(distanceToGoal, 0.001f);
+    const Vec2 desiredVelocity{
+        delta.x * inverseDistance * desiredSpeed,
+        delta.z * inverseDistance * desiredSpeed
+    };
+    const float blend = 1.0f - std::exp(-kBotAcceleration * dt);
+    bot.velocity.x += (desiredVelocity.x - bot.velocity.x) * blend;
+    bot.velocity.z += (desiredVelocity.z - bot.velocity.z) * blend;
+
+    bot.position.x += bot.velocity.x * dt;
+    bot.position.z += bot.velocity.z * dt;
+
+    const Vec2 remaining{goal.x - bot.position.x, goal.z - bot.position.z};
+    if (remaining.x * delta.x + remaining.z * delta.z <= 0.0f) {
+        bot.position = goal;
+        bot.velocity = {0.0f, 0.0f};
+    }
+}
+
+void updateBots(float dt) {
+    // Bots are lane agents, not homing projectiles. Their navigation target is a
+    // stable formation slot on the current lane front, never the player transform
+    // or another moving unit. This prevents target-switching and orbital pursuit.
     for (int i = 0; i < kBotCount; ++i) {
         Bot &bot = gBots[static_cast<std::size_t>(i)];
-        if (bot.disabled <= 0.0f && bot.actionCooldown < 0.0f) {
-            bot.actionCooldown = 0.0f;
+        if (bot.disabled > 0.0f) {
+            bot.disabled = std::max(0.0f, bot.disabled - dt);
+            if (bot.disabled == 0.0f) resetBot(bot, i);
+            continue;
         }
-        if (bot.disabled == 0.0f && length(bot.velocity) < 0.01f) {
-            const float homeZ = bot.team == 0 ? -17.5f : 17.5f;
-            if (std::abs(bot.position.z - homeZ) > 8.0f) {
-                resetBot(bot, i);
-            }
-        }
+
+        const bool blue = bot.team == 0;
+        const float frontline = laneFrontZ(bot.lane);
+        const float slot = static_cast<float>(bot.slot);
+        const float targetX =
+            kLaneX[static_cast<std::size_t>(bot.lane)] + slot * kBotFormationSpacing;
+        const float targetZ = frontline + (blue ? -3.6f : 3.6f) + slot * 0.65f;
+        const Vec2 goal{targetX, targetZ};
+
+        // Tiny deterministic lane-side bias keeps units in their assigned channel.
+        // No unit performs direct pursuit of the player or another unit.
+        moveBotTo(bot, goal, dt);
+        bot.position.x = std::clamp(bot.position.x, -23.5f, 23.5f);
+        bot.position.z = std::clamp(bot.position.z, -23.5f, 23.5f);
     }
 }
 
@@ -281,13 +271,19 @@ void updateLanes(float dt) {
     for (int lane = 0; lane < 3; ++lane) {
         int blueHeroes = 0;
         int redHeroes = 0;
+        const float frontline = laneFrontZ(lane);
         for (const Bot &bot : gBots) {
             if (bot.lane != lane || bot.disabled > 0.0f) continue;
+            // Only units that have actually reached the clash zone contribute
+            // lane pressure. Spawned units waiting at base do not count as presence.
+            if (std::abs(bot.position.z - frontline) > 8.0f) continue;
             if (bot.team == 0) ++blueHeroes;
             else ++redHeroes;
         }
         const float playerSupport =
-            (laneForX(gPlayerX) == lane && gPlayerDisrupted <= 0.0f) ? 0.65f : 0.0f;
+            (laneForX(gPlayerX) == lane &&
+             std::abs(gPlayerZ - frontline) < 7.0f &&
+             gPlayerDisrupted <= 0.0f) ? 0.75f : 0.0f;
         const float creepAdvantage =
             static_cast<float>(gBlueCreeps[static_cast<std::size_t>(lane)]
                              - gRedCreeps[static_cast<std::size_t>(lane)]) * 0.12f;
