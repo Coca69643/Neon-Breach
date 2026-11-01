@@ -134,7 +134,6 @@ void resetSimulation() {
     gPlayerVx = 0.0f;
     gPlayerVz = 0.0f;
     gElapsed = 0.0f;
-    gCreepClashTimer = 0.0f;
     gBoostTime = 0.0f;
     gBoostCooldown = 0.0f;
     gPulseCooldown = 0.0f;
