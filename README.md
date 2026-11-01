@@ -1,35 +1,45 @@
-# Projeto Arena — versão 0.1
+# Projeto Arena 0.2.0
 
-Nova linha de desenvolvimento do repositório. A versão 0.1 é uma fatia vertical mobile-first de uma arena 3D por equipes, com foco em movimentação, cooperação e controle territorial. Não reutiliza o ciclo de tiro, armas, inimigos ou objetivos do ORION-9.
+MOBA 3D para Android, em paisagem, com partidas locais totalmente offline 5v5. Esta versão é uma primeira fatia funcional de uma partida contra bots; não é um cliente online nem um MOBA completo de produção.
 
-## Primeiro marco
+## Partida offline
 
-- Android nativo, paisagem obrigatória.
-- Filament 1.77.3: Vulkan como backend preferencial; OpenGL ES como fallback.
-- Kotlin para ciclo de vida, interface e input tátil.
-- C++20 para simulação cinemática, aceleração, desaceleração, colisões e captura do objetivo.
-- Câmera top-down oblíqua com projeção ortográfica e acompanhamento suave.
-- Terreno contínuo com relevo, trilhas curvas, água, vegetação, rochas e um marco central.
-- Personagem humanoide CC0 da Quaternius, com rig humanoide; animação de locomoção procedural na hierarquia de ossos.
-- Nome e ícone são provisórios. A pesquisa de naming/branding vem depois da validação da primeira versão.
+- 1 jogador + 4 bots aliados contra 5 bots adversários.
+- Três rotas: oeste, centro e leste.
+- Pressão independente por rota, ondas simplificadas de tropas e estruturas defensivas.
+- Bots locais avançam pela rota atribuída, avaliam alvos próximos, interrompem adversários e voltam à formação após ficarem temporariamente fora da disputa.
+- A vitória é definida pela conquista de duas das três rotas.
+- Nenhum servidor, login, matchmaking ou permissão de internet é necessário.
+
+## Heróis e habilidades
+
+- **Lyra — suporte:** pulso de ressonância com alcance ampliado.
+- **Bastion — defesa:** barreira com duração ampliada.
+- **Kairo — mobilidade:** recarga reduzida do pulso.
+- **Impulso:** deslocamento rápido.
+- **Pulso:** interrompe unidades adversárias próximas.
+- **Barreira:** protege temporariamente o jogador.
+
+Habilidades são efeitos fictícios e abstratos de gameplay; não representam armamento real.
 
 ## Arquitetura
 
-`MainActivity.kt` gere o estado da aplicação, os controles e a HUD.
-`FilamentGameRenderer.kt` cria o renderer com Vulkan primeiro e OpenGL ES em recuperação.
-`WorldGlbBuilder.kt` gera a malha ambiental glTF 2.0 em runtime, agrupada por material e com normais suaves.
-`ArenaSimulation.cpp` executa a simulação C++20 e as colisões do personagem.
-
-## Física da versão 0.1
-
-O primeiro corte usa movimento cinemático com aceleração, amortecimento, limite de velocidade, colisores circulares de cenário, limite orgânico de arena, altura de terreno e uma habilidade de mobilidade com cooldown. O objetivo central progride enquanto o personagem permanece dentro da zona de captura. Isso não substitui uma simulação rígida completa; estabelece uma base testável de movimento e colisão.
-
-## Assets e licenças
-
-- Quaternius Universal Base Characters: CC0. Modelo humanoide distribuído em `app/src/main/assets/characters/`; licença arquivada em `ASSETS/`.
-- Terreno, trilhas, água, rochas, árvores, vegetação e santuário da primeira fatia são geometria original gerada em runtime pelo projeto. Poly Haven permanece como fonte planejada para próximos assets e materiais; nada será marcado como importado antes de ser realmente integrado.
-- Filament é distribuído sob Apache License 2.0.
+- Android nativo: lifecycle, UI, controles touch e estados de aplicação em Kotlin.
+- C++20 via NDK/CMake: simulação, bots locais, ondas de tropas, progresso das rotas e habilidades.
+- Filament 1.77.3: renderização 3D, Vulkan preferencial e fallback OpenGL ES.
+- glTF 2.0 runtime: cenário com três rotas, estruturas, terreno contínuo, vegetação e unidades.
+- Paisagem obrigatória e HUD/minimapa adequados à tela mobile.
 
 ## Build
 
-O workflow GitHub Actions executa a verificação estrutural, compila o target C++20 via NDK/CMake e gera o APK debug. O APK precisa ser testado em dispositivos reais para confirmar o caminho Vulkan e o fallback GLES.
+O workflow GitHub Actions faz verificação estrutural, compila arm64-v8a e armeabi-v7a, verifica a existência do APK debug e publica o artefato project-arena-0.2.0-debug. O resultado do CI confirma a compilação, mas não substitui teste no dispositivo.
+
+## Assets e licenças
+
+- Quaternius Universal Base Characters: CC0 1.0; licença arquivada em ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt.
+- Terreno, rotas, árvores, água, estruturas e avatares low-poly da primeira fatia são geometria gerada pelo projeto.
+- Filament é distribuído sob Apache License 2.0.
+
+## Limitações desta versão
+
+A IA, a economia de tropas e a pressão das rotas são simplificadas. Não há loja, progressão persistente de herói, objetivos neutros avançados, campanha ou rede. Compatibilidade gráfica, FPS prolongado e comportamento térmico precisam ser medidos no Realme C53.
