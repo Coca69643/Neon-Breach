@@ -43,6 +43,8 @@ checks=[
 ("val distance = if (overviewCamera) 7.6f else 9.2f" in renderer,"camera distance tuning missing"),
 ("characterScale = 1.92f / height" in renderer and "botScale = 1.0f" in renderer,"character framing scale missing"),
 ("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"minimal menu check failed"),
+("ACTION_UP" in main and "HEROES.size - 1" in main and "setHeroAppearance(selectedHero)" in main,"swipe hero selection missing"),
+("fun setHeroAppearance(hero: Int)" in renderer and "Bastion: warm gold" in renderer,"hero appearance variants missing"),
 ("dp(190)" in main and "dp(116)" in main,"compact HUD/controls missing"),
 ("kBlueRouteZ{{-19.0f, -9.0f, -3.0f, 0.0f, 0.0f}}" in native and "kRedRouteZ{{19.0f, 9.0f, 3.0f, 0.0f, 0.0f}}" in native,"capture hold waypoints missing"),
 ("std::abs(bot.position.z) > 2.8f" in native,"capture zone radius missing"),
