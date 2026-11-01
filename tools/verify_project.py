@@ -32,7 +32,7 @@ checks=[
 ('android:screenOrientation="landscape"' in manifest,"landscape lock missing"),
 ("android.permission.INTERNET" not in manifest,"offline app must not request internet"),
 ('android:icon="@drawable/ic_launcher"' in manifest,"custom launcher icon not referenced"),
-("<vector" in icon and "Visor" in icon and "ORION" not in icon,"custom hero icon missing"),
+("<vector" in icon and "#6C4DFF" in icon and "#8FEAFF" in icon and "ORION" not in icon,"custom hero icon missing"),
 ("kBlueRouteZ" in native and "kRedRouteZ" in native,"fixed lane waypoints missing"),
 ("int routeStep = 0;" in native and "float startDelay = 0.0f;" in native,"per-unit route state/cadence missing"),
 ("routeTargetZ(const Bot &bot)" in native,"fixed route target function missing"),
