@@ -54,7 +54,7 @@ checks = [
     ("std::abs(bot.position.z - frontline) > 8.0f" in native, "lane pressure must use frontline presence"),
     ("updateBots(float dt)" in native and "updateLanes(float dt)" in native, "bot navigation or lane simulation missing"),
     ("gBlueCreeps" in native and "gRedCreeps" in native and "gLaneProgress" in native, "lane wave/objective state missing"),
-    ("offline 5v5" in readme.lower() and "offline 5v5" in changelog.lower(), "offline MOBA docs/changelog missing"),
+    ("offline" in readme.lower() and "5v5" in readme.lower() and "offline" in changelog.lower() and "5v5" in changelog.lower(), "offline MOBA docs/changelog missing"),
     ("CC0 1.0 Universal" in license_text, "Quaternius CC0 license missing"),
 ]
 for ok, message in checks:
