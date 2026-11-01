@@ -8,6 +8,7 @@ import com.google.android.filament.Camera
 import com.google.android.filament.Engine
 import com.google.android.filament.Colors
 import com.google.android.filament.IndirectLight
+import com.google.android.filament.MaterialInstance
 import com.google.android.filament.Skybox
 import com.google.android.filament.View
 import com.google.android.filament.android.UiHelper
@@ -44,6 +45,7 @@ internal class FilamentGameRenderer(
     private var characterProvider: UbershaderProvider? = null
     private var character: FilamentAsset? = null
     private var playerInstance: FilamentInstance? = null
+    private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
     private var characterMinY = 0f
@@ -199,6 +201,8 @@ internal class FilamentGameRenderer(
         playerInstance = characterLoader!!.createInstance(asset)
             ?: throw IllegalStateException("Could not create the player humanoid instance")
         val player = playerInstance!!
+        playerMaterials.clear()
+        playerMaterials.addAll(player.materialInstances)
         viewer.scene.addEntities(player.entities)
 
         val half = asset.boundingBox.getHalfExtent(null)
@@ -342,7 +346,7 @@ internal class FilamentGameRenderer(
             2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f) // Kairo: violet
             else -> floatArrayOf(0.30f, 0.78f, 0.82f, 1.0f) // Lyra: cyan
         }
-        playerInstance?.materialInstances?.forEach { material ->
+        playerMaterials.forEach { material ->
             runCatching {
                 material.setParameter(
                     "baseColorFactor", Colors.RgbaType.SRGB,
@@ -403,6 +407,7 @@ internal class FilamentGameRenderer(
             botInstances.clear()
             playerInstance?.let { viewer.scene.removeEntities(it.entities) }
             playerInstance = null
+            playerMaterials.clear()
             character?.let { asset -> characterLoader?.destroyAsset(asset) }
             character = null
             botBones.clear()
