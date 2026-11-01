@@ -46,6 +46,8 @@ checks=[
 ("dp(190)" in main and "dp(116)" in main,"compact HUD/controls missing"),
 ("kBlueRouteZ{{-19.0f, -9.0f, -3.0f, 0.0f, 0.0f}}" in native and "kRedRouteZ{{19.0f, 9.0f, 3.0f, 0.0f, 0.0f}}" in native,"capture hold waypoints missing"),
 ("std::abs(bot.position.z) > 2.8f" in native,"capture zone radius missing"),
+("gPlayerX = std::clamp(gPlayerX, -29.0f, 29.0f);" in native and "gPlayerZ = std::clamp(gPlayerZ, -29.0f, 29.0f);" in native,"player movement still has circular boundary"),
+("std::exp(-16.0f * dt)" in native,"responsive player acceleration missing"),
 ("gShieldTime > 0.0f ? 1.85f : 1.15f" in native,"shield objective bonus missing"),
 ("radiusSq" not in world and "playable field broad and rectangular" in world,"circular arena clipping remains"),
 ("westRidge" in world and "westRidge" in native,"terrain height mismatch"),
