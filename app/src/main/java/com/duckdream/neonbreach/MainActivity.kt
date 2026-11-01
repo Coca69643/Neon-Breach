@@ -12,6 +12,7 @@ import android.content.Context
 import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
+import android.util.Log
 import android.os.Looper
 import android.media.AudioManager
 import android.media.ToneGenerator
@@ -69,6 +70,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        Log.i("ORION9Startup", "Activity.onCreate: entered")
         hapticsEnabled = prefs.getBoolean("haptics", true)
         selectedOperative = prefs.getInt("operative", 0).coerceIn(0, 1)
         soundEnabled = prefs.getBoolean("sound_enabled", true)
@@ -82,14 +84,18 @@ class MainActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
         )
+        Log.i("ORION9Startup", "Activity.onCreate: constructing GameSurface")
         root = FrameLayout(this)
         gameView = GameSurface(this)
+        Log.i("ORION9Startup", "Activity.onCreate: GameSurface constructed")
         root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
+        Log.i("ORION9Startup", "Activity.onCreate: content view attached")
         gameView.setOperative(selectedOperative)
         gameView.setTouchSensitivity(touchSensitivity)
         gameView.setGameSoundEnabled(soundEnabled)
         showMainMenu(false)
+        Log.i("ORION9Startup", "Activity.onCreate: main menu attached")
         uiHandler.postDelayed(pollState, 180L)
     }
 
@@ -236,7 +242,7 @@ class MainActivity : Activity() {
         addVertical(left, continueBtn, 6, dp(181), dp(33))
         addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 6, dp(181), dp(33))
         addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 6, dp(181), dp(33))
-        addVertical(left, text("SITE ORION-9  •  0.9.4", 9f, muted, true), 10)
+        addVertical(left, text("SITE ORION-9  •  0.9.5", 9f, muted, true), 10)
         layer.addView(left, FrameLayout.LayoutParams(dp(225), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
             marginStart = dp(28)
         })
@@ -808,10 +814,14 @@ class MainActivity : Activity() {
         private var aimPointerId = INVALID_POINTER
 
         init {
+            Log.i("ORION9Startup", "GameSurface.init: begin")
             setEGLContextClientVersion(3)
+            Log.i("ORION9Startup", "GameSurface.init: GLES 3 requested")
             renderer.setAssetManager(context.assets)
+            Log.i("ORION9Startup", "GameSurface.init: Android assets passed to JNI")
             preserveEGLContextOnPause = false
             setRenderer(renderer)
+            Log.i("ORION9Startup", "GameSurface.init: GLSurfaceView renderer attached")
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
             isFocusable = true
             isFocusableInTouchMode = true
@@ -911,19 +921,39 @@ class MainActivity : Activity() {
 }
 
 private class NativeRenderer : GLSurfaceView.Renderer {
-        fun setAssetManager(manager: android.content.res.AssetManager) = nativeSetAssetManager(manager)
+        private var firstFrame = true
+        fun setAssetManager(manager: android.content.res.AssetManager) {
+            Log.i("ORION9Startup", "NativeRenderer: passing AssetManager to native code")
+            nativeSetAssetManager(manager)
+            Log.i("ORION9Startup", "NativeRenderer: AssetManager JNI call returned")
+        }
         override fun onSurfaceCreated(
             gl: javax.microedition.khronos.opengles.GL10?,
             config: javax.microedition.khronos.egl.EGLConfig?
-        ) = nativeSurfaceCreated()
+        ) {
+            Log.i("ORION9Startup", "GL callback: onSurfaceCreated entered")
+            nativeSurfaceCreated()
+            Log.i("ORION9Startup", "GL callback: onSurfaceCreated returned")
+        }
 
         override fun onSurfaceChanged(
             gl: javax.microedition.khronos.opengles.GL10?,
             width: Int,
             height: Int
-        ) = nativeSurfaceChanged(width, height)
+        ) {
+            Log.i("ORION9Startup", "GL callback: onSurfaceChanged ${width}x${height}")
+            nativeSurfaceChanged(width, height)
+            Log.i("ORION9Startup", "GL callback: onSurfaceChanged returned")
+        }
 
-        override fun onDrawFrame(gl: javax.microedition.khronos.opengles.GL10?) = nativeDrawFrame()
+        override fun onDrawFrame(gl: javax.microedition.khronos.opengles.GL10?) {
+            if (firstFrame) Log.i("ORION9Startup", "GL callback: first onDrawFrame entered")
+            nativeDrawFrame()
+            if (firstFrame) {
+                firstFrame = false
+                Log.i("ORION9Startup", "GL callback: first onDrawFrame returned")
+            }
+        }
 
         fun setGameModeOnGlThread(mode: Int) = nativeSetMode(mode)
         fun startNewMissionOnGlThread() = nativeStartNewMission()
