@@ -33,6 +33,16 @@
 - Workflow de PR continua compilando para validação, mas não publica APK instalável; apenas workflow_dispatch usa a chave persistente e publica o APK de atualização.
 - O Android exige applicationId igual, certificado de assinatura compatível e versionCode não inferior para instalar por cima. Como as versões anteriores de PR usaram chaves temporárias do runner, pode ser necessária uma única desinstalação antes de adotar a primeira build assinada de forma persistente. Depois disso, a mesma chave será reutilizada em futuras atualizações.
 
+### Build 0.6.0 verificado
+- GitHub Actions run #177 (41339726525): sucesso em todas as etapas.
+- Chave persistente NEON_BREACH_* carregada no workflow de push.
+- APK gerado, applicationId/versionCode/versionName validados por aapt e assinatura validada por apksigner.
+- Artefato publicado: project-arena-0.6.0-update.
+- APK: 16.602.823 bytes.
+- SHA-256: 3e2fbd192569af35796c4589e6c558cf1cf17a7866de247f3463955167740bd2.
+- DEX e bibliotecas nativas arm64-v8a e armeabi-v7a presentes.
+- Execução: https://github.com/Coca69643/Neon-Breach/actions/runs/41339726525.
+
 ### Validação pendente
 - A compilação CI não confirma qualidade visual nem jogabilidade em aparelho real.
 - Câmera, movimento, ocupação dos objetivos, bots visíveis, FPS e temperatura ainda precisam de teste no Realme C53.
