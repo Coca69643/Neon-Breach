@@ -16,6 +16,8 @@ struct Bot {
     float disabled = 0.0f;
     float startDelay = 0.0f;
     float speedScale = 1.0f;
+    float health = 100.0f;
+    float attackCooldown = 0.0f;
 };
 
 struct LaneUnit {
@@ -63,6 +65,8 @@ float gLastMoveZ = 1.0f;
 float gDashX = 0.0f;
 float gDashZ = 1.0f;
 float gPlayerDisrupted = 0.0f;
+float gPlayerHealth = 100.0f;
+float gPlayerAttackCooldown = 0.25f;
 float gBotScoreBlue = 0.0f;
 float gBotScoreRed = 0.0f;
 int gSelectedHero = 0;
@@ -106,6 +110,8 @@ void resetBot(Bot &bot, int index) {
     bot.velocity = {0.0f, 0.0f};
     bot.routeStep = 0;
     bot.disabled = 0.0f;
+    bot.health = 100.0f;
+    bot.attackCooldown = 0.35f + 0.11f * static_cast<float>(index % 4);
     bot.startDelay = 0.12f * static_cast<float>(index % 5);
     bot.speedScale = 0.84f + 0.055f * static_cast<float>(index % 5);
 }
@@ -152,6 +158,8 @@ void resetSimulation() {
     gDashX = 0.0f;
     gDashZ = 1.0f;
     gPlayerDisrupted = 0.0f;
+    gPlayerHealth = 100.0f;
+    gPlayerAttackCooldown = 0.25f;
     gBotScoreBlue = 0.0f;
     gBotScoreRed = 0.0f;
     gWinner = 0;
@@ -173,7 +181,8 @@ void resetSimulation() {
 void disableBot(Bot &bot, int index, int sourceTeam) {
     (void)index;
     if (bot.disabled > 0.0f) return;
-    bot.disabled = 2.4f;
+    bot.health = 0.0f;
+    bot.disabled = 3.2f;
     bot.velocity = {0.0f, 0.0f};
     if (sourceTeam == 0) gBotScoreBlue += 1.0f;
     else gBotScoreRed += 1.0f;
@@ -273,8 +282,6 @@ float routeTargetZ(const Bot &bot) {
 }
 
 void updateBots(float dt) {
-    // Each unit advances along a fixed lane route with its own delay and speed.
-    // Its path never reads the player transform or the lane-score value.
     for (int i = 0; i < kBotCount; ++i) {
         Bot &bot = gBots[static_cast<std::size_t>(i)];
         if (bot.disabled > 0.0f) {
@@ -282,23 +289,74 @@ void updateBots(float dt) {
             if (bot.disabled == 0.0f) resetBot(bot, i);
             continue;
         }
+        bot.attackCooldown = std::max(0.0f, bot.attackCooldown - dt);
         if (bot.startDelay > 0.0f) {
             bot.startDelay = std::max(0.0f, bot.startDelay - dt);
             continue;
         }
-        const float teamOffset = bot.team == 0 ? -0.72f : 0.72f;
-        const float targetX = kLaneX[static_cast<std::size_t>(bot.lane)]
-                            + static_cast<float>(bot.slot) * kBotFormationSpacing + teamOffset;
-        const Vec2 goal{targetX, routeTargetZ(bot)};
-        moveBotTo(bot, goal, dt);
-        if (distance(bot.position, goal) <= kBotArrivalSnap && bot.routeStep < 4) {
-            ++bot.routeStep;
+        int target = -1;
+        float nearest = 5.8f;
+        for (int j = 0; j < kBotCount; ++j) {
+            Bot &candidate = gBots[static_cast<std::size_t>(j)];
+            if (candidate.team == bot.team || candidate.disabled > 0.0f) continue;
+            const float d = distance(bot.position, candidate.position);
+            if (d < nearest) { nearest = d; target = j; }
+        }
+        const float playerDistance = bot.team == 1
+            ? distance(bot.position, {gPlayerX, gPlayerZ}) : 1000.0f;
+        if (playerDistance < 5.2f && playerDistance <= nearest) {
+            const Vec2 delta{gPlayerX - bot.position.x, gPlayerZ - bot.position.z};
+            const float d = std::max(length(delta), 0.001f);
+            if (playerDistance > 2.35f)
+                moveBotTo(bot, {gPlayerX - delta.x / d * 1.9f, gPlayerZ - delta.z / d * 1.9f}, dt);
+            else if (bot.attackCooldown <= 0.0f) {
+                gPlayerHealth = std::max(0.0f, gPlayerHealth - (gShieldTime > 0.0f ? 4.0f : 11.0f));
+                bot.attackCooldown = 1.0f;
+            }
+        } else if (target >= 0 && nearest < 5.8f) {
+            Bot &enemy = gBots[static_cast<std::size_t>(target)];
+            if (nearest > 2.35f) {
+                const Vec2 delta{enemy.position.x - bot.position.x, enemy.position.z - bot.position.z};
+                const float d = std::max(length(delta), 0.001f);
+                moveBotTo(bot, {enemy.position.x - delta.x / d * 1.65f, enemy.position.z - delta.z / d * 1.65f}, dt);
+            } else if (bot.attackCooldown <= 0.0f) {
+                enemy.health = std::max(0.0f, enemy.health - 12.0f);
+                if (enemy.health <= 0.0f) disableBot(enemy, target, bot.team);
+                bot.attackCooldown = 0.92f;
+            }
+        } else {
+            const float teamOffset = bot.team == 0 ? -0.72f : 0.72f;
+            const float targetX = kLaneX[static_cast<std::size_t>(bot.lane)]
+                                + static_cast<float>(bot.slot) * kBotFormationSpacing + teamOffset;
+            const Vec2 goal{targetX, routeTargetZ(bot)};
+            moveBotTo(bot, goal, dt);
+            if (distance(bot.position, goal) <= kBotArrivalSnap && bot.routeStep < 4) ++bot.routeStep;
         }
         bot.position.x = std::clamp(bot.position.x, -28.5f, 28.5f);
         bot.position.z = std::clamp(bot.position.z, -28.5f, 28.5f);
     }
+    gPlayerAttackCooldown = std::max(0.0f, gPlayerAttackCooldown - dt);
+    int target = -1;
+    float nearest = 4.8f;
+    for (int i = 0; i < kBotCount; ++i) {
+        Bot &bot = gBots[static_cast<std::size_t>(i)];
+        if (bot.team != 1 || bot.disabled > 0.0f) continue;
+        const float d = distance({gPlayerX, gPlayerZ}, bot.position);
+        if (d < nearest) { nearest = d; target = i; }
+    }
+    if (target >= 0 && gPlayerAttackCooldown <= 0.0f) {
+        Bot &enemy = gBots[static_cast<std::size_t>(target)];
+        enemy.health = std::max(0.0f, enemy.health - 22.0f);
+        if (enemy.health <= 0.0f) disableBot(enemy, target, 0);
+        gPlayerAttackCooldown = 0.72f;
+    }
+    if (gPlayerHealth <= 0.0f) {
+        gPlayerHealth = 100.0f;
+        gPlayerX = -12.0f; gPlayerZ = -19.0f;
+        gPlayerVx = gPlayerVz = 0.0f;
+        gPlayerDisrupted = 1.0f;
+    }
 }
-
 void updateLaneUnits(float dt) {
     gBlueCreeps = {{0, 0, 0}};
     gRedCreeps = {{0, 0, 0}};
@@ -445,20 +503,20 @@ Java_com_duckdream_neonbreach_MainActivity_nativeCastPulse(JNIEnv *, jobject) {
     std::scoped_lock lock(gMutex);
     if (!gInitialized) resetSimulation();
     if (gPulseCooldown > 0.0f || gPlayerDisrupted > 0.0f) return JNI_FALSE;
-    const float radius = gSelectedHero == 1 ? 8.0f : 6.5f;
+    const float radius = gSelectedHero == 1 ? 7.0f : 5.8f;
     int affected = 0;
     for (int i = 0; i < kBotCount; ++i) {
         Bot &bot = gBots[static_cast<std::size_t>(i)];
         if (bot.team != 1 || bot.disabled > 0.0f) continue;
         if (distance(bot.position, {gPlayerX, gPlayerZ}) <= radius) {
-            disableBot(bot, i, 0);
+            bot.health = std::max(0.0f, bot.health - 38.0f);
+            bot.attackCooldown = std::max(bot.attackCooldown, 1.25f);
+            if (bot.health <= 0.0f) disableBot(bot, i, 0);
             ++affected;
         }
     }
-    if (affected == 0 && std::abs(gPlayerZ) < 4.0f) {
-        gPulseCaptureTime = 2.4f;
-    }
-    gPulseVisualTime = 0.68f;
+    if (affected == 0) return JNI_FALSE;
+    gPulseVisualTime = 0.82f;
     gPulseCooldown = gSelectedHero == 2 ? 7.0f : 9.0f;
     return JNI_TRUE;
 }
@@ -513,6 +571,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
     values[60] = gShieldCooldown;
     values[61] = gPulseVisualTime;
     values[62] = gBoostTime;
+    values[72 - 1] = gPlayerHealth;
     for (int i = 0; i < kBotCount; ++i) {
         values[static_cast<std::size_t>(63 + i)] = gBots[static_cast<std::size_t>(i)].disabled;
     }
