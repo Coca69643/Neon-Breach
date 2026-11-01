@@ -1,33 +1,36 @@
 # Changelog — Projeto Arena
 
-Todas as mudanças relevantes desta linha de desenvolvimento são registradas aqui.
+## [0.2.0] — 2026-11-01
 
-## [0.1.0] — 2026-11-01
+### Mudança de direção
+- A linha evolui de uma arena individual de captura para um MOBA 3D com partidas locais **offline 5v5**.
+- A arquitetura de partida não depende de conta, login, matchmaking, servidor ou conexão com a internet.
+- A identidade visual e os nomes de heróis são originais/provisórios; Deadlock é referência de estrutura de gênero, não de conteúdo copiado.
 
 ### Adicionado
-- Nova base Android nativa em orientação landscape.
-- Renderer Filament 1.77.3 com tentativa de backend Vulkan e fallback para OpenGL ES.
-- Simulação nativa C++20 separada da renderização.
-- Movimento com aceleração, desaceleração, impulso de mobilidade e colisão com obstáculos.
-- Câmera top-down ortográfica com acompanhamento suave.
-- Mundo glTF gerado no runtime com terreno contínuo, caminhos curvos, riacho, vegetação, rochas e marco central.
-- Personagem humanoide rigged da Quaternius Universal Base Characters, distribuído sob CC0 1.0, com licença guardada em `ASSETS/`.
-- Animação procedural de locomoção aplicada à hierarquia de ossos do personagem.
-- Controles mobile: joystick virtual, impulso, HUD de captura, pausa e resultado.
-- Estados distintos para inicialização, renderer, menu, partida, pausa, resultado e recuperação.
+- Partida local 5v5: jogador + quatro bots aliados contra cinco bots adversários.
+- Três rotas jogáveis (oeste, centro e leste), cada uma com pressão e condição de conquista independentes.
+- IA local para bots: avanço por rota, seleção de alvos próximos, interrupção de oponentes e retorno à formação após desativação.
+- Ondas simplificadas de tropas locais que afetam a pressão de cada rota.
+- Três arquétipos selecionáveis: Lyra (suporte), Bastion (defesa) e Kairo (mobilidade).
+- Habilidades estilizadas sem armas: impulso de mobilidade, pulso de ressonância em área e barreira defensiva.
+- HUD de partida com cronômetro, placar, progresso das rotas e minimapa tático.
+- Nove unidades visuais adicionais integradas ao cenário glTF para representar os bots.
+- Estruturas defensivas distribuídas pelas três rotas.
 
-### Alterado
-- A direção do projeto deixa de ser o shooter ORION-9 e passa a ser uma arena de controle territorial por equipes, sem armas.
-- O código antigo de simulação e renderização OpenGL/C++17 deixou de fazer parte do caminho de build desta branch.
-- Toolchain atualizada para Android Gradle Plugin 9.5.0, Gradle 9.6.0 e Android compileSdk 37 para atender aos requisitos do Filament 1.77.3.
+### Base técnica
+- Android nativo, paisagem obrigatória, renderização Filament 1.77.3 com Vulkan e fallback OpenGL ES.
+- Simulação de partida em C++20; interface, ciclo de vida e controles em Kotlin.
+- Compilador Kotlin externo 2.4.10 configurado para alinhar o build às bibliotecas Filament, com Kotlin integrado do AGP 9 desativado nesta linha.
+- Gradle 9.6.0, Android Gradle Plugin 9.5.0 e compileSdk 37.
+- CI exige verificação estrutural, compilação, existência do APK e upload do artefato.
 
-### Limitações conhecidas da 0.1.0
-- É uma fatia vertical individual de exploração e captura territorial, não uma partida MOBA completa.
-- Ainda não há partidas 5v5, bots, rede online, seleção de heróis, rotas com tropas ou progressão de personagens.
-- O caminho Vulkan e o fallback GLES precisam ser exercitados em aparelhos reais; a compilação não comprova compatibilidade de cada GPU.
-- A resposta térmica, consumo de memória e desempenho prolongado ainda precisam ser medidos em dispositivos de entrada.
-- Nome e ícone são provisórios; a pesquisa de identidade será feita após a validação visual da primeira versão.
+### Limitações conhecidas
+- Esta é a primeira fatia funcional da partida offline, não um MOBA de produção: IA, tropas, economia e pressão de rotas são simplificadas.
+- Ainda não há seleção extensa de heróis, loja, árvore de progressão, objetivos neutros avançados, campanha ou rede.
+- Os avatares dos bots são representações low-poly próprias; não reutilizam o rig completo do personagem principal.
+- Vulkan/GLES, estabilidade, memória, temperatura e FPS prolongado ainda precisam ser testados no Realme C53. Build de CI não equivale a teste físico no aparelho.
 
-### Verificação
-- A verificação estrutural do projeto passou no workflow inicial.
-- A primeira compilação foi bloqueada porque Filament 1.77.3 exige compileSdk 37 e a base estava em compileSdk 35. A toolchain foi atualizada para corrigir isso; o resultado do novo build será registrado quando terminar.
+### Verificação da entrega
+- O APK só será considerado publicado quando o workflow terminar com sucesso, verificar o arquivo app-debug.apk e enviar o artefato project-arena-0.2.0-debug.
+- Resultado do workflow e artefato: pendentes até a conclusão do build 0.2.0.
