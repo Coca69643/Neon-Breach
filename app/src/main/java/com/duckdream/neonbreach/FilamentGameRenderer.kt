@@ -13,6 +13,7 @@ import com.google.android.filament.Skybox
 import com.google.android.filament.View
 import com.google.android.filament.android.UiHelper
 import com.google.android.filament.gltfio.AssetLoader
+import com.google.android.filament.gltfio.Animator
 import com.google.android.filament.gltfio.FilamentAsset
 import com.google.android.filament.gltfio.ResourceLoader
 import com.google.android.filament.gltfio.UbershaderProvider
@@ -45,6 +46,8 @@ internal class FilamentGameRenderer(
     private var characterProvider: UbershaderProvider? = null
     private var character: FilamentAsset? = null
     private var playerInstance: FilamentInstance? = null
+    private var playerAnimator: Animator? = null
+    private val botAnimators = ArrayList<Animator>(9)
     private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
@@ -52,7 +55,11 @@ internal class FilamentGameRenderer(
 
     private data class BonePose(val instance: Int, val base: FloatArray)
     private val bones = LinkedHashMap<String, BonePose>()
-    private val boneNames = listOf("thigh_l", "thigh_r", "calf_l", "calf_r", "upperarm_l", "upperarm_r")
+    private val boneNames = listOf(
+        "thigh_l", "thigh_r", "calf_l", "calf_r",
+        "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r",
+        "spine_01", "spine_02", "neck_01"
+    )
 
     private var cameraAspect = 16f / 9f
     private var cameraX = -12f
@@ -167,6 +174,7 @@ internal class FilamentGameRenderer(
             val instance = characterLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance bot humanoid $index")
             botInstances.add(instance)
+            botAnimators.add(instance.animator)
             viewer.scene.addEntities(instance.entities)
             val rootInstance = transforms.getInstance(instance.root)
             require(rootInstance != 0) { "Bot humanoid root transform is missing: $index" }
@@ -182,6 +190,8 @@ internal class FilamentGameRenderer(
                 }
             }
             botBones.add(rig)
+            applyRestPose(rig)
+            instance.animator.updateBoneMatrices()
             val tint = if (index < 4) {
                 floatArrayOf(0.34f, 0.82f, 0.78f, 1f)
             } else {
@@ -201,6 +211,7 @@ internal class FilamentGameRenderer(
         playerInstance = characterLoader!!.createInstance(asset)
             ?: throw IllegalStateException("Could not create the player humanoid instance")
         val player = playerInstance!!
+        playerAnimator = player.animator
         playerMaterials.clear()
         player.materialInstances.forEach { playerMaterials.add(it) }
         viewer.scene.addEntities(player.entities)
@@ -221,8 +232,10 @@ internal class FilamentGameRenderer(
                 if (instance != 0) bones[name] = BonePose(instance, transforms.getTransform(instance, null))
             }
         }
+        applyRestPose(bones)
+        playerAnimator?.updateBoneMatrices()
         asset.releaseSourceData()
-        Log.i(TAG, "CC0 humanoid loaded: " + asset.entities.size + " entities, " + bones.size + " animated joints")
+        Log.i(TAG, "CC0 humanoid loaded: " + asset.entities.size + " entities, " + bones.size + " animated joints; skeletal skinning enabled")
     }
 
     fun render(frameTimeNanos: Long): Boolean = viewer.render(frameTimeNanos)
@@ -258,13 +271,20 @@ internal class FilamentGameRenderer(
         engine.transformManager.setTransform(characterRootInstance, matrix)
 
         val moving = (speed / 5.6f).coerceIn(0f, 1f)
-        phase += deltaTime * (7.5f + speed * 1.4f)
-        animateBone("thigh_l", sin(phase) * 0.52f * moving)
-        animateBone("thigh_r", -sin(phase) * 0.52f * moving)
-        animateBone("calf_l", max(0f, -sin(phase)) * 0.48f * moving)
-        animateBone("calf_r", max(0f, sin(phase)) * 0.48f * moving)
-        animateBone("upperarm_l", -sin(phase) * 0.28f * moving)
-        animateBone("upperarm_r", sin(phase) * 0.28f * moving)
+        phase += deltaTime * (7.0f + speed * 1.45f)
+        val stride = sin(phase) * moving
+        // A relaxed, lowered shoulder pose replaces the source model's T-pose.
+        animateBone("upperarm_l", -0.92f - stride * 0.30f)
+        animateBone("upperarm_r", 0.92f + stride * 0.30f)
+        animateBone("lowerarm_l", 0.50f + max(0f, stride) * 0.16f)
+        animateBone("lowerarm_r", 0.50f + max(0f, -stride) * 0.16f)
+        animateBone("thigh_l", stride * 0.62f)
+        animateBone("thigh_r", -stride * 0.62f)
+        animateBone("calf_l", max(0f, -stride) * 0.52f)
+        animateBone("calf_r", max(0f, stride) * 0.52f)
+        animateBone("spine_01", sin(phase * 2f) * 0.025f * moving)
+        animateBone("spine_02", -sin(phase * 2f) * 0.018f * moving)
+        playerAnimator?.updateBoneMatrices()
 
         updateCamera(cameraAspect)
     }
@@ -298,12 +318,17 @@ internal class FilamentGameRenderer(
             transforms.setTransform(rootInstance, matrix)
 
             val rig = botBones.getOrNull(index).orEmpty()
-            animatePose(rig["thigh_l"], sin(botAnimationPhase + index) * 0.48f * moving)
-            animatePose(rig["thigh_r"], -sin(botAnimationPhase + index) * 0.48f * moving)
-            animatePose(rig["calf_l"], max(0f, -sin(botAnimationPhase + index)) * 0.40f * moving)
-            animatePose(rig["calf_r"], max(0f, sin(botAnimationPhase + index)) * 0.40f * moving)
-            animatePose(rig["upperarm_l"], -sin(botAnimationPhase + index) * 0.25f * moving)
-            animatePose(rig["upperarm_r"], sin(botAnimationPhase + index) * 0.25f * moving)
+            val stride = sin(botAnimationPhase * (0.92f + index * 0.015f) + index * 0.41f) * moving
+            animatePose(rig["upperarm_l"], -0.92f - stride * 0.28f)
+            animatePose(rig["upperarm_r"], 0.92f + stride * 0.28f)
+            animatePose(rig["lowerarm_l"], 0.50f + max(0f, stride) * 0.14f)
+            animatePose(rig["lowerarm_r"], 0.50f + max(0f, -stride) * 0.14f)
+            animatePose(rig["thigh_l"], stride * 0.60f)
+            animatePose(rig["thigh_r"], -stride * 0.60f)
+            animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
+            animatePose(rig["calf_r"], max(0f, stride) * 0.45f)
+            animatePose(rig["spine_01"], sin(botAnimationPhase * 2f + index) * 0.02f * moving)
+            botAnimators.getOrNull(index)?.updateBoneMatrices()
             previous[0] = x
             previous[1] = z
         }
@@ -313,6 +338,17 @@ internal class FilamentGameRenderer(
         val hill = 0.48f * kotlin.math.exp(-((x - 10f) * (x - 10f) + (z - 8f) * (z - 8f)) / 95f)
         return 0.40f * sin(x * 0.18f) * cos(z * 0.14f) +
             0.20f * sin((x + z) * 0.29f) + hill
+    }
+
+    private fun applyRestPose(rig: Map<String, BonePose>) {
+        // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
+        animatePose(rig["upperarm_l"], -0.92f)
+        animatePose(rig["upperarm_r"], 0.92f)
+        animatePose(rig["lowerarm_l"], 0.50f)
+        animatePose(rig["lowerarm_r"], 0.50f)
+        animatePose(rig["spine_01"], 0.015f)
+        animatePose(rig["spine_02"], -0.012f)
+        animatePose(rig["neck_01"], 0f)
     }
 
     private fun animateBone(name: String, angle: Float) {
@@ -407,7 +443,9 @@ internal class FilamentGameRenderer(
             botInstances.clear()
             playerInstance?.let { viewer.scene.removeEntities(it.entities) }
             playerInstance = null
+            playerAnimator = null
             playerMaterials.clear()
+            botAnimators.clear()
             character?.let { asset -> characterLoader?.destroyAsset(asset) }
             character = null
             botBones.clear()
