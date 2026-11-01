@@ -3,42 +3,45 @@ plugins {
     id 'org.jetbrains.kotlin.android'
 }
 
-def stableSigningPath = System.getenv('NEON_BREACH_KEYSTORE_PATH')
-
 android {
-    signingConfigs {
-        stableDebug {
-            if (stableSigningPath != null && !stableSigningPath.isBlank()) {
-                storeFile file(stableSigningPath)
-                storePassword System.getenv('NEON_BREACH_KEYSTORE_PASSWORD')
-                keyAlias System.getenv('NEON_BREACH_KEY_ALIAS')
-                keyPassword System.getenv('NEON_BREACH_KEY_PASSWORD')
-            }
-        }
-    }
-
     namespace 'com.duckdream.neonbreach'
     compileSdk 35
+
     defaultConfig {
         applicationId 'com.duckdream.neonbreach'
-        minSdk 23
+        minSdk 26
         targetSdk 35
-        versionCode 28
-        versionName '0.9.4'
-        externalNativeBuild { cmake { cppFlags '-std=c++17 -Wall -Wextra' } }
+        versionCode 31
+        versionName '0.1.0'
         ndk { abiFilters 'arm64-v8a', 'armeabi-v7a' }
-    }
-    buildTypes {
-        debug {
-            // If the private GitHub Actions secrets are configured, reuse the same signing
-            // key between CI runs so Android can install updates over the previous version.
-            if (stableSigningPath != null && !stableSigningPath.isBlank()) {
-                signingConfig signingConfigs.stableDebug
-            }
+        externalNativeBuild {
+            cmake { cppFlags '-std=c++20 -Wall -Wextra -Werror' }
         }
-        release { minifyEnabled false }
     }
-    externalNativeBuild { cmake { path 'src/main/cpp/CMakeLists.txt'; version '3.22.1' } }
-    compileOptions { sourceCompatibility JavaVersion.VERSION_17; targetCompatibility JavaVersion.VERSION_17 }
+
+    externalNativeBuild {
+        cmake {
+            path 'src/main/cpp/CMakeLists.txt'
+            version '3.22.1'
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
     kotlinOptions { jvmTarget = '17' }
+
+    packaging {
+        jniLibs { useLegacyPackaging = false }
+        resources {
+            excludes += ['META-INF/AL2.0', 'META-INF/LGPL2.1']
+        }
+    }
+}
+
+dependencies {
+    implementation 'com.google.android.filament:filament-android:1.77.3'
+    implementation 'com.google.android.filament:gltfio-android:1.77.3'
+    implementation 'com.google.android.filament:filament-utils-android:1.77.3'
 }
