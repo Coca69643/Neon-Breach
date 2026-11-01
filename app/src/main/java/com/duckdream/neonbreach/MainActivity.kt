@@ -56,7 +56,7 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(72)
+    private var lastSnapshot = FloatArray(73)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -74,7 +74,7 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 72) {
+                if (result.size >= 73) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
@@ -273,7 +273,7 @@ class MainActivity : Activity() {
         nativeReset()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(60)
+        lastSnapshot = FloatArray(73)
         transition(AppState.RUNNING)
         showHud()
     }
