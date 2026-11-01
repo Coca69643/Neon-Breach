@@ -51,7 +51,7 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(34)
+    private var lastSnapshot = FloatArray(36)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -69,9 +69,9 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 34) {
+                if (result.size >= 36) {
                     lastSnapshot = result
-                    renderer.update(result[0], result[1], result[2], result[3], dt)
+                    renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
                     tacticalMap.setSnapshot(result)
 
@@ -236,7 +236,7 @@ class MainActivity : Activity() {
         nativeReset()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(34)
+        lastSnapshot = FloatArray(36)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -476,7 +476,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-    private var snapshot = FloatArray(34)
+    private var snapshot = FloatArray(36)
 
     fun setSnapshot(values: FloatArray) {
         snapshot = values.copyOf()
