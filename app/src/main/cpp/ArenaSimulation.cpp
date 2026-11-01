@@ -18,7 +18,17 @@ struct Bot {
     float speedScale = 1.0f;
 };
 
+struct LaneUnit {
+    Vec2 position{};
+    Vec2 velocity{};
+    int team = 0;
+    int lane = 0;
+    int slot = 0;
+    float startDelay = 0.0f;
+};
+
 constexpr int kBotCount = 9;
+constexpr int kLaneUnitCount = 12;
 constexpr std::array<float, 3> kLaneX{{-12.0f, 0.0f, 12.0f}};
 constexpr float kPlayerWalkSpeed = 5.6f;
 constexpr float kPlayerBoostSpeed = 9.2f;
@@ -32,16 +42,16 @@ constexpr float kBotFormationSpacing = 1.3f;
 
 std::mutex gMutex;
 std::array<Bot, kBotCount> gBots{};
+std::array<LaneUnit, kLaneUnitCount> gLaneUnits{};
 std::array<float, 3> gLaneProgress{{0.0f, 0.0f, 0.0f}};
-std::array<int, 3> gBlueCreeps{{4, 4, 4}};
-std::array<int, 3> gRedCreeps{{4, 4, 4}};
+std::array<int, 3> gBlueCreeps{{0, 0, 0}};
+std::array<int, 3> gRedCreeps{{0, 0, 0}};
 float gPlayerX = -12.0f;
 float gPlayerZ = -19.0f;
 float gPlayerVx = 0.0f;
 float gPlayerVz = 0.0f;
 float gElapsed = 0.0f;
 float gWaveTimer = 0.0f;
-float gCreepClashTimer = 0.0f;
 float gBoostTime = 0.0f;
 float gBoostCooldown = 0.0f;
 float gPulseCooldown = 0.0f;
@@ -95,10 +105,31 @@ void resetBot(Bot &bot, int index) {
     bot.speedScale = 0.84f + 0.055f * static_cast<float>(index % 5);
 }
 
+void resetLaneUnits() {
+    for (int i = 0; i < kLaneUnitCount; ++i) {
+        LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(i)];
+        unit.team = i < 6 ? 0 : 1;
+        const int local = i % 6;
+        unit.lane = local % 3;
+        unit.slot = local / 3;
+        const float side = unit.slot == 0 ? -0.75f : 0.75f;
+        const float teamOffset = unit.team == 0 ? -0.48f : 0.48f;
+        const float spawnZ = unit.team == 0 ? -23.5f - unit.slot * 1.2f
+                                            : 23.5f + unit.slot * 1.2f;
+        unit.position = {
+            kLaneX[static_cast<std::size_t>(unit.lane)] + side + teamOffset,
+            spawnZ
+        };
+        unit.velocity = {0.0f, 0.0f};
+        unit.startDelay = 0.18f * static_cast<float>((i * 7) % 6);
+    }
+}
+
 void resetSimulation() {
     gLaneProgress = {{0.0f, 0.0f, 0.0f}};
-    gBlueCreeps = {{4, 4, 4}};
-    gRedCreeps = {{4, 4, 4}};
+    gBlueCreeps = {{0, 0, 0}};
+    gRedCreeps = {{0, 0, 0}};
+    resetLaneUnits();
     gPlayerX = -12.0f;
     gPlayerZ = -19.0f;
     gPlayerVx = 0.0f;
@@ -248,30 +279,47 @@ void updateBots(float dt) {
     }
 }
 
+void updateLaneUnits(float dt) {
+    gBlueCreeps = {{0, 0, 0}};
+    gRedCreeps = {{0, 0, 0}};
+    for (LaneUnit &unit : gLaneUnits) {
+        if (unit.startDelay > 0.0f) {
+            unit.startDelay = std::max(0.0f, unit.startDelay - dt);
+            continue;
+        }
+        const float lateral = unit.slot == 0 ? -0.75f : 0.75f;
+        const float teamOffset = unit.team == 0 ? -0.48f : 0.48f;
+        const float targetX = kLaneX[static_cast<std::size_t>(unit.lane)] + lateral + teamOffset;
+        const float targetZ = unit.team == 0 ? -2.8f : 2.8f;
+        const Vec2 delta{targetX - unit.position.x, targetZ - unit.position.z};
+        const float d = length(delta);
+        if (d > 0.14f) {
+            const float speed = std::min(2.55f, d * 1.65f);
+            const float inv = 1.0f / std::max(d, 0.001f);
+            const Vec2 desired{delta.x * inv * speed, delta.z * inv * speed};
+            const float blend = 1.0f - std::exp(-5.5f * dt);
+            unit.velocity.x += (desired.x - unit.velocity.x) * blend;
+            unit.velocity.z += (desired.z - unit.velocity.z) * blend;
+            unit.position.x += unit.velocity.x * dt;
+            unit.position.z += unit.velocity.z * dt;
+            if (distance(unit.position, {targetX, targetZ}) <= 0.14f) {
+                unit.position = {targetX, targetZ};
+                unit.velocity = {0.0f, 0.0f};
+            }
+        } else {
+            unit.position = {targetX, targetZ};
+            unit.velocity = {0.0f, 0.0f};
+        }
+        if (std::abs(unit.position.z) <= 4.0f) {
+            if (unit.team == 0) ++gBlueCreeps[static_cast<std::size_t>(unit.lane)];
+            else ++gRedCreeps[static_cast<std::size_t>(unit.lane)];
+        }
+    }
+}
+
 void updateLanes(float dt) {
     gWaveTimer += dt;
-    if (gWaveTimer >= 18.0f) {
-        gWaveTimer -= 18.0f;
-        for (int lane = 0; lane < 3; ++lane) {
-            gBlueCreeps[static_cast<std::size_t>(lane)] =
-                std::min(6, gBlueCreeps[static_cast<std::size_t>(lane)] + 4);
-            gRedCreeps[static_cast<std::size_t>(lane)] =
-                std::min(6, gRedCreeps[static_cast<std::size_t>(lane)] + 4);
-        }
-    }
-
-    gCreepClashTimer += dt;
-    if (gCreepClashTimer >= 4.0f) {
-        gCreepClashTimer -= 4.0f;
-        for (int lane = 0; lane < 3; ++lane) {
-            int &blue = gBlueCreeps[static_cast<std::size_t>(lane)];
-            int &red = gRedCreeps[static_cast<std::size_t>(lane)];
-            if (blue > 0 && red > 0) {
-                --blue;
-                --red;
-            }
-        }
-    }
+    updateLaneUnits(dt);
 
     for (int lane = 0; lane < 3; ++lane) {
         int blueHeroes = 0;
@@ -403,7 +451,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
     std::scoped_lock lock(gMutex);
     simulate(inputX, inputZ, deltaTime);
 
-    std::array<jfloat, 36> values{};
+    std::array<jfloat, 60> values{};
     values[0] = gPlayerX;
     values[1] = terrainHeight(gPlayerX, gPlayerZ);
     values[2] = gPlayerZ;
@@ -429,6 +477,11 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(
 
     values[34] = gPlayerVx;
     values[35] = gPlayerVz;
+    for (int i = 0; i < kLaneUnitCount; ++i) {
+        const LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(i)];
+        values[static_cast<std::size_t>(36 + i * 2)] = unit.position.x;
+        values[static_cast<std::size_t>(37 + i * 2)] = unit.position.z;
+    }
 
     jfloatArray result = env->NewFloatArray(static_cast<jsize>(values.size()));
     if (result != nullptr) {
