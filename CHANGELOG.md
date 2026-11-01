@@ -2,6 +2,8 @@
 
 ## [0.4.0] — 2026-11-01
 
+MOBA offline 5v5 para Android, com partidas locais contra bots.
+
 ### IA e navegação
 - Removida a perseguição por alvo móvel entre bots e jogador, que causava trocas contínuas de alvo e trajetórias orbitais.
 - Cada unidade agora mantém uma rota e um slot de formação persistentes: equipe, faixa, posição lateral e linha de avanço.
