@@ -1,5 +1,27 @@
 # Changelog — Projeto Arena
 
+## [0.8.0] — 2026-11-01
+
+### Câmera e personagens
+- A câmera inicia na posição real de spawn, reduz o viés lateral e aproxima o enquadramento do herói para mantê-lo fora da área do joystick.
+- Bots recebem perfis de silhueta mais distintos por escala e proporção.
+- Corrigido o eixo de rotação dos braços: ombros usam rotação local em Z; pernas mantêm o eixo de passada. A correção remove a pose rígida de braços abertos.
+
+### Combate funcional
+- Bots interrompem rotas para perseguir e enfrentar heróis rivais próximos.
+- Inimigos atacam o jogador ao entrar em alcance; escudo reduz dano recebido.
+- Ataque básico automático do jogador, dano, eliminação temporária e respawn.
+- PULSO causa dano em área e interrompe ataques; não consome recarga quando não há rival no raio.
+- Vida do jogador enviada pelo snapshot JNI e exibida no HUD.
+
+### Mapa
+- Canal do rio recortado na malha do terreno; água elevada para permanecer visível entre as margens.
+- Materiais de solo terroso e afloramentos rochosos introduzem contraste com a grama.
+
+### Validação
+- Atualização preparada para versionCode 38 / versionName 0.8.0. Build CI e validação física no Realme C53 ainda pendentes.
+
+
 ## [0.7.0] — 2026-11-01
 
 ### Ambiente CC0 — reconstrução do mapa

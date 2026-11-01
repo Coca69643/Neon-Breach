@@ -44,6 +44,7 @@ class MainActivity : Activity() {
     private lateinit var matchLabel: TextView
     private lateinit var tacticalMap: TacticalMapView
     private lateinit var abilityHint: TextView
+    private lateinit var healthLabel: TextView
     private lateinit var dashActionButton: TextView
     private lateinit var pulseActionButton: TextView
     private lateinit var shieldActionButton: TextView
@@ -55,7 +56,7 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(72)
+    private var lastSnapshot = FloatArray(73)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -73,13 +74,14 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 72) {
+                if (result.size >= 73) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
                     renderer.updateCreeps(result, dt)
                     renderer.updateEffects(result)
                     tacticalMap.setSnapshot(result)
+                    healthLabel.text = "VIDA  ${result.getOrElse(72) { 100f }.toInt().coerceIn(0, 100)}%  •  ATAQUE AUTOMÁTICO"
                     dashActionButton.text = abilityButtonText("IMPULSO", result[9])
                     pulseActionButton.text = abilityButtonText("PULSO", result[8])
                     shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
@@ -91,7 +93,7 @@ class MainActivity : Activity() {
                             result[7] > 0.05f -> "ESCUDO ATIVO • bônus de captura na rota"
                             result[61] > 0.05f -> "PULSO • rivais próximos interrompidos"
                             result[62] > 0.05f -> "IMPULSO • avanço direcional"
-                            else -> "PULSO interrompe • ESCUDO fortalece captura"
+                            else -> "ATAQUE automático • PULSO causa dano • ESCUDO protege"
                         }
                     }
 
@@ -271,7 +273,7 @@ class MainActivity : Activity() {
         nativeReset()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(60)
+        lastSnapshot = FloatArray(73)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -292,9 +294,11 @@ class MainActivity : Activity() {
         }
         matchLabel = label("00:00", 10f, Color.WHITE, true)
         objectiveLabel = label("CONQUISTE 2 ROTAS", 10f, Color.rgb(192, 235, 221), true)
-        abilityHint = label("PULSO interrompe • ESCUDO fortalece captura", 8f, Color.rgb(244, 217, 148), true)
+        healthLabel = label("VIDA  100%  •  ATAQUE AUTOMÁTICO", 8f, Color.rgb(173, 220, 194), true)
+        abilityHint = label("PULSO causa dano • ESCUDO reduz dano recebido", 8f, Color.rgb(244, 217, 148), true)
         top.addView(matchLabel)
         top.addView(objectiveLabel)
+        top.addView(healthLabel)
         top.addView(abilityHint)
         objectiveProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
@@ -347,7 +351,7 @@ class MainActivity : Activity() {
 
         pulseActionButton = actionButton("PULSO") {
             val activated = nativeCastPulse()
-            showAbilityFeedback(if (activated) "PULSO • interrompe rivais próximos; na rota, reforça a captura" else "PULSO • aguarde a recarga")
+            showAbilityFeedback(if (activated) "PULSO • 38 de dano em rivais próximos" else "PULSO • aproxime-se de um rival")
         }
         layer.addView(pulseActionButton, FrameLayout.LayoutParams(dp(104), dp(44), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(128)
@@ -356,7 +360,7 @@ class MainActivity : Activity() {
 
         shieldActionButton = actionButton("ESCUDO") {
             val activated = nativeActivateShield()
-            showAbilityFeedback(if (activated) "ESCUDO • bônus de captura por tempo limitado" else "ESCUDO • aguarde a recarga")
+            showAbilityFeedback(if (activated) "ESCUDO • reduz dano recebido por 3 segundos" else "ESCUDO • aguarde a recarga")
         }
         layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(12)
