@@ -183,6 +183,37 @@ void movePlayer(float inputX, float inputZ, float dt) {
     }
 }
 
+void moveBotTo(Bot &bot, Vec2 goal, float dt) {
+    const Vec2 delta{goal.x - bot.position.x, goal.z - bot.position.z};
+    const float distanceToGoal = length(delta);
+    if (distanceToGoal <= kBotArrivalSnap) {
+        bot.position = goal;
+        bot.velocity = {0.0f, 0.0f};
+        return;
+    }
+
+    const float brakingSpeed = std::sqrt(2.0f * kBotAcceleration * distanceToGoal);
+    const float desiredSpeed = std::min(
+        kBotSpeed * bot.speedScale,
+        std::min(brakingSpeed, distanceToGoal * kBotArrivalSpeedScale));
+    const float inverseDistance = 1.0f / std::max(distanceToGoal, 0.001f);
+    const Vec2 desiredVelocity{
+        delta.x * inverseDistance * desiredSpeed,
+        delta.z * inverseDistance * desiredSpeed
+    };
+    const float blend = 1.0f - std::exp(-kBotAcceleration * dt);
+    bot.velocity.x += (desiredVelocity.x - bot.velocity.x) * blend;
+    bot.velocity.z += (desiredVelocity.z - bot.velocity.z) * blend;
+    bot.position.x += bot.velocity.x * dt;
+    bot.position.z += bot.velocity.z * dt;
+
+    const Vec2 remaining{goal.x - bot.position.x, goal.z - bot.position.z};
+    if (remaining.x * delta.x + remaining.z * delta.z <= 0.0f) {
+        bot.position = goal;
+        bot.velocity = {0.0f, 0.0f};
+    }
+}
+
 float routeTargetZ(const Bot &bot) {
     const auto &route = bot.team == 0 ? kBlueRouteZ : kRedRouteZ;
     return route[static_cast<std::size_t>(std::clamp(bot.routeStep, 0, 3))];
