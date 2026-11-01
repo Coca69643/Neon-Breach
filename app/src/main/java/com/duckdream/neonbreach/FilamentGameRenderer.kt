@@ -6,6 +6,7 @@ import android.util.Log
 import android.view.SurfaceView
 import com.google.android.filament.Camera
 import com.google.android.filament.Engine
+import com.google.android.filament.IndirectLight
 import com.google.android.filament.Skybox
 import com.google.android.filament.View
 import com.google.android.filament.android.UiHelper
@@ -36,6 +37,7 @@ internal class FilamentGameRenderer(
     private val engine: Engine
     private val viewer: ModelViewer
     private var skybox: Skybox? = null
+    private var indirectLight: IndirectLight? = null
 
     private var characterLoader: AssetLoader? = null
     private var characterResources: ResourceLoader? = null
@@ -79,6 +81,11 @@ internal class FilamentGameRenderer(
             .color(floatArrayOf(0.34f, 0.48f, 0.50f, 1f))
             .build(engine)
         viewer.scene.skybox = skybox
+        indirectLight = IndirectLight.Builder()
+            .irradiance(1, floatArrayOf(0.28f, 0.31f, 0.36f))
+            .intensity(35_000.0f)
+            .build(engine)
+        viewer.scene.indirectLight = indirectLight
 
         // ModelViewer supplies a sun, but its default direction is straight down.
         // Angle it across the map so foliage, towers and lane walls gain readable form.
@@ -325,6 +332,8 @@ internal class FilamentGameRenderer(
             characterLoader?.destroy()
             characterProvider?.destroy()
             viewer.destroyModel()
+            indirectLight?.let { engine.destroy(it) }
+            indirectLight = null
             skybox?.let { engine.destroy(it) }
             engine.destroy(viewer.view)
             engine.destroy(viewer.renderer)
