@@ -330,6 +330,24 @@ internal class FilamentGameRenderer(
         engine.transformManager.setTransform(bone.instance, out)
     }
 
+    fun setHeroAppearance(hero: Int) {
+        val tint = when (hero.coerceIn(0, 2)) {
+            1 -> floatArrayOf(0.88f, 0.62f, 0.28f, 1.0f) // Bastion: warm gold
+            2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f) // Kairo: violet
+            else -> floatArrayOf(0.30f, 0.78f, 0.82f, 1.0f) // Lyra: cyan
+        }
+        character?.materialInstances?.forEach { material ->
+            runCatching {
+                material.setParameter(
+                    "baseColorFactor", Colors.RgbaType.SRGB,
+                    tint[0], tint[1], tint[2], tint[3]
+                )
+            }.onFailure { error ->
+                Log.w(TAG, "Hero material tint fallback", error)
+            }
+        }
+    }
+
     fun setOverviewCamera(overview: Boolean) {
         overviewCamera = overview
         if (overview) {
