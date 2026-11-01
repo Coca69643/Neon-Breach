@@ -8,7 +8,6 @@ namespace {
 struct V2 { float x; float z; };
 struct Obstacle { float x; float z; float radius; };
 
-constexpr float kPi = 3.14159265358979323846f;
 constexpr float kPlayerRadius = 0.42f;
 constexpr float kWalkSpeed = 5.6f;
 constexpr float kBoostSpeed = 9.2f;
