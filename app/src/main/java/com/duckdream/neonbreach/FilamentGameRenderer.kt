@@ -56,6 +56,7 @@ internal class FilamentGameRenderer(
     private var cameraZ = -8.5f
     private var cameraY = 0f
     private var phase = 0f
+    private var playerYaw = 0f
     private var sceneLoaded = false
     private var overviewCamera = true
     private val botInstances = ArrayList<FilamentInstance>(9)
@@ -222,7 +223,7 @@ internal class FilamentGameRenderer(
         updateCamera(cameraAspect)
     }
 
-    fun update(x: Float, y: Float, z: Float, speed: Float, deltaTime: Float) {
+    fun update(x: Float, y: Float, z: Float, velocityX: Float, velocityZ: Float, deltaTime: Float) {
         if (!sceneLoaded) return
         val blend = (deltaTime * 5.5f).coerceIn(0f, 1f)
         if (!overviewCamera) {
@@ -232,7 +233,9 @@ internal class FilamentGameRenderer(
         }
 
         overviewCamera = false
-        val yaw = if (speed > 0.18f) kotlin.math.atan2(-x, -z) else 0f
+        val speed = kotlin.math.sqrt(velocityX * velocityX + velocityZ * velocityZ)
+        if (speed > 0.18f) playerYaw = kotlin.math.atan2(velocityX, velocityZ)
+        val yaw = playerYaw
         val c = cos(yaw) * characterScale
         val s = sin(yaw) * characterScale
         val rootY = cameraY - characterMinY * characterScale
