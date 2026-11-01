@@ -24,8 +24,13 @@
 - Build e renderização ainda precisam ser verificados. Mesmo com CI aprovado, enquadramento, qualidade visual, Vulkan/GLES, FPS sustentado e temperatura exigem teste físico no Realme C53.
 
 ### Verificação da entrega
-- APK 0.3.0: aguardando workflow de compilação, verificação de app-debug.apk e upload project-arena-0.3.0-debug.
-- Run e checksum serão registrados somente depois da conclusão do build.
+- GitHub Actions run #132 (41271623682): concluído com sucesso em 2026-11-01.
+- Passaram: verificação estrutural, compilação Android/Kotlin/C++20, verificação de app-debug.apk e upload do artefato.
+- Artefato: `project-arena-0.3.0-debug`, baixado e extraído.
+- APK: 16.602.232 bytes; integridade ZIP e presença de DEX, bibliotecas nativas arm64-v8a/armeabi-v7a e asset humanoide CC0 verificadas.
+- SHA-256 do APK: `ec8cbc771af40905cbe63ca84a8f6c75cff3b2ad307c90c18e9a208c5eb37326`.
+- Run: https://github.com/Coca69643/Neon-Breach/actions/runs/41271623682
+- Teste físico no Realme C53, renderização visual em Vulkan/GLES, FPS sustentado e temperatura: ainda pendentes.
 
 ## [0.2.0] — 2026-11-01
 - Primeira fatia de MOBA offline 5v5, com três rotas, bots, três arquétipos de herói, habilidades de ressonância/defesa e minimapa.
