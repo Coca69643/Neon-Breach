@@ -1,45 +1,39 @@
-# Projeto Arena 0.2.0
+# Projeto Arena 0.3.0
 
-MOBA 3D para Android, em paisagem, com partidas locais totalmente offline 5v5. Esta versão é uma primeira fatia funcional de uma partida contra bots; não é um cliente online nem um MOBA completo de produção.
+MOBA 3D para Android, landscape, com partidas locais totalmente offline 5v5. Esta versão corrige defeitos de renderização e reconstrói a leitura visual do mapa e das unidades.
 
 ## Partida offline
-
 - 1 jogador + 4 bots aliados contra 5 bots adversários.
-- Três rotas: oeste, centro e leste.
-- Pressão independente por rota, ondas simplificadas de tropas e estruturas defensivas.
-- Bots locais avançam pela rota atribuída, avaliam alvos próximos, interrompem adversários e voltam à formação após ficarem temporariamente fora da disputa.
-- A vitória é definida pela conquista de duas das três rotas.
+- Três rotas: oeste, centro e leste, com pressão independente.
+- Ondas simplificadas de tropas e estruturas defensivas.
+- Bots locais avançam por suas rotas, avaliam unidades próximas e disputam os objetivos.
+- Três arquétipos selecionáveis: Lyra (suporte), Bastion (defesa) e Kairo (mobilidade).
+- Habilidades fictícias sem armamento: impulso, pulso de ressonância e barreira.
 - Nenhum servidor, login, matchmaking ou permissão de internet é necessário.
 
-## Heróis e habilidades
-
-- **Lyra — suporte:** pulso de ressonância com alcance ampliado.
-- **Bastion — defesa:** barreira com duração ampliada.
-- **Kairo — mobilidade:** recarga reduzida do pulso.
-- **Impulso:** deslocamento rápido.
-- **Pulso:** interrompe unidades adversárias próximas.
-- **Barreira:** protege temporariamente o jogador.
-
-Habilidades são efeitos fictícios e abstratos de gameplay; não representam armamento real.
+## Reconstrução visual 0.3.0
+- Ordem de triângulos de esferas corrigida para faces externas visíveis.
+- Sol direcional com ângulo oblíquo, exposição explícita e preenchimento por luz indireta.
+- Terreno com perímetro arredondado em vez de malha quadrada exposta.
+- Três rotas com ombros escuros e superfície central de pedra.
+- Bots usando instâncias do humanoide Quaternius CC0, tintas por equipe e animação procedural de rig.
+- Câmera de overview para menu/pausa/resultado e câmera de acompanhamento durante a partida.
+- Painel de pausa centralizado.
 
 ## Arquitetura
-
-- Android nativo: lifecycle, UI, controles touch e estados de aplicação em Kotlin.
-- C++20 via NDK/CMake: simulação, bots locais, ondas de tropas, progresso das rotas e habilidades.
+- Android nativo: ciclo de vida, UI e controles touch em Kotlin.
+- C++20 via NDK/CMake: simulação, bots locais, ondas e progresso das rotas.
 - Filament 1.77.3: renderização 3D, Vulkan preferencial e fallback OpenGL ES.
-- glTF 2.0 runtime: cenário com três rotas, estruturas, terreno contínuo, vegetação e unidades.
-- Paisagem obrigatória e HUD/minimapa adequados à tela mobile.
+- glTF 2.0 runtime para ambiente; instâncias glTF do humanoide CC0 para jogador e bots.
+- Paisagem obrigatória; HUD e minimapa em composição mobile.
 
-## Build
-
-O workflow GitHub Actions faz verificação estrutural, compila arm64-v8a e armeabi-v7a, verifica a existência do APK debug e publica o artefato project-arena-0.2.0-debug. O resultado do CI confirma a compilação, mas não substitui teste no dispositivo.
+## Build e validação
+O workflow valida estrutura, compila Kotlin e C++ para arm64-v8a e armeabi-v7a, confirma a existência do APK debug e publica project-arena-0.3.0-debug. O CI confirma a compilação, não substitui teste no Realme C53.
 
 ## Assets e licenças
-
 - Quaternius Universal Base Characters: CC0 1.0; licença arquivada em ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt.
-- Terreno, rotas, árvores, água, estruturas e avatares low-poly da primeira fatia são geometria gerada pelo projeto.
+- Ambiente, rotas, árvores, rochas, água e estruturas são geometria gerada pelo projeto.
 - Filament é distribuído sob Apache License 2.0.
 
-## Limitações desta versão
-
-A IA, a economia de tropas e a pressão das rotas são simplificadas. Não há loja, progressão persistente de herói, objetivos neutros avançados, campanha ou rede. Compatibilidade gráfica, FPS prolongado e comportamento térmico precisam ser medidos no Realme C53.
+## Limitações
+IA, tropas, economia e pressão de rota ainda são simplificadas. As nove instâncias dos bots compartilham o mesmo modelo base. Teste visual, compatibilidade gráfica, FPS prolongado, memória e temperatura no Realme C53 permanecem pendentes.
