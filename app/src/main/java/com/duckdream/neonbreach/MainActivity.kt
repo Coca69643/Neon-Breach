@@ -251,7 +251,7 @@ class MainActivity : Activity() {
         nativeReset()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(36)
+        lastSnapshot = FloatArray(60)
         transition(AppState.RUNNING)
         showHud()
     }
