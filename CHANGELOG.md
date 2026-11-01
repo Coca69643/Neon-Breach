@@ -1,42 +1,39 @@
 # Changelog — Projeto Arena
 
-## [0.4.0] — 2026-11-01
+## [0.5.0] — 2026-11-01
 
-MOBA offline 5v5 para Android, com partidas locais contra bots.
+### IA e navegação independentes
+- Removida a realimentação circular em que o progresso da rota deslocava a linha de avanço e a nova linha alterava novamente o progresso.
+- Cada bot percorre waypoints fixos da sua própria rota; a posição do jogador e o placar das rotas não são entradas da navegação.
+- Progressão dos waypoints é monotônica durante cada avanço; unidades param no destino em vez de orbitar um alvo móvel.
+- Cadência de saída e velocidade variam por unidade para evitar que os nove bots iniciem e se desloquem como um único bloco sincronizado.
+- Slots de rota permanecem separados por equipe/faixa.
+- Pressão da rota é calculada em uma zona central fixa, independente da posição dinâmica do objetivo.
+- Snapshot nativo inclui a velocidade vetorial do jogador.
+- Orientação do herói usa o vetor real de movimento; quando parado, preserva a última direção. A rotação não depende mais da posição absoluta do herói em relação à origem.
 
-### IA e navegação
-- Removida a perseguição por alvo móvel entre bots e jogador, que causava trocas contínuas de alvo e trajetórias orbitais.
-- Cada unidade agora mantém uma rota e um slot de formação persistentes: equipe, faixa, posição lateral e linha de avanço.
-- Navegação por chegada com frenagem baseada em distância e aceleração; a unidade desacelera e para no ponto da rota, sem ultrapassar o destino.
-- Bots deixam de usar a posição do herói como alvo de navegação. O joystick do jogador não altera a rota dos NPCs.
-- Bots temporariamente desativados retornam à formação de sua rota quando a recuperação termina.
-- Pressão das rotas considera apenas unidades que realmente alcançaram a zona de disputa, em vez de contar todos os bots desde a base.
-
-### Identidade do aplicativo
-- Substituído o ícone legado do ORION-9 por um emblema próprio do Projeto Arena: fortaleza, três rotas e núcleo energético azul.
-- Nome do aplicativo simplificado para Projeto Arena.
-- Versão Android avançada para 0.4.0 (versionCode 34).
+### Identidade visual
+- Ícone redesenhado: silhueta de herói mascarado, visor violeta/ciano e rotas convergentes.
+- Removida a composição antiga de fortaleza/cristal e qualquer referência visual do ORION-9.
+- Nome de exibição simplificado para Projeto Arena.
 
 ### Mantido
-- Partida 5v5 totalmente offline, com jogador, quatro aliados e cinco bots adversários.
-- Três rotas e habilidades fictícias sem armas.
-- Android nativo landscape, Filament 1.77.3, Kotlin e simulação C++20.
+- Partidas Android nativas, landscape e totalmente offline.
+- Equipes locais com bots, três rotas e habilidades fictícias sem armas.
+- Kotlin, C++20, Filament 1.77.3, Vulkan e fallback OpenGL ES.
+- Modelos humanoides CC0 instanciados para as unidades.
 
-### Limitações conhecidas
-- A IA atual faz avanço/posicionamento por rota e disputa de zona; comportamento tático avançado, papéis complexos e objetivos completos continuam em desenvolvimento.
-- O modelo humanoide e o mapa precisam continuar evoluindo; esta atualização corrige a lógica orbital, não certifica a qualidade visual geral.
-- Teste de execução, renderização Vulkan/GLES, FPS sustentado e temperatura no Realme C53 ainda pendentes.
+### Limitações e validação
+- A navegação é determinística por rota; decisões táticas avançadas, papéis complexos e objetivos completos ainda precisam de evolução.
+- CI comprova compilação e integridade do pacote, não a ausência visual de órbitas em todos os cenários.
+- Teste físico no Realme C53 continua obrigatório para validar movimento, renderização, FPS e temperatura.
+- APK 0.5.0 será marcado como entregue somente após o workflow compilar, verificar o APK e publicar o artefato correspondente.
 
-### Verificação da entrega
-- O APK 0.4.0 só será considerado entregue após o CI compilar, confirmar app-debug.apk e publicar project-arena-0.4.0-debug.
-- Run e checksum serão adicionados após a validação do artefato.
+## [0.4.0] — 2026-11-01
+- Primeira separação de navegação dos bots em relação ao jogador, com slots de formação e frenagem de chegada.
+- Ícone vetorial de fortaleza e três rotas, substituindo a referência antiga do ORION-9.
+- CI run #143 gerou project-arena-0.4.0-debug; revisão 0.5.0 remove a realimentação de placar/linha de avanço e corrige a orientação do herói.
 
 ## [0.3.0] — 2026-11-01
 - Corrigida a orientação das faces arredondadas e adicionada luz indireta.
 - Terreno arredondado, rotas com bordas legíveis e bots humanoides instanciados.
-- Câmera de overview para menu/pausa e câmera de acompanhamento durante a partida.
-- CI gerou o APK 0.3.0; teste físico no aparelho permaneceu pendente.
-
-## [0.2.0] — 2026-11-01
-- Primeira fatia de MOBA offline 5v5, com três rotas, bots, heróis e habilidades.
-- Base Android nativa em landscape com Filament 1.77.3, Kotlin e C++20.
