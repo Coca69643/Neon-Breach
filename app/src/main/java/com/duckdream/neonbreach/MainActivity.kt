@@ -50,7 +50,7 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(36)
+    private var lastSnapshot = FloatArray(60)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -68,10 +68,11 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 36) {
+                if (result.size >= 60) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
+                    renderer.updateCreeps(result, dt)
                     tacticalMap.setSnapshot(result)
 
                     val time = result[4].toInt().coerceAtLeast(0)
@@ -190,6 +191,7 @@ class MainActivity : Activity() {
 
     private fun showMenu() {
         transition(AppState.MENU)
+        if (::renderer.isInitialized) renderer.setMinionsVisible(false)
         if (::renderer.isInitialized) {
             renderer.setOverviewCamera(true)
             renderer.setHeroAppearance(selectedHero)
@@ -255,7 +257,10 @@ class MainActivity : Activity() {
     }
 
     private fun showHud() {
-        if (::renderer.isInitialized) renderer.setOverviewCamera(false)
+        if (::renderer.isInitialized) {
+            renderer.setOverviewCamera(false)
+            renderer.setMinionsVisible(true)
+        }
         val layer = FrameLayout(this)
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
