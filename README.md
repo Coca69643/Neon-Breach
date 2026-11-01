@@ -1,39 +1,34 @@
-# Projeto Arena 0.3.0
+# Projeto Arena 0.4.0
 
-MOBA 3D para Android, landscape, com partidas locais totalmente offline 5v5. Esta versão corrige defeitos de renderização e reconstrói a leitura visual do mapa e das unidades.
+MOBA 3D mobile para Android, landscape e totalmente offline, com partidas 5v5 contra bots.
+
+## IA e navegação 0.4.0
+- Cada bot mantém rota, equipe, faixa e slot de formação durante a partida.
+- Navegação de chegada com frenagem: reduz a velocidade conforme se aproxima do ponto-alvo e para ao alcançá-lo.
+- NPCs não usam a posição do jogador como alvo e não recalculam perseguição a cada frame.
+- O input do joystick altera somente a movimentação do herói.
+- Bots desativados retornam à sua formação após o tempo de recuperação.
+- Pressão de rota usa presença real na zona frontal.
 
 ## Partida offline
 - 1 jogador + 4 bots aliados contra 5 bots adversários.
-- Três rotas: oeste, centro e leste, com pressão independente.
-- Ondas simplificadas de tropas e estruturas defensivas.
-- Bots locais avançam por suas rotas, avaliam unidades próximas e disputam os objetivos.
-- Três arquétipos selecionáveis: Lyra (suporte), Bastion (defesa) e Kairo (mobilidade).
-- Habilidades fictícias sem armamento: impulso, pulso de ressonância e barreira.
-- Nenhum servidor, login, matchmaking ou permissão de internet é necessário.
+- Três rotas com pressão independente e ondas simplificadas de tropas.
+- Três arquétipos: Lyra, Bastion e Kairo.
+- Habilidades fictícias sem armas: impulso, pulso de ressonância e barreira.
+- Sem login, servidor, matchmaking ou permissão de internet.
 
-## Reconstrução visual 0.3.0
-- Ordem de triângulos de esferas corrigida para faces externas visíveis.
-- Sol direcional com ângulo oblíquo, exposição explícita e preenchimento por luz indireta.
-- Terreno com perímetro arredondado em vez de malha quadrada exposta.
-- Três rotas com ombros escuros e superfície central de pedra.
-- Bots usando instâncias do humanoide Quaternius CC0, tintas por equipe e animação procedural de rig.
-- Câmera de overview para menu/pausa/resultado e câmera de acompanhamento durante a partida.
-- Painel de pausa centralizado.
+## Identidade visual
+- Ícone próprio com fortaleza, três rotas e núcleo azul.
+- Nome do aplicativo: Projeto Arena.
 
 ## Arquitetura
-- Android nativo: ciclo de vida, UI e controles touch em Kotlin.
-- C++20 via NDK/CMake: simulação, bots locais, ondas e progresso das rotas.
+- Android nativo: lifecycle, UI e controles touch em Kotlin.
+- C++20 via NDK/CMake: simulação, IA local, rotas e habilidades.
 - Filament 1.77.3: renderização 3D, Vulkan preferencial e fallback OpenGL ES.
-- glTF 2.0 runtime para ambiente; instâncias glTF do humanoide CC0 para jogador e bots.
-- Paisagem obrigatória; HUD e minimapa em composição mobile.
+- Humanoide Quaternius CC0 compartilhado entre as instâncias do herói e bots.
 
-## Build e validação
-O workflow valida estrutura, compila Kotlin e C++ para arm64-v8a e armeabi-v7a, confirma a existência do APK debug e publica project-arena-0.3.0-debug. O CI confirma a compilação, não substitui teste no Realme C53.
-
-## Assets e licenças
-- Quaternius Universal Base Characters: CC0 1.0; licença arquivada em ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt.
-- Ambiente, rotas, árvores, rochas, água e estruturas são geometria gerada pelo projeto.
-- Filament é distribuído sob Apache License 2.0.
+## Build
+O workflow valida estrutura, compila Kotlin/C++20 para arm64-v8a e armeabi-v7a, confirma a existência do APK debug e publica project-arena-0.4.0-debug. O CI confirma compilação, não substitui teste no Realme C53.
 
 ## Limitações
-IA, tropas, economia e pressão de rota ainda são simplificadas. As nove instâncias dos bots compartilham o mesmo modelo base. Teste visual, compatibilidade gráfica, FPS prolongado, memória e temperatura no Realme C53 permanecem pendentes.
+A IA de rotas ainda é uma base simplificada, sem tomada de decisão tática complexa. Visuais, papéis individuais de heróis, objetivos e tropas precisam de novas iterações. Renderização, FPS prolongado, memória e temperatura no Realme C53 ainda precisam de teste físico.
