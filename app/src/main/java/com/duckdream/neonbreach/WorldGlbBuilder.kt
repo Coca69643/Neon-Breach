@@ -72,7 +72,7 @@ internal object WorldGlbBuilder {
         }
         for(r in 0 until rings) for(s in 0 until segs) {
             val a=ids[r][s];val b=ids[r][s+1];val c=ids[r+1][s];val d=ids[r+1][s+1]
-            p.tri(a,b,c);p.tri(b,d,c)
+            p.tri(a,c,b);p.tri(b,c,d)
         }
     }
     private fun cylinder(p:Part,x:Float,z:Float,y0:Float,y1:Float,r0:Float,r1:Float,sides:Int=12) {
