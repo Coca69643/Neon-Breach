@@ -42,7 +42,6 @@ class MainActivity : Activity() {
     private lateinit var objectiveLabel: TextView
     private lateinit var stateLabel: TextView
     private lateinit var matchLabel: TextView
-    private lateinit var laneLabel: TextView
     private lateinit var tacticalMap: TacticalMapView
     private var screenLayer: View? = null
     private var state = AppState.BOOT
@@ -80,10 +79,6 @@ class MainActivity : Activity() {
                     val blue = result[5].toInt()
                     val red = result[6].toInt()
                     stateLabel.text = "AZUL " + blue + "  :  " + red + " VERMELHO"
-                    val left = (result[12] * 100f).toInt()
-                    val mid = (result[13] * 100f).toInt()
-                    val right = (result[14] * 100f).toInt()
-                    laneLabel.text = "OESTE " + signed(left) + "   CENTRO " + signed(mid) + "   LESTE " + signed(right)
                     val average = ((result[12] + result[13] + result[14]) / 6f + 0.5f)
                     objectiveProgress.progress = (average * 100f).toInt().coerceIn(0, 100)
                     objectiveLabel.text = when {
@@ -91,7 +86,7 @@ class MainActivity : Activity() {
                         result[15] < -0.5f -> "BASE AZUL SUPERADA"
                         result[7] > 0.0f -> "BARREIRA ATIVA  •  " + result[7].toInt() + "s"
                         result[8] > 0.0f -> "PULSO EM RECARGA  •  " + result[8].toInt() + "s"
-                        else -> "CONTROLE AS ROTAS E AVANCE COM OS BOTS"
+                        else -> "CONQUISTE E MANTENHA 2 ROTAS"
                     }
                     if (result[15] > 0.5f) showResult(true)
                     else if (result[15] < -0.5f) showResult(false)
@@ -197,36 +192,25 @@ class MainActivity : Activity() {
         transition(AppState.MENU)
         if (::renderer.isInitialized) renderer.setOverviewCamera(true)
         val layer = FrameLayout(this).apply {
-            setBackgroundColor(Color.argb(45, 7, 17, 23))
+            setBackgroundColor(Color.argb(10, 5, 12, 18))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { startMatch() }
         }
-        val left = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
+        val title = label("ARENA", 17f, Color.WHITE, true).apply {
+            setShadowLayer(8f, 0f, 3f, Color.BLACK)
         }
-        left.addView(label("DUCK DREAM STUDIOS  /  0.4.0", 10f, Color.rgb(190, 223, 224), true))
-        left.addView(label("PROJETO ARENA", 32f, Color.WHITE, true).apply {
-            setPadding(0, dp(8), 0, dp(4))
+        layer.addView(title, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(24)
+            topMargin = dp(18)
         })
-        left.addView(label("MOBA 3D  •  PARTIDAS LOCAIS 5v5", 11f, Color.rgb(204, 229, 224)))
-        left.addView(actionButton("HERÓI: " + HEROES[selectedHero]) {
-            selectedHero = (selectedHero + 1) % HEROES.size
-            showMenu()
-        }, LinearLayout.LayoutParams(dp(270), dp(46)).apply { topMargin = dp(23) })
-        left.addView(actionButton("JOGAR CONTRA BOTS") { startMatch() },
-            LinearLayout.LayoutParams(dp(270), dp(52)).apply { topMargin = dp(12) })
-        left.addView(actionButton("REGRAS DA PARTIDA") {
-            showNotice("Partida 5v5 totalmente offline. Controle uma das três rotas, acompanhe seus quatro aliados e interrompa o avanço adversário com habilidades de ressonância.")
-        }, LinearLayout.LayoutParams(dp(270), dp(46)).apply { topMargin = dp(10) })
-        left.addView(label("SEM LOGIN  •  SEM SERVIDOR  •  SEM INTERNET", 9f, Color.LTGRAY).apply {
-            setPadding(0, dp(18), 0, 0)
-        })
-        layer.addView(left, FrameLayout.LayoutParams(dp(310), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
-            marginStart = dp(32)
-        })
-        val footer = label("VULKAN / GLES  •  C++20  •  IA LOCAL", 9f, Color.WHITE, true)
-        layer.addView(footer, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
-            marginEnd = dp(18)
-            bottomMargin = dp(12)
+        val prompt = label("TOQUE PARA JOGAR", 12f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            setShadowLayer(8f, 0f, 2f, Color.BLACK)
+            isClickable = false
+        }
+        layer.addView(prompt, FrameLayout.LayoutParams(dp(190), dp(42), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(18)
         })
         replaceLayer(layer)
     }
@@ -246,46 +230,44 @@ class MainActivity : Activity() {
         val layer = FrameLayout(this)
         val top = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(12), dp(8), dp(12), dp(8))
+            setPadding(dp(9), dp(6), dp(9), dp(6))
             background = android.graphics.drawable.GradientDrawable().apply {
-                setColor(Color.argb(188, 12, 29, 35))
-                cornerRadius = dp(8).toFloat()
-                setStroke(dp(1), Color.argb(170, 132, 192, 187))
+                setColor(Color.argb(170, 10, 22, 29))
+                cornerRadius = dp(7).toFloat()
             }
         }
-        matchLabel = label("00:00   •   LOCAL 5v5", 10f, Color.rgb(176, 222, 213), true)
-        objectiveLabel = label("CONTROLE AS TRÊS ROTAS", 12f, Color.WHITE, true)
-        laneLabel = label("OESTE 0   CENTRO 0   LESTE 0", 9f, Color.rgb(207, 227, 221), true)
+        matchLabel = label("00:00", 10f, Color.WHITE, true)
+        objectiveLabel = label("CONQUISTE 2 ROTAS", 10f, Color.rgb(192, 235, 221), true)
         top.addView(matchLabel)
         top.addView(objectiveLabel)
-        top.addView(laneLabel)
         objectiveProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
             progress = 50
             progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(82, 202, 174))
-            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(110, 220, 230, 220))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(100, 220, 230, 220))
         }
-        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(285), dp(5)).apply {
-            topMargin = dp(6)
+        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(170), dp(4)).apply {
+            topMargin = dp(4)
         })
-        layer.addView(top, FrameLayout.LayoutParams(dp(325), -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+        layer.addView(top, FrameLayout.LayoutParams(dp(190), -2, Gravity.TOP or Gravity.START).apply {
             topMargin = dp(10)
+            marginStart = dp(10)
         })
 
-        stateLabel = label("AZUL 0  :  0 VERMELHO", 9f, Color.WHITE, true)
-        layer.addView(stateLabel, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(8)
+        stateLabel = label("AZUL 0  •  VERMELHO 0", 9f, Color.WHITE, true)
+        layer.addView(stateLabel, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+            topMargin = dp(12)
         })
 
         tacticalMap = TacticalMapView(this)
-        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(154), dp(116), Gravity.TOP or Gravity.END).apply {
+        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(112), dp(84), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(10)
-            marginEnd = dp(70)
+            marginEnd = dp(58)
         })
 
         layer.addView(actionButton("Ⅱ") { pauseMatch() },
-            FrameLayout.LayoutParams(dp(46), dp(42), Gravity.TOP or Gravity.END).apply {
-                marginEnd = dp(12)
+            FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP or Gravity.END).apply {
+                marginEnd = dp(10)
                 topMargin = dp(10)
             })
 
@@ -293,28 +275,28 @@ class MainActivity : Activity() {
             moveX = x
             moveZ = z
         }
-        layer.addView(stick, FrameLayout.LayoutParams(dp(138), dp(138), Gravity.BOTTOM or Gravity.START).apply {
-            marginStart = dp(18)
-            bottomMargin = dp(18)
+        layer.addView(stick, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.BOTTOM or Gravity.START).apply {
+            marginStart = dp(14)
+            bottomMargin = dp(14)
         })
 
         layer.addView(actionButton("IMPULSO") {
-            stateLabel.text = if (nativeActivateDash()) "IMPULSO ATIVADO" else "IMPULSO EM RECARGA"
-        }, FrameLayout.LayoutParams(dp(112), dp(50), Gravity.BOTTOM or Gravity.END).apply {
-            marginEnd = dp(18)
-            bottomMargin = dp(22)
+            stateLabel.text = if (nativeActivateDash()) "IMPULSO" else "RECARGANDO"
+        }, FrameLayout.LayoutParams(dp(88), dp(42), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(12)
+            bottomMargin = dp(16)
         })
         layer.addView(actionButton("PULSO") {
-            stateLabel.text = if (nativeCastPulse()) "PULSO DE RESSONÂNCIA" else "PULSO EM RECARGA"
-        }, FrameLayout.LayoutParams(dp(108), dp(50), Gravity.BOTTOM or Gravity.END).apply {
-            marginEnd = dp(142)
-            bottomMargin = dp(22)
+            stateLabel.text = if (nativeCastPulse()) "PULSO" else "RECARGANDO"
+        }, FrameLayout.LayoutParams(dp(82), dp(42), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(108)
+            bottomMargin = dp(16)
         })
-        layer.addView(actionButton("BARREIRA") {
-            stateLabel.text = if (nativeActivateShield()) "BARREIRA ATIVADA" else "BARREIRA EM RECARGA"
-        }, FrameLayout.LayoutParams(dp(112), dp(42), Gravity.BOTTOM or Gravity.END).apply {
-            marginEnd = dp(18)
-            bottomMargin = dp(80)
+        layer.addView(actionButton("ESCUDO") {
+            stateLabel.text = if (nativeActivateShield()) "ESCUDO" else "RECARGANDO"
+        }, FrameLayout.LayoutParams(dp(88), dp(36), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(12)
+            bottomMargin = dp(64)
         })
         tacticalMap.setSnapshot(lastSnapshot)
         replaceLayer(layer)
@@ -331,7 +313,6 @@ class MainActivity : Activity() {
         moveX = 0f
         moveZ = 0f
         transition(AppState.PAUSED)
-        if (::renderer.isInitialized) renderer.setOverviewCamera(true)
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(170, 7, 17, 23))
         }
@@ -359,7 +340,6 @@ class MainActivity : Activity() {
         moveX = 0f
         moveZ = 0f
         transition(AppState.RESULT)
-        if (::renderer.isInitialized) renderer.setOverviewCamera(true)
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(190, 7, 18, 24))
         }
