@@ -64,7 +64,7 @@ internal class FilamentGameRenderer(
     private val botBones = ArrayList<Map<String, BonePose>>(9)
     private val lastBotPositions = Array(9) { floatArrayOf(Float.NaN, Float.NaN) }
     private var botAnimationPhase = 0f
-    private val botScale = 0.86f
+    private val botScale = 1.0f
 
     init {
         if (!filamentInitialized) {
@@ -87,7 +87,7 @@ internal class FilamentGameRenderer(
         viewer.scene.skybox = skybox
         indirectLight = IndirectLight.Builder()
             .irradiance(1, floatArrayOf(0.28f, 0.31f, 0.36f))
-            .intensity(35_000.0f)
+            .intensity(22_000.0f)
             .build(engine)
         viewer.scene.indirectLight = indirectLight
 
@@ -95,8 +95,8 @@ internal class FilamentGameRenderer(
         // Angle it across the map so foliage, towers and lane walls gain readable form.
         engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
         engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
-        engine.lightManager.setIntensity(viewer.light, 105_000.0f)
-        viewer.camera.setExposure(16.0f, 1.0f / 125.0f, 100.0f)
+        engine.lightManager.setIntensity(viewer.light, 78_000.0f)
+        viewer.camera.setExposure(15.5f, 1.0f / 100.0f, 80.0f)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
             hdrColorBuffer = View.QualityLevel.LOW
@@ -199,7 +199,7 @@ internal class FilamentGameRenderer(
         val half = asset.boundingBox.getHalfExtent(null)
         val center = asset.boundingBox.getCenter(null)
         val height = max(0.1f, half[1] * 2f)
-        characterScale = 1.72f / height
+        characterScale = 1.92f / height
         characterMinY = center[1] - half[1]
 
         characterRootInstance = transforms.getInstance(asset.root)
@@ -333,25 +333,43 @@ internal class FilamentGameRenderer(
     fun setOverviewCamera(overview: Boolean) {
         overviewCamera = overview
         if (overview) {
-            cameraX = 0f
-            cameraZ = 0f
-            cameraY = terrainHeight(0f, 0f)
+            // The menu is a hero portrait, not a map-wide tactical overview.
+            cameraX = -12.0f
+            cameraZ = -19.0f
+            cameraY = terrainHeight(cameraX, cameraZ)
+            playerYaw = 0.0f
+            val rootY = cameraY - characterMinY * characterScale
+            val scale = characterScale
+            val matrix = floatArrayOf(
+                scale, 0f, 0f, 0f,
+                0f, scale, 0f, 0f,
+                0f, 0f, scale, 0f,
+                cameraX, rootY, cameraZ, 1f
+            )
+            engine.transformManager.setTransform(characterRootInstance, matrix)
         }
         updateCamera(cameraAspect)
     }
 
     private fun updateCamera(aspect: Float) {
-        val vertical = if (overviewCamera) 21.0 else 18.5
-        val horizontal = vertical * aspect.toDouble().coerceAtLeast(1.0)
-        val targetX = if (overviewCamera) 0f else cameraX
-        val targetZ = if (overviewCamera) 0f else cameraZ
+        val forwardX = sin(playerYaw)
+        val forwardZ = cos(playerYaw)
+        val distance = if (overviewCamera) 7.6f else 9.2f
+        val height = if (overviewCamera) 4.4f else 5.2f
+        val lookAhead = if (overviewCamera) 0.45f else 1.8f
+        val eyeX = cameraX - forwardX * distance
+        val eyeZ = cameraZ - forwardZ * distance
+        val lookX = cameraX + forwardX * lookAhead
+        val lookZ = cameraZ + forwardZ * lookAhead
+        val fov = if (overviewCamera) 46.0 else 53.0
         viewer.camera.setProjection(
-            Camera.Projection.ORTHO,
-            -horizontal, horizontal, -vertical, vertical, 0.1, 160.0
+            Camera.Projection.PERSPECTIVE,
+            fov, aspect.toDouble().coerceAtLeast(1.0 / 1.0), 0.1, 150.0,
+            Camera.Fov.VERTICAL
         )
         viewer.camera.lookAt(
-            targetX.toDouble(), (cameraY + 27.0).toDouble(), (targetZ + 19.0).toDouble(),
-            targetX.toDouble(), cameraY.toDouble(), targetZ.toDouble(),
+            eyeX.toDouble(), (cameraY + height).toDouble(), eyeZ.toDouble(),
+            lookX.toDouble(), (cameraY + 1.15f).toDouble(), lookZ.toDouble(),
             0.0, 1.0, 0.0
         )
     }
