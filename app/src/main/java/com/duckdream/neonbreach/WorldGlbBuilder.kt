@@ -26,17 +26,19 @@ internal object WorldGlbBuilder {
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
     private fun h(x:Float,z:Float):Float {
-        val westRidge = 1.72f * exp(-((x + 24f).pow(2)) / 30f) * (0.58f + 0.42f * cos(z * 0.075f))
-        val eastRidge = 1.58f * exp(-((x - 24f).pow(2)) / 34f) * (0.58f + 0.42f * cos(z * 0.07f))
-        val southHighland = 1.05f * exp(-((z + 27f).pow(2)) / 24f) * exp(-(x.pow(2)) / 340f)
-        val northHighland = 1.05f * exp(-((z - 27f).pow(2)) / 24f) * exp(-(x.pow(2)) / 340f)
-        val jungleKnolls = 0.42f * exp(-((abs(x) - 8.5f).pow(2)) / 7f) * exp(-((abs(z) - 14f).pow(2)) / 34f)
+        val westRidge = 2.48f * exp(-((x + 24f).pow(2)) / 34f) * (0.58f + 0.42f * cos(z * 0.075f))
+        val eastRidge = 2.34f * exp(-((x - 24f).pow(2)) / 38f) * (0.58f + 0.42f * cos(z * 0.07f))
+        val southHighland = 1.48f * exp(-((z + 27f).pow(2)) / 27f) * exp(-(x.pow(2)) / 360f)
+        val northHighland = 1.42f * exp(-((z - 27f).pow(2)) / 27f) * exp(-(x.pow(2)) / 360f)
+        val jungleKnolls = 0.72f * exp(-((abs(x) - 8.5f).pow(2)) / 8.5f) * exp(-((abs(z) - 14f).pow(2)) / 38f)
+        val outerTerraces = 0.54f * exp(-((abs(x) - 19f).pow(2)) / 48f) * exp(-((abs(z) - 10f).pow(2)) / 190f)
         val riverDistance = abs(z - riverCenterZ(x))
-        val riverBed = -0.34f * exp(-(riverDistance * riverDistance) / 12f)
-        val riverBank = 0.48f * exp(-((riverDistance - 2.45f).pow(2)) / 1.6f)
-        val rolling = 0.22f*sin(x*0.18f)*cos(z*0.14f)+0.12f*sin((x+z)*0.29f)
+        val riverBed = -0.46f * exp(-(riverDistance * riverDistance) / 12f)
+        val riverBank = 0.62f * exp(-((riverDistance - 2.55f).pow(2)) / 1.8f)
+        val rolling = 0.31f*sin(x*0.18f)*cos(z*0.14f)+
+            0.19f*sin((x+z)*0.29f)+0.13f*sin((x*0.27f-z*0.19f))*cos((z+x)*0.21f)
         return rolling + westRidge + eastRidge + southHighland + northHighland +
-            jungleKnolls + riverBed + riverBank
+            jungleKnolls + outerTerraces + riverBed + riverBank
     }
 
     internal fun heightAt(x: Float, z: Float): Float = h(x, z)
@@ -183,7 +185,7 @@ internal object WorldGlbBuilder {
     }
 
     private fun terrainMesh() {
-        val steps = 104
+        val steps = 144
         val size = 76f
         val start = -38f
         val cell = size / steps
@@ -226,8 +228,8 @@ internal object WorldGlbBuilder {
             }
             val topA = edgePoint(a0)
             val topB = edgePoint(a1)
-            val bottomA = floatArrayOf(topA[0] * 1.025f, -3.8f, topA[2] * 1.025f)
-            val bottomB = floatArrayOf(topB[0] * 1.025f, -3.8f, topB[2] * 1.025f)
+            val bottomA = floatArrayOf(topA[0] * 1.025f, -4.6f, topA[2] * 1.025f)
+            val bottomB = floatArrayOf(topB[0] * 1.025f, -4.6f, topB[2] * 1.025f)
             tri(cliffs, topA, bottomA, topB)
             tri(cliffs, topB, bottomA, bottomB)
         }
@@ -352,9 +354,9 @@ internal object WorldGlbBuilder {
             floatArrayOf(13.4f,-7f),floatArrayOf(13.0f,0f),floatArrayOf(13.7f,8f),
             floatArrayOf(14.8f,16f),floatArrayOf(14.2f,24f),floatArrayOf(14.2f,31f)
         )
-        ribbon(routeEdge,west,3.18f,0.025f);ribbon(trail,west,2.42f,0.075f)
-        ribbon(routeEdge,center,3.12f,0.025f);ribbon(trail,center,2.36f,0.075f)
-        ribbon(routeEdge,east,3.18f,0.025f);ribbon(trail,east,2.42f,0.075f)
+        ribbon(routeEdge,west,2.62f,0.025f);ribbon(trail,west,1.96f,0.075f)
+        ribbon(routeEdge,center,2.58f,0.025f);ribbon(trail,center,1.92f,0.075f)
+        ribbon(routeEdge,east,2.62f,0.025f);ribbon(trail,east,1.96f,0.075f)
 
         // Cross-lane jungle paths link the neutral camps to lane entrances.
         ribbon(earth,listOf(floatArrayOf(-8.2f,-27f),floatArrayOf(-8.8f,-20f),floatArrayOf(-8.2f,-14.5f),floatArrayOf(-9.1f,-8f),floatArrayOf(-7f,-2f)),0.62f,0.095f)
@@ -439,8 +441,8 @@ internal object WorldGlbBuilder {
         }
 
         // A dark-blue water plane below the island cliffs adds a real horizon layer.
-        quad(ocean,floatArrayOf(-58f,-2.55f,-52f),floatArrayOf(58f,-2.55f,-52f),
-            floatArrayOf(58f,-2.55f,52f),floatArrayOf(-58f,-2.55f,52f))
+        quad(ocean,floatArrayOf(-58f,-3.35f,-52f),floatArrayOf(58f,-3.35f,-52f),
+            floatArrayOf(58f,-3.35f,52f),floatArrayOf(-58f,-3.35f,52f))
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -468,21 +470,21 @@ internal object WorldGlbBuilder {
         }
         val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water")
         val colors=listOf(
-            listOf(0.16f,0.24f,0.10f,1f),
-            listOf(0.22f,0.31f,0.13f,1f),
-            listOf(0.08f,0.15f,0.07f,1f),
-            listOf(0.42f,0.36f,0.26f,1f),
-            listOf(0.18f,0.16f,0.12f,1f),
-            listOf(0.06f,0.14f,0.18f,1f),
-            listOf(0.12f,0.11f,0.09f,1f),
+            listOf(0.23f,0.27f,0.12f,1f),
+            listOf(0.31f,0.35f,0.16f,1f),
+            listOf(0.10f,0.16f,0.07f,1f),
+            listOf(0.40f,0.37f,0.28f,1f),
+            listOf(0.24f,0.21f,0.16f,1f),
+            listOf(0.035f,0.12f,0.19f,1f),
+            listOf(0.18f,0.15f,0.11f,1f),
             listOf(0.08f,0.56f,0.95f,1f),
             listOf(0.76f,0.56f,0.13f,1f),
-            listOf(0.31f,0.20f,0.11f,1f),
-            listOf(0.29f,0.30f,0.27f,1f),
+            listOf(0.35f,0.24f,0.14f,1f),
+            listOf(0.35f,0.34f,0.29f,1f),
             listOf(0.22f,0.19f,0.13f,1f),
             listOf(0.31f,0.27f,0.19f,1f),
-            listOf(0.09f,0.14f,0.07f,1f),
-            listOf(0.12f,0.20f,0.08f,1f),
+            listOf(0.12f,0.15f,0.08f,1f),
+            listOf(0.14f,0.21f,0.09f,1f),
             listOf(0.25f,0.27f,0.23f,1f),
             listOf(0.31f,0.32f,0.30f,1f),
             listOf(0.42f,0.38f,0.29f,1f),
