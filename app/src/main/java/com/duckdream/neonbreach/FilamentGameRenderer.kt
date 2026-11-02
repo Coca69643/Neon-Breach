@@ -312,7 +312,7 @@ internal class FilamentGameRenderer(
                 val team = if (placement.model == "tower_blue") 0 else 1
                 val lane = (0..2).minByOrNull { kotlin.math.abs(laneCenterX(it, placement.z) - placement.x) } ?: 1
                 val tier = when {
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 22f) < 1f -> 0
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 8f) < 1f -> 0
                     kotlin.math.abs(kotlin.math.abs(placement.z) - 15f) < 1f -> 1
                     else -> 2
                 }
