@@ -3,7 +3,7 @@ name: Build Project Arena APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-world-and-heroes]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -12,7 +12,7 @@ on:
       - 'tests/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-world-and-heroes]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -94,25 +94,25 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='45' versionName='0.14.0'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='46' versionName='0.15.0'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.14.0-update
+          name: project-arena-0.15.0-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
       - name: Publish tester release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.14.0-physical-heroes'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.15.0-world-and-heroes'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-0.14.0
-          name: Project Arena 0.14.0 — personagens e física
+          tag_name: project-arena-0.15.0
+          name: Project Arena 0.15.0 — mundo, heróis e HUB
           body: |
-            Build 0.14.0: humanização de heróis por equipamento visual articulado, animação de contato/locomoção, física cinemática com colisões de cenário, limitação de inclinação e separação entre personagens.
-            Preserva HUB 0.10.0, animação do herói 0.11.0 e stack nativa Kotlin + C++20 + Filament.
+            Build 0.15.0: relevo mais pronunciado e malha refinada com altura sincronizada entre renderer e física; silhuetas de heróis ampliadas com mantos/armaduras/hoods de formas diferentes; revisão das poses dos braços e escala das tropas; HUB com câmera de apresentação próxima, herói animado em idle e navegação compacta.
+            Preserva jogo 5v5 offline, economia, colisores e stack nativa Kotlin + C++20 + Filament. CI valida a compilação e os testes determinísticos; aparência, controles e desempenho ainda precisam ser testados no dispositivo.
             Pré-lançamento: validar fluxo de partida, leitura do mapa, desempenho e estabilidade em aparelho Android.
           draft: false
           prerelease: true

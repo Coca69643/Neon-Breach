@@ -139,6 +139,12 @@ internal object HeroGearGlbBuilder {
                 ellipsoid(head,0f,0.13f,-0.01f,0.135f,0.07f,0.14f)
                 box(headTrim,0f,0.12f,0.118f,0.075f,0.035f,0.022f)
                 plate(back,0f,-0.04f,-0.105f,0.19f,0.24f,0.36f,0.035f)
+                // Two layered mantle tails create a recognisable support silhouette in motion.
+                plate(back,-0.13f,-0.28f,-0.13f,0.10f,0.16f,0.54f,0.025f)
+                plate(back,0.13f,-0.25f,-0.13f,0.10f,0.15f,0.48f,0.025f)
+                plate(back,0f,-0.24f,-0.17f,0.16f,0.19f,0.42f,0.025f)
+                ellipsoid(shoulderL,0f,0.015f,-0.005f,0.105f,0.085f,0.11f,9)
+                ellipsoid(shoulderR,0f,0.015f,-0.005f,0.105f,0.085f,0.11f,9)
             }
             1 -> { // Bastion: heavier layered torso, broad shoulders and a ridged helm.
                 plate(torso,0f,0.035f,0.075f,0.205f,0.235f,0.29f,0.13f)
@@ -151,6 +157,11 @@ internal object HeroGearGlbBuilder {
                 ellipsoid(head,0f,0.145f,-0.015f,0.15f,0.075f,0.15f)
                 plate(headTrim,0f,0.22f,0.0f,0.045f,0.015f,0.16f,0.045f)
                 plate(back,0f,-0.065f,-0.12f,0.22f,0.25f,0.32f,0.04f)
+                box(headTrim,-0.145f,0.18f,-0.01f,0.085f,0.20f,0.09f)
+                box(headTrim,0.145f,0.18f,-0.01f,0.085f,0.20f,0.09f)
+                plate(back,0f,-0.22f,-0.17f,0.25f,0.30f,0.48f,0.055f)
+                box(shoulderL,0f,0.07f,-0.01f,0.22f,0.13f,0.19f)
+                box(shoulderR,0f,0.07f,-0.01f,0.22f,0.13f,0.19f)
             }
             else -> { // Kairo: asymmetrical light armour, hood and split travel mantle.
                 plate(torso,0f,0.035f,0.075f,0.145f,0.19f,0.25f,0.075f)
@@ -163,11 +174,18 @@ internal object HeroGearGlbBuilder {
                 plate(headTrim,0f,0.12f,0.12f,0.12f,0.11f,0.045f,0.025f)
                 plate(back,0.015f,-0.05f,-0.12f,0.16f,0.22f,0.32f,0.035f)
                 plate(back,-0.12f,-0.19f,-0.13f,0.07f,0.10f,0.22f,0.025f)
+                // Hood volume and split scarf tails give Kairo an asymmetrical, agile outline.
+                ellipsoid(head,0f,0.12f,-0.075f,0.185f,0.145f,0.19f,12)
+                plate(headTrim,0f,0.22f,-0.055f,0.13f,0.10f,0.10f,0.035f)
+                plate(back,-0.12f,-0.24f,-0.16f,0.08f,0.12f,0.50f,0.028f)
+                plate(back,0.15f,-0.18f,-0.16f,0.07f,0.10f,0.40f,0.028f)
+                box(shoulderR,0f,0.045f,0.015f,0.19f,0.075f,0.11f)
+                plate(forearmR,0f,0.06f,0.065f,0.075f,0.09f,0.18f,0.025f)
             }
         }
 
         // Bone-local plates finish the silhouette without duplicating full character meshes.
-        val shoulderScale = if(style==1) 1.24f else if(style==2) 0.86f else 0.96f
+        val shoulderScale = if(style==1) 1.62f else if(style==2) 0.82f else 1.02f
         ellipsoid(shoulderL,0f,0.02f,0f,0.084f*shoulderScale,0.095f*shoulderScale,0.092f*shoulderScale,8)
         ellipsoid(shoulderR,0f,0.02f,0f,0.084f*shoulderScale,0.095f*shoulderScale,0.092f*shoulderScale,8)
         box(forearmL,0f,0.07f,0.015f,0.10f*shoulderScale,0.16f,0.09f)
@@ -217,7 +235,7 @@ internal object HeroGearGlbBuilder {
         }
         val nodeIds=parts.indices.filter { parts[it].indices.isNotEmpty() }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-HeroGear-0.14"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-HeroGear-0.15"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val padding=(4-raw.size%4)%4
         val jsonBytes=raw+ByteArray(padding){0x20}
         val binPadding=(4-payload.size%4)%4

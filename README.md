@@ -1,6 +1,20 @@
-# Projeto Arena 0.14.0
+# Projeto Arena 0.15.0
 
-MOBA 3D nativo para Android, landscape e offline. A 0.14.0 integra modelagem articulada dos heróis, animação corporal mais completa e física cinemática com colisões no mesmo espaço de terreno. Preserva o mapa 0.13.0, sistemas 5v5, HUB, progressão e câmera isométrica fixa.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.0 revisa o relevo do campo, a silhueta dos heróis, a articulação dos braços e a composição do HUB. Preserva a física cinemática, sistemas 5v5, progressão offline e a câmera isométrica fixa durante a partida.
+
+## Revisão visual e de apresentação 0.15.0
+
+- Relevo do campo ampliado: cristas laterais, elevações nas aproximações das bases, lombadas de selva e terraços periféricos com maior variação vertical.
+- Malha do terreno refinada de 104 para 144 divisões por eixo; caminhos de pedra mais estreitos para recuperar a leitura de grama, rio e bordas.
+- Paleta do solo e da iluminação ajustada para reduzir o domínio ciano e reforçar a separação entre grama, terra, pedra e água.
+- Fórmula de altura mantida idêntica no gerador de terreno Kotlin e no módulo de física C++; personagens e colisores consultam a mesma altura.
+- Lyra ganha caudas de manto em camadas; Bastion recebe ombreiras largas, crista de elmo e placas mais pesadas; Kairo recebe capuz e faixas assimétricas.
+- Posição de repouso dos braços revisada: ângulos mais baixos, flexão combinada e balanço menor para reduzir a pose rígida em V.
+- Proporções dos slots de tropas diferenciadas entre unidades corpo a corpo, de distância e pesadas.
+- HUB reorganizado com o herói em destaque, animação idle no menu, botões secundários discretos e uma única ação principal. Coleção, loja e missões saem da coluna de botões grandes.
+- Câmera do menu aproximada para apresentar o herói; a câmera de partida permanece separada.
+- CI testa a integridade dos GLBs gerados e verifica a sincronização do relevo entre renderer e física.
+
 
 ## Modelagem, humanização e física 0.14.0
 
@@ -63,13 +77,13 @@ MOBA 3D nativo para Android, landscape e offline. A 0.14.0 integra modelagem art
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
 - Orientação landscape fixa; funcionamento offline; sem WebView.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 45 / versionName 0.14.0.
+- versionCode 46 / versionName 0.15.0.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas
 
 - A partida é offline contra IA; não há matchmaking, servidores ou cinco jogadores humanos por equipe.
-- O corpo humanoide-base continua compartilhado; as silhuetas são diferenciadas por equipamento articulado preso aos ossos, não por três malhas completas independentes.
+- O corpo humanoide Quaternius continua compartilhado; a 0.15.0 amplia a distinção por equipamento articulado e proporções. Ainda não existem três malhas corporais completas produzidas independentemente.
 - Os santuários dos objetivos agora têm geometria própria, mas ainda não incluem criaturas-chefes com malhas e animações exclusivas.
 - Esta é uma base MOBA jogável, ainda sem Fog of War, seleção manual de alvo, draft, inventário de múltiplos espaços ou estratégia de equipe avançada.
 - O CI executa testes determinísticos de física e compila/assina o APK, mas não substitui teste visual e de desempenho no Realme C53: FPS sustentado, temperatura, câmera, colisões percebidas, leitura do mapa e controles touch ainda precisam ser medidos no aparelho.

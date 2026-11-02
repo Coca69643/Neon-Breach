@@ -1,5 +1,32 @@
 # Changelog — Projeto Arena
 
+## [0.15.0] — 2026-11-02
+
+### Terreno e leitura espacial
+- Aumentada a amplitude das cristas laterais, elevações das bases, colinas da selva e terraços periféricos.
+- A malha do campo passou de 104 para 144 divisões por eixo; caminhos de pedra foram estreitados para expor mais terreno e vegetação.
+- Ajustados os materiais de grama, terra, pedra, ruínas e rio para uma paleta menos ciano.
+- A função de altura foi atualizada em paralelo no WorldGlbBuilder Kotlin e em ArenaPhysics C++ para manter o contato dos corpos com o relevo.
+
+### Personagens e animação
+- Lyra recebe um manto com caudas em camadas; Bastion recebe placas de ombro ampliadas, elmo com crista e armadura mais pesada; Kairo recebe capuz e manto assimétrico.
+- Geometria adicional entra nos GLBs gerados localmente e continua parentada aos ossos do corpo Quaternius.
+- Poses de braço foram reduzidas e combinam flexão com balanço no eixo secundário, substituindo o afastamento rígido exagerado.
+- Perfil de escala de tropas distingue infantaria, unidades de distância e unidades pesadas.
+- Teste unitário confirma que os três estilos geram GLBs diferentes.
+
+### HUB e interface
+- Menu principal passou a apresentar um único herói em primeiro plano, com animação idle contínua e câmera de aproximação.
+- Removida a coluna vertical de botões grandes; ações secundárias agora são atalhos compactos para coleção, loja e missões.
+- Ajuda e ajustes foram movidos para atalhos discretos no topo; a ação principal JOGAR fica isolada no canto inferior.
+- Bot e tropa são ocultados durante a apresentação do menu e retornam ao iniciar partida.
+
+### Validação e limites
+- Física nativa e renderer consultam a mesma nova fórmula de altura do terreno.
+- CI executa regressões da física, valida os GLBs, verifica a estrutura e compila/assina o APK.
+- O corpo base ainda é compartilhado entre heróis; as identidades visuais vêm de armaduras, mantos, capuzes e proporções, não de três corpos completos independentes.
+- Câmera, anatomia visual final, leitura do relevo, estabilidade, FPS e temperatura ainda precisam de teste em dispositivo real. A compilação do APK não comprova esses aspectos.
+
 ## [0.14.0] — 2026-11-02
 
 ### Modelagem e identidade dos personagens

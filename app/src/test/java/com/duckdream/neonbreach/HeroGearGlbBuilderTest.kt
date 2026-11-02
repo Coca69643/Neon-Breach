@@ -20,7 +20,7 @@ class HeroGearGlbBuilderTest {
                 assertTrue(jsonLength > 0)
                 assertEquals(0x4e4f534a, glb.getInt(16))
                 val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
-                assertTrue(json.contains("DuckDreamStudios-HeroGear-0.14"))
+                assertTrue(json.contains("DuckDreamStudios-HeroGear-0.15"))
                 listOf(
                     "gear_torso", "gear_trim", "gear_head", "gear_head_trim", "gear_back",
                     "gear_shoulder_l", "gear_shoulder_r", "gear_forearm_l", "gear_forearm_r",
@@ -33,5 +33,11 @@ class HeroGearGlbBuilderTest {
                 assertEquals(bytes.size, binHeader + 8 + binaryLength)
             }
         }
+        val lyra = HeroGearGlbBuilder.build(0, 0)
+        val bastion = HeroGearGlbBuilder.build(1, 0)
+        val kairo = HeroGearGlbBuilder.build(2, 0)
+        assertTrue("Lyra and Bastion must not serialize to the same model", !lyra.contentEquals(bastion))
+        assertTrue("Bastion and Kairo must not serialize to the same model", !bastion.contentEquals(kairo))
+        assertTrue("Lyra and Kairo must not serialize to the same model", !lyra.contentEquals(kairo))
     }
 }

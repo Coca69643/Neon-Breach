@@ -152,6 +152,8 @@ class MainActivity : Activity() {
                     if (result[15] > 0.5f) showResult(true)
                     else if (result[15] < -0.5f) showResult(false)
                 }
+            } else if (state == AppState.MENU) {
+                renderer.updateMenuIdle(dt)
             }
 
             try {
@@ -255,6 +257,16 @@ class MainActivity : Activity() {
             }
         }
 
+    private fun navTextButton(text: String, onClick: () -> Unit): TextView =
+        label(text, 10f, Color.rgb(229, 239, 224), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(9), dp(8), dp(9), dp(8))
+            letterSpacing = 0.035f
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+        }
+
     private fun replaceLayer(view: View) {
         screenLayer?.let { root.removeView(it) }
         screenLayer = view
@@ -263,9 +275,9 @@ class MainActivity : Activity() {
 
     private fun panel(): android.graphics.drawable.GradientDrawable =
         android.graphics.drawable.GradientDrawable().apply {
-            setColor(Color.argb(218, 15, 29, 31))
-            cornerRadius = dp(10).toFloat()
-            setStroke(dp(1), Color.argb(170, 138, 180, 161))
+            setColor(Color.argb(190, 15, 29, 31))
+            cornerRadius = dp(8).toFloat()
+            setStroke(dp(1), Color.argb(135, 138, 180, 161))
         }
 
     private fun loadMenuSettings() {
@@ -290,76 +302,102 @@ class MainActivity : Activity() {
 
     private fun showMenu() {
         transition(AppState.MENU)
-        renderer.setMinionsVisible(false)
-        renderer.setOverviewCamera(true)
+        renderer.setMenuPresentation(true)
         renderer.setHeroAppearance(selectedHero, ArenaMetaStore.isSkinEquipped(this, selectedHero))
+        renderer.setOverviewCamera(true)
 
         val layer = FrameLayout(this)
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(16), dp(22), dp(12))
-        }
-        header.addView(label("ARENA", 23f, Color.WHITE, true))
-        header.addView(label("A batalha pelas três rotas", 11f, Color.rgb(208, 224, 211)))
-        layer.addView(header, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START))
 
-        val profile = LinearLayout(this).apply {
+        val brand = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = panel()
+            setPadding(dp(22), dp(18), dp(22), dp(10))
         }
-        profile.addView(label("SEU HERÓI", 9f, Color.rgb(175, 206, 189), true))
-        profile.addView(label(HERO_NAMES[selectedHero], 22f, Color.WHITE, true).apply {
-            setPadding(0, dp(3), 0, 0)
+        brand.addView(label("ARENA", 32f, Color.WHITE, true).apply {
+            letterSpacing = 0.045f
         })
-        profile.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(236, 194, 123), true))
-        profile.addView(label(HERO_SUMMARIES[selectedHero], 10f, Color.rgb(221, 229, 216)).apply {
-            maxWidth = dp(245)
-            setPadding(0, dp(7), 0, dp(7))
-        })
-        profile.addView(label("${activeAbilityName()}  •  ${activeAbilityHint()}", 9f, Color.rgb(172, 214, 198)).apply {
-            maxWidth = dp(245)
-        })
-        profile.addView(actionButton("TROCAR HERÓI") { showHeroSelect() },
-            LinearLayout.LayoutParams(dp(180), dp(38)).apply { topMargin = dp(10) })
-        layer.addView(profile, FrameLayout.LayoutParams(dp(278), -2, Gravity.BOTTOM or Gravity.START).apply {
-            marginStart = dp(20)
-            bottomMargin = dp(20)
+        brand.addView(label("A batalha pelas três rotas", 11f, Color.rgb(225, 229, 210)))
+        layer.addView(brand, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START))
+
+        val account = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(7), dp(10), dp(7))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.argb(125, 8, 22, 27))
+                cornerRadius = dp(7).toFloat()
+            }
+        }
+        account.addView(label(
+            "✦  " + ArenaMetaStore.coins(this) + "     ◆  " + ArenaMetaStore.shards(this),
+            10f, Color.rgb(244, 211, 147), true
+        ))
+        account.addView(navTextButton("?") { showGuide() })
+        account.addView(navTextButton("⚙") { showSettings() })
+        layer.addView(account, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(18)
+            marginEnd = dp(22)
         })
 
-        val navigation = LinearLayout(this).apply {
+        val heroCard = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.END
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = panel()
+            setPadding(dp(16), dp(13), dp(16), dp(13))
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.argb(204, 8, 26, 29), Color.argb(118, 8, 26, 29))
+            ).apply {
+                cornerRadius = dp(9).toFloat()
+                setStroke(dp(1), Color.argb(115, 190, 204, 171))
+            }
         }
-        navigation.addView(primaryActionButton("JOGAR") { startMatch() },
-            LinearLayout.LayoutParams(dp(176), dp(50)))
-        navigation.addView(actionButton("HERÓIS") { showHeroSelect() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("COMO JOGAR") { showGuide() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("SKINS") { showSkins() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("LOJA") { showShop() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("MISSÕES / PERFIL") { showMissionsProfile() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("AJUSTES") { showSettings() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        profile.addView(label("MOEDAS  " + ArenaMetaStore.coins(this) + "   •   FRAGMENTOS  " + ArenaMetaStore.shards(this), 9f, Color.rgb(236, 194, 123), true))
-        layer.addView(navigation, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
-            marginEnd = dp(20)
-            bottomMargin = dp(20)
+        heroCard.addView(label("HERÓI EM DESTAQUE", 9f, Color.rgb(178, 208, 184), true))
+        heroCard.addView(label(HERO_NAMES[selectedHero], 27f, Color.WHITE, true).apply {
+            setPadding(0, dp(2), 0, 0)
         })
+        heroCard.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(238, 193, 121), true))
+        heroCard.addView(label(HERO_SUMMARIES[selectedHero], 10f, Color.rgb(226, 232, 216)).apply {
+            maxWidth = dp(226)
+            setPadding(0, dp(6), 0, dp(4))
+        })
+        heroCard.addView(label(
+            activeAbilityName() + "  •  " + activeAbilityHint(),
+            9f, Color.rgb(178, 221, 204)
+        ).apply { maxWidth = dp(226) })
+        heroCard.addView(actionButton("VER HERÓIS") { showHeroSelect() },
+            LinearLayout.LayoutParams(dp(142), dp(36)).apply { topMargin = dp(9) })
+        layer.addView(heroCard, FrameLayout.LayoutParams(dp(258), -2, Gravity.BOTTOM or Gravity.START).apply {
+            marginStart = dp(22)
+            bottomMargin = dp(22)
+        })
+
+        val secondaryNav = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(2), dp(4), dp(2))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.argb(86, 8, 22, 27))
+                cornerRadius = dp(7).toFloat()
+            }
+        }
+        secondaryNav.addView(navTextButton("COLEÇÃO") { showSkins() })
+        secondaryNav.addView(navTextButton("LOJA") { showShop() })
+        secondaryNav.addView(navTextButton("MISSÕES") { showMissionsProfile() })
+        layer.addView(secondaryNav, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(24)
+        })
+
+        layer.addView(primaryActionButton("JOGAR  ›") { startMatch() },
+            FrameLayout.LayoutParams(dp(160), dp(54), Gravity.BOTTOM or Gravity.END).apply {
+                marginEnd = dp(24)
+                bottomMargin = dp(22)
+            })
         replaceLayer(layer)
     }
 
     private fun showHeroSelect() {
         transition(AppState.MENU)
-        renderer.setMinionsVisible(false)
-        renderer.setOverviewCamera(true)
+        renderer.setMenuPresentation(true)
         renderer.setHeroAppearance(selectedHero)
+        renderer.setOverviewCamera(true)
 
         val layer = FrameLayout(this)
         val content = LinearLayout(this).apply {
@@ -526,6 +564,7 @@ class MainActivity : Activity() {
 
     private fun showHud() {
         if (::renderer.isInitialized) {
+            renderer.setMenuPresentation(false)
             renderer.setOverviewCamera(false)
             renderer.setMinionsVisible(true)
         }
@@ -554,10 +593,10 @@ class MainActivity : Activity() {
             progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(82, 202, 174))
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(100, 220, 230, 220))
         }
-        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(220), dp(4)).apply {
+        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(190), dp(4)).apply {
             topMargin = dp(4)
         })
-        layer.addView(top, FrameLayout.LayoutParams(dp(250), -2, Gravity.TOP or Gravity.START).apply {
+        layer.addView(top, FrameLayout.LayoutParams(dp(224), -2, Gravity.TOP or Gravity.START).apply {
             topMargin = dp(10)
             marginStart = dp(10)
         })
@@ -568,7 +607,7 @@ class MainActivity : Activity() {
         })
 
         tacticalMap = TacticalMapView(this)
-        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(138), dp(102), Gravity.TOP or Gravity.END).apply {
+        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(122), dp(90), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(10)
             marginEnd = dp(58)
         })
@@ -599,7 +638,7 @@ class MainActivity : Activity() {
             val activated = nativeActivateDash(moveX, moveZ)
             showAbilityFeedback(if (activated) "IMPULSO • avanço na direção do joystick" else "IMPULSO • aguarde a recarga")
         }
-        layer.addView(dashActionButton, FrameLayout.LayoutParams(dp(108), dp(44), Gravity.BOTTOM or Gravity.END).apply {
+        layer.addView(dashActionButton, FrameLayout.LayoutParams(dp(94), dp(38), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(12)
             bottomMargin = dp(16)
         })
@@ -614,7 +653,7 @@ class MainActivity : Activity() {
             }
             showAbilityFeedback(feedback)
         }
-        layer.addView(pulseActionButton, FrameLayout.LayoutParams(dp(104), dp(44), Gravity.BOTTOM or Gravity.END).apply {
+        layer.addView(pulseActionButton, FrameLayout.LayoutParams(dp(94), dp(38), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(128)
             bottomMargin = dp(16)
         })
@@ -624,7 +663,7 @@ class MainActivity : Activity() {
             if (activated) renderer.triggerGuardGesture()
             showAbilityFeedback(if (activated) "ESCUDO • reduz dano recebido por 3 segundos" else "ESCUDO • aguarde a recarga")
         }
-        layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
+        layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(94), dp(34), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(12)
             bottomMargin = dp(68)
         })
