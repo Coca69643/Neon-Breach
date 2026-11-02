@@ -33,5 +33,11 @@ class HeroGearGlbBuilderTest {
                 assertEquals(bytes.size, binHeader + 8 + binaryLength)
             }
         }
+        val lyra = HeroGearGlbBuilder.build(0, 0)
+        val bastion = HeroGearGlbBuilder.build(1, 0)
+        val kairo = HeroGearGlbBuilder.build(2, 0)
+        assertTrue("Lyra and Bastion must not serialize to the same model", !lyra.contentEquals(bastion))
+        assertTrue("Bastion and Kairo must not serialize to the same model", !bastion.contentEquals(kairo))
+        assertTrue("Lyra and Kairo must not serialize to the same model", !lyra.contentEquals(kairo))
     }
 }
