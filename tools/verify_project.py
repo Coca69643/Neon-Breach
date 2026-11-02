@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.14.0."""
+"""Structural verification for Project Arena 0.15.0."""
 from pathlib import Path
 import base64
 import json
@@ -27,6 +27,8 @@ physics = read("app/src/main/cpp/ArenaPhysics.cpp")
 physics_tests = read("tests/arena_physics_tests.cpp")
 gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
+world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
+menu_art = read("app/src/main/java/com/duckdream/neonbreach/ArenaMenuArtworkView.kt")
 workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
@@ -37,14 +39,18 @@ avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
 
 checks = [
-    ("versionCode 45" in gradle and "versionName '0.14.0'" in gradle, "app version must be 0.14.0 / code 45"),
+    ("ArenaMenuArtworkView(this)" in main and "COLEÇÃO" in main and "ABRIR LOJA" in main and "ArenaMenuArtworkView" in menu_art, "illustrated HUB artwork and compact navigation missing"),
+    ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
+    ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
+    ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
+    ("versionCode 46" in gradle and "versionName '0.15.0'" in gradle, "app version must be 0.15.0 / code 46"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='45' versionName='0.14.0'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.14.0-update" in workflow, "0.14.0 artifact name missing"),
-    ("refs/heads/rebuild/project-arena-0.14.0-physical-heroes" in workflow, "0.14.0 release branch condition missing"),
+    ("versionCode='46' versionName='0.15.0'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.15.0-update" in workflow, "0.15.0 artifact name missing"),
+    ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
     ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle, "Filament dependencies missing"),
@@ -90,17 +96,17 @@ checks = [
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
     ("Compile and run native physics tests" in workflow and "tests/arena_physics_tests.cpp" in workflow, "CI does not compile/run native physics tests"),
-    ("createHeroGear()" in renderer and "setParent(child, parent)" in renderer and "playerGearInstances" in renderer, "articulated hero gear is not attached to the skeleton"),
-    ("gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "hero-specific costume mesh generation missing"),
-    ("generatedGearGlbHasValidContainerAndBoneParts" in gear_tests and "testDebugUnitTest" in workflow and "junit:junit:4.13.2" in gradle, "generated hero gear GLB unit test is not connected to CI"),
+    ("createHeroGear()" in renderer and "setParent(child, parent)" in renderer and "playerGearInstances" in renderer and "rebuildBotGearForHero()" in renderer, "articulated role equipment is not attached to the skeleton"),
+    ("style=hero.coerceIn(0,4)" in gear and "Arcanist" in gear and "Ranger" in gear and "gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "five role-specific costume silhouettes missing"),
+    ("generatedGearGlbHasValidContainerAndBoneParts" in gear_tests and "for (hero in 0..4)" in gear_tests and "remasteredTerrainHasReadableReliefAndWalkableGradients" in world_tests and "testDebugUnitTest" in workflow and "junit:junit:4.13.2" in gradle, "role GLB or terrain regression tests are not connected to CI"),
     ("terrainAlignedTransform" in renderer and "WorldGlbBuilder.normalAt" in renderer and "internal fun normalAt" in world, "character orientation is not aligned to terrain normals"),
-    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer, "NPC grounding and articulated gait missing"),
+    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer and "Humanoid arm bones run along local +Y" in renderer and "animatePose(bone, angle, 0)" in renderer and "readyPose" in renderer, "NPC role gait or anatomical arm swing missing"),
     ("PhysicsWorld.cpp" not in cmake, "unused second physics implementation must remain disabled"),
 
     ("firstTowerInLane" not in native, "unused tower helper should not remain under -Werror"),
     ("KayKit" in asset_register and "CC0" in asset_register, "KayKit asset register missing"),
     ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license, "CC0 license files missing"),
-    ("0.14.0" in readme and "offline" in readme.lower() and "0.14.0" in changelog, "release documentation missing"),
+    ("0.15.0" in readme and "offline" in readme.lower() and "0.15.0" in changelog, "release documentation missing"),
 ]
 for ok, message in checks:
     if not ok:
@@ -149,5 +155,5 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.14.0 structural verification passed.")
-print("MOBA systems, map, fixed camera, skeletal gear, terrain-aligned animation, kinematic physics and regression tests verified.")
+print("Project Arena 0.15.0 structural verification passed.")
+print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")

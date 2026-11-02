@@ -110,7 +110,7 @@ internal object HeroGearGlbBuilder {
     private fun align(out: ByteArrayOutputStream) { while(out.size()%4!=0) out.write(0) }
 
     fun build(hero: Int, team: Int): ByteArray {
-        val style=hero.coerceIn(0,2);val red=team!=0
+        val style=hero.coerceIn(0,4);val red=team!=0
         val parts=ArrayList<Part>()
         val torso=Part("gear_torso",0).also { parts.add(it) }
         val trim=Part("gear_trim",1).also { parts.add(it) }
@@ -152,7 +152,7 @@ internal object HeroGearGlbBuilder {
                 plate(headTrim,0f,0.22f,0.0f,0.045f,0.015f,0.16f,0.045f)
                 plate(back,0f,-0.065f,-0.12f,0.22f,0.25f,0.32f,0.04f)
             }
-            else -> { // Kairo: asymmetrical light armour, hood and split travel mantle.
+            2 -> { // Kairo: asymmetrical light armour and split travel mantle.
                 plate(torso,0f,0.035f,0.075f,0.145f,0.19f,0.25f,0.075f)
                 plate(torso,-0.075f,-0.05f,0.105f,0.11f,0.13f,0.15f,0.04f)
                 ellipsoid(torso,-0.205f,0.095f,0f,0.09f,0.07f,0.105f)
@@ -164,10 +164,38 @@ internal object HeroGearGlbBuilder {
                 plate(back,0.015f,-0.05f,-0.12f,0.16f,0.22f,0.32f,0.035f)
                 plate(back,-0.12f,-0.19f,-0.13f,0.07f,0.10f,0.22f,0.025f)
             }
+            3 -> { // Arcanist: tall collar, layered mantle and a raised hood profile.
+                plate(torso,0f,0.045f,0.07f,0.18f,0.22f,0.30f,0.08f)
+                plate(torso,0f,-0.12f,0.08f,0.15f,0.12f,0.14f,0.08f)
+                ellipsoid(torso,-0.205f,0.12f,0f,0.10f,0.10f,0.11f)
+                ellipsoid(torso,0.205f,0.12f,0f,0.10f,0.10f,0.11f)
+                plate(trim,0f,0.17f,0.10f,0.14f,0.18f,0.16f,0.06f)
+                plate(head,0f,0.16f,-0.01f,0.16f,0.13f,0.25f,0.12f)
+                plate(headTrim,0f,0.28f,0.03f,0.10f,0.02f,0.12f,0.08f)
+                plate(back,0f,-0.17f,-0.13f,0.24f,0.30f,0.55f,0.035f)
+                plate(back,0f,-0.39f,-0.14f,0.10f,0.13f,0.28f,0.025f)
+            }
+            else -> { // Ranger: compact hood and long asymmetric shoulder mantle.
+                plate(torso,0f,0.02f,0.07f,0.15f,0.18f,0.24f,0.075f)
+                plate(torso,0.06f,-0.10f,0.10f,0.12f,0.14f,0.13f,0.05f)
+                ellipsoid(torso,-0.20f,0.10f,0f,0.09f,0.075f,0.11f)
+                ellipsoid(torso,0.20f,0.10f,0f,0.09f,0.075f,0.11f)
+                plate(trim,0.07f,0.02f,0.13f,0.035f,0.045f,0.18f,0.025f)
+                plate(head,0f,0.13f,-0.02f,0.16f,0.17f,0.18f,0.15f)
+                plate(headTrim,0f,0.04f,0.12f,0.17f,0.11f,0.05f,0.03f)
+                plate(back,0.08f,-0.12f,-0.12f,0.20f,0.24f,0.46f,0.035f)
+                plate(back,-0.18f,-0.25f,-0.13f,0.10f,0.12f,0.30f,0.03f)
+            }
         }
 
         // Bone-local plates finish the silhouette without duplicating full character meshes.
-        val shoulderScale = if(style==1) 1.24f else if(style==2) 0.86f else 0.96f
+        val shoulderScale = when(style) {
+            1 -> 1.38f
+            2 -> 0.88f
+            3 -> 1.08f
+            4 -> 0.82f
+            else -> 1.0f
+        }
         ellipsoid(shoulderL,0f,0.02f,0f,0.084f*shoulderScale,0.095f*shoulderScale,0.092f*shoulderScale,8)
         ellipsoid(shoulderR,0f,0.02f,0f,0.084f*shoulderScale,0.095f*shoulderScale,0.092f*shoulderScale,8)
         box(forearmL,0f,0.07f,0.015f,0.10f*shoulderScale,0.16f,0.09f)
@@ -217,7 +245,7 @@ internal object HeroGearGlbBuilder {
         }
         val nodeIds=parts.indices.filter { parts[it].indices.isNotEmpty() }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-HeroGear-0.14"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-HeroGear-0.15"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val padding=(4-raw.size%4)%4
         val jsonBytes=raw+ByteArray(padding){0x20}
         val binPadding=(4-payload.size%4)%4

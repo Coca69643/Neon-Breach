@@ -9,7 +9,7 @@ import java.nio.ByteOrder
 class HeroGearGlbBuilderTest {
     @Test
     fun generatedGearGlbHasValidContainerAndBoneParts() {
-        for (hero in 0..2) {
+        for (hero in 0..4) {
             for (team in 0..1) {
                 val bytes = HeroGearGlbBuilder.build(hero, team)
                 val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
@@ -20,7 +20,7 @@ class HeroGearGlbBuilderTest {
                 assertTrue(jsonLength > 0)
                 assertEquals(0x4e4f534a, glb.getInt(16))
                 val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
-                assertTrue(json.contains("DuckDreamStudios-HeroGear-0.14"))
+                assertTrue(json.contains("DuckDreamStudios-HeroGear-0.15"))
                 listOf(
                     "gear_torso", "gear_trim", "gear_head", "gear_head_trim", "gear_back",
                     "gear_shoulder_l", "gear_shoulder_r", "gear_forearm_l", "gear_forearm_r",

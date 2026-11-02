@@ -2,6 +2,7 @@
 
 #include <cassert>
 #include <cmath>
+#include <algorithm>
 #include <iostream>
 
 namespace {
@@ -10,10 +11,18 @@ float distance(float ax,float az,float bx,float bz) {
     return std::sqrt(x*x+z*z);
 }
 void testTerrainSurface() {
-    const float a=arena_physics::terrainHeight(0.0f,-20.0f);
-    const float b=arena_physics::terrainHeight(24.0f,-20.0f);
-    assert(std::isfinite(a)&&std::isfinite(b));
-    assert(arena_physics::terrainSlope(24.0f,-20.0f)>=0.0f);
+    float low=100.0f,high=-100.0f,maxSlope=0.0f;
+    for(float x=-30.0f;x<=30.0f;x+=1.0f) {
+        for(float z=-28.0f;z<=28.0f;z+=1.0f) {
+            const float height=arena_physics::terrainHeight(x,z);
+            const float slope=arena_physics::terrainSlope(x,z);
+            assert(std::isfinite(height)&&std::isfinite(slope));
+            low=std::min(low,height);high=std::max(high,height);
+            maxSlope=std::max(maxSlope,slope);
+        }
+    }
+    assert(high-low>3.2f); // Terrain must read as distinct highlands and a river valley.
+    assert(maxSlope<std::tan(43.0f*3.14159265f/180.0f));
 }
 void testTreeCollisionAndSliding() {
     arena_physics::Body body{-12.2f,-23.0f,0.0f,0.0f,0.43f};
