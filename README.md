@@ -1,6 +1,18 @@
-# Projeto Arena 0.14.0
+# Projeto Arena 0.15.0
 
-MOBA 3D nativo para Android, landscape e offline. A 0.14.0 integra modelagem articulada dos heróis, animação corporal mais completa e física cinemática com colisões no mesmo espaço de terreno. Preserva o mapa 0.13.0, sistemas 5v5, HUB, progressão e câmera isométrica fixa.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.0 revisa a identidade visual dos personagens, a locomoção por função, a topografia e a apresentação do HUB. Preserva sistemas 5v5, progressão local, física cinemática e stack Kotlin + C++20 + Filament.
+
+## Rework visual 0.15.0
+
+- Cinco conjuntos de silhueta para os papéis de IA: defensor de rota, jungler, conjurador de meio, carry e suporte. O herói jogável mantém os três estilos selecionáveis.
+- Corrigido o eixo das rotações dos braços: o rig base usa ossos de braço orientados no eixo local Y; os movimentos agora usam rotação X, com amplitude e flexão de cotovelo reduzidas.
+- Bots recebem cadência, ângulo de prontidão e flexão de cotovelo por função; tropas corpo a corpo e de distância têm postura de braço distinta.
+- Relevo ampliado com cristas laterais, planaltos de selva, colinas nas aproximações e vale fluvial mais profundo. Malha do terreno refinada para 136 × 136 células.
+- A mesma função de altura foi sincronizada entre WorldGlbBuilder.kt e ArenaPhysics.cpp. O teste nativo mede amplitude do relevo e restringe gradientes a menos de 43° na região amostrada.
+- Câmera da partida aproximada e iluminação/material ajustados para reduzir a dominante azul-esverdeada.
+- HUB recebe arte panorâmica original desenhada em Canvas, sem bitmap externo, sem imagem genérica de placeholder e sem depender da câmera de partida.
+- Navegação do HUB reorganizada em uma dock horizontal: Jogar, Heróis, Coleção e Perfil. Guia e Ajustes ficam em ícones compactos; a Loja foi movida para dentro de Coleção.
+- Testes JVM adicionais verificam o GLB dos cinco estilos e a topografia; os testes C++ verificam o relevo usado pela física.
 
 ## Modelagem, humanização e física 0.14.0
 
