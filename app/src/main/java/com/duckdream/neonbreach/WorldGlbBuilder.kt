@@ -382,10 +382,14 @@ internal object WorldGlbBuilder {
             box(masonry,x+0.25f,h(x,z)+0.42f,z,0.72f,0.78f,0.72f)
             box(masonry,x-0.42f,h(x,z)+0.24f,z+0.52f,0.48f,0.38f,0.48f)
         }
+        // Subtle stone edging keeps the camp footprint readable without flag markers.
+        camps.forEach { point -> ringMeshAt(campMarks,point.first,point.second,2.05f,2.22f) }
 
         // Distinct objective arenas: raised stone dais, broken arches and exposed rock.
         groundDisc(forestFloor,-7f,0.2f,5.15f,4.25f,0.045f)
         groundDisc(forestFloor,7f,0.2f,5.15f,4.25f,0.045f)
+        ringMeshAt(objectiveMarks,-7f,0.2f,4.12f,4.32f)
+        ringMeshAt(objectiveMarks,7f,0.2f,4.12f,4.32f)
         shrine(shrineStone,-7f,0.2f,0.92f,true)
         shrine(shrineStone,7f,0.2f,0.92f,false)
         for(i in 0 until 12) {
@@ -468,8 +472,8 @@ internal object WorldGlbBuilder {
             listOf(0.76f,0.56f,0.13f,1f),
             listOf(0.31f,0.20f,0.11f,1f),
             listOf(0.29f,0.30f,0.27f,1f),
-            listOf(0.58f,0.48f,0.24f,0.92f),
-            listOf(0.82f,0.68f,0.28f,0.96f),
+            listOf(0.22f,0.19f,0.13f,1f),
+            listOf(0.31f,0.27f,0.19f,1f),
             listOf(0.09f,0.14f,0.07f,1f),
             listOf(0.12f,0.20f,0.08f,1f),
             listOf(0.25f,0.27f,0.23f,1f),
