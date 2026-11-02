@@ -471,7 +471,7 @@ internal class FilamentGameRenderer(
                     }
                     characterResources!!.loadResources(asset)
                 }
-                assets[team * 3 + style] = asset
+                assets[team * 5 + style] = asset
                 heroGearAssets.add(asset)
             }
         }
@@ -515,8 +515,7 @@ internal class FilamentGameRenderer(
         }
         equippedPlayerGear = activeHero
         rebuildBotGearForHero()
-        heroGearAssets.forEach { it.releaseSourceData() }
-        Log.i(TAG, "Articulated gear loaded: 3 playable heroes and 5 role silhouettes for both teams")
+        Log.i(TAG, "Articulated gear loaded: 3 playable identities and 5 AI role silhouettes; source buffers retained for loadout changes")
     }
 
     private fun botStyleForRole(role: Int): Int = when (role.coerceIn(0, 4)) {
