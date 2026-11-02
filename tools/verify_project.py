@@ -37,6 +37,8 @@ required_files = [
     "app/src/main/cpp/WorldLayout.h",
     "app/src/main/cpp/ProgressionManager.h",
     "app/src/main/cpp/ProgressionManager.cpp",
+    "app/src/main/cpp/CharacterAnimation.h",
+    "app/src/main/cpp/CharacterAnimation.cpp",
     "app/src/main/cpp/third_party/cgltf.h",
     "app/src/main/cpp/third_party/stb_image.h",
     "app/src/main/cpp/third_party/CGltf-LICENSE.txt",
@@ -46,6 +48,7 @@ required_files = [
     "tools/verify_elf_alignment.py",
     "tests/world_layout_tests.cpp",
     "tests/progression_manager_tests.cpp",
+    "tests/character_animation_tests.cpp",
 ]
 for relative in required_files:
     if not (ROOT / relative).is_file():
@@ -59,16 +62,18 @@ if 'android:glEsVersion="0x00030000"' not in manifest:
 if 'android:label="@string/app_name"' not in manifest:
     raise SystemExit("Android launcher label must use the app_name resource")
 app_strings = read_text("app/src/main/res/values/strings.xml")
-if '<string name="app_name">ORION-9</string>' not in app_strings:
-    raise SystemExit("Android-visible application name must be ORION-9")
+if '<string name="app_name">Projeto Arena</string>' not in app_strings:
+    raise SystemExit("Android-visible application name must be exactly Projeto Arena")
+if re.search(r'<string name="app_name">.*(?:0\.\d|v\d)', app_strings, re.IGNORECASE):
+    raise SystemExit("Android-visible application name must not contain a version suffix")
 for icon_attr in ('android:icon="@drawable/ic_launcher"',
                   'android:roundIcon="@drawable/ic_launcher"'):
     if icon_attr not in manifest:
         raise SystemExit(f"Launcher icon reference is missing: {icon_attr}")
 
 icon = read_text("app/src/main/res/drawable/ic_launcher.xml")
-if 'android:viewportWidth="108"' not in icon or "#FFC95C" not in icon or "#4AD7E2" not in icon:
-    raise SystemExit("ORION-9 launcher vector asset is missing or malformed")
+if 'android:viewportWidth="108"' not in icon or 'android:viewportHeight="108"' not in icon or "pathData=" not in icon:
+    raise SystemExit("Launcher vector asset is missing or malformed")
 
 gradle = read_text("app/build.gradle")
 application_id = re.search(r"applicationId\s+'([^']+)'", gradle)
@@ -84,12 +89,14 @@ if int(version_code.group(1)) < 1 or int(target_sdk.group(1)) < 35:
     raise SystemExit("Android versionCode or targetSdk is invalid")
 
 activity = read_text("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt")
-if f"SITE ORION-9  •  {version_name.group(1)}" not in activity:
-    raise SystemExit("In-game version label does not match Gradle versionName")
+if "SITE ORION-9" in activity or re.search(r"0\.\d+\.\d+", activity):
+    raise SystemExit("Visible legacy project/version label remains in Android UI")
 if 'text("NEON BREACH"' in activity or 'text("NEON BREACH  /' in activity:
     raise SystemExit("Obsolete Neon Breach product title remains in the Android UI")
-if 'text("ORION-9", 32f' not in activity:
-    raise SystemExit("Main menu title must identify the game as ORION-9")
+if 'text("PROJETO ARENA", 34f' not in activity:
+    raise SystemExit("Main menu title must identify the game as Projeto Arena")
+if any(token in activity for token in ("ORION-9", "NEON-VANGUARD", "STELLAR-REAPER", "ORION9Startup")):
+    raise SystemExit("Legacy ORION identity remains in the Android UI or startup log")
 if not re.search(r"package\s+" + re.escape(namespace.group(1)) + r"\b", activity):
     raise SystemExit("Kotlin package does not match the Gradle namespace")
 
