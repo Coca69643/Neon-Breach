@@ -604,25 +604,34 @@ internal class FilamentGameRenderer(
         val turnLean = (turnRate / 5.5f).coerceIn(-1f, 1f) * 0.075f
         val acceleration = if (dt > 0f) ((speed - previousHeroSpeed) / dt).coerceIn(-9f, 9f) else 0f
         val braking = smoothStep01(-acceleration / 8f)
-        val dash = if (heroDashActive) 1f else 0f
-        val cast = smoothStep01(heroCastTime / 0.48f)
-        val guard = max(if (heroGuardActive) 0.72f else 0f, smoothStep01(heroGuardGestureTime / 0.36f))
-        val hit = smoothStep01(heroDamageTime / 0.28f)
-        val action = smoothStep01(heroActionPulseTime / 0.18f)
-        val down = if (heroDowned) 1f else 0f
-        val respawn = smoothStep01(heroRespawnBlend / 0.72f)
+        val rawDash = if (heroDashActive) 1f else 0f
+        val rawCast = smoothStep01(heroCastTime / 0.48f)
+        val rawGuard = max(if (heroGuardActive) 0.72f else 0f, smoothStep01(heroGuardGestureTime / 0.36f))
+        val rawHit = smoothStep01(heroDamageTime / 0.28f)
+        val rawDown = if (heroDowned) 1f else 0f
+        val rawRespawn = smoothStep01(heroRespawnBlend / 0.72f)
 
+        // Resolve one dominant action state so a stale ability timer cannot overwrite
+        // a hit reaction, a downed pose or the controlled return-to-stand transition.
         heroMotion = when {
-            down > 0f -> HeroMotion.DOWN
-            respawn > 0f -> HeroMotion.RESPAWN
-            hit > 0.05f -> HeroMotion.HIT
-            dash > 0f -> HeroMotion.DASH
-            cast > 0.05f -> HeroMotion.CAST
-            guard > 0.05f -> HeroMotion.GUARD
+            rawDown > 0f -> HeroMotion.DOWN
+            rawRespawn > 0f -> HeroMotion.RESPAWN
+            rawHit > 0.05f -> HeroMotion.HIT
+            rawDash > 0f -> HeroMotion.DASH
+            rawCast > 0.05f -> HeroMotion.CAST
+            rawGuard > 0.05f -> HeroMotion.GUARD
             runBlend > 0.15f -> HeroMotion.RUN
             moving > 0.08f -> HeroMotion.WALK
             else -> HeroMotion.IDLE
         }
+        val down = if (heroMotion == HeroMotion.DOWN) 1f else 0f
+        val respawn = if (heroMotion == HeroMotion.RESPAWN) rawRespawn else 0f
+        val hit = if (heroMotion == HeroMotion.HIT) rawHit else 0f
+        val dash = if (heroMotion == HeroMotion.DASH) rawDash else 0f
+        val cast = if (heroMotion == HeroMotion.CAST) rawCast else 0f
+        val guard = if (heroMotion == HeroMotion.GUARD) rawGuard else 0f
+        val action = if (heroMotion == HeroMotion.IDLE || heroMotion == HeroMotion.WALK ||
+            heroMotion == HeroMotion.RUN) smoothStep01(heroActionPulseTime / 0.18f) else 0f
 
         val heroLean = when (activeHero) {
             1 -> -0.025f // Bastion keeps a more upright centre of mass.
