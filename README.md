@@ -1,4 +1,10 @@
-# ORION-9 0.9.2
+# ORION-9 0.9.6 — startup diagnostics + 16 KB ELF
+
+A build 0.9.6 mantém os marcadores de diagnóstico da inicialização e alinha a biblioteca nativa em 16 KB. O CI valida o alinhamento ELF no APK final. Isso melhora a compatibilidade com dispositivos Android de páginas de 16 KB; não representa, por si só, a confirmação da causa do encerramento no aparelho.
+
+Esta build adiciona rastreamento de inicialização Android/JNI/OpenGL para localizar encerramentos antes do menu. O rastreamento não comprova correção de crash nem altera o backend gráfico.
+
+
 
 **Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
 

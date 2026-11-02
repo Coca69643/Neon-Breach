@@ -33,4 +33,9 @@ find_library(log-lib log)
 find_library(android-lib android)
 target_compile_features(neonbreach PRIVATE cxx_std_17)
 target_compile_options(neonbreach PRIVATE -O3 -Wall -Wextra)
+# Android 16 KB page-size compatibility (NDK r27 needs explicit ELF linker alignment).
+target_link_options(neonbreach PRIVATE
+    "-Wl,-z,max-page-size=16384"
+    "-Wl,-z,common-page-size=16384"
+)
 target_link_libraries(neonbreach PRIVATE Jolt GLESv3 ${android-lib} ${log-lib})

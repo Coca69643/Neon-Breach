@@ -43,6 +43,7 @@ required_files = [
     "app/src/main/cpp/third_party/STB-LICENSE.txt",
     "app/src/main/cpp/third_party/Jolt-LICENSE.txt",
     "tools/validate_shaders.py",
+    "tools/verify_elf_alignment.py",
     "tests/world_layout_tests.cpp",
     "tests/progression_manager_tests.cpp",
 ]
@@ -127,6 +128,9 @@ if "CMAKE_CXX_STANDARD 17" not in cmake and "cxx_std_17" not in cmake:
     raise SystemExit("Native target must compile as C++17")
 if "GIT_TAG v5.6.0" not in cmake:
     raise SystemExit("Jolt Physics dependency must remain version-pinned")
+for linker_flag in ("-Wl,-z,max-page-size=16384", "-Wl,-z,common-page-size=16384"):
+    if linker_flag not in cmake:
+        raise SystemExit(f"16 KB ELF compatibility linker flag is missing: {linker_flag}")
 
 # These are cross-system contracts, not assertions about camera tuning or local variable names.
 for token in (
