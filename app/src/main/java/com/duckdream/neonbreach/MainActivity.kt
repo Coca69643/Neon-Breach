@@ -587,7 +587,8 @@ class MainActivity : Activity() {
         val stick = TouchStick(this) { x, z ->
             val scale = sensitivityLevels[sensitivityIndex]
             moveX = (x * scale).coerceIn(-1f, 1f)
-            moveZ = (z * scale).coerceIn(-1f, 1f)
+            // Touch coordinates grow downward; world +Z is toward the upper screen.
+            moveZ = (-z * scale).coerceIn(-1f, 1f)
         }
         layer.addView(stick, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.BOTTOM or Gravity.START).apply {
             marginStart = dp(14)

@@ -26,11 +26,20 @@ internal object WorldGlbBuilder {
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
     private fun h(x:Float,z:Float):Float {
-        val westRidge = 1.05f * exp(-((x + 23f).pow(2)) / 52f) * (0.45f + 0.55f * cos(z * 0.075f))
-        val eastRidge = 0.92f * exp(-((x - 23f).pow(2)) / 58f) * (0.45f + 0.55f * cos(z * 0.07f))
-        val centralRise = 0.48f * exp(-((x - 1f).pow(2) + (z - 1f).pow(2)) / 90f)
-        return 0.36f*sin(x*0.18f)*cos(z*0.14f)+0.18f*sin((x+z)*0.29f)+westRidge+eastRidge+centralRise
+        val westRidge = 1.72f * exp(-((x + 24f).pow(2)) / 30f) * (0.58f + 0.42f * cos(z * 0.075f))
+        val eastRidge = 1.58f * exp(-((x - 24f).pow(2)) / 34f) * (0.58f + 0.42f * cos(z * 0.07f))
+        val southHighland = 1.05f * exp(-((z + 27f).pow(2)) / 24f) * exp(-(x.pow(2)) / 340f)
+        val northHighland = 1.05f * exp(-((z - 27f).pow(2)) / 24f) * exp(-(x.pow(2)) / 340f)
+        val jungleKnolls = 0.42f * exp(-((abs(x) - 8.5f).pow(2)) / 7f) * exp(-((abs(z) - 14f).pow(2)) / 34f)
+        val riverDistance = abs(z - riverCenterZ(x))
+        val riverBed = -0.34f * exp(-(riverDistance * riverDistance) / 12f)
+        val riverBank = 0.48f * exp(-((riverDistance - 2.45f).pow(2)) / 1.6f)
+        val rolling = 0.22f*sin(x*0.18f)*cos(z*0.14f)+0.12f*sin((x+z)*0.29f)
+        return rolling + westRidge + eastRidge + southHighland + northHighland +
+            jungleKnolls + riverBed + riverBank
     }
+
+    internal fun heightAt(x: Float, z: Float): Float = h(x, z)
     private fun norm(x:Float,z:Float):FloatArray {
         val e=0.04f
         val dx=(h(x+e,z)-h(x-e,z))/(2f*e)
@@ -51,7 +60,89 @@ internal object WorldGlbBuilder {
         part.tri(ia,ib,ic)
     }
     private fun quad(p:Part,a:FloatArray,b:FloatArray,c:FloatArray,d:FloatArray) {
-        tri(p,a,c,b);tri(p,b,c,d)
+        // Input order is left-near, left-far, right-near, right-far; keep the top face CCW.
+        tri(p,a,b,c);tri(p,b,d,c)
+    }
+    private fun triOutward(p: Part, a: FloatArray, b: FloatArray, c: FloatArray,
+                           cx: Float, cy: Float, cz: Float) {
+        val ux=b[0]-a[0]; val uy=b[1]-a[1]; val uz=b[2]-a[2]
+        val vx=c[0]-a[0]; val vy=c[1]-a[1]; val vz=c[2]-a[2]
+        val nx=uy*vz-uz*vy; val ny=uz*vx-ux*vz; val nz=ux*vy-uy*vx
+        val mx=(a[0]+b[0]+c[0])/3f-cx
+        val my=(a[1]+b[1]+c[1])/3f-cy
+        val mz=(a[2]+b[2]+c[2])/3f-cz
+        if (nx*mx+ny*my+nz*mz >= 0f) tri(p,a,b,c) else tri(p,a,c,b)
+    }
+    private fun triUp(p: Part, a: FloatArray, b: FloatArray, c: FloatArray) {
+        val ux=b[0]-a[0]; val uz=b[2]-a[2]
+        val vx=c[0]-a[0]; val vz=c[2]-a[2]
+        val normalY=uz*vx-ux*vz
+        if (normalY >= 0f) tri(p,a,b,c) else tri(p,a,c,b)
+    }
+    private fun box(p: Part, x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float) {
+        val hx=sx*0.5f; val hy=sy*0.5f; val hz=sz*0.5f
+        val v=arrayOf(
+            floatArrayOf(x-hx,y-hy,z-hz), floatArrayOf(x+hx,y-hy,z-hz),
+            floatArrayOf(x+hx,y-hy,z+hz), floatArrayOf(x-hx,y-hy,z+hz),
+            floatArrayOf(x-hx,y+hy,z-hz), floatArrayOf(x+hx,y+hy,z-hz),
+            floatArrayOf(x+hx,y+hy,z+hz), floatArrayOf(x-hx,y+hy,z+hz)
+        )
+        val faces=arrayOf(
+            intArrayOf(0,1,2,3), intArrayOf(4,7,6,5), intArrayOf(0,4,5,1),
+            intArrayOf(1,5,6,2), intArrayOf(2,6,7,3), intArrayOf(3,7,4,0)
+        )
+        faces.forEach { face ->
+            triOutward(p,v[face[0]],v[face[1]],v[face[2]],x,y,z)
+            triOutward(p,v[face[0]],v[face[2]],v[face[3]],x,y,z)
+        }
+    }
+    private fun boulder(p: Part, x: Float, z: Float, rx: Float, ry: Float, rz: Float, seed: Float) {
+        val centerY=h(x,z)+ry*0.54f
+        val top=floatArrayOf(x+sin(seed)*rx*0.12f,centerY+ry,z+cos(seed)*rz*0.12f)
+        val bottom=floatArrayOf(x,centerY-ry*0.72f,z)
+        val ring=Array(8) { i ->
+            val a=2f*PI.toFloat()*i/8f+seed
+            val wobble=0.78f+0.18f*sin(a*3f+seed)
+            floatArrayOf(x+cos(a)*rx*wobble,centerY+sin(a*2.1f+seed)*ry*0.22f,z+sin(a)*rz*wobble)
+        }
+        for(i in ring.indices) {
+            val next=(i+1)%ring.size
+            triOutward(p,top,ring[i],ring[next],x,centerY,z)
+            triOutward(p,bottom,ring[next],ring[i],x,centerY,z)
+        }
+    }
+    private fun groundDisc(p: Part, x: Float, z: Float, rx: Float, rz: Float, lift: Float) {
+        val cy=h(x,z)+lift
+        val center=floatArrayOf(x,cy,z)
+        val segments=36
+        for(i in 0 until segments) {
+            val a0=2f*PI.toFloat()*i/segments
+            val a1=2f*PI.toFloat()*(i+1)/segments
+            val ax=x+cos(a0)*rx; val az=z+sin(a0)*rz
+            val bx=x+cos(a1)*rx; val bz=z+sin(a1)*rz
+            val a=floatArrayOf(ax,h(ax,az)+lift,az)
+            val b=floatArrayOf(bx,h(bx,bz)+lift,bz)
+            triUp(p,center,a,b)
+        }
+    }
+    private fun shrine(p: Part, x: Float, z: Float, scale: Float, broken: Boolean) {
+        val base=h(x,z)+0.12f
+        box(p,x,base+0.18f*scale,z,5.2f*scale,0.36f*scale,4.8f*scale)
+        box(p,x,base+0.47f*scale,z,4.5f*scale,0.22f*scale,4.1f*scale)
+        val corners=listOf(
+            -1.72f to -1.48f, 1.72f to -1.48f,
+            -1.72f to 1.48f, 1.72f to 1.48f
+        )
+        corners.forEachIndexed { index, point ->
+            if (broken && index==3) return@forEachIndexed
+            val px=x+point.first*scale
+            val pz=z+point.second*scale
+            box(p,px,base+1.45f*scale,pz,0.42f*scale,1.9f*scale,0.42f*scale)
+        }
+        box(p,x,base+2.52f*scale,z,4.25f*scale,0.38f*scale,0.58f*scale)
+        if (!broken) box(p,x,base+2.52f*scale,z,0.58f*scale,0.38f*scale,3.65f*scale)
+        else box(p,x-0.52f*scale,base+2.26f*scale,z+0.82f*scale,1.5f*scale,0.28f*scale,0.62f*scale)
+        boulder(p,x+0.15f*scale,z+0.12f*scale,0.62f*scale,0.48f*scale,0.55f*scale,0.7f)
     }
     private lateinit var grassLight: Part
     private lateinit var grassDark: Part
@@ -66,13 +157,15 @@ internal object WorldGlbBuilder {
         return radius <= edge
     }
 
+    private val riverProfile = arrayOf(
+        floatArrayOf(-34f,1.1f), floatArrayOf(-28f,0.55f), floatArrayOf(-21f,0.05f),
+        floatArrayOf(-15f,-0.45f), floatArrayOf(-9f,-0.22f), floatArrayOf(-3f,0.25f),
+        floatArrayOf(4f,0.38f), floatArrayOf(10f,0.02f), floatArrayOf(16f,-0.38f),
+        floatArrayOf(23f,-0.18f), floatArrayOf(29f,0.22f), floatArrayOf(34f,0.8f)
+    )
+
     private fun riverCenterZ(x: Float): Float {
-        val points = arrayOf(
-            floatArrayOf(-34f,1.1f), floatArrayOf(-28f,0.55f), floatArrayOf(-21f,0.05f),
-            floatArrayOf(-15f,-0.45f), floatArrayOf(-9f,-0.22f), floatArrayOf(-3f,0.25f),
-            floatArrayOf(4f,0.38f), floatArrayOf(10f,0.02f), floatArrayOf(16f,-0.38f),
-            floatArrayOf(23f,-0.18f), floatArrayOf(29f,0.22f), floatArrayOf(34f,0.8f)
-        )
+        val points = riverProfile
         for (i in 0 until points.lastIndex) {
             if (x <= points[i + 1][0]) {
                 val t = ((x - points[i][0]) / (points[i + 1][0] - points[i][0])).coerceIn(0f, 1f)
@@ -142,8 +235,8 @@ internal object WorldGlbBuilder {
             val oa = floatArrayOf(outerRadius * cos(a0), 0.09f, outerRadius * sin(a0))
             val ib = floatArrayOf(innerRadius * cos(a1), 0.09f, innerRadius * sin(a1))
             val ob = floatArrayOf(outerRadius * cos(a1), 0.09f, outerRadius * sin(a1))
-            tri(p, ia, oa, ib)
-            tri(p, oa, ob, ib)
+            triUp(p, ia, oa, ib)
+            triUp(p, oa, ob, ib)
         }
     }
 
@@ -226,6 +319,12 @@ internal object WorldGlbBuilder {
         val shield=part("shield_ring",8)
         val campMarks=part("neutral_camp_marks",11)
         val objectiveMarks=part("neutral_objective_marks",12)
+        val forestFloor=part("forest_floor",13)
+        val undergrowth=part("undergrowth",14)
+        val masonry=part("ruined_masonry",15)
+        val boulderField=part("boulder_field",16)
+        val shrineStone=part("objective_shrine",17)
+        val ocean=part("surrounding_water",18)
         terrainMesh()
         ringMesh(pulse,0.88f,1.08f)
         ringMesh(shield,0.98f,1.15f)
@@ -263,16 +362,78 @@ internal object WorldGlbBuilder {
             floatArrayOf(23f,-0.18f),floatArrayOf(29f,0.22f),floatArrayOf(34f,0.8f)
         )
         ribbon(water,river,1.72f,0.10f)
+        ribbon(earth,river,2.18f,0.035f)
 
-        // Persistent ground marks make neutral camps and both objective pits readable.
-        listOf(
-            floatArrayOf(-8.2f,-14.5f),floatArrayOf(8.2f,-14.5f),
-            floatArrayOf(-20.2f,-10f),floatArrayOf(20.2f,-10f),
-            floatArrayOf(-8.2f,14.5f),floatArrayOf(8.2f,14.5f),
-            floatArrayOf(-20.2f,10f),floatArrayOf(20.2f,10f)
-        ).forEach { p -> ringMeshAt(campMarks,p[0],p[1],1.2f,1.55f) }
-        ringMeshAt(objectiveMarks,-7f,0.2f,2.3f,3.0f)
-        ringMeshAt(objectiveMarks,7f,0.2f,2.6f,3.35f)
+        // Forest clearings, camps and river sanctuaries are modeled as world geometry.
+        val camps = listOf(
+            -8.2f to -14.5f, 8.2f to -14.5f,
+            -20.2f to -10f, 20.2f to -10f,
+            -8.2f to 14.5f, 8.2f to 14.5f,
+            -20.2f to 10f, 20.2f to 10f
+        )
+        camps.forEachIndexed { index, point ->
+            val x=point.first; val z=point.second
+            groundDisc(forestFloor,x,z,3.2f,2.65f,0.035f)
+            groundDisc(earth,x,z,2.35f,1.85f,0.075f)
+            for(i in 0 until 7) {
+                val a=2f*PI.toFloat()*i/7f+index*0.31f
+                boulder(boulderField,x+cos(a)*2.65f,z+sin(a)*2.0f,0.38f,0.32f,0.34f,a)
+            }
+            box(masonry,x+0.25f,h(x,z)+0.42f,z,0.72f,0.78f,0.72f)
+            box(masonry,x-0.42f,h(x,z)+0.24f,z+0.52f,0.48f,0.38f,0.48f)
+        }
+        // Subtle stone edging keeps the camp footprint readable without flag markers.
+        camps.forEach { point -> ringMeshAt(campMarks,point.first,point.second,2.05f,2.22f) }
+
+        // Distinct objective arenas: raised stone dais, broken arches and exposed rock.
+        groundDisc(forestFloor,-7f,0.2f,5.15f,4.25f,0.045f)
+        groundDisc(forestFloor,7f,0.2f,5.15f,4.25f,0.045f)
+        ringMeshAt(objectiveMarks,-7f,0.2f,4.12f,4.32f)
+        ringMeshAt(objectiveMarks,7f,0.2f,4.12f,4.32f)
+        shrine(shrineStone,-7f,0.2f,0.92f,true)
+        shrine(shrineStone,7f,0.2f,0.92f,false)
+        for(i in 0 until 12) {
+            val a=2f*PI.toFloat()*i/12f
+            boulder(boulderField,-7f+cos(a)*4.55f,0.2f+sin(a)*3.75f,0.48f,0.5f,0.42f,a)
+            boulder(boulderField,7f+cos(a)*4.55f,0.2f+sin(a)*3.75f,0.48f,0.5f,0.42f,a+1f)
+        }
+
+        // Additional elevation and rubble make the outer jungle and base approaches readable.
+        val groves=listOf(
+            -25f to -19f,-27f to -8f,-23f to 8f,-26f to 19f,
+            25f to -19f,27f to -8f,23f to 8f,26f to 19f,
+            -8.5f to -21f,8.5f to -21f,-8.5f to 21f,8.5f to 21f
+        )
+        groves.forEachIndexed { index, point ->
+            groundDisc(forestFloor,point.first,point.second,2.8f,2.1f,0.02f)
+            for(j in 0 until 4) {
+                val a=2f*PI.toFloat()*j/4f+index*0.43f
+                val rx=0.42f+(j%2)*0.22f
+                boulder(boulderField,point.first+cos(a)*1.8f,point.second+sin(a)*1.4f,rx,rx*0.82f,rx,a)
+            }
+        }
+
+        // Dense low-profile undergrowth fills forest gaps without transparent foliage cards.
+        for(i in 0 until 56) {
+            val x=when(i%4){0->-10.1f;1->-6.1f;2->6.1f;else->10.1f} + sin(i*1.71f)*0.82f
+            val z= -22f + (i/4)*3.15f
+            if (abs(z)>24f) continue
+            if (i%8<4 && z>0f) continue
+            val radius=0.30f+(i%3)*0.07f
+            boulder(undergrowth,x,z,radius*1.45f,radius*0.68f,radius, i*0.31f)
+        }
+
+        // Fortified base approach walls and gatehouse paving.
+        for(sign in listOf(-1f,1f)) {
+            val z=sign*24.2f
+            box(masonry,-7.0f,h(-7f,z)+0.72f,z,5.2f,1.35f,0.72f)
+            box(masonry,7.0f,h(7f,z)+0.72f,z,5.2f,1.35f,0.72f)
+            box(masonry,0f,h(0f,sign*27f)+0.09f,sign*27f,13.2f,0.18f,4.8f)
+        }
+
+        // A dark-blue water plane below the island cliffs adds a real horizon layer.
+        quad(ocean,floatArrayOf(-58f,-2.55f,-52f),floatArrayOf(58f,-2.55f,-52f),
+            floatArrayOf(58f,-2.55f,52f),floatArrayOf(-58f,-2.55f,52f))
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -298,7 +459,7 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers")
+        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water")
         val colors=listOf(
             listOf(0.16f,0.24f,0.10f,1f),
             listOf(0.22f,0.31f,0.13f,1f),
@@ -311,15 +472,21 @@ internal object WorldGlbBuilder {
             listOf(0.76f,0.56f,0.13f,1f),
             listOf(0.31f,0.20f,0.11f,1f),
             listOf(0.29f,0.30f,0.27f,1f),
-            listOf(0.58f,0.48f,0.24f,0.92f),
-            listOf(0.82f,0.68f,0.28f,0.96f))
+            listOf(0.22f,0.19f,0.13f,1f),
+            listOf(0.31f,0.27f,0.19f,1f),
+            listOf(0.09f,0.14f,0.07f,1f),
+            listOf(0.12f,0.20f,0.08f,1f),
+            listOf(0.25f,0.27f,0.23f,1f),
+            listOf(0.31f,0.32f,0.30f,1f),
+            listOf(0.42f,0.38f,0.29f,1f),
+            listOf(0.025f,0.085f,0.13f,1f))
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.12"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.13"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
