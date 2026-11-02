@@ -155,7 +155,7 @@ class MainActivity : Activity() {
             }
 
             try {
-                renderer.render(frameTimeNanos)
+                if (state != AppState.MENU) renderer.render(frameTimeNanos)
             } catch (error: Throwable) {
                 Log.e(TAG, "Frame failed; simulation paused", error)
                 enterRecovery("O renderer encontrou uma falha recuperável.")
