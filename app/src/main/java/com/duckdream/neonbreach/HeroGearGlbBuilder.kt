@@ -228,7 +228,7 @@ internal object HeroGearGlbBuilder {
         }
         val nodeIds=parts.indices.filter { parts[it].indices.isNotEmpty() }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-HeroGear-0.14"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-HeroGear-0.15"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val padding=(4-raw.size%4)%4
         val jsonBytes=raw+ByteArray(padding){0x20}
         val binPadding=(4-payload.size%4)%4
