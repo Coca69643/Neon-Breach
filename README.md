@@ -1,6 +1,13 @@
-# Projeto Arena 0.9.1
+# Projeto Arena 0.10.0
 
 MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 local com bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
+
+## HUB e progressão offline 0.10.0
+- Menu expandido com telas de skins, loja, missões e perfil, mantendo o modo MOBA 5v5 e suas três rotas.
+- Carteira local com Moedas de Arena e Fragmentos; partidas concedem recompensas fixas, com bônus de contrato a cada três partidas.
+- Loja troca fragmentos por moedas; skins têm preço fixo, podem ser equipadas e alteram a paleta do herói no preview 3D.
+- XP, nível, partidas, vitórias, moedas, fragmentos e desbloqueios são persistidos localmente em SharedPreferences versionadas.
+- Economia demonstrativa offline: sem compras reais, servidor ou recompensas aleatórias.
 
 ## Reconstrução visual 0.8.0
 - O campo antigo de árvores, cones e esferas e o altar procedural foram removidos.
