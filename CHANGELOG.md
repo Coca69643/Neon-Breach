@@ -1,5 +1,16 @@
 # Changelog — Projeto Arena
 
+## [0.10.0] — 2026-11-02
+
+### HUB e meta progressão
+- Adicionadas telas de coleção de skins, loja, missões e perfil, com navegação a partir do menu principal.
+- Criado armazenamento local de carteira, XP, nível, partidas, vitórias, skins desbloqueadas e skin equipada.
+- Partidas concedem moedas e fragmentos; contrato de três partidas concede recompensa fixa adicional.
+- Loja permite trocar 120 fragmentos por 500 moedas; skin alternativa custa 500 moedas e muda a paleta do modelo 3D.
+- Economia offline de teste, sem compras reais, rede ou caixas aleatórias.
+- versionCode 41 / versionName 0.10.0.
+
+
 ## [0.9.1] — 2026-11-02
 
 ### Interface e navegação
