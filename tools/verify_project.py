@@ -43,7 +43,7 @@ checks = [
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 46" in gradle and "versionName '0.15.0'" in gradle, "app version must be 0.15.0 / code 46"),
+    ("versionCode 47" in gradle and "versionName '0.15.1'" in gradle, "app version must be 0.15.1 / code 47"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
