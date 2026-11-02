@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <mutex>
+#include "ArenaPhysics.h"
 
 namespace {
 struct Vec2 { float x; float z; };
@@ -101,6 +102,7 @@ int gPlayerSelectedHero = 0;
 std::array<int, 3> gItemCounts{{0, 0, 0}};
 int gWinner = 0;
 bool gInitialized = false;
+float gSimulationAccumulator = 0.0f;
 
 float length(Vec2 v) { return std::sqrt(v.x * v.x + v.z * v.z); }
 float distance(Vec2 a, Vec2 b) { return length({a.x - b.x, a.z - b.z}); }
@@ -111,13 +113,7 @@ Vec2 normalized(Vec2 v) {
     const float d = std::max(length(v), 0.001f);
     return {v.x / d, v.z / d};
 }
-float terrainHeight(float x, float z) {
-    const float west = 0.78f * std::exp(-((x + 24.0f) * (x + 24.0f)) / 54.0f);
-    const float east = 0.82f * std::exp(-((x - 24.0f) * (x - 24.0f)) / 58.0f);
-    const float rise = 0.28f * std::exp(-((x - 1.0f) * (x - 1.0f) + z * z) / 100.0f);
-    return 0.22f * std::sin(x * 0.16f) * std::cos(z * 0.13f) +
-           0.10f * std::sin((x + z) * 0.22f) + west + east + rise;
-}
+float terrainHeight(float x, float z) { return arena_physics::terrainHeight(x, z); }
 float laneCenterX(int lane, float z) {
     const float bend = std::sin((z + 4.0f) * 0.105f) * 1.15f;
     if (lane == 0) return -14.2f + bend;
@@ -286,6 +282,7 @@ void initializeBots() {
 }
 void resetSimulation() {
     gElapsed = 0.0f;
+    gSimulationAccumulator = 0.0f;
     gPlayerSelectedHero = std::clamp(gPlayerSelectedHero, 0, 2);
     gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f) :
                       (playerRole() == 1 ? Vec2{-8.2f, -14.5f} : lanePoint(2, -25.0f, 1.8f));
@@ -334,37 +331,33 @@ void movePlayer(float inputX, float inputZ, float dt) {
     if (dashing) input = gDashDirection;
     const float inputLength = length(input);
     if (inputLength > 1.0f) input = mul(input, 1.0f / inputLength);
-    if (!dashing && length(input) > 0.08f) gLastMove = normalized(input);
+    if (!dashing && inputLength > 0.08f) gLastMove = normalized(input);
     const float heroMoveBonus = gPlayerSelectedHero == 2 ? 0.55f : 0.0f;
     const float speed = dashing ? kBoostSpeed * (gPlayerSelectedHero == 2 ? 1.18f : 1.0f)
                                 : kWalkSpeed + heroMoveBonus;
-    const Vec2 target = mul(input, speed);
-    if (length(input) > 0.08f) {
-        const float blend = dashing ? 1.0f : 1.0f - std::exp(-15.0f * dt);
-        gPlayerVelocity.x += (target.x - gPlayerVelocity.x) * blend;
-        gPlayerVelocity.z += (target.z - gPlayerVelocity.z) * blend;
-    } else {
-        const float decay = std::exp(-8.0f * dt);
-        gPlayerVelocity = mul(gPlayerVelocity, decay);
-    }
-    gPlayerPosition = add(gPlayerPosition, mul(gPlayerVelocity, dt));
-    gPlayerPosition.x = std::clamp(gPlayerPosition.x, -32.0f, 32.0f);
-    gPlayerPosition.z = std::clamp(gPlayerPosition.z, -30.0f, 30.0f);
+    const Vec2 desired = mul(input, speed);
+    arena_physics::Body body{gPlayerPosition.x, gPlayerPosition.z,
+        gPlayerVelocity.x, gPlayerVelocity.z, 0.43f};
+    arena_physics::move(body, desired.x, desired.z, dt,
+        dashing ? 72.0f : 24.0f, dashing ? 38.0f : 31.0f, 43.0f);
+    gPlayerPosition = {body.x, body.z};
+    gPlayerVelocity = {body.vx, body.vz};
 }
-void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed, float dt) {
+void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed,
+               float dt, float radius = 0.38f) {
     const Vec2 delta = sub(target, position);
     const float d = length(delta);
     if (d < 0.16f) {
-        position = target;
-        velocity = {0.0f, 0.0f};
-        return;
+        target = position;
+        speed = 0.0f;
     }
     const float desiredSpeed = std::min(speed, std::sqrt(2.0f * 7.5f * d));
-    const Vec2 desired = mul(normalized(delta), desiredSpeed);
-    const float blend = 1.0f - std::exp(-7.5f * dt);
-    velocity.x += (desired.x - velocity.x) * blend;
-    velocity.z += (desired.z - velocity.z) * blend;
-    position = add(position, mul(velocity, dt));
+    const Vec2 desired = d < 0.16f ? Vec2{0.0f, 0.0f} :
+        mul(normalized(delta), desiredSpeed);
+    arena_physics::Body body{position.x, position.z, velocity.x, velocity.z, radius};
+    arena_physics::move(body, desired.x, desired.z, dt, 18.0f, 25.0f, 41.0f);
+    position = {body.x, body.z};
+    velocity = {body.vx, body.vz};
 }
 int nearestEnemyBot(Vec2 position, int team, float range) {
     int target = -1;
