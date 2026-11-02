@@ -1,6 +1,14 @@
-# Projeto Arena 0.10.0
+# Projeto Arena 0.11.0
 
 MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 local com bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
+
+## Movimento e animação do herói 0.11.0
+- O herói jogável usa um controlador de estados: repouso, caminhada, corrida, impulso, gesto de habilidade, proteção, reação a dano, estado de queda e retorno.
+- As transições por osso usam suavização temporal; a fase do passo acompanha a distância percorrida, reduzindo deslizamento quando a velocidade muda.
+- O rig do herói foi ampliado para incluir pelve, tronco superior, cabeça, mãos e pés; bots e tropas mantêm o conjunto menor de ossos para limitar custo de CPU.
+- Posição, velocidade, impulso, habilidade ativa, proteção, variação de vida e retorno são lidos do snapshot nativo. Os botões também disparam os gestos correspondentes.
+- Lyra, Bastion e Kairo usam cadências e posturas diferentes, sem deformações extremas de escala. A malha base ainda é compartilhada; não são três modelos exclusivos.
+- Não há nova engine, dependência de runtime ou mudança na simulação nativa do MOBA.
 
 ## HUB e progressão offline 0.10.0
 - Menu expandido com telas de skins, loja, missões e perfil, mantendo o modo MOBA 5v5 e suas três rotas.
@@ -60,12 +68,12 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - Android nativo Kotlin + C++20/NDK.
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 40 / versionName 0.9.1.
+- versionCode 42 / versionName 0.11.0.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas
 - Herói, bots e tropas ainda compartilham a mesma geometria humanoide CC0; equipes e tropas variam por cor e escala, mas não há ainda silhuetas exclusivas por função.
-- A animação é esquelética procedural no rig; ainda não há um conjunto completo de clipes exclusivos por herói.
+- A animação do herói agora é stateful e suavizada por osso, mas ainda é procedural; a malha base continua compartilhada entre os três heróis.
 - As tropas já combatem em cada rota e reaparecem em ondas, mas usam apenas duas unidades homogêneas por equipe/rota; a IA de formação e de cerco ainda é simplificada.
 - A IA dos heróis ainda é local e simplificada; não existe seleção de alvo manual por unidade nem comportamento avançado de equipe.
 - O 0.9.1 amplia o loop de cerco e diferencia as funções dos heróis, mas ainda não é um MOBA completo: tropas são duplas homogêneas, não há objetivos de selva, itens, níveis ou habilidades exclusivas por herói. CI não substitui teste físico no Realme C53: câmera, FPS sustentado, memória, temperatura e estabilidade precisam ser medidos no aparelho.
