@@ -174,6 +174,13 @@ internal object HeroGearGlbBuilder {
                 plate(headTrim,0f,0.12f,0.12f,0.12f,0.11f,0.045f,0.025f)
                 plate(back,0.015f,-0.05f,-0.12f,0.16f,0.22f,0.32f,0.035f)
                 plate(back,-0.12f,-0.19f,-0.13f,0.07f,0.10f,0.22f,0.025f)
+                // Hood volume and split scarf tails give Kairo an asymmetrical, agile outline.
+                ellipsoid(head,0f,0.12f,-0.075f,0.185f,0.145f,0.19f,12)
+                plate(headTrim,0f,0.22f,-0.055f,0.13f,0.10f,0.10f,0.035f)
+                plate(back,-0.12f,-0.24f,-0.16f,0.08f,0.12f,0.50f,0.028f)
+                plate(back,0.15f,-0.18f,-0.16f,0.07f,0.10f,0.40f,0.028f)
+                box(shoulderR,0f,0.045f,0.015f,0.19f,0.075f,0.11f)
+                plate(forearmR,0f,0.06f,0.065f,0.075f,0.09f,0.18f,0.025f)
             }
         }
 
