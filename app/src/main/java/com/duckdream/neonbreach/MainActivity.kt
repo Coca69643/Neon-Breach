@@ -69,7 +69,7 @@ class MainActivity : Activity() {
     private var selectedHero = 0
     private var sensitivityIndex = 1
     private val sensitivityLevels = floatArrayOf(0.78f, 1.0f, 1.22f)
-    private var lastSnapshot = FloatArray(256)
+    private var lastSnapshot = FloatArray(320)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -90,7 +90,7 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 256) {
+                if (result.size >= 320) {
                     lastSnapshot = result
                     renderer.updatePlayerSignals(result)
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
@@ -519,7 +519,7 @@ class MainActivity : Activity() {
         renderer.resetHeroAnimationState()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(256)
+        lastSnapshot = FloatArray(320)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -654,13 +654,13 @@ class MainActivity : Activity() {
         }
         fun refreshShop() {
             val data = nativeStep(0f, 0f, 0f)
-            if (data.size >= 256) lastSnapshot = data
+            if (data.size >= 320) lastSnapshot = data
             val gold = lastSnapshot[98].toInt()
             val level = lastSnapshot[96].toInt()
-            val skill = lastSnapshot[217].toInt()
+            val skill = lastSnapshot[289].toInt()
             box.removeAllViews()
             box.addView(label("LOJA DA PARTIDA", 20f, Color.WHITE, true))
-            box.addView(label("OURO $gold  •  NÍVEL $level  •  ITENS ${lastSnapshot[214].toInt()}/${lastSnapshot[215].toInt()}/${lastSnapshot[216].toInt()}", 10f, Color.rgb(242, 209, 141), true))
+            box.addView(label("OURO $gold  •  NÍVEL $level  •  ITENS ${lastSnapshot[286].toInt()}/${lastSnapshot[287].toInt()}/${lastSnapshot[288].toInt()}}", 10f, Color.rgb(242, 209, 141), true))
             box.addView(actionButton("VITALIDADE + DEFESA  •  250 OURO") {
                 if (nativeBuyItem(0)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
             }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(8) })
@@ -881,7 +881,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-    private var snapshot = FloatArray(256)
+    private var snapshot = FloatArray(320)
 
     fun setSnapshot(values: FloatArray) {
         snapshot = values.copyOf()
@@ -934,7 +934,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         }
         canvas.drawPath(river, riverPaint)
 
-        if (snapshot.size >= 256) {
+        if (snapshot.size >= 320) {
             // All 18 defensive towers: three tiers per lane, mirrored by team.
             for (team in 0..1) {
                 for (lane in 0..2) {
@@ -961,7 +961,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
                 floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
             )
             campPositions.forEachIndexed { index, point ->
-                if (snapshot[198 + index] > 0f) canvas.drawCircle(px(point[0]), py(point[1]), 2.4f, campPaint)
+                if (snapshot[270 + index] > 0f) canvas.drawCircle(px(point[0]), py(point[1]), 2.4f, campPaint)
             }
 
             // River objective pits have a distinct marker when active.
@@ -969,11 +969,11 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
             if (snapshot[106] > 0f) canvas.drawCircle(px(7f), py(0.2f), 5f, objectivePaint)
 
             // Minion waves and team units.
-            for (index in 0 until 24) {
-                if (snapshot[174 + index] <= 0f) continue
+            for (index in 0 until 48) {
+                if (snapshot[222 + index] <= 0f) continue
                 val x = snapshot[126 + index * 2]
                 val z = snapshot[127 + index * 2]
-                canvas.drawCircle(px(x), py(z), 1.55f, if (index < 12) blueMinionPaint else redMinionPaint)
+                canvas.drawCircle(px(x), py(z), 1.55f, if (index < 24) blueMinionPaint else redMinionPaint)
             }
             // Player and five-v-five AI heroes.
             for (index in 0 until 9) {
