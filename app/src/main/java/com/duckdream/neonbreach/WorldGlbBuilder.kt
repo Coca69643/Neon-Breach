@@ -60,7 +60,8 @@ internal object WorldGlbBuilder {
         part.tri(ia,ib,ic)
     }
     private fun quad(p:Part,a:FloatArray,b:FloatArray,c:FloatArray,d:FloatArray) {
-        tri(p,a,c,b);tri(p,b,c,d)
+        // Input order is left-near, left-far, right-near, right-far; keep the top face CCW.
+        tri(p,a,b,c);tri(p,b,d,c)
     }
     private fun triOutward(p: Part, a: FloatArray, b: FloatArray, c: FloatArray,
                            cx: Float, cy: Float, cz: Float) {
