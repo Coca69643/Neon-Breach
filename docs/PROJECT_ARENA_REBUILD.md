@@ -46,7 +46,7 @@ Data do plano: 2 de novembro de 2026.
 
 ## Limites desta entrega
 
-Os assets listados em `ASSET_PIPELINE_CC0.md` são fontes candidatas pesquisadas, não arquivos integrados. O pipeline de rigging/skinning ainda não foi implementado. A interface foi alterada no código, mas ainda depende de CI e teste visual no aparelho. Nenhuma aprovação de build equivale a prova de desempenho ou qualidade visual no telefone.
+Os assets listados em `ASSET_PIPELINE_CC0.md` são fontes candidatas pesquisadas, não arquivos integrados. O decoder e o avaliador de pose agora existem como módulo isolado; a integração com malhas e shader ainda não foi implementada. A interface foi alterada no código. Os testes do novo módulo foram escritos e incluídos no workflow, mas aguardam execução da CI e teste visual no aparelho. Nenhuma aprovação de build equivale a prova de desempenho ou qualidade visual no telefone.
 
 ## Próximas etapas
 
