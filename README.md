@@ -1,6 +1,18 @@
-# Projeto Arena 0.13.0
+# Projeto Arena 0.14.0
 
-MOBA 3D nativo para Android, landscape e offline. A 0.13.0 reconstrói a apresentação do campo de batalha: relevo real compartilhado entre malha e posicionamento, câmera isométrica fixa com zona morta, selvas densas, clareiras de acampamento, ruínas, santuários de objetivos e bases fortificadas. Preserva os sistemas 5v5, o HUB e as animações.
+MOBA 3D nativo para Android, landscape e offline. A 0.14.0 integra modelagem articulada dos heróis, animação corporal mais completa e física cinemática com colisões no mesmo espaço de terreno. Preserva o mapa 0.13.0, sistemas 5v5, HUB, progressão e câmera isométrica fixa.
+
+## Modelagem, humanização e física 0.14.0
+
+- Três conjuntos de equipamento modelados proceduralmente para Lyra, Bastion e Kairo: peitoral, ombreiras, antebraços, coxas, botas, cabeça e manto.
+- As peças são instâncias GLB leves parentadas aos ossos correspondentes; o corpo humanoide-base continua compartilhado para limitar memória e draw calls.
+- Bots recebem conjuntos compatíveis com a equipe; a movimentação usa proporções e animação corporal conforme a função.
+- Rig animado expandido para jogadores, bots e minions, com passada, apoio de pés, movimento de mãos, contrapeso do tronco, cabeça e suavização de curvas/frenagem.
+- Herói, bots e minions usam uma transformação alinhada à normal da superfície para acompanhar encostas do terreno 0.13.0.
+- Física cinemática nativa em C++ com passo fixo de 60 Hz, aceleração/frenagem limitadas, subpassos, deslizamento em colisões, limite de inclinação e contenção na ilha.
+- Colisores estáticos correspondem a árvores, pedras, clareiras, muralhas, torres e santuários. Separação física evita sobreposição entre jogador, bots e tropas.
+- A simulação C++ é a autoridade para posição/velocidade; o renderer apenas apresenta as transformações e animações.
+- Testes nativos no CI cobrem superfície, colisão com árvores/estruturas, limites, frenagem e separação entre corpos.
 
 ## MOBA 0.12.0 — estrutura de gameplay
 
@@ -31,7 +43,7 @@ MOBA 3D nativo para Android, landscape e offline. A 0.13.0 reconstrói a apresen
 - Skins de preço fixo e loja de troca de fragmentos, sem compras reais, servidor ou caixas aleatórias.
 - XP, nível, partidas, vitórias, carteira e cosméticos persistidos com SharedPreferences.
 
-## Mapa e apresentação 0.13.0
+## Mapa e apresentação 0.13.0 (preservado)
 
 - Terreno esculpido com cristas laterais, colinas nas aproximações das bases, pequenas elevações na selva e vale fluvial.
 - Três rotas pavimentadas curvas com acostamentos, conectores de terra e três pontes no rio.
@@ -50,13 +62,14 @@ MOBA 3D nativo para Android, landscape e offline. A 0.13.0 reconstrói a apresen
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
 - Orientação landscape fixa; funcionamento offline; sem WebView.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 44 / versionName 0.13.0.
+- versionCode 45 / versionName 0.14.0.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas
 
 - A partida é offline contra IA; não há matchmaking, servidores ou cinco jogadores humanos por equipe.
-- Os três heróis ainda compartilham uma geometria-base; papéis e kits são diferenciados, mas não há três malhas exclusivas.
+- O corpo humanoide-base continua compartilhado; as silhuetas são diferenciadas por equipamento articulado preso aos ossos, não por três malhas completas independentes.
 - Os santuários dos objetivos agora têm geometria própria, mas ainda não incluem criaturas-chefes com malhas e animações exclusivas.
 - Esta é uma base MOBA jogável, ainda sem Fog of War, seleção manual de alvo, draft, inventário de múltiplos espaços ou estratégia de equipe avançada.
-- CI não substitui validação física no Realme C53: FPS sustentado, temperatura, câmera, minimapa, controles touch e estabilidade precisam ser medidos no aparelho.
+- O CI executa testes determinísticos de física e compila/assina o APK, mas não substitui teste visual e de desempenho no Realme C53: FPS sustentado, temperatura, câmera, colisões percebidas, leitura do mapa e controles touch ainda precisam ser medidos no aparelho.
+- A física 0.14.0 usa colisores cinemáticos aproximados de cenário; ainda não há navegação inteligente completa em torno de todos os obstáculos nem física rígida dinâmica para cada prop.
