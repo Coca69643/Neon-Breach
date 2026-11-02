@@ -445,8 +445,70 @@ internal class FilamentGameRenderer(
         }
         applyRestPose(bones)
         playerAnimator?.updateBoneMatrices()
+        createHeroGear()
         asset.releaseSourceData()
         Log.i(TAG, "CC0 humanoid loaded: " + asset.entities.size + " entities, " + bones.size + " animated joints; skeletal skinning enabled")
+    }
+
+    private fun createHeroGear() {
+        val loader = characterLoader ?: error("Character asset loader is not ready")
+        val transforms = engine.transformManager
+        val assets = arrayOfNulls<FilamentAsset>(6)
+        for (team in 0..1) {
+            for (style in 0..2) {
+                val asset = loader.createAsset(ByteBuffer.wrap(HeroGearGlbBuilder.build(style, team)))
+                    ?: throw IllegalStateException("Hero gear GLB failed to load: style=$style team=$team")
+                if (asset.resourceUris.isNotEmpty()) {
+                    for (uri in asset.resourceUris) {
+                        if (!characterResources!!.hasResourceData(uri)) {
+                            val bytes = context.assets.open("characters/$uri").use { it.readBytes() }
+                            characterResources!!.addResourceData(uri, ByteBuffer.wrap(bytes))
+                        }
+                    }
+                    characterResources!!.loadResources(asset)
+                }
+                assets[team * 3 + style] = asset
+                heroGearAssets.add(asset)
+            }
+        }
+
+        val parentByPart = mapOf(
+            "gear_torso" to "spine_02",
+            "gear_trim" to "spine_02",
+            "gear_head" to "Head",
+            "gear_head_trim" to "Head",
+            "gear_back" to "spine_01"
+        )
+        fun createAttached(style: Int, team: Int, rig: Map<String, BonePose>): FilamentInstance {
+            val asset = assets[team * 3 + style]
+                ?: error("Missing hero gear asset style=$style team=$team")
+            val instance = loader.createInstance(asset)
+                ?: throw IllegalStateException("Could not instantiate hero gear style=$style team=$team")
+            heroGearInstances.add(instance)
+            viewer.scene.addEntities(instance.entities)
+            for (entity in instance.entities) {
+                val partName = asset.getName(entity)?.trim().orEmpty()
+                val parentName = parentByPart[partName] ?: continue
+                val parent = rig[parentName]?.instance ?: continue
+                val child = transforms.getInstance(entity)
+                if (child != 0) transforms.setParent(child, parent)
+            }
+            return instance
+        }
+
+        for (style in 0..2) {
+            val instance = createAttached(style, 0, bones)
+            playerGearInstances[style] = instance
+            if (style != activeHero) viewer.scene.removeEntities(instance.entities)
+        }
+        equippedPlayerGear = activeHero
+        for (index in 0 until 9) {
+            val style = index % 3
+            val team = if (index < 4) 0 else 1
+            createAttached(style, team, botBones[index])
+        }
+        heroGearAssets.forEach { it.releaseSourceData() }
+        Log.i(TAG, "Articulated hero gear loaded: 3 player silhouettes and 9 team-tinted bot sets")
     }
 
     fun render(frameTimeNanos: Long): Boolean = viewer.render(frameTimeNanos)
@@ -964,6 +1026,11 @@ internal class FilamentGameRenderer(
 
     fun setHeroAppearance(hero: Int, alternateSkin: Boolean = false) {
         activeHero = hero.coerceIn(0, 2)
+        if (equippedPlayerGear >= 0 && equippedPlayerGear != activeHero) {
+            playerGearInstances.getOrNull(equippedPlayerGear)?.let { viewer.scene.removeEntities(it.entities) }
+            playerGearInstances.getOrNull(activeHero)?.let { viewer.scene.addEntities(it.entities) }
+            equippedPlayerGear = activeHero
+        }
         val tint = if (alternateSkin) {
             when (activeHero) {
                 1 -> floatArrayOf(0.22f, 0.72f, 0.76f, 1.0f)
@@ -1050,6 +1117,12 @@ internal class FilamentGameRenderer(
             worldAssetLoader = null
             worldProvider?.destroy()
             worldProvider = null
+            heroGearInstances.forEach { viewer.scene.removeEntities(it.entities) }
+            heroGearInstances.clear()
+            playerGearInstances.fill(null)
+            equippedPlayerGear = -1
+            heroGearAssets.forEach { asset -> characterLoader?.destroyAsset(asset) }
+            heroGearAssets.clear()
             playerInstance?.let { viewer.scene.removeEntities(it.entities) }
             playerInstance = null
             playerAnimator = null
