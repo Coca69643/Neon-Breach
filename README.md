@@ -24,9 +24,9 @@ O `applicationId` atual é preservado para permitir atualização sobre a instal
 
 ## Reconstrução de personagens e animação
 
-O renderer atual ainda contém personagens construídos com primitivas e animação senoidal. O importador glTF existente carrega geometria estática e ainda não processa `JOINTS_0`, `WEIGHTS_0`, inverse bind matrices ou canais de animação. Esses pontos precisam ser resolvidos antes de considerar o sistema de personagens concluído.
+O renderer atual ainda contém personagens construídos com primitivas e animação senoidal. A primeira fatia do runtime `CharacterAnimation` agora decodifica hierarquia de nós, skins, inverse-bind matrices, `JOINTS_0`/`WEIGHTS_0` e canais glTF de translação, rotação e escala. O avaliador suporta STEP, LINEAR com slerp e CUBICSPLINE, além de gerar a paleta CPU de juntas.
 
-O objetivo técnico é suportar rigs glTF, skinning, clips de locomoção e transições por estado de movimento, sem ciclos artificiais enquanto o personagem está parado. A seleção final de arquivos será limitada a conteúdo CC0 com licença preservada no repositório.
+O módulo já está compilado no alvo nativo, mas ainda não está conectado a `drawImportedModel()` nem ao shader de skinning. Portanto, os modelos atuais ainda não mudaram em runtime. O próximo passo é integrar atributos de juntas e paleta no renderer, validar um arquivo CC0 real e só então remover os personagens procedurais. A seleção final será limitada a conteúdo CC0 com licença preservada no repositório.
 
 ## Política de assets CC0
 
