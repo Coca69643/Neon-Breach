@@ -440,6 +440,22 @@ internal class FilamentGameRenderer(
         updateCamera(cameraAspect)
     }
 
+    fun resetHeroAnimationState() {
+        heroMotion = HeroMotion.IDLE
+        heroDashActive = false
+        heroGuardActive = false
+        heroDowned = false
+        heroDamageTime = 0f
+        heroCastTime = 0f
+        heroGuardGestureTime = 0f
+        heroActionPulseTime = 0f
+        heroRespawnBlend = 0f
+        previousHeroHealth = Float.NaN
+        previousPulseActive = false
+        previousHeroSpeed = 0f
+        yawInitialized = false
+    }
+
     fun updatePlayerSignals(snapshot: FloatArray) {
         if (snapshot.size < 96) return
 
