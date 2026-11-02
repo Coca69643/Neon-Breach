@@ -535,6 +535,9 @@ internal class FilamentGameRenderer(
         previousPulseActive = false
         previousHeroSpeed = 0f
         yawInitialized = false
+        botYawInitialized.fill(false)
+        lastBotPositions.forEach { it[0] = Float.NaN; it[1] = Float.NaN }
+        minionLastPositions.forEach { it[0] = Float.NaN; it[1] = Float.NaN }
     }
 
     fun updatePlayerSignals(snapshot: FloatArray) {
@@ -771,8 +774,9 @@ internal class FilamentGameRenderer(
     private fun setMinionTransform(index: Int, x: Float, z: Float, yaw: Float) {
         val root = minionRootInstances.getOrNull(index) ?: return
         if (root == 0) return
-        val width = when (index % 3) { 0 -> 0.88f; 1 -> 1.04f; else -> 0.96f }
-        val height = when (index % 3) { 0 -> 1.08f; 1 -> 0.92f; else -> 1.0f }
+        val slot = (index % 8) % 4
+        val width = if (slot == 3) 0.92f else when (slot) { 0 -> 0.94f; 1 -> 1.02f; else -> 1.08f }
+        val height = if (slot == 3) 0.94f else when (slot) { 0 -> 1.02f; 1 -> 0.98f; else -> 1.0f }
         val scaleX = characterScale * minionScale * width
         val scaleY = characterScale * minionScale * height
         val y = terrainHeight(x, z) - characterMinY * scaleY
@@ -1113,10 +1117,8 @@ internal class FilamentGameRenderer(
             playerYaw = 0.0f
             val rootY = cameraY - characterMinY * characterScale
             val scale = characterScale
-            engine.transformManager.setTransform(characterRootInstance, floatArrayOf(
-                scale, 0f, 0f, 0f, 0f, scale, 0f, 0f,
-                0f, 0f, scale, 0f, cameraX, rootY, cameraZ, 1f
-            ))
+            engine.transformManager.setTransform(characterRootInstance,
+                terrainAlignedTransform(cameraX, cameraZ, playerYaw, scale, scale, rootY))
         } else {
             cameraX = spawn.first
             cameraZ = spawn.second
