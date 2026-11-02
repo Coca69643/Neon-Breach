@@ -26,10 +26,18 @@ class MainActivity : Activity() {
 
     companion object {
         private const val TAG = "ProjectArena"
-        private val HEROES = arrayOf(
-            "LYRA / SUPORTE",
-            "BASTION / DEFESA",
-            "KAIRO / MOBILIDADE"
+        private val HERO_NAMES = arrayOf("LYRA", "BASTION", "KAIRO")
+        private val HERO_ROLES = arrayOf("SUPORTE", "DEFENSOR", "MOBILIDADE")
+        private val HERO_SUMMARIES = arrayOf(
+            "Mantém a equipe de pé e ajuda a abrir espaço nas lutas.",
+            "Segura a linha de frente e aguenta mais tempo sob pressão.",
+            "Entra e sai dos confrontos com deslocamento mais rápido."
+        )
+        private val HERO_ABILITY_NAMES = arrayOf("AURA", "IMPACTO", "ONDA")
+        private val HERO_ABILITY_DETAILS = arrayOf(
+            "Recupera aliados próximos e enfraquece rivais dentro da área.",
+            "Causa dano em área maior e mantém o escudo ativo por mais tempo.",
+            "Pulso de recarga curta e impulso com maior velocidade."
         )
     }
 
@@ -57,7 +65,9 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(94)
+    private var sensitivityIndex = 1
+    private val sensitivityLevels = floatArrayOf(0.78f, 1.0f, 1.22f)
+    private var lastSnapshot = FloatArray(96)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -76,7 +86,7 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 94) {
+                if (result.size >= 96) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
@@ -84,9 +94,13 @@ class MainActivity : Activity() {
                     renderer.updateEffects(result)
                     renderer.updateStructures(result)
                     tacticalMap.setSnapshot(result)
-                    healthLabel.text = "VIDA  ${result[72].toInt().coerceIn(0, 100)}%  •  GOLPE MANUAL"
+                    healthLabel.text = if (result[95] > 0.01f) {
+                        "RETORNO  ${kotlin.math.ceil(result[95]).toInt()}s  •  QUEDAS ${result[94].toInt()}"
+                    } else {
+                        "VIDA  ${result[72].toInt().coerceIn(0, 100)}%  •  QUEDAS ${result[94].toInt()}"
+                    }
                     dashActionButton.text = abilityButtonText("IMPULSO", result[9])
-                    pulseActionButton.text = abilityButtonText("PULSO", result[8])
+                    pulseActionButton.text = abilityButtonText(activeAbilityName(), result[8])
                     shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
                     attackActionButton.text = abilityButtonText("GOLPE", result[81])
                     dashActionButton.alpha = if (result[9] > 0.05f) 0.62f else 1f
@@ -98,7 +112,7 @@ class MainActivity : Activity() {
                             result[7] > 0.05f -> "ESCUDO ATIVO • reduz dano recebido"
                             result[61] > 0.05f -> "PULSO • atingiu heróis e tropas próximas"
                             result[62] > 0.05f -> "IMPULSO • reposicionamento direcional"
-                            else -> "GOLPE seleciona o alvo próximo • tropas pressionam torres"
+                            else -> activeAbilityHint()
                         }
                     }
 
@@ -154,6 +168,7 @@ class MainActivity : Activity() {
         surface = SurfaceView(this)
         root.addView(surface, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
+        loadMenuSettings()
 
         transition(AppState.DEVICE_PROBE)
         try {
@@ -222,60 +237,197 @@ class MainActivity : Activity() {
         root.addView(view, FrameLayout.LayoutParams(-1, -1))
     }
 
+    private fun panel(): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.argb(218, 15, 29, 31))
+            cornerRadius = dp(10).toFloat()
+            setStroke(dp(1), Color.argb(170, 138, 180, 161))
+        }
+
+    private fun loadMenuSettings() {
+        sensitivityIndex = getSharedPreferences("arena_settings", MODE_PRIVATE)
+            .getInt("movement_sensitivity", 1).coerceIn(0, sensitivityLevels.lastIndex)
+    }
+
+    private fun sensitivityLabel(): String = when (sensitivityIndex) {
+        0 -> "BAIXA  •  78%"
+        2 -> "ALTA  •  122%"
+        else -> "NORMAL  •  100%"
+    }
+
+    private fun cycleSensitivity() {
+        sensitivityIndex = (sensitivityIndex + 1) % sensitivityLevels.size
+        getSharedPreferences("arena_settings", MODE_PRIVATE).edit()
+            .putInt("movement_sensitivity", sensitivityIndex).apply()
+    }
+
+    private fun activeAbilityName(): String = HERO_ABILITY_NAMES[selectedHero]
+    private fun activeAbilityHint(): String = HERO_ABILITY_DETAILS[selectedHero]
+
     private fun showMenu() {
         transition(AppState.MENU)
-        if (::renderer.isInitialized) renderer.setMinionsVisible(false)
-        if (::renderer.isInitialized) {
-            renderer.setOverviewCamera(true)
-            renderer.setHeroAppearance(selectedHero)
+        renderer.setMinionsVisible(false)
+        renderer.setOverviewCamera(true)
+        renderer.setHeroAppearance(selectedHero)
+
+        val layer = FrameLayout(this)
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(16), dp(22), dp(12))
         }
-        var touchStartX = 0f
-        val layer = FrameLayout(this).apply {
-            setBackgroundColor(Color.argb(10, 5, 12, 18))
-            isClickable = true
-            isFocusable = true
-            setOnTouchListener { _, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        touchStartX = event.x
-                        true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        val swipe = event.x - touchStartX
-                        if (kotlin.math.abs(swipe) > dp(42)) {
-                            selectedHero = (selectedHero + if (swipe < 0f) 1 else HEROES.size - 1) % HEROES.size
-                            showMenu()
-                        } else {
-                            startMatch()
-                        }
-                        true
-                    }
-                    else -> true
-                }
-            }
+        header.addView(label("ARENA", 23f, Color.WHITE, true))
+        header.addView(label("A batalha pelas três rotas", 11f, Color.rgb(208, 224, 211)))
+        layer.addView(header, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START))
+
+        val profile = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(14), dp(12), dp(14), dp(12))
+            background = panel()
         }
-        val title = label("ARENA", 17f, Color.WHITE, true).apply {
-            setShadowLayer(8f, 0f, 3f, Color.BLACK)
-        }
-        layer.addView(title, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
-            marginStart = dp(24)
-            topMargin = dp(18)
+        profile.addView(label("SEU HERÓI", 9f, Color.rgb(175, 206, 189), true))
+        profile.addView(label(HERO_NAMES[selectedHero], 22f, Color.WHITE, true).apply {
+            setPadding(0, dp(3), 0, 0)
         })
-        val hero = label(HEROES[selectedHero].substringBefore(" / "), 10f, Color.rgb(203, 230, 226), true).apply {
-            setShadowLayer(6f, 0f, 2f, Color.BLACK)
-        }
-        layer.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
-            marginStart = dp(24)
-            topMargin = dp(43)
+        profile.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(236, 194, 123), true))
+        profile.addView(label(HERO_SUMMARIES[selectedHero], 10f, Color.rgb(221, 229, 216)).apply {
+            maxWidth = dp(245)
+            setPadding(0, dp(7), 0, dp(7))
         })
-        val prompt = label("TOQUE PARA JOGAR", 12f, Color.WHITE, true).apply {
-            gravity = Gravity.CENTER
-            setShadowLayer(8f, 0f, 2f, Color.BLACK)
-            isClickable = false
-        }
-        layer.addView(prompt, FrameLayout.LayoutParams(dp(190), dp(42), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
-            bottomMargin = dp(18)
+        profile.addView(label("${activeAbilityName()}  •  ${activeAbilityHint()}", 9f, Color.rgb(172, 214, 198)).apply {
+            maxWidth = dp(245)
         })
+        profile.addView(actionButton("TROCAR HERÓI") { showHeroSelect() },
+            LinearLayout.LayoutParams(dp(180), dp(38)).apply { topMargin = dp(10) })
+        layer.addView(profile, FrameLayout.LayoutParams(dp(278), -2, Gravity.BOTTOM or Gravity.START).apply {
+            marginStart = dp(20)
+            bottomMargin = dp(20)
+        })
+
+        val navigation = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.END
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = panel()
+        }
+        navigation.addView(actionButton("JOGAR") { startMatch() },
+            LinearLayout.LayoutParams(dp(176), dp(50)))
+        navigation.addView(actionButton("HERÓIS") { showHeroSelect() },
+            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        navigation.addView(actionButton("COMO JOGAR") { showGuide() },
+            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        navigation.addView(actionButton("AJUSTES") { showSettings() },
+            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        layer.addView(navigation, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(20)
+            bottomMargin = dp(20)
+        })
+        replaceLayer(layer)
+    }
+
+    private fun showHeroSelect() {
+        transition(AppState.MENU)
+        renderer.setMinionsVisible(false)
+        renderer.setOverviewCamera(true)
+        renderer.setHeroAppearance(selectedHero)
+
+        val layer = FrameLayout(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        content.addView(label("SELEÇÃO DE HERÓI", 18f, Color.WHITE, true))
+        content.addView(label("Escolha quem vai liderar a equipe azul.", 10f, Color.rgb(204, 221, 210)).apply {
+            setPadding(0, dp(3), 0, dp(13))
+        })
+        content.addView(label(HERO_NAMES[selectedHero], 25f, Color.WHITE, true))
+        content.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(236, 194, 123), true))
+        content.addView(label(HERO_SUMMARIES[selectedHero], 11f, Color.rgb(221, 229, 216)).apply {
+            setPadding(0, dp(8), 0, dp(8))
+        })
+        content.addView(label("HABILIDADE  •  ${activeAbilityName()}", 10f, Color.rgb(173, 215, 197), true))
+        content.addView(label(activeAbilityHint(), 10f, Color.rgb(221, 229, 216)).apply {
+            setPadding(0, dp(3), 0, dp(12))
+        })
+        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        controls.addView(actionButton("‹") {
+            selectedHero = (selectedHero + HERO_NAMES.size - 1) % HERO_NAMES.size
+            showHeroSelect()
+        }, LinearLayout.LayoutParams(dp(52), dp(42)))
+        controls.addView(actionButton("›") {
+            selectedHero = (selectedHero + 1) % HERO_NAMES.size
+            showHeroSelect()
+        }, LinearLayout.LayoutParams(dp(52), dp(42)).apply { marginStart = dp(8) })
+        content.addView(controls)
+        content.addView(actionButton("CONFIRMAR HERÓI") { showMenu() },
+            LinearLayout.LayoutParams(dp(220), dp(42)).apply { topMargin = dp(12) })
+        layer.addView(content, FrameLayout.LayoutParams(dp(300), -2, Gravity.CENTER_VERTICAL or Gravity.START).apply {
+            marginStart = dp(22)
+        })
+        layer.addView(actionButton("VOLTAR") { showMenu() },
+            FrameLayout.LayoutParams(dp(112), dp(40), Gravity.TOP or Gravity.END).apply {
+                topMargin = dp(18)
+                marginEnd = dp(20)
+            })
+        replaceLayer(layer)
+    }
+
+    private fun showGuide() {
+        transition(AppState.MENU)
+        val layer = FrameLayout(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        content.addView(label("COMO JOGAR", 20f, Color.WHITE, true))
+        content.addView(label("A partida é vencida ao destruir o núcleo vermelho.", 11f, Color.rgb(235, 218, 170)).apply {
+            setPadding(0, dp(5), 0, dp(12))
+        })
+        val instructions = listOf(
+            "MOVIMENTO  •  Use o direcional no canto inferior esquerdo.",
+            "GOLPE  •  Ataca o alvo rival ou estrutura mais próxima.",
+            "HABILIDADE  •  Cada herói possui uma técnica própria.",
+            "ESCUDO  •  Reduz o dano recebido por alguns segundos.",
+            "IMPULSO  •  Avança na direção indicada pelo direcional.",
+            "OBJETIVO  •  Derrube as três torres antes de atacar o núcleo."
+        )
+        instructions.forEach { line ->
+            content.addView(label(line, 10f, Color.rgb(221, 229, 216)).apply {
+                setPadding(0, dp(4), 0, dp(4))
+            })
+        }
+        content.addView(actionButton("ENTENDI") { showMenu() },
+            LinearLayout.LayoutParams(dp(180), dp(42)).apply { topMargin = dp(14) })
+        layer.addView(content, FrameLayout.LayoutParams(dp(450), -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
+
+    private fun showSettings() {
+        transition(AppState.MENU)
+        val layer = FrameLayout(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        content.addView(label("AJUSTES", 20f, Color.WHITE, true))
+        content.addView(label("CONTROLES", 10f, Color.rgb(236, 194, 123), true).apply {
+            setPadding(0, dp(12), 0, dp(5))
+        })
+        val sensitivity = label("Sensibilidade do direcional: ${sensitivityLabel()}", 11f, Color.rgb(221, 229, 216))
+        content.addView(sensitivity)
+        content.addView(actionButton("ALTERAR SENSIBILIDADE") {
+            cycleSensitivity()
+            sensitivity.text = "Sensibilidade do direcional: ${sensitivityLabel()}"
+        }, LinearLayout.LayoutParams(dp(250), dp(42)).apply { topMargin = dp(9) })
+        content.addView(label("RENDERIZAÇÃO", 10f, Color.rgb(236, 194, 123), true).apply {
+            setPadding(0, dp(14), 0, dp(5))
+        })
+        content.addView(label("Backend ativo: ${renderer.backendName}. O jogo ajusta a resolução dinamicamente.", 10f, Color.rgb(221, 229, 216)))
+        content.addView(actionButton("VOLTAR") { showMenu() },
+            LinearLayout.LayoutParams(dp(180), dp(42)).apply { topMargin = dp(16) })
+        layer.addView(content, FrameLayout.LayoutParams(dp(390), -2, Gravity.CENTER))
         replaceLayer(layer)
     }
 
@@ -284,7 +436,7 @@ class MainActivity : Activity() {
         nativeReset()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(94)
+        lastSnapshot = FloatArray(96)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -305,8 +457,8 @@ class MainActivity : Activity() {
         }
         matchLabel = label("00:00", 10f, Color.WHITE, true)
         objectiveLabel = label("DERRUBE AS TORRES • DESTRUA O NÚCLEO", 10f, Color.rgb(192, 235, 221), true)
-        healthLabel = label("VIDA  100%  •  GOLPE MANUAL", 8f, Color.rgb(173, 220, 194), true)
-        abilityHint = label("GOLPE atinge alvos próximos • tropas avançam em ondas", 8f, Color.rgb(244, 217, 148), true)
+        healthLabel = label("VIDA  100%  •  QUEDAS 0", 8f, Color.rgb(173, 220, 194), true)
+        abilityHint = label(activeAbilityHint(), 8f, Color.rgb(244, 217, 148), true)
         top.addView(matchLabel)
         top.addView(objectiveLabel)
         top.addView(healthLabel)
@@ -343,8 +495,9 @@ class MainActivity : Activity() {
             })
 
         val stick = TouchStick(this) { x, z ->
-            moveX = x
-            moveZ = z
+            val scale = sensitivityLevels[sensitivityIndex]
+            moveX = (x * scale).coerceIn(-1f, 1f)
+            moveZ = (z * scale).coerceIn(-1f, 1f)
         }
         layer.addView(stick, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.BOTTOM or Gravity.START).apply {
             marginStart = dp(14)
@@ -360,9 +513,14 @@ class MainActivity : Activity() {
             bottomMargin = dp(16)
         })
 
-        pulseActionButton = actionButton("PULSO") {
+        pulseActionButton = actionButton(activeAbilityName()) {
             val activated = nativeCastPulse()
-            showAbilityFeedback(if (activated) "PULSO • 38 de dano em rivais próximos" else "PULSO • aproxime-se de um rival")
+            val feedback = if (activated) activeAbilityHint() else when (selectedHero) {
+                0 -> "AURA • sem aliados feridos ou rivais próximos"
+                1 -> "IMPACTO • aguarde a recarga"
+                else -> "ONDA • aguarde a recarga"
+            }
+            showAbilityFeedback(feedback)
         }
         layer.addView(pulseActionButton, FrameLayout.LayoutParams(dp(104), dp(44), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(128)
