@@ -45,6 +45,9 @@ internal class FilamentGameRenderer(
     private var worldResourceLoader: ResourceLoader? = null
     private val worldAssets = LinkedHashMap<String, FilamentAsset>()
     private val worldInstances = ArrayList<FilamentInstance>()
+    private val towerRootInstances = IntArray(6)
+    private val towerBaseTransforms = arrayOfNulls<FloatArray>(6)
+    private val towerHidden = BooleanArray(6)
     private data class WorldPlacement(
         val model: String, val x: Float, val z: Float,
         val scale: Float, val yaw: Float = 0f, val yOffset: Float = 0f
@@ -62,6 +65,7 @@ internal class FilamentGameRenderer(
     private val minionRootInstances = IntArray(12)
     private val minionBones = ArrayList<Map<String, BonePose>>(12)
     private val minionLastPositions = Array(12) { floatArrayOf(Float.NaN, Float.NaN) }
+    private val minionAlive = BooleanArray(12) { true }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.72f
     private var minionsVisible = false
@@ -255,12 +259,20 @@ internal class FilamentGameRenderer(
             val c = cos(placement.yaw) * placement.scale
             val sn = sin(placement.yaw) * placement.scale
             val y = terrainHeight(placement.x, placement.z) + placement.yOffset
-            transforms.setTransform(root, floatArrayOf(
+            val matrix = floatArrayOf(
                 c, 0f, -sn, 0f,
                 0f, placement.scale, 0f, 0f,
                 sn, 0f, c, 0f,
                 placement.x, y, placement.z, 1f
-            ))
+            )
+            transforms.setTransform(root, matrix)
+            if (placement.model == "tower_blue" || placement.model == "tower_red") {
+                val lane = kotlin.math.round((placement.x + 12f) / 12f).toInt().coerceIn(0, 2)
+                val towerIndex = (if (placement.model == "tower_blue") 0 else 3) + lane
+                towerRootInstances[towerIndex] = root
+                towerBaseTransforms[towerIndex] = matrix.copyOf()
+                towerHidden[towerIndex] = false
+            }
         }
 
         worldAssets.values.forEach { it.releaseSourceData() }
@@ -412,8 +424,8 @@ internal class FilamentGameRenderer(
         val forwardZ = cos(playerYaw)
         val rightX = cos(playerYaw)
         val rightZ = -sin(playerYaw)
-        val targetX = x + rightX * 2.2f + forwardX * 3.8f
-        val targetZ = z + rightZ * 2.2f + forwardZ * 3.8f
+        val targetX = x - rightX * 1.55f + forwardX * 2.0f
+        val targetZ = z - rightZ * 1.55f + forwardZ * 2.0f
         val blend = (1f - kotlin.math.exp(-deltaTime * 6.5f)).coerceIn(0f, 1f)
         if (!overviewCamera) {
             cameraX += (targetX - cameraX) * blend
@@ -521,6 +533,28 @@ internal class FilamentGameRenderer(
         ))
     }
 
+    fun updateStructures(snapshot: FloatArray) {
+        if (!sceneLoaded || snapshot.size < 82) return
+        val transforms = engine.transformManager
+        for (index in 0 until 6) {
+            val root = towerRootInstances[index]
+            val base = towerBaseTransforms[index] ?: continue
+            if (root == 0) continue
+            val health = if (index < 3) snapshot[73 + index] else snapshot[76 + index - 3]
+            val destroyed = health <= 0.0f
+            if (towerHidden[index] == destroyed) continue
+            val matrix = base.copyOf()
+            if (destroyed) {
+                // Remove the intact tower silhouette only after its native health reaches zero.
+                for (element in intArrayOf(0, 1, 2, 4, 5, 6, 8, 9, 10)) {
+                    matrix[element] *= 0.001f
+                }
+            }
+            transforms.setTransform(root, matrix)
+            towerHidden[index] = destroyed
+        }
+    }
+
     fun updateEffects(snapshot: FloatArray) {
         if (!sceneLoaded || snapshot.size < 72) return
         val x = snapshot[0]
@@ -540,7 +574,9 @@ internal class FilamentGameRenderer(
     fun setMinionsVisible(visible: Boolean) {
         if (!sceneLoaded || minionsVisible == visible) return
         if (visible) {
-            minionInstances.forEach { viewer.scene.addEntities(it.entities) }
+            minionInstances.forEachIndexed { index, instance ->
+                if (minionAlive[index]) viewer.scene.addEntities(instance.entities)
+            }
         } else {
             minionInstances.forEach { viewer.scene.removeEntities(it.entities) }
         }
@@ -548,9 +584,18 @@ internal class FilamentGameRenderer(
     }
 
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
-        if (!sceneLoaded || snapshot.size < 60) return
+        if (!sceneLoaded || snapshot.size < 94) return
         minionAnimationPhase += deltaTime * 7.2f
         for (index in minionInstances.indices) {
+            val alive = snapshot[82 + index] > 0.0f
+            if (minionAlive[index] != alive) {
+                if (alive) viewer.scene.addEntities(minionInstances[index].entities)
+                else viewer.scene.removeEntities(minionInstances[index].entities)
+                minionAlive[index] = alive
+                minionLastPositions[index][0] = Float.NaN
+                minionLastPositions[index][1] = Float.NaN
+            }
+            if (!alive) continue
             val x = snapshot[36 + index * 2]
             val z = snapshot[37 + index * 2]
             val previous = minionLastPositions[index]
@@ -565,10 +610,10 @@ internal class FilamentGameRenderer(
             val rig = minionBones.getOrNull(index).orEmpty()
             val stride = sin(minionAnimationPhase + index * 0.37f) * moving
             val idle = sin(minionAnimationPhase * 0.58f + index * 0.6f)
-            animatePose(rig["upperarm_l"], -0.90f - stride * 0.22f + idle * 0.018f)
-            animatePose(rig["upperarm_r"], 0.90f + stride * 0.22f - idle * 0.018f)
-            animatePose(rig["lowerarm_l"], 0.48f)
-            animatePose(rig["lowerarm_r"], 0.48f)
+            animateArmPose(rig["upperarm_l"], -0.90f - stride * 0.22f + idle * 0.018f)
+            animateArmPose(rig["upperarm_r"], 0.90f + stride * 0.22f - idle * 0.018f)
+            animateArmPose(rig["lowerarm_l"], 0.48f)
+            animateArmPose(rig["lowerarm_r"], 0.48f)
             animatePose(rig["thigh_l"], stride * 0.60f)
             animatePose(rig["thigh_r"], -stride * 0.60f)
             animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
@@ -596,8 +641,9 @@ internal class FilamentGameRenderer(
             val moving = (speed / 2.7f).coerceIn(0f, 1f)
             val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
                 else if (index < 4) 0f else Math.PI.toFloat()
-            val widthFactor = when (index % 3) { 0 -> 1.10f; 1 -> 0.88f; else -> 0.97f }
-            val heightFactor = when (index % 3) { 0 -> 0.94f; 1 -> 1.10f; else -> 1.0f }
+            // Heavy, agile and balanced silhouettes instead of near-identical tinted clones.
+            val widthFactor = when (index % 3) { 0 -> 1.24f; 1 -> 0.76f; else -> 0.96f }
+            val heightFactor = when (index % 3) { 0 -> 0.91f; 1 -> 1.16f; else -> 1.02f }
             val scaleX = characterScale * botScale * widthFactor
             val scaleY = characterScale * botScale * heightFactor
             val y = terrainHeight(x, z) - characterMinY * scaleY
@@ -613,10 +659,10 @@ internal class FilamentGameRenderer(
 
             val rig = botBones.getOrNull(index).orEmpty()
             val stride = sin(botAnimationPhase * (0.92f + index * 0.015f) + index * 0.41f) * moving
-            animatePose(rig["upperarm_l"], -0.92f - stride * 0.28f)
-            animatePose(rig["upperarm_r"], 0.92f + stride * 0.28f)
-            animatePose(rig["lowerarm_l"], 0.50f + max(0f, stride) * 0.14f)
-            animatePose(rig["lowerarm_r"], 0.50f + max(0f, -stride) * 0.14f)
+            animateArmPose(rig["upperarm_l"], -0.92f - stride * 0.28f)
+            animateArmPose(rig["upperarm_r"], 0.92f + stride * 0.28f)
+            animateArmPose(rig["lowerarm_l"], 0.50f + max(0f, stride) * 0.14f)
+            animateArmPose(rig["lowerarm_r"], 0.50f + max(0f, -stride) * 0.14f)
             animatePose(rig["thigh_l"], stride * 0.60f)
             animatePose(rig["thigh_r"], -stride * 0.60f)
             animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
@@ -648,24 +694,34 @@ internal class FilamentGameRenderer(
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
         // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
-        animatePose(rig["upperarm_l"], -0.92f)
-        animatePose(rig["upperarm_r"], 0.92f)
-        animatePose(rig["lowerarm_l"], 0.50f)
-        animatePose(rig["lowerarm_r"], 0.50f)
+        animateArmPose(rig["upperarm_l"], -0.92f)
+        animateArmPose(rig["upperarm_r"], 0.92f)
+        animateArmPose(rig["lowerarm_l"], 0.50f)
+        animateArmPose(rig["lowerarm_r"], 0.50f)
         animatePose(rig["spine_01"], 0.015f)
         animatePose(rig["spine_02"], -0.012f)
         animatePose(rig["neck_01"], 0f)
     }
 
     private fun animateBone(name: String, angle: Float) {
-        animatePose(bones[name], angle)
+        val arm = name.startsWith("upperarm") || name.startsWith("lowerarm")
+        animatePose(bones[name], angle, if (arm) 2 else 0)
     }
 
-    private fun animatePose(bone: BonePose?, angle: Float) {
+    private fun animateArmPose(bone: BonePose?, angle: Float) {
+        animatePose(bone, angle, 2)
+    }
+
+    private fun animatePose(bone: BonePose?, angle: Float, axis: Int = 0) {
         if (bone == null) return
         val c = cos(angle)
         val s = sin(angle)
-        val rotation = floatArrayOf(
+        val rotation = if (axis == 2) floatArrayOf(
+            c, s, 0f, 0f,
+            -s, c, 0f, 0f,
+            0f, 0f, 1f, 0f,
+            0f, 0f, 0f, 1f
+        ) else floatArrayOf(
             1f, 0f, 0f, 0f,
             0f, c, s, 0f,
             0f, -s, c, 0f,
@@ -704,20 +760,23 @@ internal class FilamentGameRenderer(
     fun setOverviewCamera(overview: Boolean) {
         overviewCamera = overview
         if (overview) {
-            // The menu is a hero portrait, not a map-wide tactical overview.
             cameraX = -12.0f
             cameraZ = -19.0f
             cameraY = terrainHeight(cameraX, cameraZ)
             playerYaw = 0.0f
             val rootY = cameraY - characterMinY * characterScale
             val scale = characterScale
-            val matrix = floatArrayOf(
-                scale, 0f, 0f, 0f,
-                0f, scale, 0f, 0f,
-                0f, 0f, scale, 0f,
-                cameraX, rootY, cameraZ, 1f
-            )
-            engine.transformManager.setTransform(characterRootInstance, matrix)
+            engine.transformManager.setTransform(characterRootInstance, floatArrayOf(
+                scale, 0f, 0f, 0f, 0f, scale, 0f, 0f,
+                0f, 0f, scale, 0f, cameraX, rootY, cameraZ, 1f
+            ))
+        } else {
+            // Initialize follow-camera from the actual spawn instead of stale menu coordinates.
+            val forwardX = sin(playerYaw); val forwardZ = cos(playerYaw)
+            val rightX = cos(playerYaw); val rightZ = -sin(playerYaw)
+            cameraX = -12.0f - rightX * 1.55f + forwardX * 2.0f
+            cameraZ = -19.0f - rightZ * 1.55f + forwardZ * 2.0f
+            cameraY = terrainHeight(-12.0f, -19.0f)
         }
         updateCamera(cameraAspect)
     }
@@ -725,14 +784,14 @@ internal class FilamentGameRenderer(
     private fun updateCamera(aspect: Float) {
         val forwardX = sin(playerYaw)
         val forwardZ = cos(playerYaw)
-        val distance = if (overviewCamera) 7.6f else 12.8f
-        val height = if (overviewCamera) 4.4f else 7.2f
-        val lookAhead = if (overviewCamera) 0.45f else 0.55f
+        val distance = if (overviewCamera) 7.6f else 10.2f
+        val height = if (overviewCamera) 4.4f else 7.8f
+        val lookAhead = if (overviewCamera) 0.45f else 0.28f
         val eyeX = cameraX - forwardX * distance
         val eyeZ = cameraZ - forwardZ * distance
         val lookX = cameraX + forwardX * lookAhead
         val lookZ = cameraZ + forwardZ * lookAhead
-        val fov = if (overviewCamera) 46.0 else 55.0
+        val fov = if (overviewCamera) 46.0 else 49.0
         viewer.camera.setProjection(
             fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 150.0,
             Camera.Fov.VERTICAL
