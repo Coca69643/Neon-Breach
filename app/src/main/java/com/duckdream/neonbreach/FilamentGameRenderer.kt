@@ -641,8 +641,6 @@ internal class FilamentGameRenderer(
         val groundedOffset = if (activeHero == 1) -0.035f else 0f
         val downOffset = if (heroDowned) -0.18f else 0f
         val respawnOffset = smoothStep01(heroRespawnBlend / 0.72f) * 0.045f
-        val c = cos(playerYaw) * scaleX
-        val s = sin(playerYaw) * scaleX
         val rootY = terrainHeight(x, z) + gaitBob + groundedOffset + downOffset + respawnOffset -
             characterMinY * scaleY
         val matrix = terrainAlignedTransform(x, z, playerYaw, scaleX, scaleY, rootY)
@@ -775,8 +773,6 @@ internal class FilamentGameRenderer(
         val height = when (index % 3) { 0 -> 1.08f; 1 -> 0.92f; else -> 1.0f }
         val scaleX = characterScale * minionScale * width
         val scaleY = characterScale * minionScale * height
-        val c = cos(yaw) * scaleX
-        val sn = sin(yaw) * scaleX
         val y = terrainHeight(x, z) - characterMinY * scaleY
         engine.transformManager.setTransform(root,
             terrainAlignedTransform(x, z, yaw, scaleX, scaleY, y))
@@ -923,8 +919,6 @@ internal class FilamentGameRenderer(
             val scaleX = characterScale * botScale * widthFactor
             val scaleY = characterScale * botScale * heightFactor
             val y = terrainHeight(x, z) - characterMinY * scaleY
-            val c = cos(yaw) * scaleX
-            val sinYaw = sin(yaw) * scaleX
             val matrix = terrainAlignedTransform(x, z, yaw, scaleX, scaleY, y)
             transforms.setTransform(rootInstance, matrix)
 
