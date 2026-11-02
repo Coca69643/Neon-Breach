@@ -4,6 +4,7 @@ import android.app.Activity
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Path
 import android.os.Bundle
 import android.util.Log
 import android.view.Choreographer
@@ -565,7 +566,7 @@ class MainActivity : Activity() {
         })
 
         tacticalMap = TacticalMapView(this)
-        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(112), dp(84), Gravity.TOP or Gravity.END).apply {
+        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(138), dp(102), Gravity.TOP or Gravity.END).apply {
             topMargin = dp(10)
             marginEnd = dp(58)
         })
@@ -573,7 +574,7 @@ class MainActivity : Activity() {
         layer.addView(actionButton("LOJA") { showMatchShop() },
             FrameLayout.LayoutParams(dp(72), dp(36), Gravity.TOP or Gravity.END).apply {
                 marginEnd = dp(58)
-                topMargin = dp(102)
+                topMargin = dp(120)
             })
         layer.addView(actionButton("Ⅱ") { pauseMatch() },
             FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP or Gravity.END).apply {
@@ -819,75 +820,168 @@ class MainActivity : Activity() {
 
 private class TacticalMapView(context: android.content.Context) : View(context) {
     private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(210, 10, 27, 31)
+        color = Color.argb(224, 10, 27, 31)
         style = Paint.Style.FILL
     }
-    private val lanePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(140, 148, 188, 183)
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(175, 153, 190, 174)
         style = Paint.Style.STROKE
-        strokeWidth = 3f
+        strokeWidth = 1.4f
+    }
+    private val lanePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(180, 185, 179, 143)
+        style = Paint.Style.STROKE
+        strokeWidth = 3.2f
+    }
+    private val riverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(205, 55, 122, 147)
+        style = Paint.Style.STROKE
+        strokeWidth = 5.5f
     }
     private val blueTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(94, 163, 205)
+        color = Color.rgb(104, 183, 226)
         style = Paint.Style.FILL
     }
     private val redTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(216, 117, 91)
+        color = Color.rgb(224, 113, 88)
         style = Paint.Style.FILL
     }
     private val destroyedTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(76, 83, 80)
+        color = Color.rgb(74, 82, 79)
         style = Paint.Style.FILL
     }
-    private val bluePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(73, 210, 190)
+    private val blueMinionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(90, 205, 195)
         style = Paint.Style.FILL
     }
-    private val redPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(230, 117, 95)
+    private val redMinionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(236, 144, 104)
         style = Paint.Style.FILL
+    }
+    private val blueBotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(74, 162, 220)
+        style = Paint.Style.FILL
+    }
+    private val redBotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(214, 92, 77)
+        style = Paint.Style.FILL
+    }
+    private val campPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(216, 183, 101)
+        style = Paint.Style.FILL
+    }
+    private val objectivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(247, 215, 120)
+        style = Paint.Style.STROKE
+        strokeWidth = 2.4f
     }
     private val playerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-    private var snapshot = FloatArray(94)
+    private var snapshot = FloatArray(256)
 
     fun setSnapshot(values: FloatArray) {
         snapshot = values.copyOf()
         invalidate()
     }
 
+    private fun laneX(lane: Int, z: Float): Float {
+        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
+        return when (lane) {
+            0 -> -14.2f + bend
+            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
+            else -> 14.2f - bend * 0.82f
+        }
+    }
+
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)
-        val left = 5f
-        val top = 5f
-        val right = width - 5f
-        val bottom = height - 5f
+        val left = 4f
+        val top = 4f
+        val right = width - 4f
+        val bottom = height - 4f
         canvas.drawRoundRect(left, top, right, bottom, 10f, 10f, backgroundPaint)
 
-        fun px(x: Float): Float = left + 9f + (x + 24f) / 48f * (right - left - 18f)
-        fun py(z: Float): Float = top + 9f + (24f - z) / 48f * (bottom - top - 18f)
+        fun px(x: Float): Float = left + 8f + (x + 34f) / 68f * (right - left - 16f)
+        fun py(z: Float): Float = top + 8f + (30f - z) / 60f * (bottom - top - 16f)
 
-        for ((lane, laneX) in floatArrayOf(-12f, 0f, 12f).withIndex()) {
-            canvas.drawLine(px(laneX), py(-22f), px(laneX), py(22f), lanePaint)
-            val blueAlive = snapshot.size >= 94 && snapshot[73 + lane] > 0f
-            val redAlive = snapshot.size >= 94 && snapshot[76 + lane] > 0f
-            canvas.drawCircle(px(laneX), py(-12.2f), 3.5f,
-                if (blueAlive) blueTowerPaint else destroyedTowerPaint)
-            canvas.drawCircle(px(laneX), py(12.2f), 3.5f,
-                if (redAlive) redTowerPaint else destroyedTowerPaint)
+        // Three distinct, curved lanes.
+        for (lane in 0..2) {
+            val line = Path()
+            for (step in 0..30) {
+                val z = -30f + step * 2f
+                val x = px(laneX(lane, z))
+                val y = py(z)
+                if (step == 0) line.moveTo(x, y) else line.lineTo(x, y)
+            }
+            canvas.drawPath(line, lanePaint)
         }
 
-        if (snapshot.size >= 34) {
+        // The river links both jungles and the three lane crossings.
+        val river = Path()
+        val riverPoints = arrayOf(
+            floatArrayOf(-34f, 1.1f), floatArrayOf(-28f, 0.55f), floatArrayOf(-21f, 0.05f),
+            floatArrayOf(-15f, -0.45f), floatArrayOf(-9f, -0.22f), floatArrayOf(-3f, 0.25f),
+            floatArrayOf(4f, 0.38f), floatArrayOf(10f, 0.02f), floatArrayOf(16f, -0.38f),
+            floatArrayOf(23f, -0.18f), floatArrayOf(29f, 0.22f), floatArrayOf(34f, 0.8f)
+        )
+        riverPoints.forEachIndexed { index, point ->
+            if (index == 0) river.moveTo(px(point[0]), py(point[1]))
+            else river.lineTo(px(point[0]), py(point[1]))
+        }
+        canvas.drawPath(river, riverPaint)
+
+        if (snapshot.size >= 256) {
+            // All 18 defensive towers: three tiers per lane, mirrored by team.
+            for (team in 0..1) {
+                for (lane in 0..2) {
+                    for (tier in 0..2) {
+                        val index = team * 9 + lane * 3 + tier
+                        val z = (if (team == 0) -1f else 1f) * when (tier) {
+                            0 -> 22f
+                            1 -> 15f
+                            else -> 8f
+                        }
+                        val x = laneX(lane, z)
+                        val alive = snapshot[107 + index] > 0f
+                        val paint = if (!alive) destroyedTowerPaint else if (team == 0) blueTowerPaint else redTowerPaint
+                        canvas.drawCircle(px(x), py(z), 2.5f, paint)
+                    }
+                }
+            }
+
+            // Neutral camps appear only while their creatures are alive.
+            val campPositions = arrayOf(
+                floatArrayOf(-8.2f, -14.5f), floatArrayOf(8.2f, -14.5f),
+                floatArrayOf(-20.2f, -10f), floatArrayOf(20.2f, -10f),
+                floatArrayOf(-8.2f, 14.5f), floatArrayOf(8.2f, 14.5f),
+                floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
+            )
+            campPositions.forEachIndexed { index, point ->
+                if (snapshot[198 + index] > 0f) canvas.drawCircle(px(point[0]), py(point[1]), 2.4f, campPaint)
+            }
+
+            // River objective pits have a distinct marker when active.
+            if (snapshot[104] > 0f) canvas.drawCircle(px(-7f), py(0.2f), 5f, objectivePaint)
+            if (snapshot[106] > 0f) canvas.drawCircle(px(7f), py(0.2f), 5f, objectivePaint)
+
+            // Minion waves and team units.
+            for (index in 0 until 24) {
+                if (snapshot[174 + index] <= 0f) continue
+                val x = snapshot[126 + index * 2]
+                val z = snapshot[127 + index * 2]
+                canvas.drawCircle(px(x), py(z), 1.55f, if (index < 12) blueMinionPaint else redMinionPaint)
+            }
+            // Player and five-v-five AI heroes.
             for (index in 0 until 9) {
                 val x = snapshot[16 + index * 2]
                 val z = snapshot[17 + index * 2]
-                val paint = if (index < 4) bluePaint else redPaint
-                canvas.drawCircle(px(x), py(z), 3.6f, paint)
+                canvas.drawCircle(px(x), py(z), 2.6f, if (index < 4) blueBotPaint else redBotPaint)
             }
-            canvas.drawCircle(px(snapshot[0]), py(snapshot[2]), 5f, playerPaint)
+            canvas.drawCircle(px(snapshot[0]), py(snapshot[2]), 3.3f, playerPaint)
         }
+        canvas.drawRoundRect(left, top, right, bottom, 10f, 10f, borderPaint)
     }
 }
 
