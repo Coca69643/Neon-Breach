@@ -179,8 +179,8 @@ void avoidObstacles(const Body &body,float &desiredX,float &desiredZ) {
         float side;
         if(std::abs(cross)>0.025f) side=cross>0.0f?-1.0f:1.0f;
         else side=(std::fmod(std::abs(x*13.0f+z*7.0f),2.0f)<1.0f)?1.0f:-1.0f;
-        const float reach=(1.0f-along/(lookAhead+radius)).coerceIn(0.0f,1.0f);
-        const float overlap=(1.0f-lateral/clearance).coerceIn(0.0f,1.0f);
+        const float reach=std::clamp(1.0f-along/(lookAhead+radius),0.0f,1.0f);
+        const float overlap=std::clamp(1.0f-lateral/clearance,0.0f,1.0f);
         const float strength=0.35f+1.55f*reach*overlap;
         steerX=-dz*side*strength;
         steerZ=dx*side*strength;
