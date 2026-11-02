@@ -1092,8 +1092,7 @@ internal class FilamentGameRenderer(
     }
 
     private fun animateBone(name: String, angle: Float) {
-        val arm = name.startsWith("upperarm") || name.startsWith("lowerarm")
-        animatePose(bones[name], angle, if (arm) 2 else 0)
+        animatePose(bones[name], angle, 0)
     }
 
     private fun animateArmPose(bone: BonePose?, angle: Float) {
