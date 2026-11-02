@@ -28,7 +28,7 @@ if(NOT joltphysics_POPULATED)
     add_subdirectory(${joltphysics_SOURCE_DIR}/Build ${joltphysics_BINARY_DIR})
 endif()
 
-add_library(neonbreach SHARED game.cpp PhysicsWorld.cpp ProgressionManager.cpp)
+add_library(neonbreach SHARED game.cpp PhysicsWorld.cpp ProgressionManager.cpp CharacterAnimation.cpp)
 find_library(log-lib log)
 find_library(android-lib android)
 target_compile_features(neonbreach PRIVATE cxx_std_17)
