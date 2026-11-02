@@ -76,11 +76,38 @@ internal class FilamentGameRenderer(
 
     private data class BonePose(val instance: Int, val base: FloatArray)
     private val bones = LinkedHashMap<String, BonePose>()
+    // NPC rigs stay deliberately compact: only the most visible joints are updated.
     private val boneNames = listOf(
         "thigh_l", "thigh_r", "calf_l", "calf_r",
         "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r",
         "spine_01", "spine_02", "neck_01"
     )
+    // The playable hero gets additional torso, head, hand and foot articulation.
+    private val playerBoneNames = listOf(
+        "pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r",
+        "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r", "hand_l", "hand_r",
+        "spine_01", "spine_02", "spine_03", "neck_01", "Head"
+    )
+
+    private enum class HeroMotion {
+        IDLE, WALK, RUN, DASH, CAST, GUARD, HIT, DOWN, RESPAWN
+    }
+
+    private val heroPoseAngles = HashMap<String, Float>(20)
+    private var heroMotion = HeroMotion.IDLE
+    private var heroDashActive = false
+    private var heroGuardActive = false
+    private var heroDowned = false
+    private var heroDamageTime = 0f
+    private var heroCastTime = 0f
+    private var heroGuardGestureTime = 0f
+    private var heroActionPulseTime = 0f
+    private var heroRespawnBlend = 0f
+    private var previousHeroHealth = Float.NaN
+    private var previousPulseActive = false
+    private var animationClock = 0f
+    private var yawInitialized = false
+    private var previousHeroSpeed = 0f
 
     private var cameraAspect = 16f / 9f
     private var cameraX = -12f
@@ -392,7 +419,7 @@ internal class FilamentGameRenderer(
         characterRootInstance = transforms.getInstance(player.root)
         require(characterRootInstance != 0) { "Humanoid player root transform is missing" }
 
-        for (name in boneNames) {
+        for (name in playerBoneNames) {
             val entity = player.entities.firstOrNull { asset.getName(it) == name } ?: 0
             if (entity != 0) {
                 val instance = transforms.getInstance(entity)
@@ -413,43 +440,114 @@ internal class FilamentGameRenderer(
         updateCamera(cameraAspect)
     }
 
+    fun updatePlayerSignals(snapshot: FloatArray) {
+        if (snapshot.size < 96) return
+
+        val health = snapshot[72]
+        if (!previousHeroHealth.isNaN() && health < previousHeroHealth - 0.5f) {
+            heroDamageTime = 0.28f
+        }
+        previousHeroHealth = health
+
+        heroDashActive = snapshot[62] > 0.02f
+        heroGuardActive = snapshot[7] > 0.02f
+
+        val pulseActive = snapshot[61] > 0.02f
+        if (pulseActive && !previousPulseActive) {
+            heroCastTime = max(heroCastTime, 0.48f)
+        }
+        previousPulseActive = pulseActive
+
+        val isDown = snapshot[95] > 0.02f
+        if (isDown) {
+            heroDowned = true
+            heroRespawnBlend = 0f
+        } else if (heroDowned) {
+            heroDowned = false
+            heroRespawnBlend = 0.72f
+        }
+    }
+
+    fun triggerAbilityGesture() {
+        heroCastTime = max(heroCastTime, 0.48f)
+    }
+
+    fun triggerGuardGesture() {
+        heroGuardGestureTime = max(heroGuardGestureTime, 0.36f)
+    }
+
+    fun triggerActionPulse() {
+        // A small readable body accent; it does not replace the gameplay hit logic.
+        heroActionPulseTime = max(heroActionPulseTime, 0.18f)
+    }
+
     fun update(x: Float, y: Float, z: Float, velocityX: Float, velocityZ: Float, deltaTime: Float) {
         if (!sceneLoaded) return
-        val speed = kotlin.math.sqrt(velocityX * velocityX + velocityZ * velocityZ)
-        if (speed > 0.18f) playerYaw = kotlin.math.atan2(velocityX, velocityZ)
+        val dt = deltaTime.coerceIn(0f, 0.05f)
+        if (dt <= 0f) return
 
-        // Keep the hero in the lower-middle safe area: never underneath the left joystick.
-        // The camera tracks a biased focus point ahead and to the hero's right.
+        val speed = kotlin.math.sqrt(velocityX * velocityX + velocityZ * velocityZ)
+        var turnRate = 0f
+        if (speed > 0.18f) {
+            val desiredYaw = kotlin.math.atan2(velocityX, velocityZ)
+            if (!yawInitialized) {
+                playerYaw = desiredYaw
+                yawInitialized = true
+            } else {
+                val yawError = kotlin.math.atan2(
+                    sin(desiredYaw - playerYaw),
+                    cos(desiredYaw - playerYaw)
+                )
+                turnRate = (yawError / dt).coerceIn(-5.5f, 5.5f)
+                playerYaw += yawError * (1f - kotlin.math.exp(-dt * 15f))
+            }
+        }
+
+        // Keep the hero in the lower-middle safe area and lead the camera gently.
         val forwardX = sin(playerYaw)
         val forwardZ = cos(playerYaw)
         val rightX = cos(playerYaw)
         val rightZ = -sin(playerYaw)
         val targetX = x - rightX * 1.55f + forwardX * 2.0f
         val targetZ = z - rightZ * 1.55f + forwardZ * 2.0f
-        val blend = (1f - kotlin.math.exp(-deltaTime * 6.5f)).coerceIn(0f, 1f)
+        val cameraBlend = (1f - kotlin.math.exp(-dt * 6.5f)).coerceIn(0f, 1f)
         if (!overviewCamera) {
-            cameraX += (targetX - cameraX) * blend
-            cameraZ += (targetZ - cameraZ) * blend
-            cameraY += (y - cameraY) * blend
+            cameraX += (targetX - cameraX) * cameraBlend
+            cameraZ += (targetZ - cameraZ) * cameraBlend
+            cameraY += (y - cameraY) * cameraBlend
         }
-
         overviewCamera = false
-        val yaw = playerYaw
+
+        val moving = smoothStep01((speed - 0.16f) / 1.25f)
+        val runBlend = smoothStep01((speed - 3.0f) / 2.35f)
+        val strideProfile = when (activeHero) {
+            1 -> 0.88f // Bastion: compact, grounded cadence.
+            2 -> 1.10f // Kairo: quicker, lighter cadence.
+            else -> 1.0f
+        }
+        if (speed > 0.18f) phase += speed * dt * 1.72f * strideProfile
+        animationClock += dt
+
         val widthScale = when (activeHero) {
-            1 -> 1.18f
-            2 -> 0.84f
-            else -> 0.96f
+            1 -> 1.07f
+            2 -> 0.96f
+            else -> 1.0f
         }
         val heightScale = when (activeHero) {
-            1 -> 0.94f
-            2 -> 1.13f
-            else -> 1.04f
+            1 -> 0.99f
+            2 -> 1.035f
+            else -> 1.01f
         }
         val scaleX = characterScale * widthScale
         val scaleY = characterScale * heightScale
-        val c = cos(yaw) * scaleX
-        val s = sin(yaw) * scaleX
-        val rootY = cameraY - characterMinY * scaleY
+        val gaitBob = kotlin.math.abs(sin(phase * 2f)) * 0.024f * moving
+        val groundedOffset = if (activeHero == 1) -0.035f else 0f
+        val downOffset = if (heroDowned) -0.18f else 0f
+        val respawnOffset = smoothStep01(heroRespawnBlend / 0.72f) * 0.045f
+        val c = cos(playerYaw) * scaleX
+        val s = sin(playerYaw) * scaleX
+        val rootY = cameraY + gaitBob + groundedOffset + downOffset + respawnOffset -
+            characterMinY * scaleY
         val matrix = floatArrayOf(
             c, 0f, -s, 0f,
             0f, scaleY, 0f, 0f,
@@ -458,26 +556,111 @@ internal class FilamentGameRenderer(
         )
         engine.transformManager.setTransform(characterRootInstance, matrix)
 
-        val moving = (speed / 5.6f).coerceIn(0f, 1f)
-        phase += deltaTime * (7.0f + speed * 1.45f)
-        val stride = sin(phase) * moving
-        val idle = sin(phase * 0.72f)
-        animateBone("upperarm_l", -0.90f - stride * 0.34f + idle * 0.025f)
-        animateBone("upperarm_r", 0.90f + stride * 0.34f - idle * 0.025f)
-        animateBone("lowerarm_l", 0.48f + max(0f, stride) * 0.19f)
-        animateBone("lowerarm_r", 0.48f + max(0f, -stride) * 0.19f)
-        animateBone("thigh_l", stride * 0.68f)
-        animateBone("thigh_r", -stride * 0.68f)
-        animateBone("calf_l", max(0f, -stride) * 0.55f)
-        animateBone("calf_r", max(0f, stride) * 0.55f)
-        animateBone("spine_01", 0.014f + sin(phase * 0.75f) * 0.018f + sin(phase * 2f) * 0.025f * moving)
-        animateBone("spine_02", -0.010f - sin(phase * 0.75f) * 0.014f)
-        animateBone("neck_01", sin(phase * 0.45f) * 0.018f)
-        playerAnimator?.updateBoneMatrices()
+        updateHeroPose(speed, turnRate, moving, runBlend, dt)
+        heroDamageTime = max(0f, heroDamageTime - dt)
+        heroCastTime = max(0f, heroCastTime - dt)
+        heroGuardGestureTime = max(0f, heroGuardGestureTime - dt)
+        heroActionPulseTime = max(0f, heroActionPulseTime - dt)
+        heroRespawnBlend = max(0f, heroRespawnBlend - dt)
 
+        previousHeroSpeed = speed
+        playerAnimator?.updateBoneMatrices()
         updateCamera(cameraAspect)
     }
 
+    private fun smoothStep01(value: Float): Float {
+        val t = value.coerceIn(0f, 1f)
+        return t * t * (3f - 2f * t)
+    }
+
+    private fun updateHeroPose(
+        speed: Float,
+        turnRate: Float,
+        moving: Float,
+        runBlend: Float,
+        dt: Float
+    ) {
+        val stride = sin(phase) * (0.34f + 0.07f * runBlend) * moving
+        val oppositeStride = -stride
+        val leftLift = max(0f, -sin(phase)) * moving
+        val rightLift = max(0f, sin(phase)) * moving
+        val idleBreath = sin(animationClock * 1.35f) * 0.012f
+        val turnLean = (turnRate / 5.5f).coerceIn(-1f, 1f) * 0.075f
+        val acceleration = if (dt > 0f) ((speed - previousHeroSpeed) / dt).coerceIn(-9f, 9f) else 0f
+        val braking = smoothStep01(-acceleration / 8f)
+        val dash = if (heroDashActive) 1f else 0f
+        val cast = smoothStep01(heroCastTime / 0.48f)
+        val guard = max(if (heroGuardActive) 0.72f else 0f, smoothStep01(heroGuardGestureTime / 0.36f))
+        val hit = smoothStep01(heroDamageTime / 0.28f)
+        val action = smoothStep01(heroActionPulseTime / 0.18f)
+        val down = if (heroDowned) 1f else 0f
+        val respawn = smoothStep01(heroRespawnBlend / 0.72f)
+
+        heroMotion = when {
+            down > 0f -> HeroMotion.DOWN
+            respawn > 0f -> HeroMotion.RESPAWN
+            hit > 0.05f -> HeroMotion.HIT
+            dash > 0f -> HeroMotion.DASH
+            cast > 0.05f -> HeroMotion.CAST
+            guard > 0.05f -> HeroMotion.GUARD
+            runBlend > 0.15f -> HeroMotion.RUN
+            moving > 0.08f -> HeroMotion.WALK
+            else -> HeroMotion.IDLE
+        }
+
+        val heroLean = when (activeHero) {
+            1 -> -0.025f // Bastion keeps a more upright centre of mass.
+            2 -> 0.045f  // Kairo leans slightly into movement.
+            else -> 0.012f
+        }
+        val strideScale = when (activeHero) {
+            1 -> 0.88f
+            2 -> 1.08f
+            else -> 1f
+        }
+        val castBias = if (activeHero == 0) 0.10f else if (activeHero == 2) -0.08f else 0f
+
+        val upperLeft = -0.92f - stride * 0.30f * strideScale +
+            cast * (0.18f + castBias) + guard * 0.08f - hit * 0.08f
+        val upperRight = 0.92f + stride * 0.30f * strideScale -
+            cast * (0.54f - castBias) - guard * 0.08f + hit * 0.08f
+        val lowerLeft = 0.50f + leftLift * 0.18f + cast * 0.06f + guard * 0.08f
+        val lowerRight = 0.50f + rightLift * 0.18f - cast * 0.62f + guard * 0.08f
+
+        animateHeroBone("upperarm_l", upperLeft, dt, 2)
+        animateHeroBone("upperarm_r", upperRight, dt, 2)
+        animateHeroBone("lowerarm_l", lowerLeft, dt, 2)
+        animateHeroBone("lowerarm_r", lowerRight, dt, 2)
+        animateHeroBone("hand_l", 0.025f * sin(phase) * moving - cast * 0.05f, dt, 2)
+        animateHeroBone("hand_r", -0.025f * sin(phase) * moving + cast * 0.06f, dt, 2)
+
+        val kneeBias = if (activeHero == 1) 0.07f else 0.015f
+        animateHeroBone("thigh_l", stride * 0.57f * strideScale + down * 0.42f, dt)
+        animateHeroBone("thigh_r", oppositeStride * 0.57f * strideScale + down * 0.42f, dt)
+        animateHeroBone("calf_l", leftLift * 0.42f + kneeBias + down * 0.30f, dt)
+        animateHeroBone("calf_r", rightLift * 0.42f + kneeBias + down * 0.30f, dt)
+        animateHeroBone("foot_l", -leftLift * 0.15f - down * 0.12f, dt)
+        animateHeroBone("foot_r", -rightLift * 0.15f - down * 0.12f, dt)
+
+        val torsoPitch = heroLean * moving + braking * 0.055f - runBlend * 0.035f +
+            dash * 0.15f + hit * 0.14f + down * 0.48f - respawn * 0.20f +
+            action * 0.035f + idleBreath
+        animateHeroBone("pelvis", turnLean * 0.16f + stride * 0.025f, dt)
+        animateHeroBone("spine_01", 0.015f + torsoPitch, dt)
+        animateHeroBone("spine_02", -0.012f - torsoPitch * 0.32f - turnLean * 0.16f, dt)
+        animateHeroBone("spine_03", -torsoPitch * 0.18f + turnLean * 0.38f, dt)
+        animateHeroBone("neck_01", -torsoPitch * 0.22f - turnLean * 0.20f, dt)
+        animateHeroBone("Head", -torsoPitch * 0.18f - turnLean * 0.18f, dt)
+    }
+
+    private fun animateHeroBone(name: String, targetAngle: Float, dt: Float, axis: Int = 0) {
+        val bone = bones[name] ?: return
+        val current = heroPoseAngles[name] ?: targetAngle
+        val blend = (1f - kotlin.math.exp(-dt * 17f)).coerceIn(0f, 1f)
+        val next = current + (targetAngle - current) * blend
+        heroPoseAngles[name] = next
+        animatePose(bone, next, axis)
+    }
     private fun kLaneX(lane: Int): Float = when (lane) {
         0 -> -12f
         1 -> 0f
