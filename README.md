@@ -1,71 +1,57 @@
-# Projeto Arena 0.10.0
+# Projeto Arena 0.12.0
 
-MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 local com bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
+MOBA 3D nativo para Android, landscape e offline. Esta versão reúne o HUB e a animação anteriores com a reconstrução da gameplay: três rotas curvas, duas selvas, ondas alternadas, três camadas de torre por rota, dois objetivos neutros, IA com cinco papéis e progressão dentro da partida.
+
+## MOBA 0.12.0 — estrutura de gameplay
+
+- 5v5 local: jogador + quatro aliados controlados pela IA contra cinco adversários.
+- Papéis de IA: solo, jungler, mid, carry e suporte. O herói escolhido define o papel inicial do jogador; os bots completam os quatro papéis restantes.
+- Três rotas com curvas próprias, conectadas por rio e passagens para as duas selvas.
+- Oito acampamentos neutros em posições espelhadas; derrotá-los concede ouro e XP e eles reaparecem após um intervalo.
+- Ondas com três unidades corpo a corpo e uma unidade de distância por rota/equipe. Dois grupos alternados permitem até 48 tropas ativas sem crescimento ilimitado; grupos sobreviventes não são teleportados.
+- Cada rota tem três torres por equipe. As torres priorizam tropas inimigas em alcance; o jogador precisa de uma onda aliada para pressionar estruturas.
+- O núcleo só fica vulnerável depois que uma rota inteira perde suas três torres defensivas.
+- Guardião do Rio e Sentinela Ancestral aparecem em tempos distintos. Derrotá-los concede ouro, XP e bônus temporário de cerco.
+- IA de rota acompanha a frente das tropas, entra em confrontos próximos e pressiona estruturas com cobertura. Junglers limpam acampamentos e podem rotacionar para objetivos; carries preferem distância; suportes recuperam aliados.
+- Economia de partida separada da economia do HUB: ouro, XP, níveis, melhorias de habilidade e três famílias de itens compráveis.
+- Minimap mostra rotas, rio, torres em três níveis, tropas, heróis, acampamentos e objetivos ativos.
+
+## Personagens e animação 0.11.0
+
+- Controlador de estados para repouso, caminhada, corrida, impulso, habilidade, proteção, reação a dano, queda e retorno.
+- Passadas derivadas do deslocamento, transições suaves por junta e inclinação em curvas, aceleração e frenagem.
+- Rig ampliado apenas no herói jogável; bots e tropas mantêm rig reduzido para controlar custo de CPU.
+- Snapshot nativo conecta movimento, combate e eventos de gameplay ao renderer.
+- Lyra, Bastion e Kairo ocupam papéis iniciais distintos. A malha humanoide-base permanece compartilhada.
 
 ## HUB e progressão offline 0.10.0
-- Menu expandido com telas de skins, loja, missões e perfil, mantendo o modo MOBA 5v5 e suas três rotas.
-- Carteira local com Moedas de Arena e Fragmentos; partidas concedem recompensas fixas, com bônus de contrato a cada três partidas.
-- Loja troca fragmentos por moedas; skins têm preço fixo, podem ser equipadas e alteram a paleta do herói no preview 3D.
-- XP, nível, partidas, vitórias, moedas, fragmentos e desbloqueios são persistidos localmente em SharedPreferences versionadas.
-- Economia demonstrativa offline: sem compras reais, servidor ou recompensas aleatórias.
 
-## Reconstrução visual 0.8.0
-- O campo antigo de árvores, cones e esferas e o altar procedural foram removidos.
-- O ambiente base ainda usa 12 modelos glTF do KayKit Medieval Hexagon Pack: castelos azul/vermelho, torres, casas, igrejas, pontes, agrupamentos de árvores e bandeiras.
-- O pack é CC0 1.0. Somente peças de ambiente foram importadas; o jogo não incorpora itens ou mecânicas armadas.
-- O mapa tem duas bases, três rotas de pedra, um rio transversal com três pontes, torres por rota e bandeiras nas áreas de controle.
-- O atlas de textura compartilhado é carregado uma vez pelo ResourceLoader do Filament.
-- A malha de runtime ficou restrita ao terreno, às estradas e ao rio; não gera mais a vegetação decorativa repetitiva da versão anterior.
+- Menu com telas de heróis, guia, ajustes, skins, loja, missões e perfil.
+- Carteira local com Moedas de Arena e Fragmentos; partidas concedem recompensas fixas e contrato a cada três partidas.
+- Skins de preço fixo e loja de troca de fragmentos, sem compras reais, servidor ou caixas aleatórias.
+- XP, nível, partidas, vitórias, carteira e cosméticos persistidos com SharedPreferences.
 
-## Evolução 0.9.1
-- Menu principal preserva a apresentação 3D do herói e agora separa JOGAR, HERÓIS, COMO JOGAR e AJUSTES; tocar no cenário não inicia uma partida.
-- Seleção de herói explica função e habilidade antes da confirmação.
-- Lyra usa AURA para recuperar aliados próximos e enfraquecer rivais dentro da área.
-- Bastion tem IMPACTO de maior alcance/dano, ataque pesado e escudo prolongado.
-- Kairo tem ONDA de recarga reduzida, ataque rápido e impulso mais veloz.
-- A sensibilidade do direcional possui três níveis persistidos localmente.
-- O jogador agora passa por uma janela de retorno de 1,45 s após ser derrotado; o HUD mostra o tempo restante e o total de quedas.
+## Mapa e apresentação
 
-## Loop de cerco 0.9.0
-- A vitória deixa de depender de controle abstrato de duas zonas: é necessário derrubar as três torres da rota atacante e reduzir a vida do núcleo inimigo a zero.
-- Duplas de tropas por rota procuram tropas rivais próximas, entram em combate, empurram a rota quando vencem e reaparecem em novas ondas após serem derrotadas.
-- Torres defensivas atacam tropas e heróis adversários em alcance; o radar indica torres ativas e destruídas.
-- Bots avançam pela rota, interrompem o avanço para duelar e atacam torres ou núcleo quando o caminho está livre.
-- O jogador usa GOLPE manual, com seleção automática do alvo válido mais próximo em alcance: herói, tropa, torre ou núcleo.
-- O HUD exibe vida, quedas, recarga do golpe, progresso das torres e integridade do núcleo.
-
-## Personagens e unidades
-- Corrigido o eixo de rotação dos ombros; braços agora descem da pose horizontal e acompanham a passada.
-- Silhuetas de bots pesados, ágeis e equilibrados têm proporções mais distintas, embora ainda compartilhem a malha base.
-- O rig Quaternius CC0 continua sendo o modelo humanoide base.
-- A pose de repouso agora baixa os braços e dobra levemente os cotovelos.
-- A locomoção aplica ciclos esqueléticos de caminhada/corrida e chama Animator.updateBoneMatrices() em cada instância, incluindo herói, bots e tropas.
-- Nove bots locais movem-se por rotas próprias.
-- Doze tropas físicas formam duplas por equipe em cada rota, avançam, combatem tropas rivais e retornam como novas ondas após serem derrotadas.
-
-## Regras da partida
-- Bots enfrentam unidades rivais próximas e perseguem o jogador quando ele entra em alcance.
-- O jogador usa GOLPE manual para atingir o alvo válido mais próximo; heróis controlados pela IA mantêm ataques contextuais.
-- 1 jogador + 4 bots aliados contra 5 bots adversários.
-- Três rotas de cerco; derrubar as torres e destruir o núcleo inimigo vence a partida.
-- AURA (Lyra), IMPACTO (Bastion) ou ONDA (Kairo) varia por herói; ESCUDO reduz dano recebido; IMPULSO reposiciona na direção do joystick.
-- O HUD exibe vida e quedas; derrotas acionam retorno temporizado à base.
-- Sem login, servidor, matchmaking ou conexão com a internet.
-
-## Mundo e câmera
-- A câmera inicia no spawn real, reduz o deslocamento lateral e aproxima o enquadramento do personagem para evitar sobreposição com a área do joystick.
-- O rio agora ocupa um canal recortado no terreno, com água visível; materiais de solo terroso e rocha quebram a superfície verde uniforme.
+- Terreno de vale com três rotas curvas pavimentadas, rio transversal, pontes e trilhas de terra.
+- Duas áreas de selva, oito acampamentos marcados no chão e duas áreas de objetivo neutro ao longo do rio.
+- Três torres por rota em cada lado, com posições externas, intermediárias e internas.
+- Modelos ambientais do KayKit Medieval Hexagon Pack sob CC0 1.0; humanoide Quaternius sob CC0 1.0.
+- A cena não usa imagens externas em runtime.
 
 ## Stack e distribuição
-- Android nativo Kotlin + C++20/NDK.
+
+- Android nativo: Kotlin + C++20/NDK.
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
+- Orientação landscape fixa; funcionamento offline; sem WebView.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 40 / versionName 0.9.1.
+- versionCode 43 / versionName 0.12.0.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas
-- Herói, bots e tropas ainda compartilham a mesma geometria humanoide CC0; equipes e tropas variam por cor e escala, mas não há ainda silhuetas exclusivas por função.
-- A animação é esquelética procedural no rig; ainda não há um conjunto completo de clipes exclusivos por herói.
-- As tropas já combatem em cada rota e reaparecem em ondas, mas usam apenas duas unidades homogêneas por equipe/rota; a IA de formação e de cerco ainda é simplificada.
-- A IA dos heróis ainda é local e simplificada; não existe seleção de alvo manual por unidade nem comportamento avançado de equipe.
-- O 0.9.1 amplia o loop de cerco e diferencia as funções dos heróis, mas ainda não é um MOBA completo: tropas são duplas homogêneas, não há objetivos de selva, itens, níveis ou habilidades exclusivas por herói. CI não substitui teste físico no Realme C53: câmera, FPS sustentado, memória, temperatura e estabilidade precisam ser medidos no aparelho.
+
+- A partida é offline contra IA; não há matchmaking, servidores ou cinco jogadores humanos por equipe.
+- Os três heróis ainda compartilham uma geometria-base; papéis e kits são diferenciados, mas não há três malhas exclusivas.
+- Os objetivos neutros usam marcos de mapa e marcadores funcionais, não modelos animados dedicados de chefes.
+- Esta é uma base MOBA jogável, ainda sem Fog of War, seleção manual de alvo, draft, inventário de múltiplos espaços ou estratégia de equipe avançada.
+- CI não substitui validação física no Realme C53: FPS sustentado, temperatura, câmera, minimapa, controles touch e estabilidade precisam ser medidos no aparelho.

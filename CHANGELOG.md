@@ -1,5 +1,39 @@
 # Changelog — Projeto Arena
 
+## [0.12.0] — 2026-11-02
+
+### Reconstrução de gameplay MOBA
+- Snapshot JNI/Kotlin ampliado para 320 valores: 18 torres, 48 slots de tropas, oito acampamentos, objetivos neutros, economia e progressão.
+- Três rotas curvas, rio, duas selvas e trilhas de rotação entre acampamentos e rotas.
+- Ondas alternadas por rota/equipe: quatro unidades por formação (três corpo a corpo e uma de distância), com até dois grupos ativos e teto fixo de 48 tropas.
+- Três torres por rota/equipe; as torres externas ficam próximas ao rio, depois vêm as intermediárias e internas.
+- O núcleo fica vulnerável depois da queda das três torres de uma rota; o jogador precisa de cobertura de tropas para atacar torres.
+- O Guardião do Rio e a Sentinela Ancestral aparecem em tempos distintos e concedem ouro, XP e bônus temporário de cerco.
+- Oito acampamentos neutros com respawn e recompensas.
+- IA com papéis de solo, jungler, mid, carry e suporte; o suporte recupera aliados próximos e o carry mantém distância maior nos duelos.
+- Ouro, XP, níveis, melhoria de habilidade e três categorias de item durante a partida.
+- Minimap conectado a rotas curvas, rio, torres, tropas, acampamentos e objetivos ativos.
+- Correções de integração: movimento do jogador aplicado uma vez por frame, recompensas de tropas/acampamentos sem duplicação, campos legados de resultado preservados e timers dos objetivos alinhados.
+- Mantidos HUB 0.10.0, animação do herói 0.11.0, Kotlin + C++20/NDK e Filament 1.77.3.
+- versionCode 43 / versionName 0.12.0.
+
+
+
+## [0.11.0] — 2026-11-02
+
+### Personagem jogável e animação
+- Implementado controlador de movimento com estados de repouso, caminhada, corrida, impulso, gesto de habilidade, proteção, reação a dano, queda e retorno.
+- A locomoção passou a acompanhar a distância percorrida; a rotação do corpo suaviza mudanças de direção e inclinações respondem à aceleração e frenagem.
+- Expandido o rig animado do herói para pelve, tronco em três segmentos, cabeça, mãos, pés, braços e pernas.
+- Suavização temporal por osso evita transições instantâneas entre poses.
+- Snapshot JNI agora alimenta diretamente os estados de impulso, habilidade, proteção, dano e retorno; botões disparam gestos visuais correspondentes.
+- As animações completas permanecem apenas no personagem jogável; bots e tropas preservam o rig reduzido para limitar CPU em celulares intermediários.
+- Lyra, Bastion e Kairo recebem cadência, postura e proporções moderadas próprias. A geometria humanoide-base ainda é compartilhada.
+- Mantidos Kotlin + C++20/NDK, Filament 1.77.3, HUD, economia offline e regras da partida.
+- versionCode 42 / versionName 0.11.0.
+
+
+
 ## [0.10.0] — 2026-11-02
 
 ### HUB e meta progressão
