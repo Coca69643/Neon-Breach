@@ -327,8 +327,15 @@ class MainActivity : Activity() {
             LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
         navigation.addView(actionButton("COMO JOGAR") { showGuide() },
             LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        navigation.addView(actionButton("SKINS") { showSkins() },
+            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        navigation.addView(actionButton("LOJA") { showShop() },
+            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        navigation.addView(actionButton("MISSÕES / PERFIL") { showMissionsProfile() },
+            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
         navigation.addView(actionButton("AJUSTES") { showSettings() },
             LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
+        profile.addView(label("MOEDAS  " + ArenaMetaStore.coins(this) + "   •   FRAGMENTOS  " + ArenaMetaStore.shards(this), 9f, Color.rgb(236, 194, 123), true))
         layer.addView(navigation, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(20)
             bottomMargin = dp(20)
@@ -443,6 +450,56 @@ class MainActivity : Activity() {
         replaceLayer(layer)
     }
 
+    private fun showSkins() {
+        val owned = ArenaMetaStore.hasSkin(this, selectedHero)
+        metaScreen("COLEÇÃO DE SKINS", "Personalização cosmética do herói", listOf(
+            HERO_NAMES[selectedHero] + " • visual clássico: desbloqueado",
+            "Visual alternativo: " + (if (owned) "desbloqueado" else "500 Moedas de Arena"),
+            "Moedas: " + ArenaMetaStore.coins(this) + " • Fragmentos: " + ArenaMetaStore.shards(this),
+            "Skins não alteram atributos de combate."
+        ), listOf((
+            if (owned) "EQUIPAR VISUAL ALTERNATIVO" else "COMPRAR POR 500 MOEDAS"
+        ) to {
+            if (owned) { ArenaMetaStore.equipSkin(this, selectedHero, true); showSkins() }
+            else if (ArenaMetaStore.buySkin(this, selectedHero, 500)) showSkins()
+            else showNotice("Moedas insuficientes.")
+        }, "USAR VISUAL CLÁSSICO" to { ArenaMetaStore.equipSkin(this, selectedHero, false); showSkins() }))
+    }
+
+    private fun showShop() {
+        metaScreen("LOJA DA ARENA", "Economia local com preços fixos", listOf(
+            "Troca: 120 Fragmentos = 500 Moedas de Arena",
+            "Sem caixas aleatórias e sem compras com dinheiro real.",
+            "Saldo: " + ArenaMetaStore.coins(this) + " moedas • " + ArenaMetaStore.shards(this) + " fragmentos"
+        ), listOf("TROCAR FRAGMENTOS" to {
+            if (ArenaMetaStore.exchange(this, 120, 500)) showShop() else showNotice("Fragmentos insuficientes.")
+        }))
+    }
+
+    private fun showMissionsProfile() {
+        val p = ArenaMetaStore.stats(this)
+        metaScreen("MISSÕES E PERFIL", "Progresso salvo localmente", listOf(
+            "Nível " + p[0] + " • XP " + p[1] + "/500",
+            "Partidas: " + p[2] + " • Vitórias: " + p[3],
+            "Contrato: conclua 3 partidas para receber 250 moedas e 30 fragmentos.",
+            "Progresso do contrato: " + (p[2] % 3) + "/3",
+            "Saldo: " + ArenaMetaStore.coins(this) + " moedas • " + ArenaMetaStore.shards(this) + " fragmentos"
+        ), emptyList())
+    }
+
+    private fun metaScreen(title: String, subtitle: String, rows: List<String>, actions: List<Pair<String, () -> Unit>>) {
+        transition(AppState.MENU)
+        renderer.setOverviewCamera(true)
+        val layer = FrameLayout(this)
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(18), dp(20), dp(18)); background = panel() }
+        box.addView(label(title, 21f, Color.WHITE, true))
+        box.addView(label(subtitle, 10f, Color.rgb(236, 194, 123), true))
+        rows.forEach { row -> box.addView(label(row, 11f, Color.rgb(225, 232, 219)).apply { setPadding(0, dp(5), 0, dp(5)) }) }
+        actions.forEach { (caption, callback) -> box.addView(actionButton(caption, callback), LinearLayout.LayoutParams(dp(270), dp(40)).apply { topMargin = dp(7) }) }
+        box.addView(actionButton("VOLTAR AO HUB") { showMenu() }, LinearLayout.LayoutParams(dp(270), dp(40)).apply { topMargin = dp(12) })
+        layer.addView(box, FrameLayout.LayoutParams(dp(430), -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
     private fun startMatch() {
         nativeSelectHero(selectedHero)
         nativeReset()
@@ -606,6 +663,7 @@ class MainActivity : Activity() {
         moveX = 0f
         moveZ = 0f
         transition(AppState.RESULT)
+        ArenaMetaStore.recordMatch(this, won)
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(190, 7, 18, 24))
         }
@@ -614,6 +672,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }
         box.addView(label(if (won) "VITÓRIA AZUL" else "VITÓRIA VERMELHA", 28f, Color.WHITE, true))
+        box.addView(label(if (won) "RECOMPENSA  +120 MOEDAS  •  +12 FRAGMENTOS" else "RECOMPENSA  +70 MOEDAS  •  +6 FRAGMENTOS", 11f, Color.rgb(236, 194, 123), true))
         box.addView(label("O núcleo de uma equipe foi destruído.", 13f, Color.rgb(211, 234, 230)).apply {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(10), dp(12), dp(16))
