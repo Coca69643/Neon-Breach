@@ -79,7 +79,7 @@ checks=[
 ("INICIAR PARTIDA" in main and "TOQUE PARA JOGAR" not in main,"menu must use an explicit primary action"),
 ("val touchStartX = 0f" not in main,"menu must not start a match from an arbitrary screen tap"),
 ("gSelectedHero == 2 ? 0.62f : 0.46f" in native and "gSelectedHero == 0 ? 3.6f" in native,"hero-specific mobility/support profile missing"),
-("native_sim_tests.cpp" in read("tests/native/native_sim_tests.cpp") and "FakeJFloatArray" in read("tests/native/jni.h"),"native regression harness missing"),
+("testSnapshotContract" in read("tests/native/native_sim_tests.cpp") and "FakeJFloatArray" in read("tests/native/jni.h"),"native regression harness missing"),
 ("verify_apk.py" in workflow and "archive.testzip()" in apk_smoke and "JNI_METHODS" in apk_smoke,"packaged APK smoke test is not wired into CI"),
 ("CC0" in asset_register and "KayKit" in asset_register,"KayKit asset register missing"),
 ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license,"CC0 license files missing"),
