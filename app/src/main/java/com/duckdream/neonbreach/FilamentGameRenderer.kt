@@ -577,7 +577,7 @@ internal class FilamentGameRenderer(
         val respawnOffset = smoothStep01(heroRespawnBlend / 0.72f) * 0.045f
         val c = cos(playerYaw) * scaleX
         val s = sin(playerYaw) * scaleX
-        val rootY = cameraY + gaitBob + groundedOffset + downOffset + respawnOffset -
+        val rootY = terrainHeight(x, z) + gaitBob + groundedOffset + downOffset + respawnOffset -
             characterMinY * scaleY
         val matrix = floatArrayOf(
             c, 0f, -s, 0f,
