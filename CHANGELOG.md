@@ -25,6 +25,7 @@
 - Limite da ilha impede sair do campo; resposta de colisão remove velocidade normal e permite deslizar ao longo das superfícies.
 - Inclinação excessiva reduz a componente de velocidade para cima da encosta.
 - Separação de corpos reduz sobreposição entre jogador, bots e minions ativos.
+- Desvio local preventivo redireciona bots/minions em torno de obstáculos próximos; o movimento do jogador permanece diretamente controlado pelo joystick.
 - PhysicsWorld.cpp/Jolt permanece desativado no CMake; não existem dois motores disputando a autoridade da posição.
 
 ### Testes e distribuição
