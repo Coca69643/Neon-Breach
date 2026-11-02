@@ -3,7 +3,7 @@ name: Build Project Arena APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, rebuild/team-objective-moba-v0.1]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.11.0-hub]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -11,7 +11,7 @@ on:
       - 'tools/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main, rebuild/team-objective-moba-v0.1, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.10.0-hub]
+    branches: [main, rebuild/team-objective-moba-v0.1, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.11.0-hub, rebuild/project-arena-0.11.0-character-motion]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -84,26 +84,26 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='41' versionName='0.10.0'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='42' versionName='0.11.0'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.10.0-update
+          name: project-arena-0.11.0-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
       - name: Publish tester release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.10.0-hub'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.11.0-character-motion'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-0.10.0
-          name: Project Arena 0.10.0 — teste mobile
+          tag_name: project-arena-0.11.0
+          name: Project Arena 0.11.0 — teste mobile
           body: |
-            Build de teste da versão 0.10.0 com HUB, loja offline, skins e progressão local.
-            Inclui menu com navegação explícita, telas de heróis/guia/ajustes, habilidades com funções distintas e retorno temporizado do jogador.
-            Pré-lançamento: validar instalação, controles e desempenho no aparelho Android.
+            Build de teste da versão 0.11.0 com controlador de movimento e estados de animação do herói.
+            Mantém HUB, economia offline, progressão e simulação MOBA; a animação estendida roda apenas no personagem controlado.
+            Pré-lançamento: validar transições, instalação e desempenho em aparelho Android.
           draft: false
           prerelease: true
           files: app/build/outputs/apk/debug/app-debug.apk
