@@ -136,17 +136,18 @@ void slideUphill(Body &b,float maxSlope) {
 } // namespace
 
 float terrainHeight(float x,float z) {
-    const float west=1.72f*std::exp(-((x+24)*(x+24))/30.0f)*(0.58f+0.42f*std::cos(z*0.075f));
-    const float east=1.58f*std::exp(-((x-24)*(x-24))/34.0f)*(0.58f+0.42f*std::cos(z*0.07f));
-    const float south=1.05f*std::exp(-((z+27)*(z+27))/24.0f)*std::exp(-(x*x)/340.0f);
-    const float north=1.05f*std::exp(-((z-27)*(z-27))/24.0f)*std::exp(-(x*x)/340.0f);
+    const float west=2.35f*std::exp(-((x+24)*(x+24))/44.0f)*(0.58f+0.42f*std::cos(z*0.075f));
+    const float east=2.18f*std::exp(-((x-24)*(x-24))/48.0f)*(0.58f+0.42f*std::cos(z*0.07f));
+    const float south=1.55f*std::exp(-((z+27)*(z+27))/36.0f)*std::exp(-(x*x)/420.0f);
+    const float north=1.55f*std::exp(-((z-27)*(z-27))/36.0f)*std::exp(-(x*x)/420.0f);
     const float ax=std::abs(x),az=std::abs(z);
-    const float knoll=0.42f*std::exp(-((ax-8.5f)*(ax-8.5f))/7.0f)*std::exp(-((az-14)*(az-14))/34.0f);
+    const float knoll=0.78f*std::exp(-((ax-8.5f)*(ax-8.5f))/8.5f)*std::exp(-((az-14)*(az-14))/42.0f);
     const float river=std::abs(z-riverZ(x));
-    const float bed=-0.34f*std::exp(-(river*river)/12.0f);
-    const float bank=0.48f*std::exp(-((river-2.45f)*(river-2.45f))/1.6f);
-    const float rolling=0.22f*std::sin(x*0.18f)*std::cos(z*0.14f)+0.12f*std::sin((x+z)*0.29f);
-    return rolling+west+east+south+north+knoll+bed+bank;
+    const float bed=-0.58f*std::exp(-(river*river)/8.5f);
+    const float bank=0.72f*std::exp(-((river-2.55f)*(river-2.55f))/1.9f);
+    const float rolling=0.26f*std::sin(x*0.18f)*std::cos(z*0.14f)+0.16f*std::sin((x+z)*0.29f);
+    const float shelf=0.52f*std::exp(-((ax-18.5f)*(ax-18.5f))/5.5f)*std::exp(-((az-13)*(az-13))/110.0f);
+    return rolling+west+east+south+north+knoll+bed+bank+shelf;
 }
 float terrainSlope(float x,float z) {
     constexpr float e=0.08f;
