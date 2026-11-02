@@ -45,6 +45,9 @@ internal class FilamentGameRenderer(
     private var worldResourceLoader: ResourceLoader? = null
     private val worldAssets = LinkedHashMap<String, FilamentAsset>()
     private val worldInstances = ArrayList<FilamentInstance>()
+    private val towerRootInstances = IntArray(6)
+    private val towerBaseTransforms = arrayOfNulls<FloatArray>(6)
+    private val towerHidden = BooleanArray(6)
     private data class WorldPlacement(
         val model: String, val x: Float, val z: Float,
         val scale: Float, val yaw: Float = 0f, val yOffset: Float = 0f
@@ -62,6 +65,7 @@ internal class FilamentGameRenderer(
     private val minionRootInstances = IntArray(12)
     private val minionBones = ArrayList<Map<String, BonePose>>(12)
     private val minionLastPositions = Array(12) { floatArrayOf(Float.NaN, Float.NaN) }
+    private val minionAlive = BooleanArray(12) { true }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.72f
     private var minionsVisible = false
@@ -255,12 +259,20 @@ internal class FilamentGameRenderer(
             val c = cos(placement.yaw) * placement.scale
             val sn = sin(placement.yaw) * placement.scale
             val y = terrainHeight(placement.x, placement.z) + placement.yOffset
-            transforms.setTransform(root, floatArrayOf(
+            val matrix = floatArrayOf(
                 c, 0f, -sn, 0f,
                 0f, placement.scale, 0f, 0f,
                 sn, 0f, c, 0f,
                 placement.x, y, placement.z, 1f
-            ))
+            )
+            transforms.setTransform(root, matrix)
+            if (placement.model == "tower_blue" || placement.model == "tower_red") {
+                val lane = kotlin.math.round((placement.x + 12f) / 12f).toInt().coerceIn(0, 2)
+                val towerIndex = (if (placement.model == "tower_blue") 0 else 3) + lane
+                towerRootInstances[towerIndex] = root
+                towerBaseTransforms[towerIndex] = matrix.copyOf()
+                towerHidden[towerIndex] = false
+            }
         }
 
         worldAssets.values.forEach { it.releaseSourceData() }
@@ -521,6 +533,28 @@ internal class FilamentGameRenderer(
         ))
     }
 
+    fun updateStructures(snapshot: FloatArray) {
+        if (!sceneLoaded || snapshot.size < 82) return
+        val transforms = engine.transformManager
+        for (index in 0 until 6) {
+            val root = towerRootInstances[index]
+            val base = towerBaseTransforms[index] ?: continue
+            if (root == 0) continue
+            val health = if (index < 3) snapshot[73 + index] else snapshot[76 + index - 3]
+            val destroyed = health <= 0.0f
+            if (towerHidden[index] == destroyed) continue
+            val matrix = base.copyOf()
+            if (destroyed) {
+                // Remove the intact tower silhouette only after its native health reaches zero.
+                for (element in intArrayOf(0, 1, 2, 4, 5, 6, 8, 9, 10)) {
+                    matrix[element] *= 0.001f
+                }
+            }
+            transforms.setTransform(root, matrix)
+            towerHidden[index] = destroyed
+        }
+    }
+
     fun updateEffects(snapshot: FloatArray) {
         if (!sceneLoaded || snapshot.size < 72) return
         val x = snapshot[0]
@@ -540,7 +574,9 @@ internal class FilamentGameRenderer(
     fun setMinionsVisible(visible: Boolean) {
         if (!sceneLoaded || minionsVisible == visible) return
         if (visible) {
-            minionInstances.forEach { viewer.scene.addEntities(it.entities) }
+            minionInstances.forEachIndexed { index, instance ->
+                if (minionAlive[index]) viewer.scene.addEntities(instance.entities)
+            }
         } else {
             minionInstances.forEach { viewer.scene.removeEntities(it.entities) }
         }
@@ -548,9 +584,18 @@ internal class FilamentGameRenderer(
     }
 
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
-        if (!sceneLoaded || snapshot.size < 60) return
+        if (!sceneLoaded || snapshot.size < 94) return
         minionAnimationPhase += deltaTime * 7.2f
         for (index in minionInstances.indices) {
+            val alive = snapshot[82 + index] > 0.0f
+            if (minionAlive[index] != alive) {
+                if (alive) viewer.scene.addEntities(minionInstances[index].entities)
+                else viewer.scene.removeEntities(minionInstances[index].entities)
+                minionAlive[index] = alive
+                minionLastPositions[index][0] = Float.NaN
+                minionLastPositions[index][1] = Float.NaN
+            }
+            if (!alive) continue
             val x = snapshot[36 + index * 2]
             val z = snapshot[37 + index * 2]
             val previous = minionLastPositions[index]

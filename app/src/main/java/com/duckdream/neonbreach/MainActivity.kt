@@ -48,6 +48,7 @@ class MainActivity : Activity() {
     private lateinit var dashActionButton: TextView
     private lateinit var pulseActionButton: TextView
     private lateinit var shieldActionButton: TextView
+    private lateinit var attackActionButton: TextView
     private var abilityFeedbackUntilNanos = 0L
     private var screenLayer: View? = null
     private var state = AppState.BOOT
@@ -56,13 +57,14 @@ class MainActivity : Activity() {
     private var lastFrameNanos = 0L
     private var loopActive = false
     private var selectedHero = 0
-    private var lastSnapshot = FloatArray(73)
+    private var lastSnapshot = FloatArray(94)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
     private external fun nativeActivateDash(inputX: Float, inputZ: Float): Boolean
     private external fun nativeCastPulse(): Boolean
     private external fun nativeActivateShield(): Boolean
+    private external fun nativeBasicAttack(): Boolean
     private external fun nativeStep(inputX: Float, inputZ: Float, deltaTime: Float): FloatArray
 
     private val frameCallback = object : Choreographer.FrameCallback {
@@ -74,26 +76,29 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 73) {
+                if (result.size >= 94) {
                     lastSnapshot = result
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
                     renderer.updateCreeps(result, dt)
                     renderer.updateEffects(result)
+                    renderer.updateStructures(result)
                     tacticalMap.setSnapshot(result)
-                    healthLabel.text = "VIDA  ${result.getOrElse(72) { 100f }.toInt().coerceIn(0, 100)}%  •  ATAQUE AUTOMÁTICO"
+                    healthLabel.text = "VIDA  ${result[72].toInt().coerceIn(0, 100)}%  •  GOLPE MANUAL"
                     dashActionButton.text = abilityButtonText("IMPULSO", result[9])
                     pulseActionButton.text = abilityButtonText("PULSO", result[8])
                     shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
+                    attackActionButton.text = abilityButtonText("GOLPE", result[81])
                     dashActionButton.alpha = if (result[9] > 0.05f) 0.62f else 1f
                     pulseActionButton.alpha = if (result[8] > 0.05f) 0.62f else 1f
                     shieldActionButton.alpha = if (result[60] > 0.05f) 0.62f else 1f
+                    attackActionButton.alpha = if (result[81] > 0.05f) 0.62f else 1f
                     if (System.nanoTime() > abilityFeedbackUntilNanos) {
                         abilityHint.text = when {
-                            result[7] > 0.05f -> "ESCUDO ATIVO • bônus de captura na rota"
-                            result[61] > 0.05f -> "PULSO • rivais próximos interrompidos"
-                            result[62] > 0.05f -> "IMPULSO • avanço direcional"
-                            else -> "ATAQUE automático • PULSO causa dano • ESCUDO protege"
+                            result[7] > 0.05f -> "ESCUDO ATIVO • reduz dano recebido"
+                            result[61] > 0.05f -> "PULSO • atingiu heróis e tropas próximas"
+                            result[62] > 0.05f -> "IMPULSO • reposicionamento direcional"
+                            else -> "GOLPE seleciona o alvo próximo • tropas pressionam torres"
                         }
                     }
 
@@ -102,14 +107,16 @@ class MainActivity : Activity() {
                     val blue = result[5].toInt()
                     val red = result[6].toInt()
                     stateLabel.text = "AZUL " + blue + "  :  " + red + " VERMELHO"
-                    val average = ((result[12] + result[13] + result[14]) / 6f + 0.5f)
-                    objectiveProgress.progress = (average * 100f).toInt().coerceIn(0, 100)
-                    objectiveLabel.text = when {
-                        result[15] > 0.5f -> "DUAS ROTAS CONQUISTADAS"
-                        result[15] < -0.5f -> "BASE AZUL SUPERADA"
-                        result[7] > 0.0f -> "BARREIRA ATIVA  •  " + result[7].toInt() + "s"
-                        result[8] > 0.0f -> "PULSO EM RECARGA  •  " + result[8].toInt() + "s"
-                        else -> "CONQUISTE E MANTENHA 2 ROTAS"
+                    val enemyTowersDown = (0..2).count { result[76 + it] <= 0.0f }
+                    val towerProgress = ((780f - result[76]) / 780f +
+                        (780f - result[77]) / 780f + (780f - result[78]) / 780f) / 3f
+                    val coreProgress = 1f - result[80] / 1600f
+                    objectiveProgress.progress = ((if (enemyTowersDown == 3) coreProgress else towerProgress)
+                        .coerceIn(0f, 1f) * 100f).toInt()
+                    objectiveLabel.text = if (enemyTowersDown < 3) {
+                        "DERRUBE AS TORRES VERMELHAS  •  $enemyTowersDown/3"
+                    } else {
+                        "NÚCLEO VERMELHO  •  ${(result[80] / 16f).toInt().coerceIn(0, 100)}%"
                     }
                     if (result[15] > 0.5f) showResult(true)
                     else if (result[15] < -0.5f) showResult(false)
@@ -273,7 +280,7 @@ class MainActivity : Activity() {
         nativeReset()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(73)
+        lastSnapshot = FloatArray(94)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -293,9 +300,9 @@ class MainActivity : Activity() {
             }
         }
         matchLabel = label("00:00", 10f, Color.WHITE, true)
-        objectiveLabel = label("CONQUISTE 2 ROTAS", 10f, Color.rgb(192, 235, 221), true)
-        healthLabel = label("VIDA  100%  •  ATAQUE AUTOMÁTICO", 8f, Color.rgb(173, 220, 194), true)
-        abilityHint = label("PULSO causa dano • ESCUDO reduz dano recebido", 8f, Color.rgb(244, 217, 148), true)
+        objectiveLabel = label("DERRUBE AS TORRES • DESTRUA O NÚCLEO", 10f, Color.rgb(192, 235, 221), true)
+        healthLabel = label("VIDA  100%  •  GOLPE MANUAL", 8f, Color.rgb(173, 220, 194), true)
+        abilityHint = label("GOLPE atinge alvos próximos • tropas avançam em ondas", 8f, Color.rgb(244, 217, 148), true)
         top.addView(matchLabel)
         top.addView(objectiveLabel)
         top.addView(healthLabel)
@@ -306,10 +313,10 @@ class MainActivity : Activity() {
             progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(82, 202, 174))
             progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(100, 220, 230, 220))
         }
-        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(170), dp(4)).apply {
+        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(220), dp(4)).apply {
             topMargin = dp(4)
         })
-        layer.addView(top, FrameLayout.LayoutParams(dp(190), -2, Gravity.TOP or Gravity.START).apply {
+        layer.addView(top, FrameLayout.LayoutParams(dp(250), -2, Gravity.TOP or Gravity.START).apply {
             topMargin = dp(10)
             marginStart = dp(10)
         })
@@ -365,6 +372,15 @@ class MainActivity : Activity() {
         layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(12)
             bottomMargin = dp(68)
+        })
+
+        attackActionButton = actionButton("GOLPE") {
+            val hit = nativeBasicAttack()
+            showAbilityFeedback(if (hit) "GOLPE • alvo atingido" else "GOLPE • aproxime-se de um rival ou estrutura")
+        }
+        layer.addView(attackActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(12)
+            bottomMargin = dp(114)
         })
         tacticalMap.setSnapshot(lastSnapshot)
         replaceLayer(layer)
@@ -424,7 +440,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER
         }
         box.addView(label(if (won) "VITÓRIA AZUL" else "VITÓRIA VERMELHA", 28f, Color.WHITE, true))
-        box.addView(label("A partida local 5v5 terminou.", 13f, Color.rgb(211, 234, 230)).apply {
+        box.addView(label("O núcleo de uma equipe foi destruído.", 13f, Color.rgb(211, 234, 230)).apply {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(10), dp(12), dp(16))
         })
@@ -516,8 +532,16 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         style = Paint.Style.STROKE
         strokeWidth = 3f
     }
-    private val towerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.rgb(208, 192, 139)
+    private val blueTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(94, 163, 205)
+        style = Paint.Style.FILL
+    }
+    private val redTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(216, 117, 91)
+        style = Paint.Style.FILL
+    }
+    private val destroyedTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(76, 83, 80)
         style = Paint.Style.FILL
     }
     private val bluePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -532,7 +556,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-    private var snapshot = FloatArray(36)
+    private var snapshot = FloatArray(94)
 
     fun setSnapshot(values: FloatArray) {
         snapshot = values.copyOf()
@@ -550,10 +574,14 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         fun px(x: Float): Float = left + 9f + (x + 24f) / 48f * (right - left - 18f)
         fun py(z: Float): Float = top + 9f + (24f - z) / 48f * (bottom - top - 18f)
 
-        for (laneX in floatArrayOf(-12f, 0f, 12f)) {
+        for ((lane, laneX) in floatArrayOf(-12f, 0f, 12f).withIndex()) {
             canvas.drawLine(px(laneX), py(-22f), px(laneX), py(22f), lanePaint)
-            canvas.drawRect(px(laneX) - 3f, py(-11f) - 3f, px(laneX) + 3f, py(-11f) + 3f, towerPaint)
-            canvas.drawRect(px(laneX) - 3f, py(11f) - 3f, px(laneX) + 3f, py(11f) + 3f, towerPaint)
+            val blueAlive = snapshot.size >= 94 && snapshot[73 + lane] > 0f
+            val redAlive = snapshot.size >= 82 && snapshot[76 + lane] > 0f
+            canvas.drawCircle(px(laneX), py(-12.2f), 3.5f,
+                if (blueAlive) blueTowerPaint else destroyedTowerPaint)
+            canvas.drawCircle(px(laneX), py(12.2f), 3.5f,
+                if (redAlive) redTowerPaint else destroyedTowerPaint)
         }
 
         if (snapshot.size >= 34) {

@@ -1,5 +1,21 @@
 # Changelog — Projeto Arena
 
+## [0.9.0] — 2026-11-01
+
+### Loop de cerco e vitória por objetivos
+- Substituída a vitória por controle abstrato de duas zonas por um objetivo de MOBA: derrubar as três torres da rota e destruir o núcleo inimigo.
+- Duplas de tropas em cada rota avançam em ondas, detectam tropas rivais próximas, combatem e retomam o avanço quando vencem.
+- Tropas derrotadas reaparecem na base após uma janela de respawn da onda.
+- Torres defensivas atacam tropas e heróis adversários em alcance; o estado de cada torre é enviado pelo snapshot JNI e aparece no radar.
+- Bots avançam até estruturas, atacam torres e passam a pressionar o núcleo após a queda da torre da sua rota.
+- Adicionado GOLPE manual para o jogador; o alvo próximo é priorizado por tipo e alcance. PULSO também atinge tropas.
+- HUD atualizado para comunicar progresso das torres, integridade do núcleo, vida e recarga do golpe.
+- Snapshot JNI/Kotlin ampliado para 94 valores com vida, seis torres, dois núcleos, recarga do ataque básico e vida das 12 tropas; unidades derrotadas saem da cena e retornam quando a próxima onda renasce.
+
+### Validação
+- A atualização usa versionCode 39 / versionName 0.9.0.
+- Build/assinatura e teste no Realme C53 ainda precisam ser confirmados nesta versão.
+
 ## [0.8.0] — 2026-11-01
 
 ### Câmera e personagens
