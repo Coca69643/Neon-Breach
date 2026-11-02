@@ -16,6 +16,9 @@ internal object ArenaMetaStore {
     fun hasSkin(context: Context, hero: Int): Boolean =
         prefs(context).getBoolean("skin_$hero", false)
 
+    fun isSkinEquipped(context: Context, hero: Int): Boolean =
+        hasSkin(context, hero) && prefs(context).getBoolean("skin_equipped_$hero", false)
+
     fun equipSkin(context: Context, hero: Int, alternate: Boolean) {
         prefs(context).edit().putBoolean("skin_equipped_$hero", alternate && hasSkin(context, hero)).apply()
     }
