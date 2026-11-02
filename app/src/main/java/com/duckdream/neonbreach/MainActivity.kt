@@ -660,7 +660,7 @@ class MainActivity : Activity() {
             val skill = lastSnapshot[289].toInt()
             box.removeAllViews()
             box.addView(label("LOJA DA PARTIDA", 20f, Color.WHITE, true))
-            box.addView(label("OURO $gold  •  NÍVEL $level  •  ITENS ${lastSnapshot[286].toInt()}/${lastSnapshot[287].toInt()}/${lastSnapshot[288].toInt()}}", 10f, Color.rgb(242, 209, 141), true))
+            box.addView(label("OURO $gold  •  NÍVEL $level  •  ITENS ${lastSnapshot[286].toInt()}/${lastSnapshot[287].toInt()}/${lastSnapshot[288].toInt()}", 10f, Color.rgb(242, 209, 141), true))
             box.addView(actionButton("VITALIDADE + DEFESA  •  250 OURO") {
                 if (nativeBuyItem(0)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
             }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(8) })
