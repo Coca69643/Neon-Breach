@@ -112,19 +112,19 @@ internal object HeroGearGlbBuilder {
     fun build(hero: Int, team: Int): ByteArray {
         val style=hero.coerceIn(0,2);val red=team!=0
         val parts=ArrayList<Part>()
-        val torso=Part("gear_torso",0).also(parts::add)
-        val trim=Part("gear_trim",1).also(parts::add)
-        val head=Part("gear_head",0).also(parts::add)
-        val headTrim=Part("gear_head_trim",1).also(parts::add)
-        val back=Part("gear_back",0).also(parts::add)
-        val shoulderL=Part("gear_shoulder_l",0).also(parts::add)
-        val shoulderR=Part("gear_shoulder_r",0).also(parts::add)
-        val forearmL=Part("gear_forearm_l",1).also(parts::add)
-        val forearmR=Part("gear_forearm_r",1).also(parts::add)
-        val thighL=Part("gear_thigh_l",0).also(parts::add)
-        val thighR=Part("gear_thigh_r",0).also(parts::add)
-        val bootL=Part("gear_boot_l",1).also(parts::add)
-        val bootR=Part("gear_boot_r",1).also(parts::add)
+        val torso=Part("gear_torso",0).also { parts.add(it) }
+        val trim=Part("gear_trim",1).also { parts.add(it) }
+        val head=Part("gear_head",0).also { parts.add(it) }
+        val headTrim=Part("gear_head_trim",1).also { parts.add(it) }
+        val back=Part("gear_back",0).also { parts.add(it) }
+        val shoulderL=Part("gear_shoulder_l",0).also { parts.add(it) }
+        val shoulderR=Part("gear_shoulder_r",0).also { parts.add(it) }
+        val forearmL=Part("gear_forearm_l",1).also { parts.add(it) }
+        val forearmR=Part("gear_forearm_r",1).also { parts.add(it) }
+        val thighL=Part("gear_thigh_l",0).also { parts.add(it) }
+        val thighR=Part("gear_thigh_r",0).also { parts.add(it) }
+        val bootL=Part("gear_boot_l",1).also { parts.add(it) }
+        val bootR=Part("gear_boot_r",1).also { parts.add(it) }
 
         when(style) {
             0 -> { // Lyra: layered mantle and light ceremonial plates.
