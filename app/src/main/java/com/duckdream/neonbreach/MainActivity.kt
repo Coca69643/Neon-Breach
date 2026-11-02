@@ -504,6 +504,7 @@ class MainActivity : Activity() {
     private fun startMatch() {
         nativeSelectHero(selectedHero)
         nativeReset()
+        renderer.resetHeroAnimationState()
         moveX = 0f
         moveZ = 0f
         lastSnapshot = FloatArray(96)
