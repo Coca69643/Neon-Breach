@@ -65,7 +65,7 @@ class MainActivity : Activity() {
     private val white = Color.rgb(246, 241, 222)
     private val muted = Color.rgb(180, 174, 149)
     private val panel = Color.argb(220, 18, 23, 14)
-    private val prefs by lazy { getSharedPreferences("projeto_arena_settings", MODE_PRIVATE) }
+    private val prefs by lazy { getSharedPreferences("neon_breach_settings", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
