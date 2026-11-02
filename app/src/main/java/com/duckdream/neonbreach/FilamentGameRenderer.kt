@@ -65,7 +65,7 @@ internal class FilamentGameRenderer(
     private val minionRootInstances = IntArray(48)
     private val minionBones = ArrayList<Map<String, BonePose>>(48)
     private val minionLastPositions = Array(48) { floatArrayOf(Float.NaN, Float.NaN) }
-    private val minionAlive = BooleanArray(48) { true }
+    private val minionAlive = BooleanArray(48) { false }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.72f
     private var minionsVisible = false
