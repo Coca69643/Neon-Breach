@@ -479,7 +479,15 @@ internal class FilamentGameRenderer(
             "gear_trim" to "spine_02",
             "gear_head" to "Head",
             "gear_head_trim" to "Head",
-            "gear_back" to "spine_01"
+            "gear_back" to "spine_01",
+            "gear_shoulder_l" to "upperarm_l",
+            "gear_shoulder_r" to "upperarm_r",
+            "gear_forearm_l" to "lowerarm_l",
+            "gear_forearm_r" to "lowerarm_r",
+            "gear_thigh_l" to "thigh_l",
+            "gear_thigh_r" to "thigh_r",
+            "gear_boot_l" to "foot_l",
+            "gear_boot_r" to "foot_r"
         )
         fun createAttached(style: Int, team: Int, rig: Map<String, BonePose>): FilamentInstance {
             val asset = assets[team * 3 + style]
