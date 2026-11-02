@@ -109,8 +109,9 @@ class MainActivity : Activity() {
                     attackActionButton.alpha = if (result[81] > 0.05f) 0.62f else 1f
                     if (System.nanoTime() > abilityFeedbackUntilNanos) {
                         abilityHint.text = when {
+                            result[95] > 0.01f -> "RETORNO À BASE • aguarde antes de voltar ao combate"
                             result[7] > 0.05f -> "ESCUDO ATIVO • reduz dano recebido"
-                            result[61] > 0.05f -> "PULSO • atingiu heróis e tropas próximas"
+                            result[61] > 0.05f -> "${activeAbilityName()} • habilidade acionada"
                             result[62] > 0.05f -> "IMPULSO • reposicionamento direcional"
                             else -> activeAbilityHint()
                         }
@@ -231,6 +232,17 @@ class MainActivity : Activity() {
             setOnClickListener { onClick() }
         }
 
+    private fun primaryActionButton(text: String, onClick: () -> Unit): TextView =
+        actionButton(text, onClick).apply {
+            textSize = 15f
+            setTextColor(Color.rgb(28, 38, 31))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(205, 165, 91))
+                cornerRadius = dp(8).toFloat()
+                setStroke(dp(1), Color.rgb(239, 213, 151))
+            }
+        }
+
     private fun replaceLayer(view: View) {
         screenLayer?.let { root.removeView(it) }
         screenLayer = view
@@ -309,7 +321,7 @@ class MainActivity : Activity() {
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = panel()
         }
-        navigation.addView(actionButton("JOGAR") { startMatch() },
+        navigation.addView(primaryActionButton("JOGAR") { startMatch() },
             LinearLayout.LayoutParams(dp(176), dp(50)))
         navigation.addView(actionButton("HERÓIS") { showHeroSelect() },
             LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
