@@ -3,20 +3,22 @@ name: Build Project Arena APK
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/android.yml'
 
 permissions:
@@ -74,8 +76,16 @@ jobs:
           test -d "$SDK_ROOT/platforms/android-37.0"
           ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
           test -d "$SDK_ROOT/platforms/android-37"
+      - name: Compile and run native physics tests
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror \
+            app/src/main/cpp/ArenaPhysics.cpp tests/arena_physics_tests.cpp \
+            -o "$RUNNER_TEMP/arena_physics_tests"
+          "$RUNNER_TEMP/arena_physics_tests"
       - name: Verify project structure
         run: python3 tools/verify_project.py
+      - name: Test generated hero gear GLB variants
+        run: gradle testDebugUnitTest --no-daemon --stacktrace
       - name: Compile Android APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
@@ -84,24 +94,24 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='44' versionName='0.13.0'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='45' versionName='0.14.0'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.13.0-update
+          name: project-arena-0.14.0-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
       - name: Publish tester release
-        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.13.0-battleground'
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.14.0-physical-heroes'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-0.13.0
-          name: Project Arena 0.13.0 — mapa reconstruído
+          tag_name: project-arena-0.14.0
+          name: Project Arena 0.14.0 — personagens e física
           body: |
-            Build 0.13.0: mapa reconstruído com relevo compartilhado entre terreno e posicionamento, câmera isométrica fixa com zona morta, selvas densas, clareiras, ruínas e santuários de objetivos.
+            Build 0.14.0: humanização de heróis por equipamento visual articulado, animação de contato/locomoção, física cinemática com colisões de cenário, limitação de inclinação e separação entre personagens.
             Preserva HUB 0.10.0, animação do herói 0.11.0 e stack nativa Kotlin + C++20 + Filament.
             Pré-lançamento: validar fluxo de partida, leitura do mapa, desempenho e estabilidade em aparelho Android.
           draft: false

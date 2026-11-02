@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <mutex>
+#include "ArenaPhysics.h"
 
 namespace {
 struct Vec2 { float x; float z; };
@@ -101,6 +102,7 @@ int gPlayerSelectedHero = 0;
 std::array<int, 3> gItemCounts{{0, 0, 0}};
 int gWinner = 0;
 bool gInitialized = false;
+float gSimulationAccumulator = 0.0f;
 
 float length(Vec2 v) { return std::sqrt(v.x * v.x + v.z * v.z); }
 float distance(Vec2 a, Vec2 b) { return length({a.x - b.x, a.z - b.z}); }
@@ -111,13 +113,7 @@ Vec2 normalized(Vec2 v) {
     const float d = std::max(length(v), 0.001f);
     return {v.x / d, v.z / d};
 }
-float terrainHeight(float x, float z) {
-    const float west = 0.78f * std::exp(-((x + 24.0f) * (x + 24.0f)) / 54.0f);
-    const float east = 0.82f * std::exp(-((x - 24.0f) * (x - 24.0f)) / 58.0f);
-    const float rise = 0.28f * std::exp(-((x - 1.0f) * (x - 1.0f) + z * z) / 100.0f);
-    return 0.22f * std::sin(x * 0.16f) * std::cos(z * 0.13f) +
-           0.10f * std::sin((x + z) * 0.22f) + west + east + rise;
-}
+float terrainHeight(float x, float z) { return arena_physics::terrainHeight(x, z); }
 float laneCenterX(int lane, float z) {
     const float bend = std::sin((z + 4.0f) * 0.105f) * 1.15f;
     if (lane == 0) return -14.2f + bend;
@@ -286,6 +282,7 @@ void initializeBots() {
 }
 void resetSimulation() {
     gElapsed = 0.0f;
+    gSimulationAccumulator = 0.0f;
     gPlayerSelectedHero = std::clamp(gPlayerSelectedHero, 0, 2);
     gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f) :
                       (playerRole() == 1 ? Vec2{-8.2f, -14.5f} : lanePoint(2, -25.0f, 1.8f));
@@ -334,37 +331,31 @@ void movePlayer(float inputX, float inputZ, float dt) {
     if (dashing) input = gDashDirection;
     const float inputLength = length(input);
     if (inputLength > 1.0f) input = mul(input, 1.0f / inputLength);
-    if (!dashing && length(input) > 0.08f) gLastMove = normalized(input);
+    if (!dashing && inputLength > 0.08f) gLastMove = normalized(input);
     const float heroMoveBonus = gPlayerSelectedHero == 2 ? 0.55f : 0.0f;
     const float speed = dashing ? kBoostSpeed * (gPlayerSelectedHero == 2 ? 1.18f : 1.0f)
                                 : kWalkSpeed + heroMoveBonus;
-    const Vec2 target = mul(input, speed);
-    if (length(input) > 0.08f) {
-        const float blend = dashing ? 1.0f : 1.0f - std::exp(-15.0f * dt);
-        gPlayerVelocity.x += (target.x - gPlayerVelocity.x) * blend;
-        gPlayerVelocity.z += (target.z - gPlayerVelocity.z) * blend;
-    } else {
-        const float decay = std::exp(-8.0f * dt);
-        gPlayerVelocity = mul(gPlayerVelocity, decay);
-    }
-    gPlayerPosition = add(gPlayerPosition, mul(gPlayerVelocity, dt));
-    gPlayerPosition.x = std::clamp(gPlayerPosition.x, -32.0f, 32.0f);
-    gPlayerPosition.z = std::clamp(gPlayerPosition.z, -30.0f, 30.0f);
+    const Vec2 desired = mul(input, speed);
+    arena_physics::Body body{gPlayerPosition.x, gPlayerPosition.z,
+        gPlayerVelocity.x, gPlayerVelocity.z, 0.43f};
+    arena_physics::move(body, desired.x, desired.z, dt,
+        dashing ? 72.0f : 24.0f, dashing ? 38.0f : 31.0f, 43.0f);
+    gPlayerPosition = {body.x, body.z};
+    gPlayerVelocity = {body.vx, body.vz};
 }
-void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed, float dt) {
+void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed,
+               float dt, float radius = 0.38f) {
     const Vec2 delta = sub(target, position);
     const float d = length(delta);
-    if (d < 0.16f) {
-        position = target;
-        velocity = {0.0f, 0.0f};
-        return;
-    }
-    const float desiredSpeed = std::min(speed, std::sqrt(2.0f * 7.5f * d));
-    const Vec2 desired = mul(normalized(delta), desiredSpeed);
-    const float blend = 1.0f - std::exp(-7.5f * dt);
-    velocity.x += (desired.x - velocity.x) * blend;
-    velocity.z += (desired.z - velocity.z) * blend;
-    position = add(position, mul(velocity, dt));
+    const float desiredSpeed = d < 0.16f ? 0.0f :
+        std::min(speed, std::sqrt(2.0f * 7.5f * d));
+    Vec2 desired = d < 0.16f ? Vec2{0.0f, 0.0f} :
+        mul(normalized(delta), desiredSpeed);
+    arena_physics::Body body{position.x, position.z, velocity.x, velocity.z, radius};
+    arena_physics::avoidObstacles(body, desired.x, desired.z);
+    arena_physics::move(body, desired.x, desired.z, dt, 18.0f, 25.0f, 41.0f);
+    position = {body.x, body.z};
+    velocity = {body.vx, body.vz};
 }
 int nearestEnemyBot(Vec2 position, int team, float range) {
     int target = -1;
@@ -535,7 +526,7 @@ void updateLaneUnits(float dt) {
             LaneUnit &target = gLaneUnits[static_cast<std::size_t>(enemyMinion)];
             const float d = distance(unit.position, target.position);
             if (d > attackRange) {
-                moveActor(unit.position, unit.velocity, target.position, unit.slot == 3 ? 2.3f : 2.55f, dt);
+                moveActor(unit.position, unit.velocity, target.position, unit.slot == 3 ? 2.3f : 2.55f, dt, 0.25f);
             } else if (unit.attackCooldown <= 0.0f) {
                 damageLaneUnit(target, unit.team, unit.slot == 3 ? 14.0f : 25.0f);
                 unit.attackCooldown = unit.slot == 3 ? 1.05f : 0.88f;
@@ -546,7 +537,7 @@ void updateLaneUnits(float dt) {
         if (enemyBot >= 0) {
             Bot &target = gBots[static_cast<std::size_t>(enemyBot)];
             const float d = distance(unit.position, target.position);
-            if (d > 2.0f) moveActor(unit.position, unit.velocity, target.position, 2.35f, dt);
+            if (d > 2.0f) moveActor(unit.position, unit.velocity, target.position, 2.35f, dt, 0.25f);
             else if (unit.attackCooldown <= 0.0f) {
                 damageBot(target, enemyBot, unit.team, unit.slot == 3 ? 8.0f : 14.0f);
                 unit.attackCooldown = 1.0f;
@@ -558,7 +549,7 @@ void updateLaneUnits(float dt) {
         if (tier >= 0) {
             const Vec2 target = towerPosition(defendingTeam, unit.lane, tier);
             if (distance(unit.position, target) > 2.65f) {
-                moveActor(unit.position, unit.velocity, target, unit.slot == 3 ? 2.25f : 2.5f, dt);
+                moveActor(unit.position, unit.velocity, target, unit.slot == 3 ? 2.25f : 2.5f, dt, 0.25f);
             } else if (unit.attackCooldown <= 0.0f) {
                 const float buff = gTeamSiegeBuff[static_cast<std::size_t>(unit.team)] > 0.0f ? 1.35f : 1.0f;
                 const int idx = towerIndex(defendingTeam, unit.lane, tier);
@@ -569,7 +560,7 @@ void updateLaneUnits(float dt) {
         } else {
             const Vec2 target = corePosition(defendingTeam);
             if (distance(unit.position, target) > 3.5f) {
-                moveActor(unit.position, unit.velocity, target, 2.4f, dt);
+                moveActor(unit.position, unit.velocity, target, 2.4f, dt, 0.25f);
             } else if (unit.attackCooldown <= 0.0f) {
                 gCoreHealth[static_cast<std::size_t>(defendingTeam)] =
                     std::max(0.0f, gCoreHealth[static_cast<std::size_t>(defendingTeam)] - 26.0f);
@@ -768,6 +759,55 @@ void updateBots(float dt) {
         }
     }
 }
+void resolveActorContacts() {
+    arena_physics::Body player{gPlayerPosition.x,gPlayerPosition.z,gPlayerVelocity.x,gPlayerVelocity.z,0.43f};
+    std::array<arena_physics::Body,kBotCount> bots{};
+    std::array<arena_physics::Body,kLaneUnitCount> units{};
+    for(int i=0;i<kBotCount;++i) {
+        const Bot &bot=gBots[static_cast<std::size_t>(i)];
+        bots[static_cast<std::size_t>(i)]={bot.position.x,bot.position.z,bot.velocity.x,bot.velocity.z,0.38f};
+    }
+    for(int i=0;i<kLaneUnitCount;++i) {
+        const LaneUnit &unit=gLaneUnits[static_cast<std::size_t>(i)];
+        units[static_cast<std::size_t>(i)]={unit.position.x,unit.position.z,unit.velocity.x,unit.velocity.z,0.25f};
+    }
+    for(int pass=0;pass<2;++pass) {
+        for(int i=0;i<kBotCount;++i) {
+            if(gBots[static_cast<std::size_t>(i)].disabled<=0.0f)
+                arena_physics::separate(player,bots[static_cast<std::size_t>(i)]);
+            for(int j=i+1;j<kBotCount;++j) {
+                if(gBots[static_cast<std::size_t>(i)].disabled<=0.0f &&
+                   gBots[static_cast<std::size_t>(j)].disabled<=0.0f)
+                    arena_physics::separate(bots[static_cast<std::size_t>(i)],bots[static_cast<std::size_t>(j)]);
+            }
+        }
+        for(int i=0;i<kLaneUnitCount;++i) {
+            if(gLaneUnits[static_cast<std::size_t>(i)].health<=0.0f)continue;
+            arena_physics::separate(player,units[static_cast<std::size_t>(i)]);
+            for(int j=0;j<kBotCount;++j) {
+                if(gBots[static_cast<std::size_t>(j)].disabled<=0.0f)
+                    arena_physics::separate(bots[static_cast<std::size_t>(j)],units[static_cast<std::size_t>(i)]);
+            }
+            for(int j=i+1;j<kLaneUnitCount;++j) {
+                if(gLaneUnits[static_cast<std::size_t>(j)].health>0.0f)
+                    arena_physics::separate(units[static_cast<std::size_t>(i)],units[static_cast<std::size_t>(j)]);
+            }
+        }
+    }
+    gPlayerPosition={player.x,player.z};
+    gPlayerVelocity={player.vx,player.vz};
+    for(int i=0;i<kBotCount;++i) {
+        Bot &bot=gBots[static_cast<std::size_t>(i)];
+        const auto &body=bots[static_cast<std::size_t>(i)];
+        bot.position={body.x,body.z};bot.velocity={body.vx,body.vz};
+    }
+    for(int i=0;i<kLaneUnitCount;++i) {
+        LaneUnit &unit=gLaneUnits[static_cast<std::size_t>(i)];
+        const auto &body=units[static_cast<std::size_t>(i)];
+        if(unit.health>0.0f){unit.position={body.x,body.z};unit.velocity={body.vx,body.vz};}
+    }
+}
+
 float playerDamageTaken(float damage) {
     const float shieldScale = gShieldTime > 0.0f ? 0.58f : 1.0f;
     return damage * (1.0f - gPlayerArmor) * shieldScale;
@@ -778,9 +818,7 @@ void updatePlayerTimersAndMovement(float inputX, float inputZ, float dt) {
     if (gPlayerRespawnTime <= 0.0f && gPlayerDisrupted <= 0.0f) movePlayer(inputX, inputZ, dt);
     else gPlayerVelocity = {0.0f, 0.0f};
 }
-void simulate(float inputX, float inputZ, float dt) {
-    dt = std::clamp(dt, 0.0f, 0.05f);
-    if (!gInitialized) resetSimulation();
+void simulateTick(float inputX, float inputZ, float dt) {
     if (gWinner != 0) return;
     gElapsed += dt;
     updatePlayerTimersAndMovement(inputX, inputZ, dt);
@@ -788,9 +826,25 @@ void simulate(float inputX, float inputZ, float dt) {
     updateCamps(dt);
     updateLaneUnits(dt);
     updateBots(dt);
+    resolveActorContacts();
     updateTowers(dt);
     if (gCoreHealth[1] <= 0.0f) gWinner = 1;
     if (gCoreHealth[0] <= 0.0f) gWinner = -1;
+}
+void simulate(float inputX, float inputZ, float dt) {
+    if (!gInitialized) resetSimulation();
+    if (gWinner != 0) return;
+    constexpr float kFixedStep = 1.0f / 60.0f;
+    constexpr int kMaxSubsteps = 4;
+    gSimulationAccumulator = std::min(gSimulationAccumulator +
+        std::clamp(dt, 0.0f, 0.05f), kFixedStep * static_cast<float>(kMaxSubsteps));
+    int steps = 0;
+    while (gSimulationAccumulator + 0.000001f >= kFixedStep && steps < kMaxSubsteps) {
+        simulateTick(inputX, inputZ, kFixedStep);
+        gSimulationAccumulator -= kFixedStep;
+        ++steps;
+        if (gWinner != 0) break;
+    }
 }
 
 float playerBasicDamage() {

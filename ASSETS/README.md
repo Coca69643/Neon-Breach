@@ -28,3 +28,11 @@
 - WorldGlbBuilder.kt now generates the sculpted terrain, river bed/banks, curved stone roads, forest clearings, camp rubble, low-poly boulders, objective shrines, base walls and deep-water underlay.
 - FilamentGameRenderer.kt instances KayKit castles, homes, towers, bridges and 32 grouped-tree models. Flags are no longer loaded as stand-ins for neutral camps or objectives.
 - Procedural geometry is grouped by material into a single runtime GLB to limit draw-call overhead; repeated tree geometry is shared through Filament instances.
+
+
+## Project-authored character gear — 0.14.0
+- Runtime source: `app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt`.
+- The project generates small GLB armor/costume attachments for three playable identities: Lyra, Bastion and Kairo.
+- Geometry includes chest plates, shoulders, forearms, thigh guards, boots, head pieces and back cloth.
+- Attachments are parented to the existing Quaternius skeleton joints by `FilamentGameRenderer.kt`; the character body remains the shared CC0 base mesh.
+- The attachment geometry and materials are original project-authored code. No new third-party character pack or weapon model is introduced.

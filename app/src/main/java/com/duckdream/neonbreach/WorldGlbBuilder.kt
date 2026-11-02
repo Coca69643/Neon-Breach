@@ -40,6 +40,13 @@ internal object WorldGlbBuilder {
     }
 
     internal fun heightAt(x: Float, z: Float): Float = h(x, z)
+    internal fun normalAt(x: Float, z: Float): FloatArray {
+        val e = 0.08f
+        val dx = (h(x + e, z) - h(x - e, z)) / (2f * e)
+        val dz = (h(x, z + e) - h(x, z - e)) / (2f * e)
+        val length = sqrt(dx * dx + 1f + dz * dz)
+        return floatArrayOf(-dx / length, 1f / length, -dz / length)
+    }
     private fun norm(x:Float,z:Float):FloatArray {
         val e=0.04f
         val dx=(h(x+e,z)-h(x-e,z))/(2f*e)
