@@ -37,6 +37,15 @@ void testBraking() {
     for(int i=0;i<90;++i) arena_physics::move(body,0.0f,0.0f,1.0f/60.0f);
     assert(std::sqrt(body.vx*body.vx+body.vz*body.vz)<0.15f);
 }
+void testObstacleSteering() {
+    arena_physics::Body body{-12.2f,-23.0f,0.0f,0.0f,0.43f};
+    float desiredX=3.0f,desiredZ=0.0f;
+    arena_physics::avoidObstacles(body,desiredX,desiredZ);
+    assert(desiredX>0.0f);
+    assert(std::abs(desiredZ)>0.1f);
+    const float speed=std::sqrt(desiredX*desiredX+desiredZ*desiredZ);
+    assert(std::abs(speed-3.0f)<0.001f);
+}
 void testCharacterSeparation() {
     arena_physics::Body a{0.0f,-5.0f,2.0f,0.0f,0.43f};
     arena_physics::Body b{0.2f,-5.0f,0.0f,0.0f,0.38f};
@@ -50,7 +59,8 @@ int main() {
     testStructureCollision();
     testWorldBoundary();
     testBraking();
+    testObstacleSteering();
     testCharacterSeparation();
-    std::cout<<"Arena physics tests passed (terrain, obstacles, structures, bounds, braking, actor separation).\n";
+    std::cout<<"Arena physics tests passed (terrain, obstacles, structures, bounds, braking, AI steering, actor separation).\n";
     return 0;
 }
