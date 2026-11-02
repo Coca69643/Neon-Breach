@@ -53,6 +53,7 @@ class MainActivity : Activity() {
     private lateinit var tacticalMap: TacticalMapView
     private lateinit var abilityHint: TextView
     private lateinit var healthLabel: TextView
+    private lateinit var levelGoldLabel: TextView
     private lateinit var dashActionButton: TextView
     private lateinit var pulseActionButton: TextView
     private lateinit var shieldActionButton: TextView
@@ -67,7 +68,7 @@ class MainActivity : Activity() {
     private var selectedHero = 0
     private var sensitivityIndex = 1
     private val sensitivityLevels = floatArrayOf(0.78f, 1.0f, 1.22f)
-    private var lastSnapshot = FloatArray(96)
+    private var lastSnapshot = FloatArray(256)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -75,6 +76,8 @@ class MainActivity : Activity() {
     private external fun nativeCastPulse(): Boolean
     private external fun nativeActivateShield(): Boolean
     private external fun nativeBasicAttack(): Boolean
+    private external fun nativeBuyItem(item: Int): Boolean
+    private external fun nativeUpgradeSkill(): Boolean
     private external fun nativeStep(inputX: Float, inputZ: Float, deltaTime: Float): FloatArray
 
     private val frameCallback = object : Choreographer.FrameCallback {
@@ -86,7 +89,7 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 96) {
+                if (result.size >= 256) {
                     lastSnapshot = result
                     renderer.updatePlayerSignals(result)
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
@@ -98,8 +101,10 @@ class MainActivity : Activity() {
                     healthLabel.text = if (result[95] > 0.01f) {
                         "RETORNO  ${kotlin.math.ceil(result[95]).toInt()}s  •  QUEDAS ${result[94].toInt()}"
                     } else {
-                        "VIDA  ${result[72].toInt().coerceIn(0, 100)}%  •  QUEDAS ${result[94].toInt()}"
+                        "VIDA  ${result[72].toInt().coerceIn(0, result[100].toInt())}/${result[100].toInt()}  •  QUEDAS ${result[94].toInt()}"
                     }
+                    val xpNeed = result[99].toInt().coerceAtLeast(1)
+                    levelGoldLabel.text = "NV ${result[96].toInt()}  •  XP ${result[97].toInt()}/$xpNeed  •  OURO ${result[98].toInt()}"
                     dashActionButton.text = abilityButtonText("IMPULSO", result[9])
                     pulseActionButton.text = abilityButtonText(activeAbilityName(), result[8])
                     shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
@@ -123,20 +128,23 @@ class MainActivity : Activity() {
                     val blue = result[5].toInt()
                     val red = result[6].toInt()
                     stateLabel.text = "BAIXAS AZUIS " + blue + "  :  " + red + " VERMELHAS"
-                    val enemyTowersDown = (0..2).count { result[76 + it] <= 0.0f }
-                    val towerProgress = ((780f - result[76]) / 780f +
-                        (780f - result[77]) / 780f + (780f - result[78]) / 780f) / 3f
-                    val coreProgress = 1f - result[80] / 1600f
-                    val siegeProgress = if (enemyTowersDown < 3) {
-                        towerProgress * 0.75f
-                    } else {
-                        0.75f + coreProgress * 0.25f
-                    }
+                    val enemyTowersDown = (0 until 9).count { result[116 + it] <= 0.0f }
+                    val towerHealth = (0 until 9).sumOf { result[116 + it].toDouble() }.toFloat()
+                    val towerProgress = 1f - (towerHealth / (820f * 9f)).coerceIn(0f, 1f)
+                    val coreProgress = 1f - result[80] / 2200f
+                    val siegeProgress = if (enemyTowersDown < 9) towerProgress * 0.78f
+                        else 0.78f + coreProgress * 0.22f
                     objectiveProgress.progress = (siegeProgress.coerceIn(0f, 1f) * 100f).toInt()
-                    objectiveLabel.text = if (enemyTowersDown < 3) {
-                        "DERRUBE AS TORRES VERMELHAS  •  $enemyTowersDown/3"
+                    val neutralObjective = when {
+                        result[104] > 0f -> "GUARDIÃO DO RIO ATIVO"
+                        result[103] > 0f -> "GUARDIÃO DO RIO  •  ${kotlin.math.ceil(result[103]).toInt()}s"
+                        result[106] > 0f -> "SENTINELA ANCESTRAL ATIVA"
+                        else -> "SENTINELA ANCESTRAL  •  ${kotlin.math.ceil(result[105]).toInt()}s"
+                    }
+                    objectiveLabel.text = if (enemyTowersDown < 9) {
+                        "TORRES VERMELHAS $enemyTowersDown/9  •  $neutralObjective"
                     } else {
-                        "NÚCLEO VERMELHO  •  ${(result[80] / 16f).toInt().coerceIn(0, 100)}%"
+                        "NÚCLEO VERMELHO  •  ${(result[80] / 22f).toInt().coerceIn(0, 100)}%  •  $neutralObjective"
                     }
                     if (result[15] > 0.5f) showResult(true)
                     else if (result[15] < -0.5f) showResult(false)
@@ -405,12 +413,13 @@ class MainActivity : Activity() {
             setPadding(0, dp(5), 0, dp(12))
         })
         val instructions = listOf(
-            "MOVIMENTO  •  Use o direcional no canto inferior esquerdo.",
-            "GOLPE  •  Ataca o alvo rival ou estrutura mais próxima.",
-            "HABILIDADE  •  Cada herói possui uma técnica própria.",
-            "ESCUDO  •  Reduz o dano recebido por alguns segundos.",
-            "IMPULSO  •  Avança na direção indicada pelo direcional.",
-            "OBJETIVO  •  Derrube as três torres antes de atacar o núcleo."
+            "ROTAS  •  Jogue na sua rota e acompanhe o avanço das tropas.",
+            "SELVA  •  Derrote acampamentos neutros para ganhar ouro e XP.",
+            "OBJETIVOS  •  Dispute o Guardião do Rio e a Sentinela Ancestral.",
+            "GOLPE  •  Ataca heróis, tropas, acampamentos ou estruturas próximas.",
+            "PROGRESSÃO  •  Ganhe XP, suba de nível e melhore a habilidade.",
+            "LOJA  •  Gaste ouro em vida/defesa, poder ou redução de recarga.",
+            "CERCO  •  Use a tropa aliada para avançar pelas três torres de cada rota."
         )
         instructions.forEach { line ->
             content.addView(label(line, 10f, Color.rgb(221, 229, 216)).apply {
@@ -507,7 +516,7 @@ class MainActivity : Activity() {
         renderer.resetHeroAnimationState()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(96)
+        lastSnapshot = FloatArray(256)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -528,11 +537,13 @@ class MainActivity : Activity() {
         }
         matchLabel = label("00:00", 10f, Color.WHITE, true)
         objectiveLabel = label("DERRUBE AS TORRES • DESTRUA O NÚCLEO", 10f, Color.rgb(192, 235, 221), true)
-        healthLabel = label("VIDA  100%  •  QUEDAS 0", 8f, Color.rgb(173, 220, 194), true)
+        healthLabel = label("VIDA  100/100  •  QUEDAS 0", 8f, Color.rgb(173, 220, 194), true)
+        levelGoldLabel = label("NV 1  •  XP 0/220  •  OURO 500", 8f, Color.rgb(245, 213, 145), true)
         abilityHint = label(activeAbilityHint(), 8f, Color.rgb(244, 217, 148), true)
         top.addView(matchLabel)
         top.addView(objectiveLabel)
         top.addView(healthLabel)
+        top.addView(levelGoldLabel)
         top.addView(abilityHint)
         objectiveProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
             max = 100
@@ -559,6 +570,11 @@ class MainActivity : Activity() {
             marginEnd = dp(58)
         })
 
+        layer.addView(actionButton("LOJA") { showMatchShop() },
+            FrameLayout.LayoutParams(dp(72), dp(36), Gravity.TOP or Gravity.END).apply {
+                marginEnd = dp(58)
+                topMargin = dp(102)
+            })
         layer.addView(actionButton("Ⅱ") { pauseMatch() },
             FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP or Gravity.END).apply {
                 marginEnd = dp(10)
@@ -619,6 +635,47 @@ class MainActivity : Activity() {
             bottomMargin = dp(114)
         })
         tacticalMap.setSnapshot(lastSnapshot)
+        replaceLayer(layer)
+    }
+
+
+    private fun showMatchShop() {
+        if (state != AppState.RUNNING) return
+        val layer = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(176, 7, 17, 23))
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        fun refreshShop() {
+            val data = nativeStep(0f, 0f, 0f)
+            if (data.size >= 256) lastSnapshot = data
+            val gold = lastSnapshot[98].toInt()
+            val level = lastSnapshot[96].toInt()
+            val skill = lastSnapshot[217].toInt()
+            box.removeAllViews()
+            box.addView(label("LOJA DA PARTIDA", 20f, Color.WHITE, true))
+            box.addView(label("OURO $gold  •  NÍVEL $level  •  ITENS ${lastSnapshot[214].toInt()}/${lastSnapshot[215].toInt()}/${lastSnapshot[216].toInt()}", 10f, Color.rgb(242, 209, 141), true))
+            box.addView(actionButton("VITALIDADE + DEFESA  •  250 OURO") {
+                if (nativeBuyItem(0)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(8) })
+            box.addView(actionButton("PODER DE COMBATE  •  300 OURO") {
+                if (nativeBuyItem(1)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(7) })
+            box.addView(actionButton("AGILIDADE / RECARGA  •  280 OURO") {
+                if (nativeBuyItem(2)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(7) })
+            val canUpgrade = level > skill && skill < 5
+            box.addView(actionButton(if (canUpgrade) "MELHORAR HABILIDADE  •  PONTO DISPONÍVEL" else "HABILIDADE  •  NV $skill / 5") {
+                if (nativeUpgradeSkill()) refreshShop() else showAbilityFeedback("GANHE UM NÍVEL PARA RECEBER UM PONTO")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(7) })
+            box.addView(actionButton("VOLTAR À PARTIDA") { showHud() },
+                LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(12) })
+        }
+        refreshShop()
+        layer.addView(box, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         replaceLayer(layer)
     }
 
