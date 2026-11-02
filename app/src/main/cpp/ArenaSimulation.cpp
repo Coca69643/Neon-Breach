@@ -349,7 +349,7 @@ void updateBots(float dt) {
             if (d < nearest) { nearest = d; target = j; }
         }
 
-        const float playerDistance = bot.team == 1 && gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f
+        const float playerDistance = bot.team == 1 && gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f && gPlayerDisrupted <= 0.0f
             ? distance(bot.position, {gPlayerX, gPlayerZ}) : 1000.0f;
         if (playerDistance < 5.2f && playerDistance <= nearest) {
             const Vec2 delta{gPlayerX - bot.position.x, gPlayerZ - bot.position.z};
@@ -554,7 +554,7 @@ void updateTowers(float dt) {
                 continue;
             }
 
-            if (ownerTeam == 1 && gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f &&
+            if (ownerTeam == 1 && gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f && gPlayerDisrupted <= 0.0f &&
                 distance(towerPosition, {gPlayerX, gPlayerZ}) <= 7.2f) {
                 gPlayerHealth = std::max(0.0f, gPlayerHealth - (gShieldTime > 0.0f ? 5.0f : 12.0f));
                 cooldown = 1.0f;
