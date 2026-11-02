@@ -220,8 +220,7 @@ internal class FilamentGameRenderer(
             "tower_blue", "tower_red",
             "home_blue", "home_red",
             "church_blue", "church_red",
-            "bridge_a", "trees_a",
-            "flag_blue", "flag_red"
+            "bridge_a", "trees_a"
         )
         worldProvider = UbershaderProvider(engine)
         worldAssetLoader = AssetLoader(engine, worldProvider!!, EntityManager.get())
@@ -261,30 +260,22 @@ internal class FilamentGameRenderer(
                     add(WorldPlacement("tower_red", laneCenterX(lane, z), z, 1.48f, Math.PI.toFloat()))
                 }
                 add(WorldPlacement("bridge_a", crossingX, 0f, 1.42f))
-                add(WorldPlacement("flag_blue", crossingX, -3.8f, 3.7f))
-                add(WorldPlacement("flag_red", crossingX, 3.8f, 3.7f, Math.PI.toFloat()))
             }
 
-            // Neutral camps occupy eight pockets split between the two mirrored jungles.
-            val camps = listOf(
-                floatArrayOf(-8.2f, -14.5f), floatArrayOf(8.2f, -14.5f),
-                floatArrayOf(-20.2f, -10f), floatArrayOf(20.2f, -10f),
-                floatArrayOf(-8.2f, 14.5f), floatArrayOf(8.2f, 14.5f),
-                floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
+            // Dense, deliberately clustered tree lines define four jungle quadrants.
+            val forestTrees = listOf(
+                -10.5f to -23f, -6.2f to -22f, -11.5f to -17.5f, -5.5f to -17f,
+                -10.2f to -10f, -6.4f to -8f, 10.5f to -23f, 6.2f to -22f,
+                11.5f to -17.5f, 5.5f to -17f, 10.2f to -10f, 6.4f to -8f,
+                -22.8f to -18f, -26f to -13f, -22.4f to -6f, -18.5f to -20f,
+                22.8f to -18f, 26f to -13f, 22.4f to -6f, 18.5f to -20f,
+                -10.5f to 23f, -6.2f to 22f, -11.5f to 17.5f, -5.5f to 17f,
+                -10.2f to 10f, -6.4f to 8f, 10.5f to 23f, 6.2f to 22f,
+                11.5f to 17.5f, 5.5f to 17f, 10.2f to 10f, 6.4f to 8f
             )
-            camps.forEachIndexed { index, p ->
-                add(WorldPlacement("trees_a", p[0], p[1], 1.65f, (index % 4) * 0.7f))
-                add(WorldPlacement("flag_blue", p[0], p[1], 1.25f))
-            }
-            // Distinct river landmarks mark the two neutral objective pits.
-            add(WorldPlacement("church_blue", -7f, 0.2f, 0.82f))
-            add(WorldPlacement("church_red", 7f, 0.2f, 0.82f, Math.PI.toFloat()))
-            listOf(
-                floatArrayOf(-24f, -18f), floatArrayOf(-24f, 18f),
-                floatArrayOf(24f, -18f), floatArrayOf(24f, 18f),
-                floatArrayOf(-19f, -4f), floatArrayOf(19f, 4f)
-            ).forEachIndexed { index, p ->
-                add(WorldPlacement("trees_a", p[0], p[1], 2.0f, index * 0.42f))
+            forestTrees.forEachIndexed { index, point ->
+                val scale = 1.48f + (index % 4) * 0.12f
+                add(WorldPlacement("trees_a", point.first, point.second, scale, (index * 0.73f) % 6.28f))
             }
         }
 
@@ -541,18 +532,20 @@ internal class FilamentGameRenderer(
             }
         }
 
-        // Keep the hero in the lower-middle safe area and lead the camera gently.
-        val forwardX = sin(playerYaw)
-        val forwardZ = cos(playerYaw)
-        val rightX = cos(playerYaw)
-        val rightZ = -sin(playerYaw)
-        val targetX = x - rightX * 1.55f + forwardX * 2.0f
-        val targetZ = z - rightZ * 1.55f + forwardZ * 2.0f
-        val cameraBlend = (1f - kotlin.math.exp(-dt * 6.5f)).coerceIn(0f, 1f)
+        // Fixed world heading. The hero moves visibly inside a camera dead zone.
+        val cameraBlend = (1f - kotlin.math.exp(-dt * 5.2f)).coerceIn(0f, 1f)
         if (!overviewCamera) {
-            cameraX += (targetX - cameraX) * cameraBlend
-            cameraZ += (targetZ - cameraZ) * cameraBlend
-            cameraY += (y - cameraY) * cameraBlend
+            val deltaX = x - cameraX
+            val deltaZ = z - cameraZ
+            val distance = kotlin.math.sqrt(deltaX * deltaX + deltaZ * deltaZ)
+            val deadZone = 1.85f
+            if (distance > deadZone) {
+                val follow = ((distance - deadZone) / distance).coerceIn(0f, 1f)
+                cameraX += deltaX * follow * cameraBlend
+                cameraZ += deltaZ * follow * cameraBlend
+                val targetHeight = terrainHeight(cameraX, cameraZ)
+                cameraY += (targetHeight - cameraY) * cameraBlend
+            }
         }
         overviewCamera = false
 
@@ -1019,33 +1012,26 @@ internal class FilamentGameRenderer(
                 0f, 0f, scale, 0f, cameraX, rootY, cameraZ, 1f
             ))
         } else {
-            val forwardX = sin(playerYaw); val forwardZ = cos(playerYaw)
-            val rightX = cos(playerYaw); val rightZ = -sin(playerYaw)
-            cameraX = spawn.first - rightX * 1.55f + forwardX * 2.0f
-            cameraZ = spawn.second - rightZ * 1.55f + forwardZ * 2.0f
+            cameraX = spawn.first
+            cameraZ = spawn.second
             cameraY = terrainHeight(spawn.first, spawn.second)
+            yawInitialized = false
         }
         updateCamera(cameraAspect)
     }
 
     private fun updateCamera(aspect: Float) {
-        val forwardX = sin(playerYaw)
-        val forwardZ = cos(playerYaw)
-        val distance = if (overviewCamera) 7.6f else 10.2f
-        val height = if (overviewCamera) 4.4f else 7.8f
-        val lookAhead = if (overviewCamera) 0.45f else 0.28f
-        val eyeX = cameraX - forwardX * distance
-        val eyeZ = cameraZ - forwardZ * distance
-        val lookX = cameraX + forwardX * lookAhead
-        val lookZ = cameraZ + forwardZ * lookAhead
-        val fov = if (overviewCamera) 46.0 else 49.0
+        // Fixed north-facing isometric framing: hero yaw never rotates the camera.
+        val distance = if (overviewCamera) 9.4f else 11.6f
+        val height = if (overviewCamera) 9.6f else 13.2f
+        val fov = if (overviewCamera) 48.0 else 51.0
         viewer.camera.setProjection(
-            fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 150.0,
+            fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
             Camera.Fov.VERTICAL
         )
         viewer.camera.lookAt(
-            eyeX.toDouble(), (cameraY + height).toDouble(), eyeZ.toDouble(),
-            lookX.toDouble(), (cameraY + 1.15f).toDouble(), lookZ.toDouble(),
+            cameraX.toDouble(), (cameraY + height).toDouble(), (cameraZ - distance).toDouble(),
+            cameraX.toDouble(), (cameraY + 1.0f).toDouble(), cameraZ.toDouble(),
             0.0, 1.0, 0.0
         )
     }
