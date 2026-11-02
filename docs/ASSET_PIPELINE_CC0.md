@@ -1,6 +1,6 @@
-# ORION-9 — Non-sci-fi CC0 Asset Research
+# Projeto Arena — Pesquisa de assets CC0
 
-Research snapshot: 31 October 2026.
+Research snapshot: 2 November 2026. Research is limited to character locomotion, environmental exploration and world art.
 
 ## Direction
 
@@ -9,6 +9,21 @@ The previous sci-fi asset direction is no longer the target for the next art exp
 Candidate visual direction to prototype: **ancient / overgrown dungeon architecture** — stone halls, worn masonry, arches, vertical spaces, roots and vegetation reclaiming ruins, with distinct environmental identities. This is a proposal for an art test, not a final lore or gameplay decision.
 
 The aim is to create readable room silhouettes and a coherent world, not to assemble unrelated asset packs into a map.
+
+## Character and creature candidates
+
+The following official creator pages were checked on **2 November 2026**. They are candidates only; none is claimed to be downloaded or integrated into the current APK.
+
+| Pack / source | Verified page information | Appropriate use | Integration notes |
+|---|---|---|---|
+| [Quaternius Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html) | Six base humanoid models, Humanoid rig, animation-friendly topology, average 13k triangles, glTF/FBX, CC0 | Playable explorer silhouettes and NPCs | Rigged models, not a guarantee of finished locomotion clips in the same free download. Inspect the exact archive and license. |
+| [Quaternius Cute Animated Monsters](https://quaternius.com/packs/cutemonsters) | 21 animated, textured creature models; FBX/OBJ/Blend/glTF; CC0 | Distinct ambient creature silhouettes | Inspect clip names and keyframes; select suitable idle/locomotion behavior and budget textures/triangles for mobile. |
+| [Quaternius Animated Monster Pack](https://quaternius.com/packs/animatedmonster.html) | Four animated, textured monsters; FBX/OBJ/Blend; CC0 | Additional creature silhouettes if the style matches | No glTF listed; convert offline and inspect tracks/material complexity before selection. |
+| [Quaternius Modular Character Outfits — Fantasy](https://quaternius.com/packs/modularcharacteroutfitsfantasy.html) | 12 outfits made from 62 modular parts, Humanoid rig, glTF/FBX, CC0 | Variation for explorers using a compatible base rig | Confirm exact free-subset contents; reduce separate materials and draw calls. |
+| [Kenney Mini Characters](https://kenney.nl/assets/mini-characters) | 25 files, 3D, animation feature, Creative Commons CC0 | Lightweight stylized character option | Exact formats and included animation clips are not stated on the page; inspect the archive. |
+| [Kenney Mini Arena](https://kenney.nl/assets/mini-arena) | 20 files, animation feature, Creative Commons CC0; page notes a character-rig update | Small-scale character art test | Inspect hierarchy, export formats and clips. |
+
+**Important distinction:** the Universal Base Characters page establishes that its models are rigged and retargetable; it does not establish that a complete locomotion clip library is included in that free download. The animated-monster pages explicitly describe models with their own animations. Every selected file still requires package-level provenance and license verification.
 
 ## Primary non-sci-fi candidates
 
@@ -56,6 +71,13 @@ Build one small, representative environment slice using one coherent style:
 Do not build the whole world from assets until this slice passes visual review and mobile performance checks.
 
 ## Sources checked
+
+- Quaternius Universal Base Characters — https://quaternius.com/packs/universalbasecharacters.html
+- Quaternius Cute Animated Monsters — https://quaternius.com/packs/cutemonsters
+- Quaternius Animated Monster Pack — https://quaternius.com/packs/animatedmonster.html
+- Quaternius Modular Character Outfits — https://quaternius.com/packs/modularcharacteroutfitsfantasy.html
+- Kenney Mini Characters — https://kenney.nl/assets/mini-characters
+- Kenney Mini Arena — https://kenney.nl/assets/mini-arena
 
 - Quaternius Modular Dungeon Pack — https://quaternius.com/packs/modulardungeon.html
 - Quaternius Medieval Dungeon Pack — https://quaternius.com/packs/medievaldungeon.html
