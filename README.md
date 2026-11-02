@@ -1,157 +1,45 @@
-# ORION-9 0.9.6 — startup diagnostics + 16 KB ELF
+# Projeto Arena
 
-A build 0.9.6 mantém os marcadores de diagnóstico da inicialização e alinha a biblioteca nativa em 16 KB. O CI valida o alinhamento ELF no APK final. Isso melhora a compatibilidade com dispositivos Android de páginas de 16 KB; não representa, por si só, a confirmação da causa do encerramento no aparelho.
+**Duck Dream Studios · Android nativo · 3D · paisagem**
 
-Esta build adiciona rastreamento de inicialização Android/JNI/OpenGL para localizar encerramentos antes do menu. O rastreamento não comprova correção de crash nem altera o backend gráfico.
+Projeto Arena está em reconstrução visual e funcional. A prioridade desta linha é abandonar a identidade sci-fi genérica, substituir personagens procedurais por modelos CC0 com rigs/animações reais e remover a apresentação baseada em cartões e blocos opacos.
 
+## Identidade e interface
 
+- Nome do aplicativo: **Projeto Arena**.
+- O nome exibido no Android e dentro do jogo não contém número de versão.
+- A interface usa composição em tela cheia; menus e seletores não colocam cartões opacos atrás dos textos.
+- A orientação de execução permanece em paisagem.
 
-**Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
+## Arquitetura mantida
 
-**ORION-9** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
+- Kotlin: ciclo de vida Android, telas e entrada por toque.
+- C++17: simulação nativa e integração com a física.
+- OpenGL ES 3.0: renderização no Android.
+- cgltf: leitura de arquivos glTF/GLB.
+- stb_image: carregamento de imagens.
+- Jolt Physics: colisões e movimento físico.
 
-O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração através das portas de energia das salas. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
+O `applicationId` atual é preservado para permitir atualização sobre a instalação existente. `versionCode` e `versionName` continuam existindo apenas como metadados internos do Android; não são exibidos como parte do nome do app.
 
-A missão agora ocupa um complexo industrial 2×2: átrio central, ala de pesquisa, ala de energia e ala de contenção, conectados por corredores e portas. Os quatro módulos são exploráveis em circuito; combate, relés, saque e extração permanecem ativos.
+## Reconstrução de personagens e animação
 
-## Sobre o jogo
-Kotlin gerencia a camada Android, o ciclo de vida e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O renderer importa modelos GLB com cgltf e texturas PNG com stb_image, usando módulos ambientais CC0 do Kenney. Não há engine tradicional.
+O renderer atual ainda contém personagens construídos com primitivas e animação senoidal. O importador glTF existente carrega geometria estática e ainda não processa `JOINTS_0`, `WEIGHTS_0`, inverse bind matrices ou canais de animação. Esses pontos precisam ser resolvidos antes de considerar o sistema de personagens concluído.
 
-## Log de atualizações
+O objetivo técnico é suportar rigs glTF, skinning, clips de locomoção e transições por estado de movimento, sem ciclos artificiais enquanto o personagem está parado. A seleção final de arquivos será limitada a conteúdo CC0 com licença preservada no repositório.
 
-### 0.9.2 — Identidade ORION-9 e inicialização física
-- Atualiza nome Android, título da interface e ícone do launcher para ORION-9.
-- Adia a construção do mundo Jolt até o início da missão, evitando reconstrução imediata do mundo físico que já era criado na tela inicial.
-- Adiciona marcadores de diagnóstico nas etapas de inicialização da arena, reconstrução da física e primeiro passo da simulação.
-- Atualiza o Android para 0.9.2 / versionCode 26.
+## Política de assets CC0
 
-### 0.9.1 — Integridade física e estabilidade
-- Corrige a sincronização do personagem com Jolt ao atravessar portas e ao receber recuo.
-- Aplica recuo como velocidade física amortecida, sem teletransportar a posição fora do CharacterVirtual.
-- Centraliza a topologia 2×2 de salas e a folga das portas em WorldLayout.h, compartilhada pelo runtime e pelos testes nativos.
-- Atualiza as portas físicas no mesmo passo em que o estado da sala é alterado.
-- Atualiza o Android para 0.9.1 / versionCode 25.
+Fontes oficiais auditadas para a próxima etapa:
 
-### 0.8 — Reconstrução visual e espacial do mundo
-- Integra um pipeline nativo glTF 2.0/GLB baseado em cgltf e carregamento de atlas PNG por stb_image, com buffers indexados e UVs no OpenGL ES 3.0.
-- Importa o Kenney Modular Space Kit CC0: módulos de sala grande/larga, cantos, corredores, portas de energia, cabos e escadas; as licenças CC0 e MIT estão incluídas no repositório.
-- Substitui a sequência linear por um mapa 2×2 contínuo de 40×40 unidades: átrio central, pesquisa a leste, energia ao norte e contenção a oeste, ligados por quatro corredores orientados.
-- Distribui relés, kits e ameaças pelas alas sem alterar os sistemas de combate e loot desta etapa.
-- Amplia a câmera top-down, adiciona culling aproximado por enquadramento e LOD de módulos distantes; salas não visitadas continuam ocultas pelo fog de exploração.
-- Atualiza a versão Android para 0.8 e versionCode 23.
+- [Quaternius — Universal Base Characters](https://quaternius.com/packs/universalbasecharacters.html): modelos humanoides rigados, topologia preparada para animação e licença CC0.
+- [Quaternius — Cute Animated Monsters](https://quaternius.com/packs/cutemonsters): criaturas texturizadas e animadas, licença CC0.
+- [Kenney — Mini Characters](https://kenney.nl/assets/mini-characters): conjunto de personagens 3D com animação, licença CC0.
+- [Kenney — Modular Dungeon Kit](https://kenney.nl/assets/modular-dungeon-kit): módulos ambientais 3D, licença CC0.
+- [Poly Haven](https://polyhaven.com/): modelos, materiais PBR e HDRIs sob CC0.
 
-### 0.7 — Relés por interação, baú de suprimentos e modificadores (Passo 3)
-- Substitui a restauração instantânea dos relés por uma interação mantida por 2 segundos; o temporizador e a validação de alcance são executados no C++17 e são cancelados ao soltar ou sair do alcance.
-- Cada relé restaurado concede +15% de dano aos disparos do jogador, acumulando até +45% quando os três relés estão ativos na missão.
-- Quando a quarta sala é limpa, surge um baú de suprimentos estilizado no centro. O jogador o abre mantendo Interagir por 1 segundo.
-- O baú concede um modificador aleatório usando std::uniform_int_distribution: Overclock (25% maior cadência), Nano-Shield (absorve um impacto e recarrega em 10 segundos) ou Piercing Rounds (atravessa o primeiro inimigo atingido).
-- O modificador permanece ativo até o fim da partida e é removido ao iniciar uma nova missão. A extração final exige abrir o baú.
-- Atualiza a versão Android para 0.7 e versionCode 22.
+**Regra de integração:** cada asset importado deve manter o arquivo de licença e a referência da fonte; a CI não deve aceitar conteúdo sem origem/licença documentada. Um asset listado aqui é uma fonte aprovada para avaliação, não uma declaração de que já foi integrado ao APK.
 
-### 0.6 — Dungeon-crawler com quatro salas conectadas (Passo 2)
-- Substitui a arena única por quatro módulos retangulares armazenados em `std::array<Room, 4>`, com limites, coberturas e estado de exploração próprios.
-- Gera paredes sólidas e texturizadas proceduralmente; três passagens internas recebem portas de energia com blocos de colisão que desaparecem ao concluir as ondas locais.
-- Distribui seis ondas por sala (2, 1, 1 e 2), totalizando 24 inimigos. Cada sala só ativa seus inimigos ao ser visitada; as portas de entrada e saída ficam trancadas durante o combate e abrem após a ameaça local ser eliminada.
-- Desenha setas de direção no piso depois da abertura das portas e atualiza o HUD para indicar SALA 1/4 a 4/4.
-- Adiciona névoa escura de exploração no Fragment Shader OpenGL ES; os fragmentos das salas seguintes permanecem ocultos até o jogador atravessar a porta e atualizar a sala ativa.
-- Atualiza a versão Android para 0.6 e versionCode 21.
+## Validação
 
-### 0.5 — UI/UX minimalista e HUD diegético (Passo 1)
-- Remove o painel lateral explicativo de falha de contenção do menu principal; mantém os comandos em uma coluna à esquerda e reduz os botões em 20%.
-- Remove a placa opaca do HUD e os valores de vitalidade no canto da tela; informações de relés, ameaças e setor passam a usar tipografia menor e sem fundo.
-- Move a indicação de vitalidade para uma barra fina renderizada em OpenGL ES acima do operador, com cor vinculada ao personagem selecionado.
-- Substitui os controles visuais de Atirar e Esquiva por ícones vazados, sem círculos ou fundos opacos, mantendo as mesmas áreas de toque e a lógica de disparo contínuo/esquiva.
-- Atualiza a versão Android para 0.5 e versionCode 20.
-
-### 0.4 — Setores interconectados, novos operadores e identidade visual
-- Adiciona `ProgressionManager.cpp`: cada eliminação atualiza a progressão e 20 eliminações expandem os limites jogáveis, abrem a passagem leste e liberam o Setor 2 com paleta enviada por uniform ao shader.
-- Organiza 24 inimigos em seis ondas de quatro; as primeiras cinco ondas levam ao desbloqueio do novo setor e a sexta ocorre na nova ala antes da extração.
-- Troca a seleção anterior por Neon-Vanguard (azul, velocidade padrão, tiro duplo) e Stellar-Reaper (dourado, velocidade +20%, disparo em cone).
-- Acrescenta deslocamento de vértices com ruído multiescala à malha orgânica procedural.
-- Implementa configuração persistente de som e sensibilidade de toque via SharedPreferences; a sensibilidade chega ao C++ por JNI e os efeitos de feedback usam ToneGenerator do Android.
-- Define jogador azul/dourado, inimigos carmesim e projéteis aliados verde-limão; compila o renderer com `-O3`.
-- Atualiza a versão Android para 0.4 e versionCode 19.
-
-### 0.3 — Variabilidade de IA e renderização instanciada (Passo 3)
-- Introduz slalom nos inimigos, com força lateral senoidal e fase, frequência e amplitude sorteadas por unidade via C++17 `<random>`.
-- Dessincroniza as decisões táticas com atrasos iniciais aleatórios e intervalos de 75–145 ms; movimento e colisões continuam integrados a cada tick fixo.
-- Agrupa projéteis aliados e hostis em um único draw indexado instanciado, usando buffer dinâmico e `glDrawElementsInstanced`.
-- Acrescenta validação GLSL dos shaders de projéteis instanciados ao GitHub Actions.
-- Atualiza a versão Android para 0.3 e versionCode 18.
-
-### 0.2 — Game Feel mecânico (Passo 2)
-- Troca o acompanhamento exponencial da câmera por uma mola linear amortecida com velocidade própria, integração em subpassos e resposta suavemente elástica.
-- Aplica squash & stretch procedural ao corpo completo do operador: expansão lateral no eixo local X e compressão de profundidade no eixo local Z, com atenuação exponencial e janela de 150 ms após cada disparo.
-- Adiciona um gerenciador nativo de camera shake por ruído suave interpolado; disparos geram impulsos pequenos e impactos recebidos geram impulsos mais fortes. O deslocamento é aplicado à matriz de visão antes de formar cada uMVP.
-- Atualiza o rótulo Android para 0.2 e incrementa versionCode para 17.
-
-### 0.1 — Stylized Game Art (Passo 1)
-- Substitui a resposta difusa contínua por três bandas discretas de iluminação toon: sombra, meio-tom e luz.
-- Adiciona um passe de pós-processamento OpenGL ES com vinheta de borda e aberração cromática sutil, por deslocamento dos canais vermelho e azul.
-- Renderiza a cena em framebuffer limitado a 1600 × 900 para conter o custo de memória, com fallback para renderização direta se o framebuffer não puder ser criado.
-- Atualiza o rótulo Android para 0.1. O versionCode passa para 16, mantendo a progressão monotônica exigida para atualizações Android.
-
-### Histórico da linha anterior
-
-### 0.13.0 — Instalação industrial e câmera dinâmica
-- Remove as árvores, plantas e manchas de musgo da área jogável; o cenário passa a ser uma instalação com painéis metálicos, divisões de piso, anteparo de descontaminação, tubulações de serviço, painéis de diagnóstico, lâmpadas industriais e marcações de segurança.
-- Adiciona acompanhamento suave da câmera durante a operação, mantendo a leitura do mapa; menu e configurações recuperam o enquadramento neutro.
-- Ajusta a névoa atmosférica para uma paleta fria e industrial.
-- Atualiza o rótulo visível e os metadados Android para 0.13.0 / versionCode 15.
-- A compilação confirma que o APK foi empacotado; aparência, conforto da câmera e desempenho continuam dependendo do teste em dispositivo físico.
-
-### 0.12.0 — Equipe ORION-9
-- Adicionada seleção persistente de três operadores com papéis funcionais: Kestrel (mobilidade/esquiva), Bastion (resistência e dano) e Patch (cadência, alcance de interação e recuperação médica).
-- Os atributos alteram velocidade, intervalo de disparo, dano, mitigação recebida, recarga da esquiva, cura e alcance de restauração de relés.
-- Materiais e proporções corporais diferenciados por operador.
-- Arena oval substituída por base modular retangular; coberturas de equipamento, relés, kits médicos e pad de extração agora têm leitura industrial.
-- Menu e HUD passam a comunicar falha de contenção e extração.
-- Versão Android atualizada para 0.12.0.
-
-### 0.11.0 — Mira e disparo sem confusão
-
-- Substituído o botão retangular de disparo por um controle circular com ícone de munição, rótulo **ATIRAR** e feedback visual ao manter pressionado.
-- Separação explícita entre as ações: arrastar o lado direito controla a mira; manter **ATIRAR** pressionado dispara continuamente; soltar ou cancelar o toque interrompe o fogo.
-- Redimensionados e reposicionados os controles de tiro e esquiva, preservando alvos de toque confortáveis e o espaço do botão de interação.
-- Atualizadas as instruções de controle e o identificador da versão dentro do jogo.
-- Reforçada a verificação do projeto para validar o novo controle e a versão 0.11.0.
-
-### 0.10.0 — Fronteira selvagem
-
-- Cenário refeito como uma clareira orgânica com solo terroso, vegetação, árvores e pedras irregulares geradas por código.
-- Personagem principal redesenhado com volumes mais suaves; as quatro criaturas agora têm silhuetas e anatomias diferentes.
-- Corrigida a conversão vertical do joystick e o eixo vertical da mira.
-- Adicionados brotos restauradores opcionais que recuperam parte da vitalidade e focos de esporos que avisam antes de causar dano.
-- Menu, HUD e botões atualizados para combinar com o novo ambiente, com menos azul, menos painéis pesados e cantos mais suaves.
-
-### 0.9.0 — Controles e combate
-
-- Adicionado joystick virtual para movimentação.
-- Separado o botão de disparo, com mira por arrasto no lado direito da tela.
-- Melhorada a orientação do personagem e adicionada uma esquiva com recarga.
-- Incluídos inimigos com comportamentos diferentes: perseguição, ataque pesado anunciado e disparos à distância.
-- Adicionadas três variações de arena, obstáculos que bloqueiam projéteis e ajustes no HUD.
-
-### 0.8.0 — Personagens 3D
-
-- Introduzidos personagens humanoides construídos a partir de malhas geradas pelo próprio jogo.
-- Adicionados armadura, capacete com visor, mochila e arma.
-- Criadas animações procedurais para braços, pernas e movimento corporal.
-- Melhoradas a iluminação e a leitura dos volumes 3D.
-
-### 0.7.1 — Identidade do aplicativo
-
-- Definido um ícone próprio para o aplicativo Android.
-- Preservados o menu, o HUD, a pausa, as configurações e as telas de resultado introduzidas na versão anterior.
-
-## Como baixar e instalar
-
-1. Abra a página [GitHub Actions](https://github.com/Coca69643/Neon-Breach/actions).
-2. Entre na execução mais recente que terminou com sucesso (marca verde).
-3. Na seção **Artifacts**, baixe o arquivo `neon-breach-debug-apk`.
-4. Abra o ZIP baixado e extraia o APK para o celular.
-5. Toque no arquivo APK para instalar. Se o Android pedir autorização para instalar aplicativos dessa origem, permita apenas para o aplicativo que você usou para abrir o arquivo e continue se confiar no APK.
-
----
-
-*NEON BREACH está em desenvolvimento. As mudanças descritas registram o estado do projeto; a compilação de uma versão, por si só, não significa que todos os recursos tenham sido validados em um dispositivo físico.*
+A compilação automatizada confirma apenas a integridade do build. A validação final de fluidez, temperatura, controles e retomada após interrupção ainda exige teste físico no aparelho de referência.
