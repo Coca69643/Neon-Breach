@@ -1,5 +1,29 @@
 # Changelog — Projeto Arena
 
+## [0.9.1] — 2026-11-02
+
+### Interface e navegação
+- Mantida a composição do menu sobre o cenário 3D; substituído o toque global para iniciar partida por ações explícitas.
+- Menu agora apresenta herói em destaque, função, descrição e habilidade; opções JOGAR, HERÓIS, COMO JOGAR e AJUSTES.
+- Adicionadas telas de seleção de herói, guia de partida e ajustes de sensibilidade.
+- Sensibilidade do direcional tem três presets e é persistida no dispositivo.
+
+### Heróis com funções reais
+- Lyra: AURA recupera vida do jogador, bots aliados e tropas próximas, além de causar efeito menor em rivais dentro da área.
+- Bastion: IMPACTO tem área/dano maiores, ataque básico pesado e escudo mais duradouro.
+- Kairo: ONDA tem recarga mais curta, ataque rápido, deslocamento superior e impulso mais veloz.
+
+### Combate e retorno
+- Removido o retorno instantâneo e invisível ao chegar a zero de vida.
+- Derrota agora inicia 1,45 s de retorno à base, registra quedas e dá breve janela de invulnerabilidade ao reaparecer.
+- Bots e torres deixam de atingir o jogador durante a janela de retorno.
+- Snapshot JNI/Kotlin ampliado de 94 para 96 valores, adicionando contador de quedas e tempo restante de retorno.
+
+### Build e validação
+- versionCode 40 / versionName 0.9.1.
+- O CI compila e verifica o APK; o workflow prepara um pré-lançamento identificável na aba Releases para evitar que o APK fique perdido entre artefatos de rascunhos.
+- Build CI não representa teste físico de FPS, temperatura ou controles no Realme C53.
+
 ## [0.9.0] — 2026-11-01
 
 ### Loop de cerco e vitória por objetivos
