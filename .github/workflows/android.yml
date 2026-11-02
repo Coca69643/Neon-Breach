@@ -118,3 +118,8 @@ jobs:
           prerelease: true
           overwrite_files: true
           files: app/build/outputs/apk/debug/app-debug.apk
+      - name: Align release tag with verified source commit
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.15.0-visual-overhaul'
+        run: |
+          git tag --force project-arena-0.15.0 "$GITHUB_SHA"
+          git push --force origin refs/tags/project-arena-0.15.0
