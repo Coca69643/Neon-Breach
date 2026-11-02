@@ -33,8 +33,10 @@ Data do plano: 2 de novembro de 2026.
 - [x] Causa do movimento artificial documentada a partir do código atual.
 - [x] Limitações do importador cgltf documentadas a partir da implementação atual.
 - [ ] Selecionar arquivos CC0 exatos após inspecionar os downloads e seus arquivos de licença.
-- [ ] Implementar importação de rigs, pesos, inverse-bind matrices e canais glTF de animação.
-- [ ] Implementar avaliação de pose e skinning GPU compatível com OpenGL ES 3.0.
+- [x] Criar módulo isolado C++ para decodificar rigs, inverse-bind matrices, `JOINTS_0`/`WEIGHTS_0` e canais glTF de translação/rotação/escala.
+- [x] Implementar STEP, LINEAR/slerp, CUBICSPLINE, amostragem de clip, hierarquia e paleta CPU de juntas.
+- [x] Adicionar testes determinísticos para interpolação, pose de repouso, hierarquia e paleta.
+- [ ] Integrar atributos de juntas e paleta ao renderer/shader OpenGL ES 3.0.
 - [ ] Estados de locomoção com blend/transições: idle, caminhar, correr, virar, parar e interagir.
 - [ ] Testar em build com assets reais; rejeitar animação contínua quando a entidade está parada.
 
@@ -52,6 +54,6 @@ Os assets listados em `ASSET_PIPELINE_CC0.md` são fontes candidatas pesquisadas
 
 1. Validar este patch de identidade/UI em CI e no aparelho.
 2. Baixar e inspecionar os pacotes CC0 exatos; arquivar licença, origem, data e SHA-256.
-3. Implementar o runtime de animação glTF em módulo isolado com testes determinísticos antes de conectá-lo ao renderer.
-4. Substituir gradualmente os personagens temporários somente depois que os modelos e clips reais passarem em validação.
+3. Conectar o módulo `CharacterAnimation` ao renderer e ao shader ES 3.0, validando buffers, limites de juntas e contexto EGL.
+4. Integrar um personagem real e um clip de locomoção CC0; substituir os personagens temporários só depois de validar pose, escala, colisão e desempenho.
 5. Construir uma fatia ambiental pequena no estilo de ruínas naturais; não migrar o mapa inteiro até a fatia passar na revisão visual e de performance.
