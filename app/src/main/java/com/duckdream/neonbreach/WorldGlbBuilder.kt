@@ -121,7 +121,7 @@ internal object WorldGlbBuilder {
             val bx=x+cos(a1)*rx; val bz=z+sin(a1)*rz
             val a=floatArrayOf(ax,h(ax,az)+lift,az)
             val b=floatArrayOf(bx,h(bx,bz)+lift,bz)
-            triOutward(p,center,a,b,x,cy,z)
+            triUp(p,center,a,b)
         }
     }
     private fun shrine(p: Part, x: Float, z: Float, scale: Float, broken: Boolean) {
