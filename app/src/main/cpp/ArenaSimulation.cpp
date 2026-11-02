@@ -383,6 +383,8 @@ int nearestCamp(Vec2 position, int team, float range) {
     }
     return target;
 }
+float playerDamageTaken(float damage);
+
 bool friendlyMinionSupports(int team, int lane, Vec2 position, float range) {
     for (const LaneUnit &unit : gLaneUnits) {
         if (unit.team == team && unit.health > 0.0f && unit.lane == lane &&
