@@ -60,12 +60,12 @@ internal class FilamentGameRenderer(
     private var playerInstance: FilamentInstance? = null
     private var playerAnimator: Animator? = null
     private val botAnimators = ArrayList<Animator>(9)
-    private val minionInstances = ArrayList<FilamentInstance>(24)
-    private val minionAnimators = ArrayList<Animator>(24)
-    private val minionRootInstances = IntArray(24)
-    private val minionBones = ArrayList<Map<String, BonePose>>(24)
-    private val minionLastPositions = Array(24) { floatArrayOf(Float.NaN, Float.NaN) }
-    private val minionAlive = BooleanArray(24) { true }
+    private val minionInstances = ArrayList<FilamentInstance>(48)
+    private val minionAnimators = ArrayList<Animator>(48)
+    private val minionRootInstances = IntArray(48)
+    private val minionBones = ArrayList<Map<String, BonePose>>(48)
+    private val minionLastPositions = Array(48) { floatArrayOf(Float.NaN, Float.NaN) }
+    private val minionAlive = BooleanArray(48) { true }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.72f
     private var minionsVisible = false
@@ -375,7 +375,7 @@ internal class FilamentGameRenderer(
 
         // Twelve smaller, animated lane units: two per team on each of the three routes.
         // Their meshes and material atlas are shared with the hero instances.
-        for (index in 0 until 24) {
+        for (index in 0 until 48) {
             val instance = characterLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance lane unit $index")
             minionInstances.add(instance)
@@ -427,11 +427,13 @@ internal class FilamentGameRenderer(
         characterMinY = center[1] - half[1]
 
         for (index in minionRootInstances.indices) {
-            val team = if (index < 12) 0 else 1
-            val local = index % 12
-            val lane = local / 4
-            val slot = local % 4
-            val z = if (team == 0) -28f else 28f
+            val team = if (index < 24) 0 else 1
+            val local = index % 24
+            val lane = local / 8
+            val localInLane = local % 8
+            val slot = localInLane % 4
+            val group = localInLane / 4
+            val z = if (team == 0) -28f - group * 1.25f else 28f + group * 1.25f
             val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f }
             setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
@@ -808,10 +810,10 @@ internal class FilamentGameRenderer(
     }
 
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
-        if (!sceneLoaded || snapshot.size < 222) return
+        if (!sceneLoaded || snapshot.size < 318) return
         minionAnimationPhase += deltaTime * 7.2f
         for (index in minionInstances.indices) {
-            val alive = snapshot[174 + index] > 0.0f
+            val alive = snapshot[222 + index] > 0.0f
             if (minionAlive[index] != alive) {
                 if (alive) viewer.scene.addEntities(minionInstances[index].entities)
                 else viewer.scene.removeEntities(minionInstances[index].entities)
@@ -827,7 +829,7 @@ internal class FilamentGameRenderer(
             val dz = if (previous[1].isNaN()) 0f else z - previous[1]
             val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
             val moving = (speed / 2.55f).coerceIn(0f, 1f)
-            val team = if (index < 12) 0 else 1
+            val team = if (index < 24) 0 else 1
             val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
                 else if (team == 0) 0f else Math.PI.toFloat()
             setMinionTransform(index, x, z, yaw)
