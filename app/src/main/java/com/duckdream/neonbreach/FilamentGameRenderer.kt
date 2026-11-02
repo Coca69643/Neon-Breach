@@ -373,7 +373,7 @@ internal class FilamentGameRenderer(
             applyBotTint(index, disabled = false)
         }
 
-        // Twelve smaller, animated lane units: two per team on each of the three routes.
+        // Forty-eight bounded lane units: two four-unit waves per lane/team.
         // Their meshes and material atlas are shared with the hero instances.
         for (index in 0 until 48) {
             val instance = characterLoader!!.createInstance(asset)
@@ -396,7 +396,7 @@ internal class FilamentGameRenderer(
             minionBones.add(rig)
             applyRestPose(rig)
             instance.animator.updateBoneMatrices()
-            val tint = if (index < 6) {
+            val tint = if (index < 24) {
                 floatArrayOf(0.42f, 0.72f, 0.88f, 1f)
             } else {
                 floatArrayOf(0.88f, 0.52f, 0.43f, 1f)
