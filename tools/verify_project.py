@@ -26,6 +26,7 @@ physics_h = read("app/src/main/cpp/ArenaPhysics.h")
 physics = read("app/src/main/cpp/ArenaPhysics.cpp")
 physics_tests = read("tests/arena_physics_tests.cpp")
 gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
+gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
@@ -91,6 +92,7 @@ checks = [
     ("Compile and run native physics tests" in workflow and "tests/arena_physics_tests.cpp" in workflow, "CI does not compile/run native physics tests"),
     ("createHeroGear()" in renderer and "setParent(child, parent)" in renderer and "playerGearInstances" in renderer, "articulated hero gear is not attached to the skeleton"),
     ("gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "hero-specific costume mesh generation missing"),
+    ("generatedGearGlbHasValidContainerAndBoneParts" in gear_tests and "testDebugUnitTest" in workflow and "junit:junit:4.13.2" in gradle, "generated hero gear GLB unit test is not connected to CI"),
     ("terrainAlignedTransform" in renderer and "WorldGlbBuilder.normalAt" in renderer and "internal fun normalAt" in world, "character orientation is not aligned to terrain normals"),
     ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer, "NPC grounding and articulated gait missing"),
     ("PhysicsWorld.cpp" not in cmake, "unused second physics implementation must remain disabled"),
