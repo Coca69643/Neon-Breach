@@ -738,12 +738,20 @@ internal class FilamentGameRenderer(
         engine.transformManager.setTransform(bone.instance, out)
     }
 
-    fun setHeroAppearance(hero: Int) {
+    fun setHeroAppearance(hero: Int, alternateSkin: Boolean = false) {
         activeHero = hero.coerceIn(0, 2)
-        val tint = when (activeHero) {
-            1 -> floatArrayOf(0.88f, 0.62f, 0.28f, 1.0f)
-            2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f)
-            else -> floatArrayOf(0.78f, 0.91f, 0.77f, 1.0f)
+        val tint = if (alternateSkin) {
+            when (activeHero) {
+                1 -> floatArrayOf(0.22f, 0.72f, 0.76f, 1.0f)
+                2 -> floatArrayOf(0.88f, 0.34f, 0.20f, 1.0f)
+                else -> floatArrayOf(0.82f, 0.70f, 0.36f, 1.0f)
+            }
+        } else {
+            when (activeHero) {
+                1 -> floatArrayOf(0.88f, 0.62f, 0.28f, 1.0f)
+                2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f)
+                else -> floatArrayOf(0.78f, 0.91f, 0.77f, 1.0f)
+            }
         }
         playerMaterials.forEach { material ->
             runCatching {
