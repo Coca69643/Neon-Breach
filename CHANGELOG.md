@@ -1,5 +1,29 @@
 # Changelog — Projeto Arena
 
+## [0.15.0] — 2026-11-02
+
+### Silhuetas, rig e movimento
+- Expandido o pipeline de equipamento para cinco silhuetas de função: Bastion/solo, Kairo/jungle, conjurador/mid, ranger/carry e Lyra/suporte.
+- O renderer associa o conjunto de cada bot ao papel retornado pelo snapshot nativo e reconstrói apenas o equipamento quando o jogador troca de herói.
+- Diagnóstico do GLB confirmou ossos dos braços ao longo do eixo local Y. A pose anterior aplicava abdução em Z; foi substituída por rotação X de menor amplitude e flexão de cotovelos mais controlada.
+- Bots passam a usar cadências, prontidão dos braços e flexão diferentes por papel; tropas de distância recebem postura de prontidão distinta das unidades corpo a corpo.
+- Câmera de combate aproximada moderadamente para tornar o herói mais legível sem abandonar a leitura tática.
+
+### Campo de batalha e HUB
+- Aumentada a escala das cristas laterais, elevações das bases, colinas de selva e vale do rio; acrescentada uma prateleira de terreno na selva.
+- A malha passou de 104 × 104 para 136 × 136 células.
+- A fórmula de elevação foi espelhada em Kotlin e C++ para manter renderização, altura de personagem, inclinação e física coerentes.
+- Paleta de terreno e ambiente ajustada para tons menos ciano.
+- Novo HUB panorâmico com ilustração vetorial original feita em Canvas.
+- Removidos os grandes painéis e a pilha vertical de seis opções. Ações principais agora ficam em uma dock horizontal; guia e ajustes foram movidos para utilitários compactos, e a Loja fica dentro de Coleção.
+
+### Validação e limites
+- Adicionados testes JVM para os cinco GLBs de função e para o intervalo de alturas/inclinações do mapa.
+- Testes C++ de física agora amostram a amplitude do terreno e o limite de inclinação.
+- A versão é uma revisão visual/procedural, não uma troca por cinco esqueletos ou cinco clipes de captura de movimento importados. O corpo base continua sendo o humanoide Quaternius CC0; as diferenças vêm de equipamentos e animação procedural por função.
+- CI compila o APK e executa testes determinísticos; validação visual, FPS sustentado, temperatura e controles ainda dependem de teste físico no Realme C53.
+
+
 ## [0.14.0] — 2026-11-02
 
 ### Modelagem e identidade dos personagens
