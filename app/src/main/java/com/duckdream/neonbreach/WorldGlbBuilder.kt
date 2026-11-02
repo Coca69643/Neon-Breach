@@ -72,6 +72,12 @@ internal object WorldGlbBuilder {
         val mz=(a[2]+b[2]+c[2])/3f-cz
         if (nx*mx+ny*my+nz*mz >= 0f) tri(p,a,b,c) else tri(p,a,c,b)
     }
+    private fun triUp(p: Part, a: FloatArray, b: FloatArray, c: FloatArray) {
+        val ux=b[0]-a[0]; val uz=b[2]-a[2]
+        val vx=c[0]-a[0]; val vz=c[2]-a[2]
+        val normalY=uz*vx-ux*vz
+        if (normalY >= 0f) tri(p,a,b,c) else tri(p,a,c,b)
+    }
     private fun box(p: Part, x: Float, y: Float, z: Float, sx: Float, sy: Float, sz: Float) {
         val hx=sx*0.5f; val hy=sy*0.5f; val hz=sz*0.5f
         val v=arrayOf(
@@ -228,8 +234,8 @@ internal object WorldGlbBuilder {
             val oa = floatArrayOf(outerRadius * cos(a0), 0.09f, outerRadius * sin(a0))
             val ib = floatArrayOf(innerRadius * cos(a1), 0.09f, innerRadius * sin(a1))
             val ob = floatArrayOf(outerRadius * cos(a1), 0.09f, outerRadius * sin(a1))
-            tri(p, ia, oa, ib)
-            tri(p, oa, ob, ib)
+            triUp(p, ia, oa, ib)
+            triUp(p, oa, ob, ib)
         }
     }
 
