@@ -13,7 +13,8 @@ A 0.13.0 estabeleceu o terreno e a câmera. A 0.14.0 liga a apresentação do pe
 - Colisão circular com árvores, rochas, torres, pedras de acampamentos e anéis de santuário; colisão AABB para muralhas e construções.
 - Contenção no contorno da ilha e limitação da componente de velocidade para cima de inclinações acima do limite configurado.
 - Separação entre jogador, bots e minions vivos.
-- Desvio local preventivo aplicado apenas a bots e tropas. O joystick do jogador continua sendo a entrada direta e previsível.
+- Desvio local preventivo consulta o corredor futuro e aplica uma tangente de contorno apenas a bots e tropas. O joystick do jogador continua sendo a entrada direta e previsível.
+- Teste nativo específico confirma que um agente muda seu vetor ao se aproximar de uma árvore sem perder a velocidade escalar solicitada.
 
 Os colisores são aproximações cinemáticas derivadas das posições de cenário 0.13.0; não são malhas de colisão triangulares nem um motor de corpos rígidos dinâmicos.
 
