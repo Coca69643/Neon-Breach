@@ -161,6 +161,40 @@ void resolveWorld(Body &b) {
         confine(b);
     }
 }
+void avoidObstacles(const Body &body,float &desiredX,float &desiredZ) {
+    const float speed=std::sqrt(desiredX*desiredX+desiredZ*desiredZ);
+    if(speed<0.08f)return;
+    const float dx=desiredX/speed,dz=desiredZ/speed;
+    const float lookAhead=std::clamp(speed*0.58f,1.15f,2.65f);
+    float bestProjection=lookAhead+1.0f;
+    float steerX=0.0f,steerZ=0.0f;
+    const auto consider=[&](float x,float z,float radius) {
+        const float ox=x-body.x,oz=z-body.z;
+        const float along=ox*dx+oz*dz;
+        if(along<0.10f||along>lookAhead+radius)return;
+        const float lateral=std::abs(dx*oz-dz*ox);
+        const float clearance=body.radius+radius+0.18f;
+        if(lateral>=clearance||along>=bestProjection)return;
+        const float cross=dx*oz-dz*ox;
+        float side;
+        if(std::abs(cross)>0.025f) side=cross>0.0f?-1.0f:1.0f;
+        else side=(std::fmod(std::abs(x*13.0f+z*7.0f),2.0f)<1.0f)?1.0f:-1.0f;
+        const float reach=(1.0f-along/(lookAhead+radius)).coerceIn(0.0f,1.0f);
+        const float overlap=(1.0f-lateral/clearance).coerceIn(0.0f,1.0f);
+        const float strength=0.35f+1.55f*reach*overlap;
+        steerX=-dz*side*strength;
+        steerZ=dx*side*strength;
+        bestProjection=along;
+    };
+    const auto &colliders=world();
+    for(const Circle &circle:colliders.circles)consider(circle.x,circle.z,circle.r);
+    for(const Box &box:colliders.boxes)consider(box.x,box.z,std::sqrt(box.hx*box.hx+box.hz*box.hz));
+    if(steerX==0.0f&&steerZ==0.0f)return;
+    const float outX=dx+steerX,outZ=dz+steerZ;
+    const float outLength=std::sqrt(outX*outX+outZ*outZ);
+    if(outLength>kEpsilon){desiredX=speed*outX/outLength;desiredZ=speed*outZ/outLength;}
+}
+
 void move(Body &b,float desiredX,float desiredZ,float dt,float acceleration,float braking,float maxSlopeDegrees) {
     if(dt<=0)return;
     dt=std::clamp(dt,0.0f,0.05f);
