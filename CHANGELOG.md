@@ -1,5 +1,20 @@
 # Changelog — Projeto Arena
 
+## [0.11.0] — 2026-11-02
+
+### Personagem jogável e animação
+- Implementado controlador de movimento com estados de repouso, caminhada, corrida, impulso, gesto de habilidade, proteção, reação a dano, queda e retorno.
+- A locomoção passou a acompanhar a distância percorrida; a rotação do corpo suaviza mudanças de direção e inclinações respondem à aceleração e frenagem.
+- Expandido o rig animado do herói para pelve, tronco em três segmentos, cabeça, mãos, pés, braços e pernas.
+- Suavização temporal por osso evita transições instantâneas entre poses.
+- Snapshot JNI agora alimenta diretamente os estados de impulso, habilidade, proteção, dano e retorno; botões disparam gestos visuais correspondentes.
+- As animações completas permanecem apenas no personagem jogável; bots e tropas preservam o rig reduzido para limitar CPU em celulares intermediários.
+- Lyra, Bastion e Kairo recebem cadência, postura e proporções moderadas próprias. A geometria humanoide-base ainda é compartilhada.
+- Mantidos Kotlin + C++20/NDK, Filament 1.77.3, HUD, economia offline e regras da partida.
+- versionCode 42 / versionName 0.11.0.
+
+
+
 ## [0.10.0] — 2026-11-02
 
 ### HUB e meta progressão
