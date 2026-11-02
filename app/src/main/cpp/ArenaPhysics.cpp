@@ -73,6 +73,7 @@ struct Colliders {
             boxes.push_back({0,sign*27.3f,2.6f,2.0f});
             boxes.push_back({-4.5f,sign*24.0f,1.25f,1.1f});
             boxes.push_back({4.5f,sign*24.0f,1.25f,1.1f});
+            boxes.push_back({sign*-8.0f,sign*25.3f,0.82f,0.82f});
             boxes.push_back({-7,sign*24.2f,2.6f,0.38f});
             boxes.push_back({7,sign*24.2f,2.6f,0.38f});
             for (int lane=0;lane<3;++lane) for (int tier=0;tier<3;++tier) {
