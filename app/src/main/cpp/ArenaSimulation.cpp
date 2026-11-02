@@ -402,11 +402,6 @@ void updateBots(float dt) {
         bot.position.z = std::clamp(bot.position.z, -28.5f, 28.5f);
     }
 
-    if (gPlayerHealth <= 0.0f && gPlayerRespawnTime <= 0.0f) {
-        gPlayerRespawnTime = 1.45f;
-        ++gPlayerDeaths;
-        gPlayerVx = gPlayerVz = 0.0f;
-    }
 }
 
 void moveLaneUnitTo(LaneUnit &unit, Vec2 goal, float dt) {
@@ -589,6 +584,12 @@ void simulate(float inputX, float inputZ, float dt) {
     gPulseCaptureTime = std::max(0.0f, gPulseCaptureTime - dt);
     gPlayerDisrupted = std::max(0.0f, gPlayerDisrupted - dt);
     gPlayerAttackCooldown = std::max(0.0f, gPlayerAttackCooldown - dt);
+
+    if (gPlayerHealth <= 0.0f && gPlayerRespawnTime <= 0.0f) {
+        gPlayerRespawnTime = 1.45f;
+        ++gPlayerDeaths;
+        gPlayerVx = gPlayerVz = 0.0f;
+    }
 
     const bool wasRespawning = gPlayerRespawnTime > 0.0f;
     if (wasRespawning) {
