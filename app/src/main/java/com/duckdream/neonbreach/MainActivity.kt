@@ -84,7 +84,7 @@ class MainActivity : Activity() {
             View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
             View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
         )
-        Log.i("ORION9Startup", "Activity.onCreate: constructing GameSurface")
+        Log.i("ArenaStartup", "Activity.onCreate: constructing GameSurface")
         root = FrameLayout(this)
         gameView = GameSurface(this)
         Log.i("ORION9Startup", "Activity.onCreate: GameSurface constructed")
@@ -183,15 +183,10 @@ class MainActivity : Activity() {
     }
 
     private fun menuCommandButton(label: String, accent: Boolean = false, onClick: () -> Unit): TextView {
-        return text(if (accent) "▸  $label" else "›  $label", 12f, if (accent) cyan else white, true).apply {
+        return text(if (accent) "›  $label" else label, 14f, if (accent) cyan else white, true).apply {
             gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(5), dp(8), dp(5))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(4).toFloat()
-                setColor(if (accent) Color.argb(112, 12, 50, 58) else Color.argb(28, 18, 31, 36))
-                setStroke(dp(1), if (accent) Color.argb(190, 42, 207, 221) else Color.argb(76, 132, 157, 164))
-            }
+            setPadding(dp(2), dp(6), dp(2), dp(6))
+            background = null
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -397,7 +392,7 @@ class MainActivity : Activity() {
             isClickable = false
         }
         addVertical(left, text("PROJETO ARENA", 10f, Color.argb(210, 174, 194, 145), true), 3)
-        addVertical(left, text("OPERADOR  ${operativeName()}", 9f, Color.argb(190, 255, 183, 112), true), 5)
+        addVertical(left, text("PERSONAGEM  ${operativeName()}", 9f, Color.argb(190, 211, 160, 105), true), 5)
         relayStatus = text("RELÉS  0 / 3", 10f, hudColor, true)
         addVertical(left, relayStatus, 2)
         threatStatus = text("AMEAÇAS  4", 9f, hudMuted, true)
@@ -782,17 +777,16 @@ class MainActivity : Activity() {
         if (currentScreen != Screen.PLAYING) return
         currentScreen = Screen.RESULT
         hasSession = false
-        val layer = overlay(Color.argb(190, 12, 16, 8))
+        val layer = overlay(Color.argb(34, 18, 19, 14), false)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setPadding(0, dp(4), 0, dp(4))
         }
-        addVertical(content, text(if (victory) "EXTRAÇÃO CONCLUÍDA" else "OPERAÇÃO INTERROMPIDA", 29f,
-            if (victory) Color.rgb(72, 220, 232) else Color.rgb(255, 81, 97), true), 8)
-        addVertical(content, text(if (victory) "Os relés foram restaurados e a zona está segura." else "A equipe perdeu capacidade operacional. Reavalie a rota.", 14f, muted), 20)
-        addVertical(content, actionButton(if (victory) "NOVA OPERAÇÃO" else "TENTAR NOVAMENTE", true) { startNewMission() }, 8, dp(280), dp(48))
-        addVertical(content, actionButton("MENU PRINCIPAL") { showMainMenu(false) }, 8, dp(280), dp(46))
+        addVertical(content, text(if (victory) "CONCLUÍDO" else "TENTE NOVAMENTE", 29f,
+            if (victory) cyan else amber, true), 18)
+        addVertical(content, actionButton("RECOMEÇAR", true) { startNewMission() }, 8, dp(280), dp(48))
+        addVertical(content, actionButton("MENU") { showMainMenu(false) }, 0, dp(280), dp(46))
         layer.addView(content, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         attachLayer(layer)
     }
