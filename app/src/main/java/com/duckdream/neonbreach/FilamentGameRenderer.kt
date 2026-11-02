@@ -75,13 +75,71 @@ internal class FilamentGameRenderer(
     private var minionAnimationPhase = 0f
     private val minionScale = 0.78f
     private var minionsVisible = false
+    private var botsVisible = true
+    private var showcaseMode = false
+    private var showcaseHeroX = 0f
+    private var showcaseHeroZ = -7.5f
+    private var showcaseTargetX = 0f
+    private var showcaseScale = 1.0f
+    private var showcaseHeight = 3.2f
+    private var showcaseDistance = 6.5f
+    private var showcaseYaw = Math.PI.toFloat()
     private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
     private var characterMinY = 0f
 
     private data class BonePose(val instance: Int, val base: FloatArray)
+    private val fallbackJointIndices = mapOf(
+        "pelvis" to 1, "spine_01" to 2, "spine_02" to 3, "spine_03" to 4,
+        "neck_01" to 5, "Head" to 6,
+        "upperarm_l" to 8, "lowerarm_l" to 9, "hand_l" to 10,
+        "upperarm_r" to 32, "lowerarm_r" to 33, "hand_r" to 34,
+        "thigh_l" to 55, "calf_l" to 56, "foot_l" to 57,
+        "thigh_r" to 60, "calf_r" to 61, "foot_r" to 62
+    )
     private val bones = LinkedHashMap<String, BonePose>()
+
+    private fun captureHumanoidRig(
+        instance: FilamentInstance,
+        owner: String
+    ): LinkedHashMap<String, BonePose> {
+        val source = character ?: error("Humanoid source asset is unavailable for $owner")
+        val joints = if (instance.skinCount > 0) instance.getJointsAt(0) else intArrayOf()
+        check(joints.size >= 63) {
+            "$owner GLB skin is incomplete: expected at least 63 joints, found ${joints.size}"
+        }
+
+        val entityByName = LinkedHashMap<String, Int>()
+        for (entity in joints) {
+            val name = source.getName(entity)?.trim().orEmpty()
+            if (name.isNotEmpty()) entityByName.putIfAbsent(name, entity)
+        }
+        for (entity in instance.entities) {
+            val name = source.getName(entity)?.trim().orEmpty()
+            if (name.isNotEmpty()) entityByName.putIfAbsent(name, entity)
+        }
+
+        val transforms = engine.transformManager
+        val rig = LinkedHashMap<String, BonePose>()
+        for (name in boneNames) {
+            val entity = entityByName[name]
+                ?: fallbackJointIndices[name]?.let { joints.getOrNull(it) }
+                ?: 0
+            if (entity == 0) continue
+            val boneInstance = transforms.getInstance(entity)
+            if (boneInstance != 0) {
+                rig[name] = BonePose(boneInstance, transforms.getTransform(boneInstance, null))
+            }
+        }
+
+        val missing = boneNames.filterNot { rig.containsKey(it) }
+        check(missing.isEmpty()) {
+            "$owner GLB rig incomplete: missing ${missing.joinToString()}, skinJoints=${joints.size}"
+        }
+        Log.i(TAG, "$owner rig bound: ${rig.size}/${boneNames.size} joints from skin")
+        return rig
+    }
     // NPCs use the shared humanoid skeleton, including feet and head, for grounded gait.
     private val boneNames = listOf(
         "pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r",
@@ -356,16 +414,7 @@ internal class FilamentGameRenderer(
             val rootInstance = transforms.getInstance(instance.root)
             require(rootInstance != 0) { "Bot humanoid root transform is missing: $index" }
             botRootInstances[index] = rootInstance
-            val rig = LinkedHashMap<String, BonePose>()
-            for (name in boneNames) {
-                val joint = instance.entities.firstOrNull { asset.getName(it) == name } ?: 0
-                if (joint != 0) {
-                    val jointInstance = transforms.getInstance(joint)
-                    if (jointInstance != 0) {
-                        rig[name] = BonePose(jointInstance, transforms.getTransform(jointInstance, null))
-                    }
-                }
-            }
+            val rig = captureHumanoidRig(instance, "bot-$index")
             botBones.add(rig)
             applyRestPose(rig)
             instance.animator.updateBoneMatrices()
@@ -382,16 +431,7 @@ internal class FilamentGameRenderer(
             val rootInstance = transforms.getInstance(instance.root)
             require(rootInstance != 0) { "Lane unit root transform is missing: $index" }
             minionRootInstances[index] = rootInstance
-            val rig = LinkedHashMap<String, BonePose>()
-            for (name in boneNames) {
-                val joint = instance.entities.firstOrNull { asset.getName(it) == name } ?: 0
-                if (joint != 0) {
-                    val jointInstance = transforms.getInstance(joint)
-                    if (jointInstance != 0) {
-                        rig[name] = BonePose(jointInstance, transforms.getTransform(jointInstance, null))
-                    }
-                }
-            }
+            val rig = captureHumanoidRig(instance, "minion-$index")
             minionBones.add(rig)
             applyRestPose(rig)
             instance.animator.updateBoneMatrices()
@@ -440,13 +480,7 @@ internal class FilamentGameRenderer(
         characterRootInstance = transforms.getInstance(player.root)
         require(characterRootInstance != 0) { "Humanoid player root transform is missing" }
 
-        for (name in playerBoneNames) {
-            val entity = player.entities.firstOrNull { asset.getName(it) == name } ?: 0
-            if (entity != 0) {
-                val instance = transforms.getInstance(entity)
-                if (instance != 0) bones[name] = BonePose(instance, transforms.getTransform(instance, null))
-            }
-        }
+        bones.putAll(captureHumanoidRig(player, "player"))
         applyRestPose(bones)
         playerAnimator?.updateBoneMatrices()
         createHeroGear()
@@ -541,7 +575,7 @@ internal class FilamentGameRenderer(
             val asset = heroGearAssets.getOrNull(assetIndex) ?: continue
             val instance = loader.createInstance(asset) ?: continue
             heroGearInstances.add(instance)
-            viewer.scene.addEntities(instance.entities)
+            if (botsVisible) viewer.scene.addEntities(instance.entities)
             val parentByPart = mapOf(
                 "gear_torso" to "spine_02", "gear_trim" to "spine_02",
                 "gear_head" to "Head", "gear_head_trim" to "Head",
@@ -774,12 +808,12 @@ internal class FilamentGameRenderer(
         }
         val castBias = if (activeHero == 0) 0.10f else if (activeHero == 2) -0.08f else 0f
 
-        val upperLeft = 0.07f - stride * 0.34f * strideScale +
+        val upperLeft = 0.52f - stride * 0.34f * strideScale +
             cast * (0.18f + castBias) - guard * 0.12f - hit * 0.06f
-        val upperRight = -0.07f + stride * 0.34f * strideScale -
+        val upperRight = -0.52f + stride * 0.34f * strideScale -
             cast * (0.48f - castBias) + guard * 0.12f + hit * 0.06f
-        val lowerLeft = 0.16f + leftLift * 0.10f + cast * 0.08f + guard * 0.10f
-        val lowerRight = 0.18f + rightLift * 0.10f - cast * 0.42f + guard * 0.10f
+        val lowerLeft = 0.32f + leftLift * 0.10f + cast * 0.08f + guard * 0.10f
+        val lowerRight = 0.34f + rightLift * 0.10f - cast * 0.42f + guard * 0.10f
 
         animateHeroBone("upperarm_l", upperLeft, dt)
         animateHeroBone("upperarm_r", upperRight, dt)
@@ -911,6 +945,73 @@ internal class FilamentGameRenderer(
         minionsVisible = visible
     }
 
+    fun setBotsVisible(visible: Boolean) {
+        if (!sceneLoaded || botsVisible == visible) return
+        botInstances.forEach { instance ->
+            if (visible) viewer.scene.addEntities(instance.entities)
+            else viewer.scene.removeEntities(instance.entities)
+        }
+        botGearInstances.filterNotNull().forEach { instance ->
+            if (visible) viewer.scene.addEntities(instance.entities)
+            else viewer.scene.removeEntities(instance.entities)
+        }
+        botsVisible = visible
+    }
+
+    fun setMenuPresentation(hero: Int, alternateSkin: Boolean = false) {
+        configureShowcase(hero, alternateSkin, heroX = 0.0f, targetX = 0.0f, scale = 1.02f)
+    }
+
+    fun setHeroSelectionPresentation(hero: Int) {
+        configureShowcase(hero, false, heroX = 6.4f, targetX = 4.1f, scale = 1.12f)
+    }
+
+    private fun configureShowcase(
+        hero: Int,
+        alternateSkin: Boolean,
+        heroX: Float,
+        targetX: Float,
+        scale: Float
+    ) {
+        if (!sceneLoaded) return
+        setBotsVisible(false)
+        setMinionsVisible(false)
+        setHeroAppearance(hero, alternateSkin)
+        showcaseMode = true
+        overviewCamera = true
+        showcaseHeroX = heroX
+        showcaseHeroZ = -7.0f
+        showcaseTargetX = targetX
+        showcaseScale = scale
+        showcaseHeight = if (scale > 1.05f) 3.4f else 3.0f
+        showcaseDistance = if (scale > 1.05f) 7.0f else 7.3f
+        showcaseYaw = Math.PI.toFloat()
+        playerYaw = showcaseYaw
+        val scaled = characterScale * showcaseScale
+        val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) - characterMinY * scaled
+        engine.transformManager.setTransform(
+            characterRootInstance,
+            terrainAlignedTransform(showcaseHeroX, showcaseHeroZ, showcaseYaw, scaled, scaled, rootY)
+        )
+        updateCamera(cameraAspect)
+    }
+
+    fun updateMenuPresentation(deltaTime: Float) {
+        if (!sceneLoaded || !showcaseMode) return
+        val dt = deltaTime.coerceIn(0f, 0.05f)
+        if (dt <= 0f) return
+        animationClock += dt
+        updateHeroPose(0f, 0f, 0f, 0f, dt)
+        val scaled = characterScale * showcaseScale
+        val bob = sin(animationClock * 1.35f) * 0.018f
+        val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) + bob - characterMinY * scaled
+        engine.transformManager.setTransform(
+            characterRootInstance,
+            terrainAlignedTransform(showcaseHeroX, showcaseHeroZ, showcaseYaw, scaled, scaled, rootY)
+        )
+        playerAnimator?.updateBoneMatrices()
+    }
+
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
         if (!sceneLoaded || snapshot.size < 318) return
         minionAnimationPhase += deltaTime * 7.2f
@@ -940,11 +1041,11 @@ internal class FilamentGameRenderer(
             val idle = sin(minionAnimationPhase * 0.58f + index * 0.6f)
             val slot = (index % 8) % 4
             val kneeLift = if (slot == 3) 0.38f else 0.46f
-            val rangedReady = if (slot == 3) 0.22f else 0.04f
+            val rangedReady = if (slot == 3) 0.48f else 0.54f
             animateArmPose(rig["upperarm_l"], rangedReady - stride * 0.28f + idle * 0.025f)
             animateArmPose(rig["upperarm_r"], -rangedReady + stride * 0.28f - idle * 0.025f)
-            animateArmPose(rig["lowerarm_l"], if (slot == 3) 0.34f else 0.18f + max(0f, stride) * 0.08f)
-            animateArmPose(rig["lowerarm_r"], if (slot == 3) 0.38f else 0.18f + max(0f, -stride) * 0.08f)
+            animateArmPose(rig["lowerarm_l"], if (slot == 3) 0.34f else 0.30f + max(0f, stride) * 0.08f)
+            animateArmPose(rig["lowerarm_r"], if (slot == 3) 0.38f else 0.32f + max(0f, -stride) * 0.08f)
             animateArmPose(rig["hand_l"], -stride * 0.025f)
             animateArmPose(rig["hand_r"], stride * 0.025f)
             animatePose(rig["pelvis"], sin(minionAnimationPhase * 2f + index) * 0.022f * moving, 2)
@@ -1010,10 +1111,10 @@ internal class FilamentGameRenderer(
             val stride = sin(botAnimationPhase * cadence + index * 0.41f) * moving
             val idle = sin(botAnimationPhase * (0.48f + role * 0.07f) + index * 0.43f)
             val braking = smoothStep01((2.0f - speed) / 2.0f) * moving
-            val readyPose = when (role) { 0 -> 0.10f; 1 -> -0.04f; 2 -> 0.15f; 3 -> 0.20f; else -> 0.04f }
+            val readyPose = when (role) { 0 -> 0.56f; 1 -> 0.50f; 2 -> 0.54f; 3 -> 0.60f; else -> 0.52f }
             animateArmPose(rig["upperarm_l"], readyPose - stride * armDrive - turnLean * 0.05f)
             animateArmPose(rig["upperarm_r"], -readyPose + stride * armDrive - turnLean * 0.05f)
-            val elbow = when (role) { 0 -> 0.24f; 1 -> 0.12f; 2 -> 0.30f; 3 -> 0.40f; else -> 0.20f }
+            val elbow = when (role) { 0 -> 0.36f; 1 -> 0.30f; 2 -> 0.34f; 3 -> 0.42f; else -> 0.32f }
             animateArmPose(rig["lowerarm_l"], elbow + max(0f, stride) * 0.10f)
             animateArmPose(rig["lowerarm_r"], elbow + max(0f, -stride) * 0.10f)
             animateArmPose(rig["hand_l"], -stride * 0.035f)
@@ -1082,10 +1183,10 @@ internal class FilamentGameRenderer(
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
         // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
-        animateArmPose(rig["upperarm_l"], 0.07f)
-        animateArmPose(rig["upperarm_r"], -0.07f)
-        animateArmPose(rig["lowerarm_l"], 0.16f)
-        animateArmPose(rig["lowerarm_r"], 0.16f)
+        animateArmPose(rig["upperarm_l"], 0.52f)
+        animateArmPose(rig["upperarm_r"], -0.52f)
+        animateArmPose(rig["lowerarm_l"], 0.32f)
+        animateArmPose(rig["lowerarm_r"], 0.34f)
         animatePose(rig["spine_01"], 0.015f)
         animatePose(rig["spine_02"], -0.012f)
         animatePose(rig["neck_01"], 0f)
@@ -1160,6 +1261,7 @@ internal class FilamentGameRenderer(
     }
 
     fun setOverviewCamera(overview: Boolean) {
+        showcaseMode = false
         overviewCamera = overview
         val spawn = when (activeHero) {
             1 -> laneCenterX(0, -25f) to -25f
@@ -1185,6 +1287,21 @@ internal class FilamentGameRenderer(
     }
 
     private fun updateCamera(aspect: Float) {
+        if (showcaseMode) {
+            val targetY = terrainHeight(showcaseTargetX, showcaseHeroZ) + 1.0f
+            viewer.camera.setProjection(
+                38.0, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
+                Camera.Fov.VERTICAL
+            )
+            viewer.camera.lookAt(
+                (showcaseTargetX + 2.4f).toDouble(),
+                (targetY + showcaseHeight).toDouble(),
+                (showcaseHeroZ - showcaseDistance).toDouble(),
+                showcaseTargetX.toDouble(), targetY.toDouble(), showcaseHeroZ.toDouble(),
+                0.0, 1.0, 0.0
+            )
+            return
+        }
         // Fixed north-facing isometric framing: hero yaw never rotates the camera.
         val distance = if (overviewCamera) 9.4f else 9.8f
         val height = if (overviewCamera) 9.6f else 11.2f

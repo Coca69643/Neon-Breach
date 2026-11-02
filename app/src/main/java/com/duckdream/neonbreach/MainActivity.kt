@@ -152,10 +152,12 @@ class MainActivity : Activity() {
                     if (result[15] > 0.5f) showResult(true)
                     else if (result[15] < -0.5f) showResult(false)
                 }
+            } else if (state == AppState.MENU) {
+                renderer.updateMenuPresentation(dt)
             }
 
             try {
-                if (state != AppState.MENU) renderer.render(frameTimeNanos)
+                renderer.render(frameTimeNanos)
             } catch (error: Throwable) {
                 Log.e(TAG, "Frame failed; simulation paused", error)
                 enterRecovery("O renderer encontrou uma falha recuperável.")
@@ -290,12 +292,9 @@ class MainActivity : Activity() {
 
     private fun showMenu() {
         transition(AppState.MENU)
-        renderer.setMinionsVisible(false)
-        renderer.setOverviewCamera(true)
-        renderer.setHeroAppearance(selectedHero, ArenaMetaStore.isSkinEquipped(this, selectedHero))
+        renderer.setMenuPresentation(selectedHero, ArenaMetaStore.isSkinEquipped(this, selectedHero))
 
         val layer = FrameLayout(this)
-        layer.addView(ArenaMenuArtworkView(this), FrameLayout.LayoutParams(-1, -1))
 
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -363,9 +362,7 @@ class MainActivity : Activity() {
 
     private fun showHeroSelect() {
         transition(AppState.MENU)
-        renderer.setMinionsVisible(false)
-        renderer.setOverviewCamera(true)
-        renderer.setHeroAppearance(selectedHero)
+        renderer.setHeroSelectionPresentation(selectedHero)
 
         val layer = FrameLayout(this)
         val content = LinearLayout(this).apply {
@@ -533,8 +530,9 @@ class MainActivity : Activity() {
 
     private fun showHud() {
         if (::renderer.isInitialized) {
-            renderer.setOverviewCamera(false)
+            renderer.setBotsVisible(true)
             renderer.setMinionsVisible(true)
+            renderer.setOverviewCamera(false)
         }
         val layer = FrameLayout(this)
         val top = LinearLayout(this).apply {

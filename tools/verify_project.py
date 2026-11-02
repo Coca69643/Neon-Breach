@@ -28,7 +28,6 @@ physics_tests = read("tests/arena_physics_tests.cpp")
 gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
-menu_art = read("app/src/main/java/com/duckdream/neonbreach/ArenaMenuArtworkView.kt")
 workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
@@ -39,7 +38,14 @@ avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
 
 checks = [
-    ("ArenaMenuArtworkView(this)" in main and "COLEÇÃO" in main and "ABRIR LOJA" in main and "ArenaMenuArtworkView" in menu_art, "illustrated HUB artwork and compact navigation missing"),
+    ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
+     "renderer.updateMenuPresentation(dt)" in main and "renderer.render(frameTimeNanos)" in main and
+     "if (state != AppState.MENU) renderer.render" not in main, "menu and hero selection must render the native 3D scene"),
+    ("captureHumanoidRig" in renderer and "getJointsAt(0)" in renderer and "fallbackJointIndices" in renderer,
+     "skinned humanoid joints must be resolved from the active skin"),
+    ("upperLeft = 0.52f" in renderer and "upperRight = -0.52f" in renderer and
+     'animateArmPose(rig["upperarm_l"], 0.52f)' in renderer,
+     "neutral humanoid pose must not remain in T-pose"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
