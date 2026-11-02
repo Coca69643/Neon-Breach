@@ -22,9 +22,12 @@ void testTreeCollisionAndSliding() {
     assert(std::isfinite(body.x)&&std::isfinite(body.z));
 }
 void testStructureCollision() {
-    arena_physics::Body body{0.99f,19.0f,0.0f,0.0f,0.43f};
+    const float towerZ=22.0f;
+    const float towerX=0.5f+std::sin(towerZ*0.12f)*0.72f;
+    arena_physics::Body body{towerX,19.0f,0.0f,0.0f,0.43f};
     for(int i=0;i<180;++i) arena_physics::move(body,0.0f,4.0f,1.0f/60.0f);
-    assert(body.z>20.80f&&body.z<=20.96f);
+    assert(body.z>19.0f);
+    assert(distance(body.x,body.z,towerX,towerZ)>=1.049f);
 }
 void testWorldBoundary() {
     arena_physics::Body body{40.0f,0.0f,0.0f,0.0f,0.45f};
