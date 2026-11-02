@@ -1,4 +1,4 @@
-# Projeto Arena 0.9.0
+# Projeto Arena 0.9.1
 
 MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 local com bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
 
@@ -10,13 +10,22 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - O atlas de textura compartilhado é carregado uma vez pelo ResourceLoader do Filament.
 - A malha de runtime ficou restrita ao terreno, às estradas e ao rio; não gera mais a vegetação decorativa repetitiva da versão anterior.
 
+## Evolução 0.9.1
+- Menu principal preserva a apresentação 3D do herói e agora separa JOGAR, HERÓIS, COMO JOGAR e AJUSTES; tocar no cenário não inicia uma partida.
+- Seleção de herói explica função e habilidade antes da confirmação.
+- Lyra usa AURA para recuperar aliados próximos e enfraquecer rivais dentro da área.
+- Bastion tem IMPACTO de maior alcance/dano, ataque pesado e escudo prolongado.
+- Kairo tem ONDA de recarga reduzida, ataque rápido e impulso mais veloz.
+- A sensibilidade do direcional possui três níveis persistidos localmente.
+- O jogador agora passa por uma janela de retorno de 1,45 s após ser derrotado; o HUD mostra o tempo restante e o total de quedas.
+
 ## Loop de cerco 0.9.0
 - A vitória deixa de depender de controle abstrato de duas zonas: é necessário derrubar as três torres da rota atacante e reduzir a vida do núcleo inimigo a zero.
 - Duplas de tropas por rota procuram tropas rivais próximas, entram em combate, empurram a rota quando vencem e reaparecem em novas ondas após serem derrotadas.
 - Torres defensivas atacam tropas e heróis adversários em alcance; o radar indica torres ativas e destruídas.
 - Bots avançam pela rota, interrompem o avanço para duelar e atacam torres ou núcleo quando o caminho está livre.
-- O jogador recebe o comando GOLPE, com seleção automática do alvo válido mais próximo em alcance: herói, tropa, torre ou núcleo.
-- O HUD exibe a vida do jogador, recarga do golpe, progresso das torres e integridade do núcleo.
+- O jogador usa GOLPE manual, com seleção automática do alvo válido mais próximo em alcance: herói, tropa, torre ou núcleo.
+- O HUD exibe vida, quedas, recarga do golpe, progresso das torres e integridade do núcleo.
 
 ## Personagens e unidades
 - Corrigido o eixo de rotação dos ombros; braços agora descem da pose horizontal e acompanham a passada.
@@ -32,8 +41,8 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - O jogador usa GOLPE manual para atingir o alvo válido mais próximo; heróis controlados pela IA mantêm ataques contextuais.
 - 1 jogador + 4 bots aliados contra 5 bots adversários.
 - Três rotas de cerco; derrubar as torres e destruir o núcleo inimigo vence a partida.
-- PULSO afeta heróis e tropas em área; ESCUDO reduz dano recebido; IMPULSO reposiciona na direção do joystick.
-- O HUD exibe a vida atual do jogador.
+- AURA (Lyra), IMPACTO (Bastion) ou ONDA (Kairo) varia por herói; ESCUDO reduz dano recebido; IMPULSO reposiciona na direção do joystick.
+- O HUD exibe vida e quedas; derrotas acionam retorno temporizado à base.
 - Sem login, servidor, matchmaking ou conexão com a internet.
 
 ## Mundo e câmera
@@ -44,7 +53,7 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - Android nativo Kotlin + C++20/NDK.
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 39 / versionName 0.9.0.
+- versionCode 40 / versionName 0.9.1.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas
@@ -52,4 +61,4 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - A animação é esquelética procedural no rig; ainda não há um conjunto completo de clipes exclusivos por herói.
 - As tropas já combatem em cada rota e reaparecem em ondas, mas usam apenas duas unidades homogêneas por equipe/rota; a IA de formação e de cerco ainda é simplificada.
 - A IA dos heróis ainda é local e simplificada; não existe seleção de alvo manual por unidade nem comportamento avançado de equipe.
-- O 0.9.0 implementa o primeiro loop de cerco jogável, mas ainda não é um MOBA completo: tropas são duplas homogêneas, não há objetivos de selva, itens, níveis ou habilidades exclusivas por herói. CI não substitui teste físico no Realme C53: câmera, FPS sustentado, memória, temperatura e estabilidade precisam ser medidos no aparelho.
+- O 0.9.1 amplia o loop de cerco e diferencia as funções dos heróis, mas ainda não é um MOBA completo: tropas são duplas homogêneas, não há objetivos de selva, itens, níveis ou habilidades exclusivas por herói. CI não substitui teste físico no Realme C53: câmera, FPS sustentado, memória, temperatura e estabilidade precisam ser medidos no aparelho.
