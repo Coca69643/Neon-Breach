@@ -280,7 +280,7 @@ class MainActivity : Activity() {
         transition(AppState.MENU)
         renderer.setMinionsVisible(false)
         renderer.setOverviewCamera(true)
-        renderer.setHeroAppearance(selectedHero)
+        renderer.setHeroAppearance(selectedHero, ArenaMetaStore.isSkinEquipped(this, selectedHero))
 
         val layer = FrameLayout(this)
         val header = LinearLayout(this).apply {
