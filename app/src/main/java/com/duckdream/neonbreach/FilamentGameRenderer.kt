@@ -645,12 +645,7 @@ internal class FilamentGameRenderer(
         val s = sin(playerYaw) * scaleX
         val rootY = terrainHeight(x, z) + gaitBob + groundedOffset + downOffset + respawnOffset -
             characterMinY * scaleY
-        val matrix = floatArrayOf(
-            c, 0f, -s, 0f,
-            0f, scaleY, 0f, 0f,
-            s, 0f, c, 0f,
-            x, rootY, z, 1f
-        )
+        val matrix = terrainAlignedTransform(x, z, playerYaw, scaleX, scaleY, rootY)
         engine.transformManager.setTransform(characterRootInstance, matrix)
 
         updateHeroPose(speed, turnRate, moving, runBlend, dt)
@@ -783,12 +778,8 @@ internal class FilamentGameRenderer(
         val c = cos(yaw) * scaleX
         val sn = sin(yaw) * scaleX
         val y = terrainHeight(x, z) - characterMinY * scaleY
-        engine.transformManager.setTransform(root, floatArrayOf(
-            c, 0f, -sn, 0f,
-            0f, scaleY, 0f, 0f,
-            sn, 0f, c, 0f,
-            x, y, z, 1f
-        ))
+        engine.transformManager.setTransform(root,
+            terrainAlignedTransform(x, z, yaw, scaleX, scaleY, y))
     }
 
     private fun applyBotTint(index: Int, disabled: Boolean) {
@@ -934,12 +925,7 @@ internal class FilamentGameRenderer(
             val y = terrainHeight(x, z) - characterMinY * scaleY
             val c = cos(yaw) * scaleX
             val sinYaw = sin(yaw) * scaleX
-            val matrix = floatArrayOf(
-                c, 0f, -sinYaw, 0f,
-                0f, scaleY, 0f, 0f,
-                sinYaw, 0f, c, 0f,
-                x, y, z, 1f
-            )
+            val matrix = terrainAlignedTransform(x, z, yaw, scaleX, scaleY, y)
             transforms.setTransform(rootInstance, matrix)
 
             val rig = botBones.getOrNull(index).orEmpty()
@@ -977,6 +963,34 @@ internal class FilamentGameRenderer(
     }
 
     private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)
+
+    private fun terrainAlignedTransform(
+        x: Float, z: Float, yaw: Float, scaleX: Float, scaleY: Float, rootY: Float
+    ): FloatArray {
+        val normal = WorldGlbBuilder.normalAt(x, z)
+        val upX = normal[0]; val upY = normal[1]; val upZ = normal[2]
+        var forwardX = sin(yaw); var forwardY = 0f; var forwardZ = cos(yaw)
+        val projection = forwardX * upX + forwardY * upY + forwardZ * upZ
+        forwardX -= upX * projection
+        forwardY -= upY * projection
+        forwardZ -= upZ * projection
+        val forwardLength = kotlin.math.sqrt(forwardX * forwardX + forwardY * forwardY + forwardZ * forwardZ).coerceAtLeast(0.0001f)
+        forwardX /= forwardLength; forwardY /= forwardLength; forwardZ /= forwardLength
+        var rightX = upY * forwardZ - upZ * forwardY
+        var rightY = upZ * forwardX - upX * forwardZ
+        var rightZ = upX * forwardY - upY * forwardX
+        val rightLength = kotlin.math.sqrt(rightX * rightX + rightY * rightY + rightZ * rightZ).coerceAtLeast(0.0001f)
+        rightX /= rightLength; rightY /= rightLength; rightZ /= rightLength
+        forwardX = rightY * upZ - rightZ * upY
+        forwardY = rightZ * upX - rightX * upZ
+        forwardZ = rightX * upY - rightY * upX
+        return floatArrayOf(
+            rightX * scaleX, rightY * scaleX, rightZ * scaleX, 0f,
+            upX * scaleY, upY * scaleY, upZ * scaleY, 0f,
+            forwardX * scaleX, forwardY * scaleX, forwardZ * scaleX, 0f,
+            x, rootY, z, 1f
+        )
+    }
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
         // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
