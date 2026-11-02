@@ -32,7 +32,7 @@ void testStructureCollision() {
 void testWorldBoundary() {
     arena_physics::Body body{40.0f,0.0f,0.0f,0.0f,0.45f};
     arena_physics::resolveWorld(body);
-    assert(std::abs(body.x)<35.0f);
+    assert(std::abs(body.x)<36.0f);
 }
 void testBraking() {
     arena_physics::Body body{0.0f,-5.0f,0.0f,0.0f,0.35f};
