@@ -73,6 +73,7 @@ internal class FilamentGameRenderer(
     private var minionAnimationPhase = 0f
     private val minionScale = 0.72f
     private var minionsVisible = false
+    private var menuPresentation = false
     private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
@@ -155,17 +156,17 @@ internal class FilamentGameRenderer(
             .build(engine)
         viewer.scene.skybox = skybox
         indirectLight = IndirectLight.Builder()
-            .irradiance(1, floatArrayOf(0.28f, 0.31f, 0.36f))
-            .intensity(22_000.0f)
+            .irradiance(1, floatArrayOf(0.30f, 0.29f, 0.24f))
+            .intensity(14_500.0f)
             .build(engine)
         viewer.scene.indirectLight = indirectLight
 
         // ModelViewer supplies a sun, but its default direction is straight down.
         // Angle it across the map so foliage, towers and lane walls gain readable form.
         engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
-        engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
-        engine.lightManager.setIntensity(viewer.light, 78_000.0f)
-        viewer.camera.setExposure(15.5f, 1.0f / 100.0f, 80.0f)
+        engine.lightManager.setColor(viewer.light, 1.0f, 0.96f, 0.86f)
+        engine.lightManager.setIntensity(viewer.light, 66_000.0f)
+        viewer.camera.setExposure(15.0f, 1.0f / 100.0f, 80.0f)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
             hdrColorBuffer = View.QualityLevel.LOW
@@ -638,16 +639,8 @@ internal class FilamentGameRenderer(
         if (speed > 0.18f) phase += speed * dt * 1.72f * strideProfile
         animationClock += dt
 
-        val widthScale = when (activeHero) {
-            1 -> 1.07f
-            2 -> 0.96f
-            else -> 1.0f
-        }
-        val heightScale = when (activeHero) {
-            1 -> 0.99f
-            2 -> 1.035f
-            else -> 1.01f
-        }
+        val widthScale = heroWidthScale()
+        val heightScale = heroHeightScale()
         val scaleX = characterScale * widthScale
         val scaleY = characterScale * heightScale
         val gaitBob = kotlin.math.abs(sin(phase * 2f)) * 0.024f * moving
@@ -669,6 +662,27 @@ internal class FilamentGameRenderer(
         previousHeroSpeed = speed
         playerAnimator?.updateBoneMatrices()
         updateCamera(cameraAspect)
+    }
+
+    private fun heroWidthScale(): Float = when (activeHero) {
+        1 -> 1.20f
+        2 -> 0.90f
+        else -> 0.96f
+    }
+
+    private fun heroHeightScale(): Float = when (activeHero) {
+        1 -> 0.97f
+        2 -> 1.08f
+        else -> 1.04f
+    }
+
+    fun updateMenuIdle(deltaTime: Float) {
+        if (!sceneLoaded || !overviewCamera) return
+        val dt = deltaTime.coerceIn(0f, 0.05f)
+        if (dt <= 0f) return
+        animationClock += dt
+        updateHeroPose(0f, 0f, 0f, 0f, dt)
+        playerAnimator?.updateBoneMatrices()
     }
 
     private fun smoothStep01(value: Float): Float {
@@ -732,12 +746,14 @@ internal class FilamentGameRenderer(
         }
         val castBias = if (activeHero == 0) 0.10f else if (activeHero == 2) -0.08f else 0f
 
-        val upperLeft = -0.92f - stride * 0.30f * strideScale +
-            cast * (0.18f + castBias) + guard * 0.08f - hit * 0.08f
-        val upperRight = 0.92f + stride * 0.30f * strideScale -
-            cast * (0.54f - castBias) - guard * 0.08f + hit * 0.08f
-        val lowerLeft = 0.50f + leftLift * 0.18f + cast * 0.06f + guard * 0.08f
-        val lowerRight = 0.50f + rightLift * 0.18f - cast * 0.62f + guard * 0.08f
+        // The original rig's shoulder axes are mirrored. Keep a relaxed downward rest
+        // angle and use a small counter-swing instead of forcing both arms into a rigid V.
+        val upperLeft = -0.34f - stride * 0.18f * strideScale +
+            cast * (0.16f + castBias) + guard * 0.035f - hit * 0.045f
+        val upperRight = 0.34f + stride * 0.18f * strideScale -
+            cast * (0.34f - castBias) - guard * 0.035f + hit * 0.045f
+        val lowerLeft = 0.20f + leftLift * 0.12f + cast * 0.04f + guard * 0.04f
+        val lowerRight = 0.20f + rightLift * 0.12f - cast * 0.34f + guard * 0.04f
 
         animateHeroBone("upperarm_l", upperLeft, dt, 2)
         animateHeroBone("upperarm_r", upperRight, dt, 2)
@@ -783,8 +799,9 @@ internal class FilamentGameRenderer(
         val root = minionRootInstances.getOrNull(index) ?: return
         if (root == 0) return
         val slot = (index % 8) % 4
-        val width = if (slot == 3) 0.92f else when (slot) { 0 -> 0.94f; 1 -> 1.02f; else -> 1.08f }
-        val height = if (slot == 3) 0.94f else when (slot) { 0 -> 1.02f; 1 -> 0.98f; else -> 1.0f }
+        // Distinct silhouettes for melee, ranged and heavy slots instead of recolours alone.
+        val width = when (slot) { 0 -> 0.98f; 1 -> 0.80f; 2 -> 1.24f; else -> 0.84f }
+        val height = when (slot) { 0 -> 0.98f; 1 -> 1.12f; 2 -> 0.92f; else -> 1.08f }
         val scaleX = characterScale * minionScale * width
         val scaleY = characterScale * minionScale * height
         val y = terrainHeight(x, z) - characterMinY * scaleY
@@ -898,10 +915,10 @@ internal class FilamentGameRenderer(
             val idle = sin(minionAnimationPhase * 0.58f + index * 0.6f)
             val slot = (index % 8) % 4
             val kneeLift = if (slot == 3) 0.38f else 0.46f
-            animateArmPose(rig["upperarm_l"], -0.90f - stride * 0.24f + idle * 0.018f)
-            animateArmPose(rig["upperarm_r"], 0.90f + stride * 0.24f - idle * 0.018f)
-            animateArmPose(rig["lowerarm_l"], 0.48f + max(0f, stride) * 0.08f)
-            animateArmPose(rig["lowerarm_r"], 0.48f + max(0f, -stride) * 0.08f)
+            animateArmPose(rig["upperarm_l"], -0.32f - stride * 0.17f + idle * 0.012f)
+            animateArmPose(rig["upperarm_r"], 0.32f + stride * 0.17f - idle * 0.012f)
+            animateArmPose(rig["lowerarm_l"], 0.18f + max(0f, stride) * 0.06f)
+            animateArmPose(rig["lowerarm_r"], 0.18f + max(0f, -stride) * 0.06f)
             animateArmPose(rig["hand_l"], -stride * 0.025f)
             animateArmPose(rig["hand_r"], stride * 0.025f)
             animatePose(rig["pelvis"], sin(minionAnimationPhase * 2f + index) * 0.022f * moving, 2)
@@ -965,10 +982,10 @@ internal class FilamentGameRenderer(
             val stride = sin(botAnimationPhase * (0.92f + index * 0.015f) + index * 0.41f) * moving
             val idle = sin(botAnimationPhase * 0.58f + index * 0.43f)
             val braking = smoothStep01((2.0f - speed) / 2.0f) * moving
-            animateArmPose(rig["upperarm_l"], -0.92f - stride * 0.28f - turnLean * 0.07f)
-            animateArmPose(rig["upperarm_r"], 0.92f + stride * 0.28f - turnLean * 0.07f)
-            animateArmPose(rig["lowerarm_l"], 0.50f + max(0f, stride) * 0.14f)
-            animateArmPose(rig["lowerarm_r"], 0.50f + max(0f, -stride) * 0.14f)
+            animateArmPose(rig["upperarm_l"], -0.36f - stride * 0.20f - turnLean * 0.045f)
+            animateArmPose(rig["upperarm_r"], 0.36f + stride * 0.20f - turnLean * 0.045f)
+            animateArmPose(rig["lowerarm_l"], 0.20f + max(0f, stride) * 0.08f)
+            animateArmPose(rig["lowerarm_r"], 0.20f + max(0f, -stride) * 0.08f)
             animateArmPose(rig["hand_l"], -stride * 0.035f)
             animateArmPose(rig["hand_r"], stride * 0.035f)
             animatePose(rig["pelvis"], turnLean * 0.055f + sin(botAnimationPhase * 2f + index) * 0.018f * moving, 2)
@@ -1035,10 +1052,10 @@ internal class FilamentGameRenderer(
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
         // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
-        animateArmPose(rig["upperarm_l"], -0.92f)
-        animateArmPose(rig["upperarm_r"], 0.92f)
-        animateArmPose(rig["lowerarm_l"], 0.50f)
-        animateArmPose(rig["lowerarm_r"], 0.50f)
+        animateArmPose(rig["upperarm_l"], -0.34f)
+        animateArmPose(rig["upperarm_r"], 0.34f)
+        animateArmPose(rig["lowerarm_l"], 0.20f)
+        animateArmPose(rig["lowerarm_r"], 0.20f)
         animatePose(rig["spine_01"], 0.015f)
         animatePose(rig["spine_02"], -0.012f)
         animatePose(rig["neck_01"], 0f)
@@ -1050,33 +1067,39 @@ internal class FilamentGameRenderer(
     }
 
     private fun animateArmPose(bone: BonePose?, angle: Float) {
-        animatePose(bone, angle, 2)
+        // Blend a little shoulder swing with the flex angle to avoid flat, broken-looking arms.
+        animatePoseEuler(bone, angle * 0.42f, angle)
+    }
+
+    private fun multiplyMatrix(a: FloatArray, b: FloatArray): FloatArray {
+        val out = FloatArray(16)
+        for (column in 0..3) for (row in 0..3) {
+            var value = 0f
+            for (k in 0..3) value += a[k * 4 + row] * b[column * 4 + k]
+            out[column * 4 + row] = value
+        }
+        return out
+    }
+
+    private fun rotationX(angle: Float): FloatArray {
+        val c = cos(angle); val s = sin(angle)
+        return floatArrayOf(1f,0f,0f,0f, 0f,c,s,0f, 0f,-s,c,0f, 0f,0f,0f,1f)
+    }
+
+    private fun rotationZ(angle: Float): FloatArray {
+        val c = cos(angle); val s = sin(angle)
+        return floatArrayOf(c,s,0f,0f, -s,c,0f,0f, 0f,0f,1f,0f, 0f,0f,0f,1f)
+    }
+
+    private fun animatePoseEuler(bone: BonePose?, pitch: Float, roll: Float) {
+        if (bone == null) return
+        val rotation = multiplyMatrix(rotationX(pitch), rotationZ(roll))
+        engine.transformManager.setTransform(bone.instance, multiplyMatrix(bone.base, rotation))
     }
 
     private fun animatePose(bone: BonePose?, angle: Float, axis: Int = 0) {
-        if (bone == null) return
-        val c = cos(angle)
-        val s = sin(angle)
-        val rotation = if (axis == 2) floatArrayOf(
-            c, s, 0f, 0f,
-            -s, c, 0f, 0f,
-            0f, 0f, 1f, 0f,
-            0f, 0f, 0f, 1f
-        ) else floatArrayOf(
-            1f, 0f, 0f, 0f,
-            0f, c, s, 0f,
-            0f, -s, c, 0f,
-            0f, 0f, 0f, 1f
-        )
-        val out = FloatArray(16)
-        for (column in 0..3) {
-            for (row in 0..3) {
-                var value = 0f
-                for (k in 0..3) value += bone.base[k * 4 + row] * rotation[column * 4 + k]
-                out[column * 4 + row] = value
-            }
-        }
-        engine.transformManager.setTransform(bone.instance, out)
+        if (axis == 2) animatePoseEuler(bone, angle * 0.28f, angle)
+        else animatePoseEuler(bone, angle, 0f)
     }
 
     fun setHeroAppearance(hero: Int, alternateSkin: Boolean = false) {
@@ -1119,28 +1142,45 @@ internal class FilamentGameRenderer(
             else -> laneCenterX(2, -25f) + 1.8f to -25f
         }
         if (overview) {
-            cameraX = spawn.first
-            cameraZ = spawn.second
+            // The HUB becomes a character-led scene: one hero, no crowd of idle bots.
+            cameraX = 0f
+            cameraZ = -18.8f
             cameraY = terrainHeight(cameraX, cameraZ)
-            playerYaw = 0.0f
-            val rootY = cameraY - characterMinY * characterScale
-            val scale = characterScale
+            playerYaw = Math.PI.toFloat()
+            previousHeroSpeed = 0f
+            yawInitialized = false
+            val sx = characterScale * heroWidthScale()
+            val sy = characterScale * heroHeightScale()
+            val rootY = cameraY - characterMinY * sy
             engine.transformManager.setTransform(characterRootInstance,
-                terrainAlignedTransform(cameraX, cameraZ, playerYaw, scale, scale, rootY))
+                terrainAlignedTransform(cameraX, cameraZ, playerYaw, sx, sy, rootY))
         } else {
             cameraX = spawn.first
             cameraZ = spawn.second
             cameraY = terrainHeight(spawn.first, spawn.second)
+            playerYaw = 0f
             yawInitialized = false
         }
         updateCamera(cameraAspect)
     }
 
+    fun setMenuPresentation(enabled: Boolean) {
+        if (!sceneLoaded || menuPresentation == enabled) return
+        menuPresentation = enabled
+        if (enabled) {
+            botInstances.forEach { viewer.scene.removeEntities(it.entities) }
+            setMinionsVisible(false)
+        } else {
+            botInstances.forEach { viewer.scene.addEntities(it.entities) }
+            setMinionsVisible(true)
+        }
+    }
+
     private fun updateCamera(aspect: Float) {
         // Fixed north-facing isometric framing: hero yaw never rotates the camera.
-        val distance = if (overviewCamera) 9.4f else 11.6f
-        val height = if (overviewCamera) 9.6f else 13.2f
-        val fov = if (overviewCamera) 48.0 else 51.0
+        val distance = if (overviewCamera) 4.0f else 11.6f
+        val height = if (overviewCamera) 4.2f else 13.2f
+        val fov = if (overviewCamera) 38.0 else 51.0
         viewer.camera.setProjection(
             fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
             Camera.Fov.VERTICAL
