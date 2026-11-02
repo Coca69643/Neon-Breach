@@ -84,6 +84,8 @@ jobs:
           "$RUNNER_TEMP/arena_physics_tests"
       - name: Verify project structure
         run: python3 tools/verify_project.py
+      - name: Test generated hero gear GLB variants
+        run: gradle testDebugUnitTest --no-daemon --stacktrace
       - name: Compile Android APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
