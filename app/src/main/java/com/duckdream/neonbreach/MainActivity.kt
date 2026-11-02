@@ -310,7 +310,7 @@ class MainActivity : Activity() {
             gravity = Gravity.CENTER_VERTICAL
         }
         accountBar.addView(label(
-            "MOEDAS \${ArenaMetaStore.coins(this@MainActivity)}   •   FRAGMENTOS \${ArenaMetaStore.shards(this@MainActivity)}",
+            "MOEDAS ${ArenaMetaStore.coins(this@MainActivity)}   •   FRAGMENTOS ${ArenaMetaStore.shards(this@MainActivity)}",
             9f, Color.rgb(247, 219, 160), true
         ).apply { setPadding(0, 0, dp(8), 0) })
         accountBar.addView(actionButton("?") { showGuide() },
