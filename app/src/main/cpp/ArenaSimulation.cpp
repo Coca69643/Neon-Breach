@@ -58,7 +58,6 @@ std::array<NeutralCamp, kCampCount> gCamps{};
 std::array<float, kTowerCount> gTowerHealth{};
 std::array<float, kTowerCount> gTowerCooldown{};
 std::array<std::array<float, 3>, 2> gWaveCooldown{};
-std::array<int, 3> gWaveGroup{{0, 0, 0}};
 std::array<float, 2> gCoreHealth{{kCoreMaxHealth, kCoreMaxHealth}};
 std::array<float, 2> gTeamKills{{0.0f, 0.0f}};
 std::array<float, 2> gTeamGold{{500.0f, 500.0f}};
@@ -110,7 +109,6 @@ Vec2 normalized(Vec2 v) {
     const float d = std::max(length(v), 0.001f);
     return {v.x / d, v.z / d};
 }
-float clamp01(float v) { return std::clamp(v, 0.0f, 1.0f); }
 float terrainHeight(float x, float z) {
     const float west = 0.78f * std::exp(-((x + 24.0f) * (x + 24.0f)) / 54.0f);
     const float east = 0.82f * std::exp(-((x - 24.0f) * (x - 24.0f)) / 58.0f);
@@ -169,10 +167,6 @@ Vec2 campPosition(int index) {
 }
 Vec2 objectivePosition(int objective) {
     return objective == 0 ? Vec2{-7.0f, 0.2f} : Vec2{7.0f, 0.2f};
-}
-int objectiveOwner(int objective) {
-    return objective == 0 ? (gObjectiveOneHealth > 0.0f ? 1 : 0)
-                          : (gObjectiveTwoHealth > 0.0f ? 1 : 0);
 }
 int playerRole() {
     if (gPlayerSelectedHero == 1) return 0; // Bastion: solo lane
@@ -250,12 +244,10 @@ void initializeLaneUnits() {
     }
     gWaveCooldown = {{{kLaneWaveInterval, kLaneWaveInterval, kLaneWaveInterval},
                       {kLaneWaveInterval, kLaneWaveInterval, kLaneWaveInterval}}};
-    gWaveGroup = {{0, 0, 0}};
 }
 void initializeBots() {
     // The player occupies one role; four allies fill the remaining roles.
     constexpr std::array<int, 5> lanes{{0, 1, 1, 2, 2}};
-    constexpr std::array<int, 5> roles{{0, 1, 2, 3, 4}};
     const int occupiedRole = playerRole();
     int blueIndex = 0;
     for (int role = 0; role < 5; ++role) {
@@ -419,7 +411,7 @@ void damageLaneUnit(LaneUnit &unit, int sourceTeam, float damage) {
     if (unit.health <= 0.0f) return;
     unit.health = std::max(0.0f, unit.health - damage);
     if (unit.health <= 0.0f) {
-        unit.respawnTime = 24.0f;
+        unit.respawnTime = 0.0f;
         if (sourceTeam == 0 && distance(gPlayerPosition, unit.position) <= 10.5f) {
             gPlayerGold += unit.slot == 3 ? 58.0f : 42.0f;
             addPlayerXp(unit.slot == 3 ? 34.0f : 26.0f);
@@ -517,11 +509,7 @@ void updatePlayerTimers(float dt) {
 }
 void updateLaneUnits(float dt) {
     for (LaneUnit &unit : gLaneUnits) {
-        if (unit.health <= 0.0f) {
-            unit.respawnTime = std::max(0.0f, unit.respawnTime - dt);
-            if (unit.respawnTime <= 0.0f) spawnLaneUnit(unit, unit.team, unit.lane, unit.slot);
-            continue;
-        }
+        if (unit.health <= 0.0f) continue;
         unit.attackCooldown = std::max(0.0f, unit.attackCooldown - dt);
         if (unit.startDelay > 0.0f) {
             unit.startDelay = std::max(0.0f, unit.startDelay - dt);
@@ -581,15 +569,12 @@ void updateLaneUnits(float dt) {
             wave -= dt;
             if (wave > 0.0f) continue;
             wave = kLaneWaveInterval;
-            gWaveGroup[static_cast<std::size_t>(lane)] =
-                (gWaveGroup[static_cast<std::size_t>(lane)] + 1) % 2;
-            // Four-unit waves are staggered by team and lane; surviving units are not teleported or replaced.
-            const int group = gWaveGroup[static_cast<std::size_t>(lane)];
+            // Wave timers are independent for every team/lane. Dead slots return together;
+            // surviving units keep their position and health instead of being teleported.
             for (int slot = 0; slot < 4; ++slot) {
                 const int index = team * 12 + lane * 4 + slot;
                 LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(index)];
-                if (unit.health <= 0.0f && unit.respawnTime <= 0.0f) spawnLaneUnit(unit, team, lane, slot);
-                (void)group;
+                if (unit.health <= 0.0f) spawnLaneUnit(unit, team, lane, slot);
             }
         }
     }
@@ -633,7 +618,7 @@ void updateTowers(float dt) {
             }
             if (defendingTeam == 1 && gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f &&
                 distance(pos, gPlayerPosition) <= 7.8f) {
-                gPlayerHealth = std::max(0.0f, gPlayerHealth - 12.0f * (1.0f - gPlayerArmor));
+                gPlayerHealth = std::max(0.0f, gPlayerHealth - playerDamageTaken(12.0f));
                 cooldown = 1.0f;
             }
         }
@@ -660,7 +645,7 @@ void updateBots(float dt) {
             const Vec2 delta = sub(gPlayerPosition, bot.position);
             if (playerDistance > 2.2f) moveActor(bot.position, bot.velocity, add(gPlayerPosition, mul(normalized(mul(delta, -1.0f)), 1.9f)), kBotSpeed, dt);
             else if (bot.attackCooldown <= 0.0f) {
-                gPlayerHealth = std::max(0.0f, gPlayerHealth - 10.0f * (1.0f - gPlayerArmor));
+                gPlayerHealth = std::max(0.0f, gPlayerHealth - playerDamageTaken(10.0f));
                 bot.attackCooldown = 1.05f;
             }
             continue;
@@ -735,6 +720,11 @@ void updateBots(float dt) {
         }
     }
 }
+float playerDamageTaken(float damage) {
+    const float shieldScale = gShieldTime > 0.0f ? 0.58f : 1.0f;
+    return damage * (1.0f - gPlayerArmor) * shieldScale;
+}
+
 void updatePlayerTimersAndMovement(float inputX, float inputZ, float dt) {
     updatePlayerTimers(dt);
     if (gPlayerRespawnTime <= 0.0f && gPlayerDisrupted <= 0.0f) movePlayer(inputX, inputZ, dt);
@@ -857,7 +847,8 @@ Java_com_duckdream_neonbreach_MainActivity_nativeCastPulse(JNIEnv *, jobject) {
     std::scoped_lock lock(gMutex);
     if (!gInitialized) resetSimulation();
     if (gPlayerHealth <= 0.0f || gPlayerRespawnTime > 0.0f || gPulseCooldown > 0.0f || gPlayerDisrupted > 0.0f) return JNI_FALSE;
-    const float radius = gPlayerSelectedHero == 1 ? 7.0f : (gPlayerSelectedHero == 2 ? 5.6f : 6.2f);
+    const float skillScale = 1.0f + static_cast<float>(gPlayerSkillLevel - 1) * 0.08f;
+    const float radius = (gPlayerSelectedHero == 1 ? 7.0f : (gPlayerSelectedHero == 2 ? 5.6f : 6.2f)) * (1.0f + static_cast<float>(gPlayerSkillLevel - 1) * 0.025f);
     int affected = 0;
     if (gPlayerSelectedHero == 0) {
         const float before = gPlayerHealth;
@@ -886,12 +877,12 @@ Java_com_duckdream_neonbreach_MainActivity_nativeCastPulse(JNIEnv *, jobject) {
         for (int i = 4; i < kBotCount; ++i) {
             Bot &bot = gBots[static_cast<std::size_t>(i)];
             if (bot.disabled > 0.0f || distance(bot.position, gPlayerPosition) > radius) continue;
-            damageBot(bot, i, 0, gPlayerSelectedHero == 1 ? 52.0f : 36.0f);
+            damageBot(bot, i, 0, (gPlayerSelectedHero == 1 ? 52.0f : 36.0f) * skillScale);
             ++affected;
         }
         for (LaneUnit &unit : gLaneUnits) {
             if (unit.team == 1 && unit.health > 0.0f && distance(unit.position, gPlayerPosition) <= radius) {
-                damageLaneUnit(unit, 0, gPlayerSelectedHero == 1 ? 48.0f : 36.0f);
+                damageLaneUnit(unit, 0, (gPlayerSelectedHero == 1 ? 48.0f : 36.0f) * skillScale);
                 ++affected;
             }
         }
@@ -916,7 +907,6 @@ Java_com_duckdream_neonbreach_MainActivity_nativeActivateShield(JNIEnv *, jobjec
     if (gPlayerHealth <= 0.0f || gPlayerRespawnTime > 0.0f || gShieldCooldown > 0.0f || gPlayerDisrupted > 0.0f) return JNI_FALSE;
     gShieldTime = gPlayerSelectedHero == 1 ? 4.5f : 3.0f;
     gShieldCooldown = std::max(5.0f, (gPlayerSelectedHero == 1 ? 8.5f : 11.0f) * (1.0f - gPlayerHaste));
-    gPlayerArmor = std::min(0.32f, gPlayerArmor + 0.015f);
     return JNI_TRUE;
 }
 
