@@ -9,7 +9,6 @@ import android.graphics.Path
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.content.Context
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
 import android.os.Handler
 import android.util.Log
@@ -66,7 +65,7 @@ class MainActivity : Activity() {
     private val white = Color.rgb(246, 241, 222)
     private val muted = Color.rgb(180, 174, 149)
     private val panel = Color.argb(220, 18, 23, 14)
-    private val prefs by lazy { getSharedPreferences("neon_breach_settings", MODE_PRIVATE) }
+    private val prefs by lazy { getSharedPreferences("projeto_arena_settings", MODE_PRIVATE) }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -87,15 +86,15 @@ class MainActivity : Activity() {
         Log.i("ArenaStartup", "Activity.onCreate: constructing GameSurface")
         root = FrameLayout(this)
         gameView = GameSurface(this)
-        Log.i("ORION9Startup", "Activity.onCreate: GameSurface constructed")
+        Log.i("ArenaStartup", "Activity.onCreate: GameSurface constructed")
         root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
-        Log.i("ORION9Startup", "Activity.onCreate: content view attached")
+        Log.i("ArenaStartup", "Activity.onCreate: content view attached")
         gameView.setOperative(selectedOperative)
         gameView.setTouchSensitivity(touchSensitivity)
         gameView.setGameSoundEnabled(soundEnabled)
         showMainMenu(false)
-        Log.i("ORION9Startup", "Activity.onCreate: main menu attached")
+        Log.i("ArenaStartup", "Activity.onCreate: main menu attached")
         uiHandler.postDelayed(pollState, 180L)
     }
 
@@ -154,17 +153,6 @@ class MainActivity : Activity() {
             typeface = Typeface.create("sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL)
             setLineSpacing(0f, 1.06f)
             includeFontPadding = true
-        }
-    }
-
-    private fun buttonBackground(accent: Boolean, enabled: Boolean = true): GradientDrawable {
-        val strokeColor = if (accent) cyan else Color.rgb(91, 102, 69)
-        val fill = if (accent) Color.argb(220, 48, 59, 30) else Color.argb(205, 27, 30, 20)
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(12).toFloat()
-            setColor(if (enabled) fill else Color.argb(90, 24, 26, 18))
-            setStroke(dp(1), if (enabled) strokeColor else Color.rgb(58, 61, 48))
         }
     }
 
@@ -797,14 +785,14 @@ class MainActivity : Activity() {
         private var aimPointerId = INVALID_POINTER
 
         init {
-            Log.i("ORION9Startup", "GameSurface.init: begin")
+            Log.i("ArenaStartup", "GameSurface.init: begin")
             setEGLContextClientVersion(3)
-            Log.i("ORION9Startup", "GameSurface.init: GLES 3 requested")
+            Log.i("ArenaStartup", "GameSurface.init: GLES 3 requested")
             renderer.setAssetManager(context.assets)
-            Log.i("ORION9Startup", "GameSurface.init: Android assets passed to JNI")
+            Log.i("ArenaStartup", "GameSurface.init: Android assets passed to JNI")
             preserveEGLContextOnPause = false
             setRenderer(renderer)
-            Log.i("ORION9Startup", "GameSurface.init: GLSurfaceView renderer attached")
+            Log.i("ArenaStartup", "GameSurface.init: GLSurfaceView renderer attached")
             renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
             isFocusable = true
             isFocusableInTouchMode = true
@@ -906,17 +894,17 @@ class MainActivity : Activity() {
 private class NativeRenderer : GLSurfaceView.Renderer {
         private var firstFrame = true
         fun setAssetManager(manager: android.content.res.AssetManager) {
-            Log.i("ORION9Startup", "NativeRenderer: passing AssetManager to native code")
+            Log.i("ArenaStartup", "NativeRenderer: passing AssetManager to native code")
             nativeSetAssetManager(manager)
-            Log.i("ORION9Startup", "NativeRenderer: AssetManager JNI call returned")
+            Log.i("ArenaStartup", "NativeRenderer: AssetManager JNI call returned")
         }
         override fun onSurfaceCreated(
             gl: javax.microedition.khronos.opengles.GL10?,
             config: javax.microedition.khronos.egl.EGLConfig?
         ) {
-            Log.i("ORION9Startup", "GL callback: onSurfaceCreated entered")
+            Log.i("ArenaStartup", "GL callback: onSurfaceCreated entered")
             nativeSurfaceCreated()
-            Log.i("ORION9Startup", "GL callback: onSurfaceCreated returned")
+            Log.i("ArenaStartup", "GL callback: onSurfaceCreated returned")
         }
 
         override fun onSurfaceChanged(
@@ -924,17 +912,17 @@ private class NativeRenderer : GLSurfaceView.Renderer {
             width: Int,
             height: Int
         ) {
-            Log.i("ORION9Startup", "GL callback: onSurfaceChanged ${width}x${height}")
+            Log.i("ArenaStartup", "GL callback: onSurfaceChanged ${width}x${height}")
             nativeSurfaceChanged(width, height)
-            Log.i("ORION9Startup", "GL callback: onSurfaceChanged returned")
+            Log.i("ArenaStartup", "GL callback: onSurfaceChanged returned")
         }
 
         override fun onDrawFrame(gl: javax.microedition.khronos.opengles.GL10?) {
-            if (firstFrame) Log.i("ORION9Startup", "GL callback: first onDrawFrame entered")
+            if (firstFrame) Log.i("ArenaStartup", "GL callback: first onDrawFrame entered")
             nativeDrawFrame()
             if (firstFrame) {
                 firstFrame = false
-                Log.i("ORION9Startup", "GL callback: first onDrawFrame returned")
+                Log.i("ArenaStartup", "GL callback: first onDrawFrame returned")
             }
         }
 
