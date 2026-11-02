@@ -352,9 +352,10 @@ void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed,
         speed = 0.0f;
     }
     const float desiredSpeed = std::min(speed, std::sqrt(2.0f * 7.5f * d));
-    const Vec2 desired = d < 0.16f ? Vec2{0.0f, 0.0f} :
+    Vec2 desired = d < 0.16f ? Vec2{0.0f, 0.0f} :
         mul(normalized(delta), desiredSpeed);
     arena_physics::Body body{position.x, position.z, velocity.x, velocity.z, radius};
+    arena_physics::avoidObstacles(body, desired.x, desired.z);
     arena_physics::move(body, desired.x, desired.z, dt, 18.0f, 25.0f, 41.0f);
     position = {body.x, body.z};
     velocity = {body.vx, body.vz};
