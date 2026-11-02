@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.12.0."""
+"""Structural verification for Project Arena 0.13.0."""
 from pathlib import Path
 import base64
 import json
@@ -32,14 +32,14 @@ avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
 
 checks = [
-    ("versionCode 43" in gradle and "versionName '0.12.0'" in gradle, "app version must be 0.12.0 / code 43"),
+    ("versionCode 44" in gradle and "versionName '0.13.0'" in gradle, "app version must be 0.12.0 / code 43"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='43' versionName='0.12.0'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.12.0-update" in workflow, "0.12.0 artifact name missing"),
-    ("refs/heads/rebuild/project-arena-0.12.0-full-moba" in workflow, "0.12.0 release branch condition missing"),
+    ("versionCode='44' versionName='0.13.0'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.13.0-update" in workflow, "0.12.0 artifact name missing"),
+    ("refs/heads/rebuild/project-arena-0.13.0-battleground" in workflow, "0.12.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
     ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle, "Filament dependencies missing"),
@@ -68,7 +68,11 @@ checks = [
     ("renderer.updatePlayerSignals(result)" in main and "fun updatePlayerSignals(snapshot: FloatArray)" in renderer, "animation state bridge missing"),
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
-    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "neutral_camp_marks" in world and "neutral_objective_marks" in world, "new map geometry and jungle/objective landmarks missing"),
+    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "forestTrees" in renderer and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, forest and objective geometry missing"),
+    ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
+    ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
+    ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
+    ("WorldPlacement(\"flag_blue\"" not in renderer and "WorldPlacement(\"flag_red\"" not in renderer, "objective/camp flags still used as map geometry"),
     ("result[116 + it]" in main and "result[104]" in main and "result[106]" in main, "HUD objective and three-tier tower fields missing"),
     ("snapshot[270 + index]" in main and "snapshot[222 + index]" in main, "minimap camps and minion snapshot fields missing"),
     ("values[15] = static_cast<float>(gWinner)" in native, "legacy match-result field must remain populated"),
@@ -76,7 +80,7 @@ checks = [
     ("firstTowerInLane" not in native, "unused tower helper should not remain under -Werror"),
     ("KayKit" in asset_register and "CC0" in asset_register, "KayKit asset register missing"),
     ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license, "CC0 license files missing"),
-    ("0.12.0" in readme and "offline" in readme.lower() and "0.12.0" in changelog, "release documentation missing"),
+    ("0.13.0" in readme and "offline" in readme.lower() and "0.13.0" in changelog, "release documentation missing"),
 ]
 for ok, message in checks:
     if not ok:
@@ -84,7 +88,7 @@ for ok, message in checks:
 
 model_names = [
     "castle_blue", "castle_red", "tower_blue", "tower_red", "home_blue", "home_red",
-    "church_blue", "church_red", "bridge_a", "trees_a", "flag_blue", "flag_red"
+    "church_blue", "church_red", "bridge_a", "trees_a", 
 ]
 if not world_assets.is_dir():
     raise SystemExit("KayKit world asset directory missing")
@@ -125,5 +129,5 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.12.0 structural verification passed.")
-print("MOBA roles, curved routes, alternating waves, jungle, objectives, tower chains, economy, HUB, rig and rendering verified.")
+print("Project Arena 0.13.0 structural verification passed.")
+print("MOBA systems, sculpted map, forest dressing, static camera, joystick axes, objective shrines, HUB, rig and rendering verified.")
