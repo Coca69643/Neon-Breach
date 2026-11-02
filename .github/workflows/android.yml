@@ -12,7 +12,7 @@ on:
       - 'tests/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-visual-overhaul]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-visual-overhaul, project-arena/rebuild-from-0.15.0]
     paths:
       - 'app/**'
       - '*.gradle'
