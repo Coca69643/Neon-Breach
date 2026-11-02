@@ -146,6 +146,26 @@ internal object WorldGlbBuilder {
             tri(p, oa, ob, ib)
         }
     }
+
+    private fun ringMeshAt(p: Part, centerX: Float, centerZ: Float, innerRadius: Float, outerRadius: Float) {
+        val segments = 48
+        for (i in 0 until segments) {
+            val a0 = 2f * PI.toFloat() * i / segments
+            val a1 = 2f * PI.toFloat() * (i + 1) / segments
+            fun point(radius: Float, angle: Float): FloatArray {
+                val x = centerX + radius * cos(angle)
+                val z = centerZ + radius * sin(angle)
+                return floatArrayOf(x, h(x, z) + 0.13f, z)
+            }
+            val ia = point(innerRadius, a0)
+            val oa = point(outerRadius, a0)
+            val ib = point(innerRadius, a1)
+            val ob = point(outerRadius, a1)
+            tri(p, ia, oa, ib)
+            tri(p, oa, ob, ib)
+        }
+    }
+
     private fun ribbon(p: Part, points: List<FloatArray>, width: Float, lift: Float) {
         fun sample(t: Float): FloatArray {
             val f = t.coerceIn(0f, 0.99999f) * (points.size - 1)
@@ -204,16 +224,38 @@ internal object WorldGlbBuilder {
         cliffs=part("island_rock_rim",6)
         val pulse=part("pulse_ring",7)
         val shield=part("shield_ring",8)
+        val campMarks=part("neutral_camp_marks",11)
+        val objectiveMarks=part("neutral_objective_marks",12)
         terrainMesh()
         ringMesh(pulse,0.88f,1.08f)
         ringMesh(shield,0.98f,1.15f)
-        val west=listOf(floatArrayOf(-12f,-29f),floatArrayOf(-13f,-19f),floatArrayOf(-12f,-9f),floatArrayOf(-11f,0f),floatArrayOf(-12f,9f),floatArrayOf(-13f,19f),floatArrayOf(-12f,29f))
-        val center=listOf(floatArrayOf(0f,-29f),floatArrayOf(0.8f,-19f),floatArrayOf(0f,-9f),floatArrayOf(0f,0f),floatArrayOf(-0.6f,9f),floatArrayOf(0.5f,19f),floatArrayOf(0f,29f))
-        val east=listOf(floatArrayOf(12f,-29f),floatArrayOf(13f,-19f),floatArrayOf(12f,-9f),floatArrayOf(11f,0f),floatArrayOf(12f,9f),floatArrayOf(13f,19f),floatArrayOf(12f,29f))
-        // Three wide continuous lanes. All natural props, bases, towers and flags are real CC0 glTF models.
-        ribbon(routeEdge,west,3.05f,0.025f);ribbon(trail,west,2.38f,0.075f)
-        ribbon(routeEdge,center,3.15f,0.025f);ribbon(trail,center,2.48f,0.075f)
-        ribbon(routeEdge,east,3.05f,0.025f);ribbon(trail,east,2.38f,0.075f)
+
+        // Three asymmetric but readable lanes; each bends independently through the battlefield.
+        val west=listOf(
+            floatArrayOf(-14.2f,-31f),floatArrayOf(-15.2f,-23f),floatArrayOf(-14.6f,-15f),
+            floatArrayOf(-13.4f,-7f),floatArrayOf(-13.0f,0f),floatArrayOf(-13.7f,8f),
+            floatArrayOf(-14.8f,16f),floatArrayOf(-14.2f,24f),floatArrayOf(-14.2f,31f)
+        )
+        val center=listOf(
+            floatArrayOf(0.5f,-31f),floatArrayOf(0.1f,-23f),floatArrayOf(-0.1f,-15f),
+            floatArrayOf(-0.25f,-7f),floatArrayOf(0.5f,0f),floatArrayOf(0.3f,8f),
+            floatArrayOf(-0.2f,16f),floatArrayOf(0.4f,24f),floatArrayOf(0.5f,31f)
+        )
+        val east=listOf(
+            floatArrayOf(14.2f,-31f),floatArrayOf(15.2f,-23f),floatArrayOf(14.6f,-15f),
+            floatArrayOf(13.4f,-7f),floatArrayOf(13.0f,0f),floatArrayOf(13.7f,8f),
+            floatArrayOf(14.8f,16f),floatArrayOf(14.2f,24f),floatArrayOf(14.2f,31f)
+        )
+        ribbon(routeEdge,west,3.18f,0.025f);ribbon(trail,west,2.42f,0.075f)
+        ribbon(routeEdge,center,3.12f,0.025f);ribbon(trail,center,2.36f,0.075f)
+        ribbon(routeEdge,east,3.18f,0.025f);ribbon(trail,east,2.42f,0.075f)
+
+        // Cross-lane jungle paths link the neutral camps to lane entrances.
+        ribbon(earth,listOf(floatArrayOf(-8.2f,-27f),floatArrayOf(-8.8f,-20f),floatArrayOf(-8.2f,-14.5f),floatArrayOf(-9.1f,-8f),floatArrayOf(-7f,-2f)),0.62f,0.095f)
+        ribbon(earth,listOf(floatArrayOf(8.2f,-27f),floatArrayOf(8.8f,-20f),floatArrayOf(8.2f,-14.5f),floatArrayOf(9.1f,-8f),floatArrayOf(7f,-2f)),0.62f,0.095f)
+        ribbon(earth,listOf(floatArrayOf(-7f,2f),floatArrayOf(-9.1f,8f),floatArrayOf(-8.2f,14.5f),floatArrayOf(-8.8f,20f),floatArrayOf(-8.2f,27f)),0.62f,0.095f)
+        ribbon(earth,listOf(floatArrayOf(7f,2f),floatArrayOf(9.1f,8f),floatArrayOf(8.2f,14.5f),floatArrayOf(8.8f,20f),floatArrayOf(8.2f,27f)),0.62f,0.095f)
+
         val river=listOf(
             floatArrayOf(-34f,1.1f),floatArrayOf(-28f,0.55f),floatArrayOf(-21f,0.05f),
             floatArrayOf(-15f,-0.45f),floatArrayOf(-9f,-0.22f),floatArrayOf(-3f,0.25f),
@@ -221,6 +263,16 @@ internal object WorldGlbBuilder {
             floatArrayOf(23f,-0.18f),floatArrayOf(29f,0.22f),floatArrayOf(34f,0.8f)
         )
         ribbon(water,river,1.72f,0.10f)
+
+        // Persistent ground marks make neutral camps and both objective pits readable.
+        listOf(
+            floatArrayOf(-8.2f,-14.5f),floatArrayOf(8.2f,-14.5f),
+            floatArrayOf(-20.2f,-10f),floatArrayOf(20.2f,-10f),
+            floatArrayOf(-8.2f,14.5f),floatArrayOf(8.2f,14.5f),
+            floatArrayOf(-20.2f,10f),floatArrayOf(20.2f,10f)
+        ).forEach { p -> ringMeshAt(campMarks,p[0],p[1],1.2f,1.55f) }
+        ringMeshAt(objectiveMarks,-7f,0.2f,2.3f,3.0f)
+        ringMeshAt(objectiveMarks,7f,0.2f,2.6f,3.35f)
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
@@ -246,7 +298,7 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone")
+        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers")
         val colors=listOf(
             listOf(0.16f,0.24f,0.10f,1f),
             listOf(0.22f,0.31f,0.13f,1f),
@@ -258,14 +310,16 @@ internal object WorldGlbBuilder {
             listOf(0.08f,0.56f,0.95f,1f),
             listOf(0.76f,0.56f,0.13f,1f),
             listOf(0.31f,0.20f,0.11f,1f),
-            listOf(0.29f,0.30f,0.27f,1f))
+            listOf(0.29f,0.30f,0.27f,1f),
+            listOf(0.58f,0.48f,0.24f,0.92f),
+            listOf(0.82f,0.68f,0.28f,0.96f))
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.8"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.12"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
