@@ -976,6 +976,7 @@ internal class FilamentGameRenderer(
         if (!sceneLoaded) return
         setBotsVisible(false)
         setMinionsVisible(false)
+        resetHeroAnimationState()
         setHeroAppearance(hero, alternateSkin)
         showcaseMode = true
         overviewCamera = true
