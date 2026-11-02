@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.13.0."""
+"""Structural verification for Project Arena 0.14.0."""
 from pathlib import Path
 import base64
 import json
@@ -22,6 +22,10 @@ renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
+physics_h = read("app/src/main/cpp/ArenaPhysics.h")
+physics = read("app/src/main/cpp/ArenaPhysics.cpp")
+physics_tests = read("tests/arena_physics_tests.cpp")
+gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
@@ -32,14 +36,14 @@ avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
 
 checks = [
-    ("versionCode 44" in gradle and "versionName '0.13.0'" in gradle, "app version must be 0.12.0 / code 43"),
+    ("versionCode 45" in gradle and "versionName '0.14.0'" in gradle, "app version must be 0.14.0 / code 45"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='44' versionName='0.13.0'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.13.0-update" in workflow, "0.12.0 artifact name missing"),
-    ("refs/heads/rebuild/project-arena-0.13.0-battleground" in workflow, "0.12.0 release branch condition missing"),
+    ("versionCode='45' versionName='0.14.0'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.14.0-update" in workflow, "0.14.0 artifact name missing"),
+    ("refs/heads/rebuild/project-arena-0.14.0-physical-heroes" in workflow, "0.14.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
     ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle, "Filament dependencies missing"),
@@ -77,10 +81,22 @@ checks = [
     ("snapshot[270 + index]" in main and "snapshot[222 + index]" in main, "minimap camps and minion snapshot fields missing"),
     ("values[15] = static_cast<float>(gWinner)" in native, "legacy match-result field must remain populated"),
     ("movePlayer(inputX, inputZ, dt)" in native and native.count("movePlayer(0.0f, 0.0f, dt)") == 0, "player movement must be integrated only once per frame"),
+    ("ArenaPhysics.cpp" in cmake and "void move(Body &body" in physics_h and "void separate(Body &a, Body &b)" in physics_h, "shared kinematic physics module is not compiled or exposed"),
+    ("arena_physics::move(body" in native and "arena_physics::separate(" in native and "resolveActorContacts()" in native, "player/NPC collision and movement must share physics"),
+    ("kFixedStep = 1.0f / 60.0f" in native and "gSimulationAccumulator" in native, "fixed 60 Hz simulation step missing"),
+    ("terrainHeight(float x,float z)" in physics and "slideUphill" in physics and "hitCircle" in physics and "hitBox" in physics and "confine" in physics, "terrain, slope, obstacle or world-boundary physics missing"),
+    ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
+    ("Compile and run native physics tests" in workflow and "tests/arena_physics_tests.cpp" in workflow, "CI does not compile/run native physics tests"),
+    ("createHeroGear()" in renderer and "setParent(child, parent)" in renderer and "playerGearInstances" in renderer, "articulated hero gear is not attached to the skeleton"),
+    ("gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "when(style)" in gear, "hero-specific costume mesh generation missing"),
+    ("terrainAlignedTransform" in renderer and "WorldGlbBuilder.normalAt" in renderer and "internal fun normalAt" in world, "character orientation is not aligned to terrain normals"),
+    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer, "NPC grounding and articulated gait missing"),
+    ("PhysicsWorld.cpp" not in cmake, "unused second physics implementation must remain disabled"),
+
     ("firstTowerInLane" not in native, "unused tower helper should not remain under -Werror"),
     ("KayKit" in asset_register and "CC0" in asset_register, "KayKit asset register missing"),
     ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license, "CC0 license files missing"),
-    ("0.13.0" in readme and "offline" in readme.lower() and "0.13.0" in changelog, "release documentation missing"),
+    ("0.14.0" in readme and "offline" in readme.lower() and "0.14.0" in changelog, "release documentation missing"),
 ]
 for ok, message in checks:
     if not ok:
@@ -129,5 +145,5 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.13.0 structural verification passed.")
-print("MOBA systems, sculpted map, forest dressing, static camera, joystick axes, objective shrines, HUB, rig and rendering verified.")
+print("Project Arena 0.14.0 structural verification passed.")
+print("MOBA systems, map, fixed camera, skeletal gear, terrain-aligned animation, kinematic physics and regression tests verified.")
