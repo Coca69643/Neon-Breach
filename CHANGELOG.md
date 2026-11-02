@@ -1,5 +1,29 @@
 # Changelog — Projeto Arena
 
+## [0.13.0] — 2026-11-02
+
+### Reconstrução do campo de batalha
+- Substituído o relevo suave anterior por cristas laterais, elevações de aproximação das bases, colinas de selva e depressão fluvial.
+- A função de altura do terreno agora é única e compartilhada pelo gerador GLB e pelo renderer; personagens, torres e props consultam a mesma superfície.
+- Adicionadas 32 instâncias de árvores distribuídas em quatro quadrantes, clareiras com solo escuro, vegetação rasteira e formações rochosas low-poly.
+- Acampamentos deixaram de ser representados por bandeiras: cada um recebeu piso de terra, perímetro de rochas e ruínas baixas.
+- Os dois objetivos neutros receberam plataformas elevadas e santuários de pedra próprios, um intacto e outro parcialmente destruído.
+- Bases receberam pátios e muralhas baixas nas aproximações. A cena mantém os edifícios, castelos, pontes e torres KayKit sob CC0.
+- Adicionada camada de água profunda sob o perímetro rochoso para separar visualmente a ilha do fundo.
+
+### Câmera e controle
+- Câmera isométrica passou a manter direção fixa no mundo; a rotação do herói não altera a orientação da câmera.
+- Implementada zona morta de 1,85 m: o personagem pode deslocar-se visivelmente na tela antes do acompanhamento suave.
+- O acompanhamento da câmera agora usa a altura compartilhada do terreno.
+- Eixo vertical do joystick invertido para corresponder à convenção visual da tela: empurrar para cima move o herói para o topo do campo.
+- Removidas as bandeiras colocadas sobre pontes e acampamentos como substitutos visuais de objetivos.
+
+### Compatibilidade e validação
+- Mantidos 5v5 offline, três rotas, 18 torres, oito acampamentos, dois objetivos, economia, HUD, HUB e animações.
+- Kotlin + C++20/NDK e Filament 1.77.3; landscape e package name preservados.
+- versionCode 44 / versionName 0.13.0.
+- CI valida compilação e estrutura; câmera, leitura de terreno, FPS sustentado, temperatura e toque ainda precisam ser verificados no Realme C53.
+
 ## [0.12.0] — 2026-11-02
 
 ### Reconstrução de gameplay MOBA
