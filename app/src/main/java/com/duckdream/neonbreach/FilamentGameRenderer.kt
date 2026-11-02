@@ -131,6 +131,8 @@ internal class FilamentGameRenderer(
     private val botBones = ArrayList<Map<String, BonePose>>(9)
     private val lastBotPositions = Array(9) { floatArrayOf(Float.NaN, Float.NaN) }
     private var botAnimationPhase = 0f
+    private val botYawState = FloatArray(9)
+    private val botYawInitialized = BooleanArray(9)
     private val botScale = 1.0f
 
     init {
@@ -882,15 +884,26 @@ internal class FilamentGameRenderer(
             val rig = minionBones.getOrNull(index).orEmpty()
             val stride = sin(minionAnimationPhase + index * 0.37f) * moving
             val idle = sin(minionAnimationPhase * 0.58f + index * 0.6f)
-            animateArmPose(rig["upperarm_l"], -0.90f - stride * 0.22f + idle * 0.018f)
-            animateArmPose(rig["upperarm_r"], 0.90f + stride * 0.22f - idle * 0.018f)
-            animateArmPose(rig["lowerarm_l"], 0.48f)
-            animateArmPose(rig["lowerarm_r"], 0.48f)
+            val slot = (index % 8) % 4
+            val kneeLift = if (slot == 3) 0.38f else 0.46f
+            animateArmPose(rig["upperarm_l"], -0.90f - stride * 0.24f + idle * 0.018f)
+            animateArmPose(rig["upperarm_r"], 0.90f + stride * 0.24f - idle * 0.018f)
+            animateArmPose(rig["lowerarm_l"], 0.48f + max(0f, stride) * 0.08f)
+            animateArmPose(rig["lowerarm_r"], 0.48f + max(0f, -stride) * 0.08f)
+            animateArmPose(rig["hand_l"], -stride * 0.025f)
+            animateArmPose(rig["hand_r"], stride * 0.025f)
+            animatePose(rig["pelvis"], sin(minionAnimationPhase * 2f + index) * 0.022f * moving, 2)
             animatePose(rig["thigh_l"], stride * 0.60f)
             animatePose(rig["thigh_r"], -stride * 0.60f)
-            animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
-            animatePose(rig["calf_r"], max(0f, stride) * 0.45f)
-            animatePose(rig["spine_01"], idle * 0.014f)
+            animatePose(rig["calf_l"], max(0f, -stride) * kneeLift)
+            animatePose(rig["calf_r"], max(0f, stride) * kneeLift)
+            animatePose(rig["foot_l"], -max(0f, -stride) * 0.20f)
+            animatePose(rig["foot_r"], -max(0f, stride) * 0.20f)
+            animatePose(rig["spine_01"], idle * 0.014f + moving * 0.025f)
+            animatePose(rig["spine_02"], -idle * 0.010f)
+            animatePose(rig["spine_03"], sin(minionAnimationPhase * 1.9f + index) * 0.012f * moving)
+            animatePose(rig["neck_01"], -idle * 0.012f)
+            animatePose(rig["Head"], -idle * 0.018f)
             minionAnimators.getOrNull(index)?.updateBoneMatrices()
             previous[0] = x
             previous[1] = z
@@ -911,11 +924,25 @@ internal class FilamentGameRenderer(
             val dz = if (previous[1].isNaN()) 0f else z - previous[1]
             val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
             val moving = (speed / 2.7f).coerceIn(0f, 1f)
-            val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
+            val desiredYaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
                 else if (index < 4) 0f else Math.PI.toFloat()
-            // Heavy, agile and balanced silhouettes instead of near-identical tinted clones.
-            val widthFactor = when (index % 3) { 0 -> 1.24f; 1 -> 0.76f; else -> 0.96f }
-            val heightFactor = when (index % 3) { 0 -> 0.91f; 1 -> 1.16f; else -> 1.02f }
+            var turnLean = 0f
+            if (!botYawInitialized[index]) {
+                botYawState[index] = desiredYaw
+                botYawInitialized[index] = true
+            } else {
+                val error = kotlin.math.atan2(
+                    sin(desiredYaw - botYawState[index]),
+                    cos(desiredYaw - botYawState[index])
+                )
+                turnLean = (error / (deltaTime.coerceAtLeast(0.001f)) / 5.5f).coerceIn(-1f, 1f)
+                botYawState[index] += error * (1f - kotlin.math.exp(-deltaTime * 11f))
+            }
+            val yaw = botYawState[index]
+            val role = if (snapshot.size >= 308) snapshot[299 + index].toInt().coerceIn(0, 4) else index % 5
+            // Role-based body proportions: solo is grounded, jungle agile, carry lighter, support balanced.
+            val widthFactor = when (role) { 0 -> 1.16f; 1 -> 0.88f; 2 -> 1.0f; 3 -> 0.90f; else -> 0.97f }
+            val heightFactor = when (role) { 0 -> 0.96f; 1 -> 1.05f; 2 -> 1.0f; 3 -> 1.06f; else -> 1.01f }
             val scaleX = characterScale * botScale * widthFactor
             val scaleY = characterScale * botScale * heightFactor
             val y = terrainHeight(x, z) - characterMinY * scaleY
@@ -924,18 +951,26 @@ internal class FilamentGameRenderer(
 
             val rig = botBones.getOrNull(index).orEmpty()
             val stride = sin(botAnimationPhase * (0.92f + index * 0.015f) + index * 0.41f) * moving
-            animateArmPose(rig["upperarm_l"], -0.92f - stride * 0.28f)
-            animateArmPose(rig["upperarm_r"], 0.92f + stride * 0.28f)
+            val idle = sin(botAnimationPhase * 0.58f + index * 0.43f)
+            val braking = smoothStep01((2.0f - speed) / 2.0f) * moving
+            animateArmPose(rig["upperarm_l"], -0.92f - stride * 0.28f - turnLean * 0.07f)
+            animateArmPose(rig["upperarm_r"], 0.92f + stride * 0.28f - turnLean * 0.07f)
             animateArmPose(rig["lowerarm_l"], 0.50f + max(0f, stride) * 0.14f)
             animateArmPose(rig["lowerarm_r"], 0.50f + max(0f, -stride) * 0.14f)
+            animateArmPose(rig["hand_l"], -stride * 0.035f)
+            animateArmPose(rig["hand_r"], stride * 0.035f)
+            animatePose(rig["pelvis"], turnLean * 0.055f + sin(botAnimationPhase * 2f + index) * 0.018f * moving, 2)
             animatePose(rig["thigh_l"], stride * 0.60f)
             animatePose(rig["thigh_r"], -stride * 0.60f)
-            animatePose(rig["calf_l"], max(0f, -stride) * 0.45f)
-            animatePose(rig["calf_r"], max(0f, stride) * 0.45f)
-            val idle = sin(botAnimationPhase * 0.58f + index * 0.43f)
-            animatePose(rig["spine_01"], 0.012f + idle * 0.016f + sin(botAnimationPhase * 2f + index) * 0.02f * moving)
-            animatePose(rig["spine_02"], -idle * 0.012f)
-            animatePose(rig["neck_01"], sin(botAnimationPhase * 0.36f + index) * 0.015f)
+            animatePose(rig["calf_l"], max(0f, -stride) * 0.48f + braking * 0.035f)
+            animatePose(rig["calf_r"], max(0f, stride) * 0.48f + braking * 0.035f)
+            animatePose(rig["foot_l"], -max(0f, -stride) * 0.20f)
+            animatePose(rig["foot_r"], -max(0f, stride) * 0.20f)
+            animatePose(rig["spine_01"], 0.012f + idle * 0.014f + moving * 0.025f + braking * 0.055f)
+            animatePose(rig["spine_02"], -idle * 0.010f - turnLean * 0.035f)
+            animatePose(rig["spine_03"], turnLean * 0.055f + sin(botAnimationPhase + index) * 0.012f * moving)
+            animatePose(rig["neck_01"], -idle * 0.013f - turnLean * 0.025f)
+            animatePose(rig["Head"], -idle * 0.015f - turnLean * 0.035f)
             val disabled = snapshot.size >= 72 && snapshot[63 + index] > 0.0f
             if (botDisabledState[index] != disabled) {
                 applyBotTint(index, disabled)
