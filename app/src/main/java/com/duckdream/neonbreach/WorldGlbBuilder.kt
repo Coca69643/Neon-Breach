@@ -26,17 +26,18 @@ internal object WorldGlbBuilder {
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
     private fun h(x:Float,z:Float):Float {
-        val westRidge = 1.72f * exp(-((x + 24f).pow(2)) / 30f) * (0.58f + 0.42f * cos(z * 0.075f))
-        val eastRidge = 1.58f * exp(-((x - 24f).pow(2)) / 34f) * (0.58f + 0.42f * cos(z * 0.07f))
-        val southHighland = 1.05f * exp(-((z + 27f).pow(2)) / 24f) * exp(-(x.pow(2)) / 340f)
-        val northHighland = 1.05f * exp(-((z - 27f).pow(2)) / 24f) * exp(-(x.pow(2)) / 340f)
-        val jungleKnolls = 0.42f * exp(-((abs(x) - 8.5f).pow(2)) / 7f) * exp(-((abs(z) - 14f).pow(2)) / 34f)
+        val westRidge = 2.35f * exp(-((x + 24f).pow(2)) / 44f) * (0.58f + 0.42f * cos(z * 0.075f))
+        val eastRidge = 2.18f * exp(-((x - 24f).pow(2)) / 48f) * (0.58f + 0.42f * cos(z * 0.07f))
+        val southHighland = 1.55f * exp(-((z + 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
+        val northHighland = 1.55f * exp(-((z - 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
+        val jungleKnolls = 0.78f * exp(-((abs(x) - 8.5f).pow(2)) / 8.5f) * exp(-((abs(z) - 14f).pow(2)) / 42f)
         val riverDistance = abs(z - riverCenterZ(x))
-        val riverBed = -0.34f * exp(-(riverDistance * riverDistance) / 12f)
-        val riverBank = 0.48f * exp(-((riverDistance - 2.45f).pow(2)) / 1.6f)
-        val rolling = 0.22f*sin(x*0.18f)*cos(z*0.14f)+0.12f*sin((x+z)*0.29f)
+        val riverBed = -0.58f * exp(-(riverDistance * riverDistance) / 8.5f)
+        val riverBank = 0.72f * exp(-((riverDistance - 2.55f).pow(2)) / 1.9f)
+        val rolling = 0.26f*sin(x*0.18f)*cos(z*0.14f)+0.16f*sin((x+z)*0.29f)
+        val shelf = 0.52f * exp(-((abs(x) - 18.5f).pow(2)) / 5.5f) * exp(-((abs(z) - 13f).pow(2)) / 110f)
         return rolling + westRidge + eastRidge + southHighland + northHighland +
-            jungleKnolls + riverBed + riverBank
+            jungleKnolls + riverBed + riverBank + shelf
     }
 
     internal fun heightAt(x: Float, z: Float): Float = h(x, z)
@@ -183,7 +184,7 @@ internal object WorldGlbBuilder {
     }
 
     private fun terrainMesh() {
-        val steps = 104
+        val steps = 136
         val size = 76f
         val start = -38f
         val cell = size / steps
@@ -468,13 +469,13 @@ internal object WorldGlbBuilder {
         }
         val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water")
         val colors=listOf(
-            listOf(0.16f,0.24f,0.10f,1f),
-            listOf(0.22f,0.31f,0.13f,1f),
-            listOf(0.08f,0.15f,0.07f,1f),
-            listOf(0.42f,0.36f,0.26f,1f),
-            listOf(0.18f,0.16f,0.12f,1f),
-            listOf(0.06f,0.14f,0.18f,1f),
-            listOf(0.12f,0.11f,0.09f,1f),
+            listOf(0.17f,0.25f,0.11f,1f),
+            listOf(0.27f,0.35f,0.15f,1f),
+            listOf(0.08f,0.14f,0.07f,1f),
+            listOf(0.39f,0.32f,0.23f,1f),
+            listOf(0.16f,0.14f,0.10f,1f),
+            listOf(0.035f,0.12f,0.18f,1f),
+            listOf(0.13f,0.12f,0.10f,1f),
             listOf(0.08f,0.56f,0.95f,1f),
             listOf(0.76f,0.56f,0.13f,1f),
             listOf(0.31f,0.20f,0.11f,1f),
@@ -493,7 +494,7 @@ internal object WorldGlbBuilder {
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.13"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.15"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
