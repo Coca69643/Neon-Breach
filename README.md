@@ -1,6 +1,6 @@
-# Projeto Arena 0.12.0
+# Projeto Arena 0.13.0
 
-MOBA 3D nativo para Android, landscape e offline. Esta versão reúne o HUB e a animação anteriores com a reconstrução da gameplay: três rotas curvas, duas selvas, ondas alternadas, três camadas de torre por rota, dois objetivos neutros, IA com cinco papéis e progressão dentro da partida.
+MOBA 3D nativo para Android, landscape e offline. A 0.13.0 reconstrói a apresentação do campo de batalha: relevo real compartilhado entre malha e posicionamento, câmera isométrica fixa com zona morta, selvas densas, clareiras de acampamento, ruínas, santuários de objetivos e bases fortificadas. Preserva os sistemas 5v5, o HUB e as animações.
 
 ## MOBA 0.12.0 — estrutura de gameplay
 
@@ -31,13 +31,18 @@ MOBA 3D nativo para Android, landscape e offline. Esta versão reúne o HUB e a 
 - Skins de preço fixo e loja de troca de fragmentos, sem compras reais, servidor ou caixas aleatórias.
 - XP, nível, partidas, vitórias, carteira e cosméticos persistidos com SharedPreferences.
 
-## Mapa e apresentação
+## Mapa e apresentação 0.13.0
 
-- Terreno de vale com três rotas curvas pavimentadas, rio transversal, pontes e trilhas de terra.
-- Duas áreas de selva, oito acampamentos marcados no chão e duas áreas de objetivo neutro ao longo do rio.
-- Três torres por rota em cada lado, com posições externas, intermediárias e internas.
-- Modelos ambientais do KayKit Medieval Hexagon Pack sob CC0 1.0; humanoide Quaternius sob CC0 1.0.
-- A cena não usa imagens externas em runtime.
+- Terreno esculpido com cristas laterais, colinas nas aproximações das bases, pequenas elevações na selva e vale fluvial.
+- Três rotas pavimentadas curvas com acostamentos, conectores de terra e três pontes no rio.
+- Quatro quadrantes de selva com 32 instâncias de árvores, manchas de solo, vegetação rasteira e formações rochosas low-poly.
+- Oito acampamentos com clareiras físicas, piso de terra e anéis de rocha; os marcadores de bandeira foram removidos da representação do objetivo.
+- Dois santuários de pedra modelados na geometria do mapa, um intacto e outro em ruínas.
+- Aproximações das bases com muralhas baixas e pátios, além dos castelos, casas e igrejas KayKit.
+- A função de altura do terreno é compartilhada pelo gerador da malha e pelo renderer para manter heróis, bots, torres e vegetação apoiados no relevo.
+- Câmera isométrica com direção fixa; a rotação do herói não gira a câmera. O herói se desloca na tela dentro de uma zona morta de 1,85 m antes do acompanhamento.
+- O eixo vertical do joystick foi alinhado com a direção superior/inferior da tela.
+- Geometria de ambiente procedural permanece integrada no GLB de runtime; edifícios, pontes e árvores usam modelos KayKit CC0 1.0. Humanoide Quaternius CC0 1.0.
 
 ## Stack e distribuição
 
@@ -45,13 +50,13 @@ MOBA 3D nativo para Android, landscape e offline. Esta versão reúne o HUB e a 
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
 - Orientação landscape fixa; funcionamento offline; sem WebView.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 43 / versionName 0.12.0.
+- versionCode 44 / versionName 0.13.0.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas
 
 - A partida é offline contra IA; não há matchmaking, servidores ou cinco jogadores humanos por equipe.
 - Os três heróis ainda compartilham uma geometria-base; papéis e kits são diferenciados, mas não há três malhas exclusivas.
-- Os objetivos neutros usam marcos de mapa e marcadores funcionais, não modelos animados dedicados de chefes.
+- Os santuários dos objetivos agora têm geometria própria, mas ainda não incluem criaturas-chefes com malhas e animações exclusivas.
 - Esta é uma base MOBA jogável, ainda sem Fog of War, seleção manual de alvo, draft, inventário de múltiplos espaços ou estratégia de equipe avançada.
 - CI não substitui validação física no Realme C53: FPS sustentado, temperatura, câmera, minimapa, controles touch e estabilidade precisam ser medidos no aparelho.
