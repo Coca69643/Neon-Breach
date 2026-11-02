@@ -1,5 +1,57 @@
 # Changelog — Projeto Arena
 
+## [0.9.1] — 2026-11-02
+
+### Menu principal e identidade dos heróis
+- Preservada a composição original do menu e o cenário 3D de fundo.
+- Removido o listener que iniciava uma partida com qualquer toque na tela.
+- Adicionados controles explícitos anterior/próximo, função de cada herói e ação real INICIAR PARTIDA.
+- Lyra recebe pulso com recarga menor e escudo de suporte; Bastion mantém escudo mais longo e pulso de maior alcance; Kairo recebe impulso mais longo e com recarga reduzida.
+
+### Testes
+- Harness nativo C++ valida o contrato JNI, perfis dos heróis, ataque manual, cooldowns, dano em torres, núcleo bloqueado, retorno de tropas e simulação de dez minutos.
+- O workflow executa testes de simulação antes de montar o APK e um smoke test do APK final (CRC, arquitetura ELF, bibliotecas JNI e recursos glTF).
+- versionCode 40 / versionName 0.9.1.
+- O build Android, assinatura e teste em dispositivo físico ainda precisam ser confirmados.
+
+## [0.9.0] — 2026-11-01
+
+### Loop de cerco e vitória por objetivos
+- Substituída a vitória por controle abstrato de duas zonas por um objetivo de MOBA: derrubar as três torres da rota e destruir o núcleo inimigo.
+- Duplas de tropas em cada rota avançam em ondas, detectam tropas rivais próximas, combatem e retomam o avanço quando vencem.
+- Tropas derrotadas reaparecem na base após uma janela de respawn da onda.
+- Torres defensivas atacam tropas e heróis adversários em alcance; o estado de cada torre é enviado pelo snapshot JNI e aparece no radar.
+- Bots avançam até estruturas, atacam torres e passam a pressionar o núcleo após a queda da torre da sua rota.
+- Adicionado GOLPE manual para o jogador; o alvo próximo é priorizado por tipo e alcance. PULSO também atinge tropas.
+- HUD atualizado para comunicar progresso das torres, integridade do núcleo, vida e recarga do golpe.
+- Snapshot JNI/Kotlin ampliado para 94 valores com vida, seis torres, dois núcleos, recarga do ataque básico e vida das 12 tropas; unidades derrotadas saem da cena e retornam quando a próxima onda renasce.
+
+### Validação
+- A atualização usa versionCode 39 / versionName 0.9.0.
+- Build/assinatura e teste no Realme C53 ainda precisam ser confirmados nesta versão.
+
+## [0.8.0] — 2026-11-01
+
+### Câmera e personagens
+- A câmera inicia na posição real de spawn, reduz o viés lateral e aproxima o enquadramento do herói para mantê-lo fora da área do joystick.
+- Bots recebem perfis de silhueta mais distintos por escala e proporção.
+- Corrigido o eixo de rotação dos braços: ombros usam rotação local em Z; pernas mantêm o eixo de passada. A correção remove a pose rígida de braços abertos.
+
+### Combate funcional
+- Bots interrompem rotas para perseguir e enfrentar heróis rivais próximos.
+- Inimigos atacam o jogador ao entrar em alcance; escudo reduz dano recebido.
+- Ataque básico automático do jogador, dano, eliminação temporária e respawn.
+- PULSO causa dano em área e interrompe ataques; não consome recarga quando não há rival no raio.
+- Vida do jogador enviada pelo snapshot JNI e exibida no HUD.
+
+### Mapa
+- Canal do rio recortado na malha do terreno; água elevada para permanecer visível entre as margens.
+- Materiais de solo terroso e afloramentos rochosos introduzem contraste com a grama.
+
+### Validação
+- Atualização preparada para versionCode 38 / versionName 0.8.0. Build CI e validação física no Realme C53 ainda pendentes.
+
+
 ## [0.7.0] — 2026-11-01
 
 ### Ambiente CC0 — reconstrução do mapa

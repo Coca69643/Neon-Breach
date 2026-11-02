@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural and asset-integrity verification for Project Arena 0.7.0."""
+"""Structural and gameplay-contract verification for Project Arena 0.9.1."""
 from pathlib import Path
 import json
 import re
@@ -22,6 +22,7 @@ native=read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake=read("app/src/main/cpp/CMakeLists.txt")
 icon=read("app/src/main/res/drawable/ic_launcher.xml")
 workflow=read(".github/workflows/android.yml")
+apk_smoke=read("tools/verify_apk.py")
 readme=read("README.md")
 changelog=read("CHANGELOG.md")
 asset_register=read("ASSETS/README.md")
@@ -31,14 +32,14 @@ avatar=ROOT/"app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets=ROOT/"app/src/main/assets/world/kaykit"
 
 checks=[
-("versionName '0.7.0'" in gradle,"versionName must be 0.7.0"),
-("versionCode 37" in gradle,"versionCode must be 37"),
+("versionName '0.9.1'" in gradle,"versionName must be 0.9.1"),
+("versionCode 40" in gradle,"versionCode must be 40"),
 ("applicationId 'com.duckdream.neonbreach'" in gradle,"applicationId must remain stable"),
 ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle,"persistent signing config missing"),
 ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow,"workflow must require persistent signing"),
 ("if: github.event_name != 'pull_request'" in workflow,"PR builds must not publish update APKs"),
-("versionCode='37' versionName='0.7.0'" in workflow,"APK package/version verification is stale"),
-("project-arena-0.7.0-update" in workflow,"artifact name must be 0.7.0"),
+("versionCode='40' versionName='0.9.1'" in workflow,"APK package/version verification is stale"),
+("project-arena-0.9.1-update" in workflow,"artifact name must be 0.9.1"),
 ("org.jetbrains.kotlin.android" in root_gradle,"external Kotlin plugin missing"),
 ("android.builtInKotlin=false" in props and "android.newDsl=false" in props,"AGP migration flags missing"),
 ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle,"Filament dependencies missing"),
@@ -54,20 +55,35 @@ checks=[
 ("KayKit CC0 environment loaded" in renderer,"environment asset count log missing"),
 ("Camera.Fov.VERTICAL" in renderer and "viewer.camera.setProjection(" in renderer,"perspective follow camera missing"),
 ("applyRestPose" in renderer and "playerAnimator?.updateBoneMatrices()" in renderer,"player skeletal skinning update missing"),
+("animateArmPose" in renderer and "axis == 2" in renderer,"arm animation shoulder axis missing"),
+("riverCenterZ" in world and "Carve a river bed" in world,"visible river channel missing"),
+("values[72] = gPlayerHealth" in native and "healthLabel.text" in main,"player health HUD missing"),
+("nativeBasicAttack" in native and "gRedCoreHealth" in native and "updateTowers(float dt)" in native,"siege objective and structure defense missing"),
+("allEnemyTowersDown" in native and "allEnemyTowersDown(0)" in native,"core must remain gated until all three towers fall"),
+("gLaneWaveCooldown" in native and "spawnLaneUnit" in native and "enemy.health - 36.0f" in native,"lane wave respawn and minion combat missing"),
+("values[static_cast<std::size_t>(82 + i)] = gLaneUnits[static_cast<std::size_t>(i)].health" in native and "snapshot[82 + index]" in renderer,"dead minions are not removed from the rendered scene"),
+("renderer.updateStructures(result)" in main and "fun updateStructures(snapshot: FloatArray)" in renderer,"destroyed tower rendering is not connected"),
+("enemy.health - 12.0f" in native and "nativeBasicAttack" in native,"hero active attack and bot combat missing"),
+("bot.health - 38.0f" in native and "gShieldTime > 0.0f ? 4.0f" in native,"pulse damage and shield mitigation missing"),
 ("botAnimators.getOrNull(index)?.updateBoneMatrices()" in renderer,"bot skinning matrices not updated"),
 ("fun updateCreeps(snapshot: FloatArray, deltaTime: Float)" in renderer,"minion renderer update missing"),
 ("fun setMinionsVisible(visible: Boolean)" in renderer,"minion scene visibility management missing"),
-("FloatArray(60)" in main and "result.size >= 60" in main,"Kotlin snapshot must contain 60 floats"),
+("FloatArray(94)" in main and "result.size >= 94" in main,"Kotlin snapshot must contain 94 floats"),
 ("renderer.updateCreeps(result, dt)" in main,"lane units not connected to renderer"),
 ("renderer.setMinionsVisible(true)" in main,"minions not shown during match"),
 ("kLaneUnitCount = 12" in native and "void updateLaneUnits(float dt)" in native,"12 physical lane units missing"),
-("std::array<jfloat, 60> values{};" in native,"native snapshot must contain 60 floats"),
+("std::array<jfloat, 94> values{};" in native,"native snapshot must contain 94 floats"),
 ("36 + i * 2" in native and "37 + i * 2" in native,"lane unit coordinates missing from JNI snapshot"),
 ("updateLaneUnits(dt);" in native,"physical lane units are not simulated"),
-("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"immersive menu check failed"),
+("HERO_DESCRIPTIONS" in main and 'actionButton("‹")' in main and 'actionButton("›")' in main,"hero selector and character context missing"),
+("INICIAR PARTIDA" in main and "TOQUE PARA JOGAR" not in main,"menu must use an explicit primary action"),
+("val touchStartX = 0f" not in main,"menu must not start a match from an arbitrary screen tap"),
+("gSelectedHero == 2 ? 0.62f : 0.46f" in native and "gSelectedHero == 0 ? 3.6f" in native,"hero-specific mobility/support profile missing"),
+("testSnapshotContract" in read("tests/native/native_sim_tests.cpp") and "FakeJFloatArray" in read("tests/native/jni.h"),"native regression harness missing"),
+("verify_apk.py" in workflow and "archive.testzip()" in apk_smoke and "JNI_METHODS" in apk_smoke,"packaged APK smoke test is not wired into CI"),
 ("CC0" in asset_register and "KayKit" in asset_register,"KayKit asset register missing"),
 ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license,"CC0 license files missing"),
-("KayKit" in readme and "offline" in readme.lower() and "KayKit" in changelog,"0.7.0 docs missing"),
+("KayKit" in readme and "offline" in readme.lower() and "KayKit" in changelog,"environment licensing/docs missing"),
 ]
 for ok,msg in checks:
     if not ok: raise SystemExit("Verification failed: "+msg)
@@ -100,11 +116,13 @@ if "treesAndShrubs" in world or "shrineAndWater" in world:
 start=native.index("void updateBots(float dt) {")
 end=native.index("void updateLanes(float dt) {",start)
 ai=native[start:end]
-if "gPlayerX" in ai or "gPlayerZ" in ai or "gLaneProgress" in ai:
-    raise SystemExit("Bot navigation still depends on player or lane score")
+if "gPlayerX" not in ai or "gPlayerZ" not in ai or "gPlayerHealth" not in ai:
+    raise SystemExit("Combat AI is not engaging the player")
+if "gLaneProgress" in ai:
+    raise SystemExit("Combat AI must not use lane progress as a navigation target")
 if re.search(r"(fireButton|nativeFire|shootProjectile|weaponDamage)",main+native,re.I):
     raise SystemExit("Disallowed weapon mechanic found in active gameplay path")
 if not avatar.is_file() or avatar.stat().st_size<500_000:
     raise SystemExit("Quaternius CC0 humanoid GLB missing")
-print("Project Arena 0.7.0 structural verification passed.")
-print("KayKit CC0 models/resources, stone lanes, river, skeletal skinning and visible lane units verified.")
+print("Project Arena 0.9.1 structural verification passed.")
+print("Native siege loop, hero profiles, deliberate menu navigation, lane waves, tower defense, core objectives and CC0 assets verified.")
