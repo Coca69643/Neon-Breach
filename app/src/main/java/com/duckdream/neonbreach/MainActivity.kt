@@ -106,13 +106,17 @@ class MainActivity : Activity() {
                     matchLabel.text = String.format("%02d:%02d   •   LOCAL 5v5", time / 60, time % 60)
                     val blue = result[5].toInt()
                     val red = result[6].toInt()
-                    stateLabel.text = "AZUL " + blue + "  :  " + red + " VERMELHO"
+                    stateLabel.text = "BAIXAS AZUIS " + blue + "  :  " + red + " VERMELHAS"
                     val enemyTowersDown = (0..2).count { result[76 + it] <= 0.0f }
                     val towerProgress = ((780f - result[76]) / 780f +
                         (780f - result[77]) / 780f + (780f - result[78]) / 780f) / 3f
                     val coreProgress = 1f - result[80] / 1600f
-                    objectiveProgress.progress = ((if (enemyTowersDown == 3) coreProgress else towerProgress)
-                        .coerceIn(0f, 1f) * 100f).toInt()
+                    val siegeProgress = if (enemyTowersDown < 3) {
+                        towerProgress * 0.75f
+                    } else {
+                        0.75f + coreProgress * 0.25f
+                    }
+                    objectiveProgress.progress = (siegeProgress.coerceIn(0f, 1f) * 100f).toInt()
                     objectiveLabel.text = if (enemyTowersDown < 3) {
                         "DERRUBE AS TORRES VERMELHAS  •  $enemyTowersDown/3"
                     } else {
@@ -321,7 +325,7 @@ class MainActivity : Activity() {
             marginStart = dp(10)
         })
 
-        stateLabel = label("AZUL 0  •  VERMELHO 0", 9f, Color.WHITE, true)
+        stateLabel = label("BAIXAS AZUIS 0  :  0 VERMELHAS", 9f, Color.WHITE, true)
         layer.addView(stateLabel, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
             topMargin = dp(12)
         })
@@ -577,7 +581,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         for ((lane, laneX) in floatArrayOf(-12f, 0f, 12f).withIndex()) {
             canvas.drawLine(px(laneX), py(-22f), px(laneX), py(22f), lanePaint)
             val blueAlive = snapshot.size >= 94 && snapshot[73 + lane] > 0f
-            val redAlive = snapshot.size >= 82 && snapshot[76 + lane] > 0f
+            val redAlive = snapshot.size >= 94 && snapshot[76 + lane] > 0f
             canvas.drawCircle(px(laneX), py(-12.2f), 3.5f,
                 if (blueAlive) blueTowerPaint else destroyedTowerPaint)
             canvas.drawCircle(px(laneX), py(12.2f), 3.5f,

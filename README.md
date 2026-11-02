@@ -1,10 +1,10 @@
 # Projeto Arena 0.9.0
 
-MOBA-lite 3D para Android, landscape e totalmente offline, com herói controlável, bots locais, tropas visíveis e três rotas de controle.
+MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 local com bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
 
 ## Reconstrução visual 0.8.0
 - O campo antigo de árvores, cones e esferas e o altar procedural foram removidos.
-- O ambiente agora usa 12 modelos glTF do KayKit Medieval Hexagon Pack: castelos azul/vermelho, torres, casas, igrejas, pontes, agrupamentos de árvores e bandeiras.
+- O ambiente base ainda usa 12 modelos glTF do KayKit Medieval Hexagon Pack: castelos azul/vermelho, torres, casas, igrejas, pontes, agrupamentos de árvores e bandeiras.
 - O pack é CC0 1.0. Somente peças de ambiente foram importadas; o jogo não incorpora itens ou mecânicas armadas.
 - O mapa tem duas bases, três rotas de pedra, um rio transversal com três pontes, torres por rota e bandeiras nas áreas de controle.
 - O atlas de textura compartilhado é carregado uma vez pelo ResourceLoader do Filament.
