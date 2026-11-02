@@ -11,6 +11,7 @@ MOBA 3D nativo para Android, landscape e offline. A 0.14.0 integra modelagem art
 - Herói, bots e minions usam uma transformação alinhada à normal da superfície para acompanhar encostas do terreno 0.13.0.
 - Física cinemática nativa em C++ com passo fixo de 60 Hz, aceleração/frenagem limitadas, subpassos, deslizamento em colisões, limite de inclinação e contenção na ilha.
 - Colisores estáticos correspondem a árvores, pedras, clareiras, muralhas, torres e santuários. Separação física evita sobreposição entre jogador, bots e tropas.
+- Bots e tropas usam desvio local preventivo de obstáculos; o joystick do jogador mantém controle direto.
 - A simulação C++ é a autoridade para posição/velocidade; o renderer apenas apresenta as transformações e animações.
 - Testes nativos no CI cobrem superfície, colisão com árvores/estruturas, limites, frenagem e separação entre corpos.
 
