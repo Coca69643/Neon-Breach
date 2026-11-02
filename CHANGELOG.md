@@ -1,5 +1,39 @@
 # Changelog — Projeto Arena
 
+## [0.14.0] — 2026-11-02
+
+### Modelagem e identidade dos personagens
+- Criado um pipeline GLB runtime local para equipamentos articulados, sem dependências de rede ou texturas extras.
+- Lyra recebe camadas leves de manto e placas; Bastion recebe peitoral/ombros reforçados e elmo; Kairo recebe armadura assimétrica e manto dividido.
+- Cada conjunto inclui peitoral, detalhes, cabeça, costas, ombreiras, antebraços, coxas e botas.
+- As peças são parentadas aos ossos do rig (spine, head, arms, thighs e feet), acompanhando animação e rotação do personagem.
+- O jogador pode alternar entre os três conjuntos; nove bots recebem variações com cor de equipe.
+- O corpo humanoide-base é compartilhado para manter custo de memória e geometria sob controle.
+
+### Humanização e locomoção
+- Bots e tropas usam um rig de 18 juntas, incluindo pelve, pés, mãos, tronco em três segmentos, pescoço e cabeça.
+- Passada inclui elevação de joelho, rotação de pé, balanço dos braços, movimento das mãos, contrapeso do tronco e movimento sutil da cabeça.
+- Bots suavizam o yaw em curvas e inclinam pelve/torso de acordo com a mudança de direção.
+- Silhuetas e proporções dos bots variam conforme os papéis de solo, jungle, mid, carry e suporte.
+- Herói, bots e tropas são orientados pela normal do terreno compartilhada com o mapa 0.13.0.
+
+### Física integrada
+- Criado módulo cinemático nativo ArenaPhysics, compilado junto do simulador C++.
+- Movimento do jogador, bots e tropas passa pelo mesmo sistema de aceleração/frenagem, subpassos e colisão.
+- Simulação usa passo fixo de 60 Hz com acumulador e limite de subpassos por frame.
+- Colisores aproximados correspondem às árvores, rochas, acampamentos, santuários, torres e estruturas de base do cenário.
+- Limite da ilha impede sair do campo; resposta de colisão remove velocidade normal e permite deslizar ao longo das superfícies.
+- Inclinação excessiva reduz a componente de velocidade para cima da encosta.
+- Separação de corpos reduz sobreposição entre jogador, bots e minions ativos.
+- PhysicsWorld.cpp/Jolt permanece desativado no CMake; não existem dois motores disputando a autoridade da posição.
+
+### Testes e distribuição
+- Adicionados testes nativos para superfície, colisão com árvore, colisão de estrutura, limite da ilha, frenagem e separação entre personagens.
+- O GitHub Actions compila e executa os testes nativos antes de compilar o APK Android.
+- Mantidos applicationId, assinatura persistente, landscape, offline, HUB, economia, mapa 0.13.0 e sistemas MOBA.
+- versionCode 45 / versionName 0.14.0.
+- CI não equivale a validação física no Realme C53. FPS sustentado, temperatura, colisões sentidas nos controles e visual final permanecem pendentes de teste no aparelho.
+
 ## [0.13.0] — 2026-11-02
 
 ### Reconstrução do campo de batalha
