@@ -45,9 +45,9 @@ internal class FilamentGameRenderer(
     private var worldResourceLoader: ResourceLoader? = null
     private val worldAssets = LinkedHashMap<String, FilamentAsset>()
     private val worldInstances = ArrayList<FilamentInstance>()
-    private val towerRootInstances = IntArray(6)
-    private val towerBaseTransforms = arrayOfNulls<FloatArray>(6)
-    private val towerHidden = BooleanArray(6)
+    private val towerRootInstances = IntArray(18)
+    private val towerBaseTransforms = arrayOfNulls<FloatArray>(18)
+    private val towerHidden = BooleanArray(18)
     private data class WorldPlacement(
         val model: String, val x: Float, val z: Float,
         val scale: Float, val yaw: Float = 0f, val yOffset: Float = 0f
@@ -60,12 +60,12 @@ internal class FilamentGameRenderer(
     private var playerInstance: FilamentInstance? = null
     private var playerAnimator: Animator? = null
     private val botAnimators = ArrayList<Animator>(9)
-    private val minionInstances = ArrayList<FilamentInstance>(12)
-    private val minionAnimators = ArrayList<Animator>(12)
-    private val minionRootInstances = IntArray(12)
-    private val minionBones = ArrayList<Map<String, BonePose>>(12)
-    private val minionLastPositions = Array(12) { floatArrayOf(Float.NaN, Float.NaN) }
-    private val minionAlive = BooleanArray(12) { true }
+    private val minionInstances = ArrayList<FilamentInstance>(24)
+    private val minionAnimators = ArrayList<Animator>(24)
+    private val minionRootInstances = IntArray(24)
+    private val minionBones = ArrayList<Map<String, BonePose>>(24)
+    private val minionLastPositions = Array(24) { floatArrayOf(Float.NaN, Float.NaN) }
+    private val minionAlive = BooleanArray(24) { true }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.72f
     private var minionsVisible = false
@@ -252,24 +252,39 @@ internal class FilamentGameRenderer(
             add(WorldPlacement("church_blue", -8.0f, -25.3f, 1.55f))
             add(WorldPlacement("church_red", 8.0f, 25.3f, 1.55f, Math.PI.toFloat()))
 
-            for (x in listOf(-12f, 0f, 12f)) {
-                add(WorldPlacement("tower_blue", x, -12.2f, 1.9f))
-                add(WorldPlacement("tower_red", x, 12.2f, 1.9f, Math.PI.toFloat()))
-                add(WorldPlacement("bridge_a", x, 0f, 1.55f))
-                add(WorldPlacement("flag_blue", x, -3.1f, 5.0f))
-                add(WorldPlacement("flag_red", x, 3.1f, 5.0f, Math.PI.toFloat()))
+            // Three defensive structures per lane; the renderer maps each to its native health slot.
+            for (lane in 0..2) {
+                val crossingX = laneCenterX(lane, 0f)
+                for (tier in 0..2) {
+                    val z = when (tier) { 0 -> 22f; 1 -> 15f; else -> 8f }
+                    add(WorldPlacement("tower_blue", laneCenterX(lane, -z), -z, 1.48f))
+                    add(WorldPlacement("tower_red", laneCenterX(lane, z), z, 1.48f, Math.PI.toFloat()))
+                }
+                add(WorldPlacement("bridge_a", crossingX, 0f, 1.42f))
+                add(WorldPlacement("flag_blue", crossingX, -3.8f, 3.7f))
+                add(WorldPlacement("flag_red", crossingX, 3.8f, 3.7f, Math.PI.toFloat()))
             }
 
-            // Woodland pockets sit between the three playable roads, not on top of them.
+            // Neutral camps occupy eight pockets split between the two mirrored jungles.
+            val camps = listOf(
+                floatArrayOf(-8.2f, -14.5f), floatArrayOf(8.2f, -14.5f),
+                floatArrayOf(-20.2f, -10f), floatArrayOf(20.2f, -10f),
+                floatArrayOf(-8.2f, 14.5f), floatArrayOf(8.2f, 14.5f),
+                floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
+            )
+            camps.forEachIndexed { index, p ->
+                add(WorldPlacement("trees_a", p[0], p[1], 1.65f, (index % 4) * 0.7f))
+                add(WorldPlacement("flag_blue", p[0], p[1], 1.25f))
+            }
+            // Distinct river landmarks mark the two neutral objective pits.
+            add(WorldPlacement("church_blue", -7f, 0.2f, 0.82f))
+            add(WorldPlacement("church_red", 7f, 0.2f, 0.82f, Math.PI.toFloat()))
             listOf(
-                floatArrayOf(-22f, -17f), floatArrayOf(-22f, 17f),
-                floatArrayOf(-6.5f, -18f), floatArrayOf(-6.5f, 18f),
-                floatArrayOf(6.5f, -18f), floatArrayOf(6.5f, 18f),
-                floatArrayOf(22f, -17f), floatArrayOf(22f, 17f),
-                floatArrayOf(-18f, -5.5f), floatArrayOf(18f, 5.5f)
+                floatArrayOf(-24f, -18f), floatArrayOf(-24f, 18f),
+                floatArrayOf(24f, -18f), floatArrayOf(24f, 18f),
+                floatArrayOf(-19f, -4f), floatArrayOf(19f, 4f)
             ).forEachIndexed { index, p ->
-                val yaw = (index % 4) * 0.55f
-                add(WorldPlacement("trees_a", p[0], p[1], 2.3f, yaw))
+                add(WorldPlacement("trees_a", p[0], p[1], 2.0f, index * 0.42f))
             }
         }
 
@@ -294,8 +309,14 @@ internal class FilamentGameRenderer(
             )
             transforms.setTransform(root, matrix)
             if (placement.model == "tower_blue" || placement.model == "tower_red") {
-                val lane = kotlin.math.round((placement.x + 12f) / 12f).toInt().coerceIn(0, 2)
-                val towerIndex = (if (placement.model == "tower_blue") 0 else 3) + lane
+                val team = if (placement.model == "tower_blue") 0 else 1
+                val lane = (0..2).minByOrNull { kotlin.math.abs(laneCenterX(it, placement.z) - placement.x) } ?: 1
+                val tier = when {
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 22f) < 1f -> 0
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 15f) < 1f -> 1
+                    else -> 2
+                }
+                val towerIndex = team * 9 + lane * 3 + tier
                 towerRootInstances[towerIndex] = root
                 towerBaseTransforms[towerIndex] = matrix.copyOf()
                 towerHidden[towerIndex] = false
@@ -354,7 +375,7 @@ internal class FilamentGameRenderer(
 
         // Twelve smaller, animated lane units: two per team on each of the three routes.
         // Their meshes and material atlas are shared with the hero instances.
-        for (index in 0 until 12) {
+        for (index in 0 until 24) {
             val instance = characterLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance lane unit $index")
             minionInstances.add(instance)
@@ -406,14 +427,13 @@ internal class FilamentGameRenderer(
         characterMinY = center[1] - half[1]
 
         for (index in minionRootInstances.indices) {
-            val local = index % 6
-            val lane = local % 3
-            val slot = local / 3
-            val team = if (index < 6) 0 else 1
-            val side = if (slot == 0) -0.75f else 0.75f
-            val teamOffset = if (team == 0) -0.48f else 0.48f
-            val z = if (team == 0) -23.5f - slot * 1.2f else 23.5f + slot * 1.2f
-            setMinionTransform(index, kLaneX(lane) + side + teamOffset, z, if (team == 0) 0f else Math.PI.toFloat())
+            val team = if (index < 12) 0 else 1
+            val local = index % 12
+            val lane = local / 4
+            val slot = local % 4
+            val z = if (team == 0) -28f else 28f
+            val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f }
+            setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
 
         characterRootInstance = transforms.getInstance(player.root)
@@ -742,21 +762,17 @@ internal class FilamentGameRenderer(
     }
 
     fun updateStructures(snapshot: FloatArray) {
-        if (!sceneLoaded || snapshot.size < 82) return
+        if (!sceneLoaded || snapshot.size < 125) return
         val transforms = engine.transformManager
-        for (index in 0 until 6) {
+        for (index in 0 until 18) {
             val root = towerRootInstances[index]
             val base = towerBaseTransforms[index] ?: continue
             if (root == 0) continue
-            val health = if (index < 3) snapshot[73 + index] else snapshot[76 + index - 3]
-            val destroyed = health <= 0.0f
+            val destroyed = snapshot[107 + index] <= 0f
             if (towerHidden[index] == destroyed) continue
             val matrix = base.copyOf()
             if (destroyed) {
-                // Remove the intact tower silhouette only after its native health reaches zero.
-                for (element in intArrayOf(0, 1, 2, 4, 5, 6, 8, 9, 10)) {
-                    matrix[element] *= 0.001f
-                }
+                for (element in intArrayOf(0, 1, 2, 4, 5, 6, 8, 9, 10)) matrix[element] *= 0.001f
             }
             transforms.setTransform(root, matrix)
             towerHidden[index] = destroyed
@@ -792,10 +808,10 @@ internal class FilamentGameRenderer(
     }
 
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
-        if (!sceneLoaded || snapshot.size < 94) return
+        if (!sceneLoaded || snapshot.size < 222) return
         minionAnimationPhase += deltaTime * 7.2f
         for (index in minionInstances.indices) {
-            val alive = snapshot[82 + index] > 0.0f
+            val alive = snapshot[174 + index] > 0.0f
             if (minionAlive[index] != alive) {
                 if (alive) viewer.scene.addEntities(minionInstances[index].entities)
                 else viewer.scene.removeEntities(minionInstances[index].entities)
@@ -804,14 +820,14 @@ internal class FilamentGameRenderer(
                 minionLastPositions[index][1] = Float.NaN
             }
             if (!alive) continue
-            val x = snapshot[36 + index * 2]
-            val z = snapshot[37 + index * 2]
+            val x = snapshot[126 + index * 2]
+            val z = snapshot[127 + index * 2]
             val previous = minionLastPositions[index]
             val dx = if (previous[0].isNaN()) 0f else x - previous[0]
             val dz = if (previous[1].isNaN()) 0f else z - previous[1]
             val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
             val moving = (speed / 2.55f).coerceIn(0f, 1f)
-            val team = if (index < 6) 0 else 1
+            val team = if (index < 12) 0 else 1
             val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
                 else if (team == 0) 0f else Math.PI.toFloat()
             setMinionTransform(index, x, z, yaw)
@@ -887,6 +903,15 @@ internal class FilamentGameRenderer(
             botAnimators.getOrNull(index)?.updateBoneMatrices()
             previous[0] = x
             previous[1] = z
+        }
+    }
+
+    private fun laneCenterX(lane: Int, z: Float): Float {
+        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
+        return when (lane) {
+            0 -> -14.2f + bend
+            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
+            else -> 14.2f - bend * 0.82f
         }
     }
 
@@ -975,9 +1000,14 @@ internal class FilamentGameRenderer(
 
     fun setOverviewCamera(overview: Boolean) {
         overviewCamera = overview
+        val spawn = when (activeHero) {
+            1 -> laneCenterX(0, -25f) to -25f
+            2 -> -8.2f to -14.5f
+            else -> laneCenterX(2, -25f) + 1.8f to -25f
+        }
         if (overview) {
-            cameraX = -12.0f
-            cameraZ = -19.0f
+            cameraX = spawn.first
+            cameraZ = spawn.second
             cameraY = terrainHeight(cameraX, cameraZ)
             playerYaw = 0.0f
             val rootY = cameraY - characterMinY * characterScale
@@ -987,12 +1017,11 @@ internal class FilamentGameRenderer(
                 0f, 0f, scale, 0f, cameraX, rootY, cameraZ, 1f
             ))
         } else {
-            // Initialize follow-camera from the actual spawn instead of stale menu coordinates.
             val forwardX = sin(playerYaw); val forwardZ = cos(playerYaw)
             val rightX = cos(playerYaw); val rightZ = -sin(playerYaw)
-            cameraX = -12.0f - rightX * 1.55f + forwardX * 2.0f
-            cameraZ = -19.0f - rightZ * 1.55f + forwardZ * 2.0f
-            cameraY = terrainHeight(-12.0f, -19.0f)
+            cameraX = spawn.first - rightX * 1.55f + forwardX * 2.0f
+            cameraZ = spawn.second - rightZ * 1.55f + forwardZ * 2.0f
+            cameraY = terrainHeight(spawn.first, spawn.second)
         }
         updateCamera(cameraAspect)
     }
