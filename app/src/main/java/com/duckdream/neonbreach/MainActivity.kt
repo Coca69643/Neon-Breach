@@ -88,6 +88,7 @@ class MainActivity : Activity() {
                 val result = nativeStep(moveX, moveZ, dt)
                 if (result.size >= 96) {
                     lastSnapshot = result
+                    renderer.updatePlayerSignals(result)
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
                     renderer.updateBots(result, dt)
                     renderer.updateCreeps(result, dt)
@@ -584,6 +585,7 @@ class MainActivity : Activity() {
 
         pulseActionButton = actionButton(activeAbilityName()) {
             val activated = nativeCastPulse()
+            if (activated) renderer.triggerAbilityGesture()
             val feedback = if (activated) activeAbilityHint() else when (selectedHero) {
                 0 -> "AURA • sem aliados feridos ou rivais próximos"
                 1 -> "IMPACTO • aguarde a recarga"
@@ -598,6 +600,7 @@ class MainActivity : Activity() {
 
         shieldActionButton = actionButton("ESCUDO") {
             val activated = nativeActivateShield()
+            if (activated) renderer.triggerGuardGesture()
             showAbilityFeedback(if (activated) "ESCUDO • reduz dano recebido por 3 segundos" else "ESCUDO • aguarde a recarga")
         }
         layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
@@ -607,6 +610,7 @@ class MainActivity : Activity() {
 
         attackActionButton = actionButton("GOLPE") {
             val hit = nativeBasicAttack()
+            if (hit) renderer.triggerActionPulse()
             showAbilityFeedback(if (hit) "GOLPE • alvo atingido" else "GOLPE • aproxime-se de um rival ou estrutura")
         }
         layer.addView(attackActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
