@@ -910,15 +910,7 @@ internal class FilamentGameRenderer(
         }
     }
 
-    private fun terrainHeight(x: Float, z: Float): Float {
-        val westRidge = 1.05f * kotlin.math.exp(-((x + 23f) * (x + 23f)) / 52f) *
-            (0.45f + 0.55f * cos(z * 0.075f))
-        val eastRidge = 0.92f * kotlin.math.exp(-((x - 23f) * (x - 23f)) / 58f) *
-            (0.45f + 0.55f * cos(z * 0.07f))
-        val centralRise = 0.48f * kotlin.math.exp(-((x - 1f) * (x - 1f) + (z - 1f) * (z - 1f)) / 90f)
-        return 0.36f * sin(x * 0.18f) * cos(z * 0.14f) +
-            0.18f * sin((x + z) * 0.29f) + westRidge + eastRidge + centralRise
-    }
+    private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
         // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
