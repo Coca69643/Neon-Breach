@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.22.1)
 project(arena_sim LANGUAGES CXX)
 
-add_library(arena_sim SHARED ArenaSimulation.cpp)
+add_library(arena_sim SHARED ArenaSimulation.cpp ArenaPhysics.cpp)
 
 find_library(log-lib log)
 target_compile_features(arena_sim PRIVATE cxx_std_20)
