@@ -138,8 +138,10 @@ class MainActivity : Activity() {
                     objectiveProgress.progress = (siegeProgress.coerceIn(0f, 1f) * 100f).toInt()
                     val neutralObjective = when {
                         result[104] > 0f -> "GUARDIÃO DO RIO ATIVO"
-                        result[103] > 0f -> "GUARDIÃO DO RIO  •  ${kotlin.math.ceil(result[103]).toInt()}s"
                         result[106] > 0f -> "SENTINELA ANCESTRAL ATIVA"
+                        result[103] > 0f && result[105] > 0f ->
+                            "GUARDIÃO ${kotlin.math.ceil(result[103]).toInt()}s • SENTINELA ${kotlin.math.ceil(result[105]).toInt()}s"
+                        result[103] > 0f -> "GUARDIÃO DO RIO  •  ${kotlin.math.ceil(result[103]).toInt()}s"
                         else -> "SENTINELA ANCESTRAL  •  ${kotlin.math.ceil(result[105]).toInt()}s"
                     }
                     objectiveLabel.text = if (enemyTowersDown < 9) {
@@ -939,9 +941,9 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
                     for (tier in 0..2) {
                         val index = team * 9 + lane * 3 + tier
                         val z = (if (team == 0) -1f else 1f) * when (tier) {
-                            0 -> 22f
+                            0 -> 8f
                             1 -> 15f
-                            else -> 8f
+                            else -> 22f
                         }
                         val x = laneX(lane, z)
                         val alive = snapshot[107 + index] > 0f
