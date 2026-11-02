@@ -117,6 +117,14 @@ internal object HeroGearGlbBuilder {
         val head=Part("gear_head",0).also(parts::add)
         val headTrim=Part("gear_head_trim",1).also(parts::add)
         val back=Part("gear_back",0).also(parts::add)
+        val shoulderL=Part("gear_shoulder_l",0).also(parts::add)
+        val shoulderR=Part("gear_shoulder_r",0).also(parts::add)
+        val forearmL=Part("gear_forearm_l",1).also(parts::add)
+        val forearmR=Part("gear_forearm_r",1).also(parts::add)
+        val thighL=Part("gear_thigh_l",0).also(parts::add)
+        val thighR=Part("gear_thigh_r",0).also(parts::add)
+        val bootL=Part("gear_boot_l",1).also(parts::add)
+        val bootR=Part("gear_boot_r",1).also(parts::add)
 
         when(style) {
             0 -> { // Lyra: layered mantle and light ceremonial plates.
@@ -157,6 +165,17 @@ internal object HeroGearGlbBuilder {
                 plate(back,-0.12f,-0.19f,-0.13f,0.07f,0.10f,0.22f,0.025f)
             }
         }
+
+        // Bone-local plates finish the silhouette without duplicating full character meshes.
+        val shoulderScale = if(style==1) 1.24f else if(style==2) 0.86f else 0.96f
+        ellipsoid(shoulderL,0f,0.02f,0f,0.084f*shoulderScale,0.095f*shoulderScale,0.092f*shoulderScale,8)
+        ellipsoid(shoulderR,0f,0.02f,0f,0.084f*shoulderScale,0.095f*shoulderScale,0.092f*shoulderScale,8)
+        box(forearmL,0f,0.07f,0.015f,0.10f*shoulderScale,0.16f,0.09f)
+        box(forearmR,0f,0.07f,0.015f,0.10f*shoulderScale,0.16f,0.09f)
+        plate(thighL,0f,-0.16f,0.03f,0.075f*shoulderScale,0.095f*shoulderScale,0.16f,0.055f)
+        plate(thighR,0f,-0.16f,0.03f,0.075f*shoulderScale,0.095f*shoulderScale,0.16f,0.055f)
+        box(bootL,0f,0.005f,0.045f,0.12f,0.075f,0.17f)
+        box(bootR,0f,0.005f,0.045f,0.12f,0.075f,0.17f)
 
         val teamColor=if(red) listOf(0.55f,0.16f,0.14f,1f) else listOf(0.14f,0.36f,0.56f,1f)
         val trimColor=when(style) {
