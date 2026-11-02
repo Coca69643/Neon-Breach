@@ -118,7 +118,7 @@ internal class ArenaMenuArtworkView(context: Context) : View(context) {
         val path=Path().apply {
             moveTo(x0,y0)
             cubicTo(x0*.92f+x1*.08f,y0-120f,x1,y1+80f,x1,y1)
-            quadraticTo(x2-40f,y2+55f,x2,y2)
+            quadTo(x2-40f,y2+55f,x2,y2)
         }
         p.style=Paint.Style.STROKE;p.strokeCap=Paint.Cap.ROUND
         p.color=Color.argb(115,190,158,105);p.strokeWidth=24f;c.drawPath(path,p)
