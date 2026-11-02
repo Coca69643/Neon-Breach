@@ -219,7 +219,7 @@ void spawnLaneUnit(LaneUnit &unit, int team, int lane, int slot, int waveGroup) 
     unit.lane = lane;
     unit.slot = slot;
     unit.waveGroup = waveGroup;
-    const float z = team == 0 ? -28.0f : 28.0f;
+    const float z = team == 0 ? -28.0f - waveGroup * 1.35f : 28.0f + waveGroup * 1.35f;
     const float side = slot == 0 ? -0.86f : (slot == 1 ? 0.0f : (slot == 2 ? 0.86f : 1.45f));
     unit.position = lanePoint(lane, z, side);
     unit.velocity = {0.0f, 0.0f};
