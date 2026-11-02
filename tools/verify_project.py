@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural and gameplay-contract verification for Project Arena 0.10.0."""
+"""Structural and gameplay-contract verification for Project Arena 0.11.0."""
 from pathlib import Path
 import json
 import re
@@ -32,14 +32,14 @@ avatar=ROOT/"app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets=ROOT/"app/src/main/assets/world/kaykit"
 
 checks=[
-("versionName '0.10.0'" in gradle,"versionName must be 0.10.0"),
-("versionCode 41" in gradle,"versionCode must be 40"),
+("versionName '0.11.0'" in gradle,"versionName must be 0.10.0"),
+("versionCode 42" in gradle,"versionCode must be 42"),
 ("applicationId 'com.duckdream.neonbreach'" in gradle,"applicationId must remain stable"),
 ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle,"persistent signing config missing"),
 ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow,"workflow must require persistent signing"),
 ("if: github.event_name != 'pull_request'" in workflow,"PR builds must not publish update APKs"),
-("versionCode='41' versionName='0.10.0'" in workflow,"APK package/version verification is stale"),
-("project-arena-0.10.0-update" in workflow,"artifact name must be 0.10.0"),
+("versionCode='42' versionName='0.11.0'" in workflow,"APK package/version verification is stale"),
+("project-arena-0.11.0-update" in workflow,"artifact name must be 0.10.0"),
 ("org.jetbrains.kotlin.android" in root_gradle,"external Kotlin plugin missing"),
 ("android.builtInKotlin=false" in props and "android.newDsl=false" in props,"AGP migration flags missing"),
 ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle,"Filament dependencies missing"),
@@ -55,6 +55,13 @@ checks=[
 ("KayKit CC0 environment loaded" in renderer,"environment asset count log missing"),
 ("Camera.Fov.VERTICAL" in renderer and "viewer.camera.setProjection(" in renderer,"perspective follow camera missing"),
 ("applyRestPose" in renderer and "playerAnimator?.updateBoneMatrices()" in renderer,"player skeletal skinning update missing"),
+("playerBoneNames" in renderer and "foot_l" in renderer and "spine_03" in renderer and "\"Head\"" in renderer,"expanded playable hero rig missing"),
+("enum class HeroMotion" in renderer and "HeroMotion.DASH" in renderer and "HeroMotion.RESPAWN" in renderer,"hero motion state machine missing"),
+("heroPoseAngles" in renderer and "kotlin.math.exp(-dt * 17f)" in renderer,"per-bone transition smoothing missing"),
+("fun updatePlayerSignals(snapshot: FloatArray)" in renderer and "renderer.updatePlayerSignals(result)" in main,"native player state signals are not connected"),
+("fun triggerAbilityGesture()" in renderer and "fun triggerGuardGesture()" in renderer and "fun triggerActionPulse()" in renderer,"action animation events missing"),
+("phase += speed * dt" in renderer and "turnRate" in renderer and "braking" in renderer,"distance-driven gait and turn/brake response missing"),
+("heroDashActive" in renderer and "heroGuardActive" in renderer and "heroDamageTime" in renderer and "heroDowned" in renderer,"native gameplay state coverage missing"),
 ("animateArmPose" in renderer and "axis == 2" in renderer,"arm animation shoulder axis missing"),
 ("riverCenterZ" in world and "Carve a river bed" in world,"visible river channel missing"),
 ("values[72] = gPlayerHealth" in native and "healthLabel.text" in main,"player health HUD missing"),
@@ -128,5 +135,19 @@ if re.search(r"(fireButton|nativeFire|shootProjectile|weaponDamage)",main+native
     raise SystemExit("Disallowed weapon mechanic found in active gameplay path")
 if not avatar.is_file() or avatar.stat().st_size<500_000:
     raise SystemExit("Quaternius CC0 humanoid GLB missing")
-print("Project Arena 0.10.0 structural verification passed.")
-print("Hero roles, timed respawn, menu navigation, siege loop, lane waves, tower defense, core objectives and native rendering verified.")
+raw_model=base64.b64decode(avatar.read_text(encoding="ascii"))
+if raw_model[:4] != b"glTF":
+    raise SystemExit("Playable humanoid asset is not a GLB file")
+json_length=int.from_bytes(raw_model[12:16], "little")
+model_gltf=json.loads(raw_model[20:20+json_length].decode("utf-8"))
+model_nodes={node.get("name") for node in model_gltf.get("nodes",[]) if node.get("name")}
+required_player_joints={"pelvis","thigh_l","thigh_r","calf_l","calf_r","foot_l","foot_r","upperarm_l","upperarm_r","lowerarm_l","lowerarm_r","hand_l","hand_r","spine_01","spine_02","spine_03","neck_01","Head"}
+missing_joints=required_player_joints-model_nodes
+if missing_joints:
+    raise SystemExit("Playable hero rig is missing required joints: "+", ".join(sorted(missing_joints)))
+if not model_gltf.get("skins") or max(len(skin.get("joints",[])) for skin in model_gltf["skins"]) < 60:
+    raise SystemExit("Playable humanoid must retain its full skinned rig")
+if "renderer.triggerAbilityGesture()" not in main or "renderer.triggerGuardGesture()" not in main or "renderer.triggerActionPulse()" not in main:
+    raise SystemExit("MainActivity action-to-animation wiring is incomplete")
+print("Project Arena 0.11.0 structural verification passed.")
+print("Expanded hero rig, state transitions, native action signals, lightweight NPC animation, MOBA objectives and offline HUB verified.")
