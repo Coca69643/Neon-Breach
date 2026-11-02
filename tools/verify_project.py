@@ -69,7 +69,7 @@ checks=[
 ("values[static_cast<std::size_t>(82 + i)] = gLaneUnits[static_cast<std::size_t>(i)].health" in native and "snapshot[82 + index]" in renderer,"dead minions are not removed from the rendered scene"),
 ("renderer.updateStructures(result)" in main and "fun updateStructures(snapshot: FloatArray)" in renderer,"destroyed tower rendering is not connected"),
 ("enemy.health - 12.0f" in native and "nativeBasicAttack" in native,"hero active attack and bot combat missing"),
-("bot.health - 38.0f" in native and "gShieldTime > 0.0f ? 4.0f" in native,"pulse damage and shield mitigation missing"),
+("botDamage" in native and "unitDamage" in native and "gShieldTime > 0.0f ? 4.0f" in native,"hero pulse damage and shield mitigation missing"),
 ("botAnimators.getOrNull(index)?.updateBoneMatrices()" in renderer,"bot skinning matrices not updated"),
 ("fun updateCreeps(snapshot: FloatArray, deltaTime: Float)" in renderer,"minion renderer update missing"),
 ("fun setMinionsVisible(visible: Boolean)" in renderer,"minion scene visibility management missing"),
