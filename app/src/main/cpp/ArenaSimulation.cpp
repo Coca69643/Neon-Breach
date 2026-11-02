@@ -25,6 +25,7 @@ struct LaneUnit {
     int team = 0;
     int lane = 0;
     int slot = 0; // 0-2 melee, 3 ranged
+    int waveGroup = 0;
     float health = 0.0f;
     float attackCooldown = 0.0f;
     float respawnTime = 0.0f;
@@ -37,10 +38,10 @@ struct NeutralCamp {
     int kind = 0;
 };
 constexpr int kBotCount = 9;
-constexpr int kLaneUnitCount = 24;
+constexpr int kLaneUnitCount = 48;
 constexpr int kCampCount = 8;
 constexpr int kTowerCount = 18;
-constexpr int kSnapshotCount = 256;
+constexpr int kSnapshotCount = 320;
 constexpr float kTowerMaxHealth = 820.0f;
 constexpr float kCoreMaxHealth = 2200.0f;
 constexpr float kWalkSpeed = 5.6f;
@@ -58,6 +59,7 @@ std::array<NeutralCamp, kCampCount> gCamps{};
 std::array<float, kTowerCount> gTowerHealth{};
 std::array<float, kTowerCount> gTowerCooldown{};
 std::array<std::array<float, 3>, 2> gWaveCooldown{};
+std::array<std::array<int, 3>, 2> gNextWaveGroup{};
 std::array<float, 2> gCoreHealth{{kCoreMaxHealth, kCoreMaxHealth}};
 std::array<float, 2> gTeamKills{{0.0f, 0.0f}};
 std::array<float, 2> gTeamGold{{500.0f, 500.0f}};
@@ -212,10 +214,11 @@ void resetBot(Bot &bot, int index) {
     bot.startDelay = 0.10f * static_cast<float>(index % 5);
     bot.thinkCooldown = 0.0f;
 }
-void spawnLaneUnit(LaneUnit &unit, int team, int lane, int slot) {
+void spawnLaneUnit(LaneUnit &unit, int team, int lane, int slot, int waveGroup) {
     unit.team = team;
     unit.lane = lane;
     unit.slot = slot;
+    unit.waveGroup = waveGroup;
     const float z = team == 0 ? -28.0f : 28.0f;
     const float side = slot == 0 ? -0.86f : (slot == 1 ? 0.0f : (slot == 2 ? 0.86f : 1.45f));
     unit.position = lanePoint(lane, z, side);
@@ -237,14 +240,26 @@ void initializeCamps() {
 void initializeLaneUnits() {
     for (int team = 0; team < 2; ++team) {
         for (int lane = 0; lane < 3; ++lane) {
-            for (int slot = 0; slot < 4; ++slot) {
-                const int index = team * 12 + lane * 4 + slot;
-                spawnLaneUnit(gLaneUnits[static_cast<std::size_t>(index)], team, lane, slot);
+            for (int group = 0; group < 2; ++group) {
+                for (int slot = 0; slot < 4; ++slot) {
+                    const int index = team * 24 + lane * 8 + group * 4 + slot;
+                    LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(index)];
+                    if (group == 0) {
+                        spawnLaneUnit(unit, team, lane, slot, group);
+                    } else {
+                        unit.team = team;
+                        unit.lane = lane;
+                        unit.slot = slot;
+                        unit.waveGroup = group;
+                        unit.health = 0.0f;
+                        unit.respawnTime = 0.0f;
+                    }
+                }
             }
+            gWaveCooldown[static_cast<std::size_t>(team)][static_cast<std::size_t>(lane)] = kLaneWaveInterval;
+            gNextWaveGroup[static_cast<std::size_t>(team)][static_cast<std::size_t>(lane)] = 1;
         }
     }
-    gWaveCooldown = {{{kLaneWaveInterval, kLaneWaveInterval, kLaneWaveInterval},
-                      {kLaneWaveInterval, kLaneWaveInterval, kLaneWaveInterval}}};
 }
 void initializeBots() {
     // The player occupies one role; four allies fill the remaining roles.
@@ -566,14 +581,26 @@ void updateLaneUnits(float dt) {
             float &wave = gWaveCooldown[static_cast<std::size_t>(team)][static_cast<std::size_t>(lane)];
             wave -= dt;
             if (wave > 0.0f) continue;
-            wave = kLaneWaveInterval;
-            // Wave timers are independent for every team/lane. Dead slots return together;
-            // surviving units keep their position and health instead of being teleported.
-            for (int slot = 0; slot < 4; ++slot) {
-                const int index = team * 12 + lane * 4 + slot;
-                LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(index)];
-                if (unit.health <= 0.0f) spawnLaneUnit(unit, team, lane, slot);
+            int group = gNextWaveGroup[static_cast<std::size_t>(team)][static_cast<std::size_t>(lane)];
+            auto groupIsFree = [&](int candidate) {
+                for (int slot = 0; slot < 4; ++slot) {
+                    const int index = team * 24 + lane * 8 + candidate * 4 + slot;
+                    if (gLaneUnits[static_cast<std::size_t>(index)].health > 0.0f) return false;
+                }
+                return true;
+            };
+            if (!groupIsFree(group)) group = 1 - group;
+            if (!groupIsFree(group)) {
+                // Keep the unit budget fixed at 48 while both active formations survive.
+                wave = 6.0f;
+                continue;
             }
+            for (int slot = 0; slot < 4; ++slot) {
+                const int index = team * 24 + lane * 8 + group * 4 + slot;
+                spawnLaneUnit(gLaneUnits[static_cast<std::size_t>(index)], team, lane, slot, group);
+            }
+            gNextWaveGroup[static_cast<std::size_t>(team)][static_cast<std::size_t>(lane)] = 1 - group;
+            wave = kLaneWaveInterval;
         }
     }
 }
@@ -1027,34 +1054,35 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
     values[105] = gObjectiveTwoHealth > 0.0f ? 0.0f : std::max(0.0f, gObjectiveTwoSpawnAt - gElapsed);
     values[106] = gObjectiveTwoHealth;
     for (int i = 0; i < kTowerCount; ++i) values[static_cast<std::size_t>(107 + i)] = gTowerHealth[static_cast<std::size_t>(i)];
+    // Extended snapshot layout (320 floats): 48 minion positions/health, then camps and economy.
     for (int i = 0; i < kLaneUnitCount; ++i) {
         const LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(i)];
         values[static_cast<std::size_t>(126 + i * 2)] = unit.position.x;
         values[static_cast<std::size_t>(127 + i * 2)] = unit.position.z;
-        values[static_cast<std::size_t>(174 + i)] = unit.health;
+        values[static_cast<std::size_t>(222 + i)] = unit.health;
     }
     for (int i = 0; i < kCampCount; ++i) {
-        values[static_cast<std::size_t>(198 + i)] = gCamps[static_cast<std::size_t>(i)].health;
-        values[static_cast<std::size_t>(206 + i)] = gCamps[static_cast<std::size_t>(i)].respawnTime;
+        values[static_cast<std::size_t>(270 + i)] = gCamps[static_cast<std::size_t>(i)].health;
+        values[static_cast<std::size_t>(278 + i)] = gCamps[static_cast<std::size_t>(i)].respawnTime;
     }
-    values[214] = static_cast<float>(gItemCounts[0]);
-    values[215] = static_cast<float>(gItemCounts[1]);
-    values[216] = static_cast<float>(gItemCounts[2]);
-    values[217] = static_cast<float>(gPlayerSkillLevel);
-    values[218] = gTeamSiegeBuff[0];
-    values[219] = gTeamSiegeBuff[1];
-    values[220] = gObjectiveOneVisualTime;
-    values[221] = gObjectiveTwoVisualTime;
-    values[222] = gTeamGold[0];
-    values[223] = gTeamGold[1];
-    values[224] = gTeamXp[0];
-    values[225] = gTeamXp[1];
-    values[226] = static_cast<float>(playerRole());
-    for (int i = 0; i < kBotCount; ++i) values[static_cast<std::size_t>(227 + i)] = static_cast<float>(gBots[static_cast<std::size_t>(i)].role);
-    values[236] = gElapsed;
-    values[237] = static_cast<float>(gWinner);
-    values[238] = gPlayerHaste;
-    values[239] = gPlayerPower;
+    values[286] = static_cast<float>(gItemCounts[0]);
+    values[287] = static_cast<float>(gItemCounts[1]);
+    values[288] = static_cast<float>(gItemCounts[2]);
+    values[289] = static_cast<float>(gPlayerSkillLevel);
+    values[290] = gTeamSiegeBuff[0];
+    values[291] = gTeamSiegeBuff[1];
+    values[292] = gObjectiveOneVisualTime;
+    values[293] = gObjectiveTwoVisualTime;
+    values[294] = gTeamGold[0];
+    values[295] = gTeamGold[1];
+    values[296] = gTeamXp[0];
+    values[297] = gTeamXp[1];
+    values[298] = static_cast<float>(playerRole());
+    for (int i = 0; i < kBotCount; ++i) values[static_cast<std::size_t>(299 + i)] = static_cast<float>(gBots[static_cast<std::size_t>(i)].role);
+    values[308] = gElapsed;
+    values[309] = static_cast<float>(gWinner);
+    values[310] = gPlayerHaste;
+    values[311] = gPlayerPower;
     jfloatArray result = env->NewFloatArray(static_cast<jsize>(values.size()));
     if (result != nullptr) env->SetFloatArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
     return result;
