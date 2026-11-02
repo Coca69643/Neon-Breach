@@ -191,9 +191,9 @@ internal object HeroGearGlbBuilder {
             accessors.append(",{\"bufferView\":${viewIndex+1},\"componentType\":5126,\"count\":${p.normals.size/3},\"type\":\"VEC3\"}")
             accessors.append(",{\"bufferView\":${viewIndex+2},\"componentType\":5125,\"count\":${p.indices.size},\"type\":\"SCALAR\"}")
             if(meshes.isNotEmpty())meshes.append(',')
-            meshes.append("{\"name\":\" ${p.name}\",\"primitives\":[{\"attributes\":{\"POSITION\":$accessorIndex,\"NORMAL\":${accessorIndex+1}},\"indices\":${accessorIndex+2},\"material\":${p.material}}]}")
+            meshes.append("{\"name\":\"${p.name}\",\"primitives\":[{\"attributes\":{\"POSITION\":$accessorIndex,\"NORMAL\":${accessorIndex+1}},\"indices\":${accessorIndex+2},\"material\":${p.material}}]}")
             if(nodes.isNotEmpty())nodes.append(',')
-            nodes.append("{\"name\":\" ${p.name}\",\"mesh\":$index,\"translation\":[0,0,0]}")
+            nodes.append("{\"name\":\"${p.name}\",\"mesh\":$index,\"translation\":[0,0,0]}")
             viewIndex+=3;accessorIndex+=3
         }
         val nodeIds=parts.indices.filter { parts[it].indices.isNotEmpty() }.joinToString(",")
