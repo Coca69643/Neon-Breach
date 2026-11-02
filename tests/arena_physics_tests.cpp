@@ -2,7 +2,8 @@
 
 #include <cassert>
 #include <cmath>
-#include <iostream>\n#include <algorithm>
+#include <algorithm>
+#include <iostream>
 
 namespace {
 float distance(float ax,float az,float bx,float bz) {
