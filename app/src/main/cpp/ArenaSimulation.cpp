@@ -138,7 +138,8 @@ int towerIndex(int team, int lane, int tier) {
     return team * 9 + lane * 3 + tier;
 }
 float towerZ(int team, int tier) {
-    const float z = tier == 0 ? 22.0f : (tier == 1 ? 15.0f : 8.0f);
+    // Tier 0 is the outer tower closest to the river; tier 2 protects the core.
+    const float z = tier == 0 ? 8.0f : (tier == 1 ? 15.0f : 22.0f);
     return team == 0 ? -z : z;
 }
 int activeTowerTier(int defendingTeam, int lane) {
@@ -392,9 +393,6 @@ bool friendlyMinionSupports(int team, int lane, Vec2 position, float range) {
     }
     return false;
 }
-int firstTowerInLane(int defendingTeam, int lane) {
-    return activeTowerTier(defendingTeam, lane);
-}
 void awardBotElimination(int team, int index) {
     Bot &bot = gBots[static_cast<std::size_t>(index)];
     if (bot.disabled > 0.0f) return;
@@ -414,11 +412,9 @@ void damageLaneUnit(LaneUnit &unit, int sourceTeam, float damage) {
     unit.health = std::max(0.0f, unit.health - damage);
     if (unit.health <= 0.0f) {
         unit.respawnTime = 0.0f;
-        if (sourceTeam == 0 && distance(gPlayerPosition, unit.position) <= 10.5f) {
-            gPlayerGold += unit.slot == 3 ? 58.0f : 42.0f;
-            addPlayerXp(unit.slot == 3 ? 34.0f : 26.0f);
-        }
-        awardTeam(sourceTeam, unit.slot == 3 ? 26.0f : 18.0f, 14.0f);
+        // Team rewards also credit the single offline player; avoid double rewards.
+        awardTeam(sourceTeam, unit.slot == 3 ? 58.0f : 42.0f,
+                  unit.slot == 3 ? 34.0f : 26.0f);
     }
 }
 void damageCamp(int campIndex, int sourceTeam, float damage) {
@@ -427,8 +423,8 @@ void damageCamp(int campIndex, int sourceTeam, float damage) {
     camp.health = std::max(0.0f, camp.health - damage);
     if (camp.health <= 0.0f) {
         camp.respawnTime = camp.kind == 0 ? 54.0f : 72.0f;
-        awardTeam(sourceTeam, camp.kind == 0 ? 90.0f : 130.0f, camp.kind == 0 ? 70.0f : 95.0f);
-        if (sourceTeam == 0) gPlayerGold += 45.0f;
+        awardTeam(sourceTeam, camp.kind == 0 ? 90.0f : 130.0f,
+                  camp.kind == 0 ? 70.0f : 95.0f);
     }
 }
 void damageObjective(int objective, int sourceTeam, float damage) {
@@ -655,13 +651,36 @@ void updateBots(float dt) {
         if (enemyBot >= 0) {
             Bot &enemy = gBots[static_cast<std::size_t>(enemyBot)];
             const float d = distance(bot.position, enemy.position);
-            if (d > 2.15f) moveActor(bot.position, bot.velocity, add(enemy.position, mul(normalized(sub(bot.position, enemy.position)), 1.65f)), kBotSpeed, dt);
-            else if (bot.attackCooldown <= 0.0f) {
-                const float damage = bot.role == 0 ? 18.0f : (bot.role == 1 ? 13.0f : 15.0f);
+            const float preferredRange = bot.role == 3 ? 4.8f : 2.15f;
+            if (d > preferredRange) {
+                const float stopDistance = bot.role == 3 ? 3.9f : 1.65f;
+                moveActor(bot.position, bot.velocity,
+                          add(enemy.position, mul(normalized(sub(bot.position, enemy.position)), stopDistance)),
+                          kBotSpeed, dt);
+            } else if (bot.attackCooldown <= 0.0f) {
+                const float damage = bot.role == 0 ? 18.0f : (bot.role == 1 ? 13.0f : (bot.role == 3 ? 12.0f : 15.0f));
                 damageBot(enemy, enemyBot, bot.team, damage);
-                bot.attackCooldown = bot.role == 0 ? 0.92f : 1.0f;
+                bot.attackCooldown = bot.role == 0 ? 0.92f : (bot.role == 3 ? 0.82f : 1.0f);
             }
             continue;
+        }
+        if (bot.role == 4 && bot.thinkCooldown <= 0.0f) {
+            int ally = -1;
+            float lowestHealth = 72.0f;
+            for (int allyIndex = 0; allyIndex < kBotCount; ++allyIndex) {
+                Bot &candidate = gBots[static_cast<std::size_t>(allyIndex)];
+                if (candidate.team != bot.team || candidate.disabled > 0.0f || allyIndex == i) continue;
+                const float d = distance(bot.position, candidate.position);
+                if (d <= 4.8f && candidate.health < lowestHealth) {
+                    lowestHealth = candidate.health;
+                    ally = allyIndex;
+                }
+            }
+            if (ally >= 0) {
+                Bot &target = gBots[static_cast<std::size_t>(ally)];
+                target.health = std::min(100.0f, target.health + 18.0f);
+                bot.thinkCooldown = 4.2f;
+            }
         }
         if (bot.role == 1) {
             int camp = nearestCamp(bot.position, bot.team, 18.0f);
@@ -669,9 +688,8 @@ void updateBots(float dt) {
                 NeutralCamp &target = gCamps[static_cast<std::size_t>(camp)];
                 if (distance(bot.position, target.position) > 2.5f) moveActor(bot.position, bot.velocity, target.position, kBotSpeed * 1.05f, dt);
                 else if (bot.attackCooldown <= 0.0f) {
-                    target.health = std::max(0.0f, target.health - 32.0f);
+                    damageCamp(camp, bot.team, 32.0f);
                     bot.attackCooldown = 0.95f;
-                    if (target.health <= 0.0f) awardTeam(bot.team, 90.0f, 70.0f);
                 }
                 continue;
             }
@@ -959,6 +977,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
     values[9] = gBoostCooldown;
     values[10] = 0.0f;
     values[11] = 0.0f;
+    values[15] = static_cast<float>(gWinner);
     for (int i = 0; i < kBotCount; ++i) {
         const Bot &bot = gBots[static_cast<std::size_t>(i)];
         values[static_cast<std::size_t>(16 + i * 2)] = bot.position.x;
