@@ -467,12 +467,14 @@ void updateObjectives(float dt) {
     if (gObjectiveOneHealth <= 0.0f && gElapsed >= gObjectiveOneSpawnAt) {
         if (gObjectiveOneRespawnAt <= 0.0f || gElapsed >= gObjectiveOneRespawnAt) {
             gObjectiveOneHealth = 520.0f;
+            gObjectiveOneRespawnAt = 0.0f;
             gObjectiveOneSpawnAt = gElapsed + 150.0f;
         }
     }
     if (gObjectiveTwoHealth <= 0.0f && gElapsed >= gObjectiveTwoSpawnAt) {
         if (gObjectiveTwoRespawnAt <= 0.0f || gElapsed >= gObjectiveTwoRespawnAt) {
             gObjectiveTwoHealth = 880.0f;
+            gObjectiveTwoRespawnAt = 0.0f;
             gObjectiveTwoSpawnAt = gElapsed + 210.0f;
         }
     }
@@ -517,7 +519,6 @@ void updatePlayerTimers(float dt) {
         if (gPlayerPosition.z < -25.0f && gPlayerPosition.x > -6.0f && gPlayerPosition.x < 6.0f) {
             gPlayerHealth = std::min(gPlayerMaxHealth, gPlayerHealth + 18.0f * dt);
         }
-        movePlayer(0.0f, 0.0f, dt);
     }
 }
 void updateLaneUnits(float dt) {
@@ -1049,9 +1050,11 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
     values[100] = gPlayerMaxHealth;
     values[101] = gPlayerPower;
     values[102] = gPlayerArmor;
-    values[103] = gObjectiveOneHealth > 0.0f ? 0.0f : std::max(0.0f, gObjectiveOneSpawnAt - gElapsed);
+    values[103] = gObjectiveOneHealth > 0.0f ? 0.0f :
+        std::max(0.0f, std::max(gObjectiveOneSpawnAt, gObjectiveOneRespawnAt) - gElapsed);
     values[104] = gObjectiveOneHealth;
-    values[105] = gObjectiveTwoHealth > 0.0f ? 0.0f : std::max(0.0f, gObjectiveTwoSpawnAt - gElapsed);
+    values[105] = gObjectiveTwoHealth > 0.0f ? 0.0f :
+        std::max(0.0f, std::max(gObjectiveTwoSpawnAt, gObjectiveTwoRespawnAt) - gElapsed);
     values[106] = gObjectiveTwoHealth;
     for (int i = 0; i < kTowerCount; ++i) values[static_cast<std::size_t>(107 + i)] = gTowerHealth[static_cast<std::size_t>(i)];
     // Extended snapshot layout (320 floats): 48 minion positions/health, then camps and economy.
