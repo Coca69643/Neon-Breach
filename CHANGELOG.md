@@ -1,5 +1,19 @@
 # Changelog — Projeto Arena
 
+## [0.9.1] — 2026-11-02
+
+### Menu principal e identidade dos heróis
+- Preservada a composição original do menu e o cenário 3D de fundo.
+- Removido o listener que iniciava uma partida com qualquer toque na tela.
+- Adicionados controles explícitos anterior/próximo, função de cada herói e ação real INICIAR PARTIDA.
+- Lyra recebe pulso com recarga menor e escudo de suporte; Bastion mantém escudo mais longo e pulso de maior alcance; Kairo recebe impulso mais longo e com recarga reduzida.
+
+### Testes
+- Harness nativo C++ valida o contrato JNI, perfis dos heróis, ataque manual, cooldowns, dano em torres, núcleo bloqueado, retorno de tropas e simulação de dez minutos.
+- O workflow executa testes de simulação antes de montar o APK e um smoke test do APK final (CRC, arquitetura ELF, bibliotecas JNI e recursos glTF).
+- versionCode 40 / versionName 0.9.1.
+- O build Android, assinatura e teste em dispositivo físico ainda precisam ser confirmados.
+
 ## [0.9.0] — 2026-11-01
 
 ### Loop de cerco e vitória por objetivos

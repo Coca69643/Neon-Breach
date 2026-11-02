@@ -1,6 +1,6 @@
-# Projeto Arena 0.9.0
+# Projeto Arena 0.9.1
 
-MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 local com bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
+MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, partida local 5v5 contra bots, três rotas de cerco, ondas de tropas, torres defensivas e núcleo.
 
 ## Reconstrução visual 0.8.0
 - O campo antigo de árvores, cones e esferas e o altar procedural foram removidos.
@@ -9,6 +9,18 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - O mapa tem duas bases, três rotas de pedra, um rio transversal com três pontes, torres por rota e bandeiras nas áreas de controle.
 - O atlas de textura compartilhado é carregado uma vez pelo ResourceLoader do Filament.
 - A malha de runtime ficou restrita ao terreno, às estradas e ao rio; não gera mais a vegetação decorativa repetitiva da versão anterior.
+
+## Menu e seleção de herói 0.9.1
+- Mantida a composição existente do menu: cenário 3D ao fundo, título e herói no alto à esquerda e ação principal centralizada embaixo.
+- Removido o comportamento em que qualquer toque no cenário iniciava a partida.
+- Seleção de herói agora usa controles explícitos e apresenta uma descrição contextual.
+- O botão principal passou a ser uma ação real: INICIAR PARTIDA.
+- Lyra, Bastion e Kairo receberam diferenças pequenas, mas funcionais, de suporte, defesa e mobilidade para corresponder ao texto do seletor.
+
+## Testes automatizados 0.9.1
+- Adicionado harness nativo C++ para validar o snapshot JNI de 94 valores, perfis de habilidade, ataque manual, cooldowns, dano em torres, bloqueio do núcleo, retorno de tropas e simulação prolongada.
+- O workflow executa os testes nativos antes da compilação e valida o APK final depois de assinar: CRC, ABIs, bibliotecas, símbolos JNI e recursos glTF.
+- Artefatos de atualização passam a ficar disponíveis por 30 dias.
 
 ## Loop de cerco 0.9.0
 - A vitória deixa de depender de controle abstrato de duas zonas: é necessário derrubar as três torres da rota atacante e reduzir a vida do núcleo inimigo a zero.
@@ -44,7 +56,7 @@ MOBA-lite 3D nativo para Android, landscape e offline: herói controlável, 5v5 
 - Android nativo Kotlin + C++20/NDK.
 - Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
 - applicationId: com.duckdream.neonbreach.
-- versionCode 39 / versionName 0.9.0.
+- versionCode 40 / versionName 0.9.1.
 - APK de atualização usa a chave persistente NEON_BREACH_*.
 
 ## Limitações conhecidas

@@ -226,7 +226,10 @@ void movePlayer(float inputX, float inputZ, float dt) {
         gLastMoveX = inputX;
         gLastMoveZ = inputZ;
     }
-    const float speed = dashing ? kPlayerBoostSpeed * 1.18f : kPlayerWalkSpeed;
+    const float dashSpeed = gSelectedHero == 2
+        ? kPlayerBoostSpeed * 1.28f
+        : kPlayerBoostSpeed * 1.18f;
+    const float speed = dashing ? dashSpeed : kPlayerWalkSpeed;
     const float targetX = inputX * speed;
     const float targetZ = inputZ * speed;
     if (inputLength > 0.08f) {
@@ -626,10 +629,11 @@ Java_com_duckdream_neonbreach_MainActivity_nativeActivateDash(JNIEnv *, jobject,
     }
     gDashX = inputX / directionLength;
     gDashZ = inputZ / directionLength;
-    gPlayerVx = gDashX * kPlayerBoostSpeed;
-    gPlayerVz = gDashZ * kPlayerBoostSpeed;
-    gBoostTime = 0.46f;
-    gBoostCooldown = 5.0f;
+    const float dashSpeed = kPlayerBoostSpeed * (gSelectedHero == 2 ? 1.28f : 1.0f);
+    gPlayerVx = gDashX * dashSpeed;
+    gPlayerVz = gDashZ * dashSpeed;
+    gBoostTime = gSelectedHero == 2 ? 0.62f : 0.46f;
+    gBoostCooldown = gSelectedHero == 2 ? 4.2f : 5.0f;
     return JNI_TRUE;
 }
 
@@ -691,7 +695,8 @@ Java_com_duckdream_neonbreach_MainActivity_nativeCastPulse(JNIEnv *, jobject) {
     std::scoped_lock lock(gMutex);
     if (!gInitialized) resetSimulation();
     if (gPulseCooldown > 0.0f || gPlayerDisrupted > 0.0f) return JNI_FALSE;
-    const float radius = gSelectedHero == 1 ? 7.0f : 5.8f;
+    const float radius = gSelectedHero == 1 ? 7.0f
+        : (gSelectedHero == 0 ? 6.2f : 5.8f);
     int affected = 0;
     for (int i = 0; i < kBotCount; ++i) {
         Bot &bot = gBots[static_cast<std::size_t>(i)];
@@ -713,7 +718,8 @@ Java_com_duckdream_neonbreach_MainActivity_nativeCastPulse(JNIEnv *, jobject) {
     }
     if (affected == 0) return JNI_FALSE;
     gPulseVisualTime = 0.82f;
-    gPulseCooldown = gSelectedHero == 2 ? 7.0f : 9.0f;
+    gPulseCooldown = gSelectedHero == 0 ? 8.0f
+        : (gSelectedHero == 1 ? 10.0f : 9.0f);
     return JNI_TRUE;
 }
 
@@ -722,8 +728,10 @@ Java_com_duckdream_neonbreach_MainActivity_nativeActivateShield(JNIEnv *, jobjec
     std::scoped_lock lock(gMutex);
     if (!gInitialized) resetSimulation();
     if (gShieldCooldown > 0.0f || gPlayerDisrupted > 0.0f) return JNI_FALSE;
-    gShieldTime = gSelectedHero == 1 ? 4.2f : 3.0f;
-    gShieldCooldown = gSelectedHero == 1 ? 9.0f : 12.0f;
+    gShieldTime = gSelectedHero == 1 ? 4.2f
+        : (gSelectedHero == 0 ? 3.6f : 3.0f);
+    gShieldCooldown = gSelectedHero == 1 ? 9.0f
+        : (gSelectedHero == 0 ? 10.0f : 12.0f);
     return JNI_TRUE;
 }
 

@@ -9,14 +9,16 @@ on:
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main, rebuild/team-objective-moba-v0.1, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core]
+    branches: [main, rebuild/team-objective-moba-v0.1, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-menu-audit]
     paths:
       - 'app/**'
       - '*.gradle'
       - 'gradle.properties'
       - 'tools/**'
+      - 'tests/**'
       - '.github/workflows/android.yml'
 
 permissions:
@@ -76,6 +78,10 @@ jobs:
           test -d "$SDK_ROOT/platforms/android-37"
       - name: Verify project structure
         run: python3 tools/verify_project.py
+      - name: Run native gameplay regression tests
+        run: |
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror -pthread -Itests/native tests/native/native_sim_tests.cpp -o "$RUNNER_TEMP/project-arena-native-tests"
+          "$RUNNER_TEMP/project-arena-native-tests"
       - name: Compile Android APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
@@ -84,13 +90,15 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='39' versionName='0.9.0'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='40' versionName='0.9.1'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
+      - name: Run packaged APK smoke tests
+        run: python3 tools/verify_apk.py app/build/outputs/apk/debug/app-debug.apk
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.9.0-update
+          name: project-arena-0.9.1-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
-          retention-days: 14
+          retention-days: 30

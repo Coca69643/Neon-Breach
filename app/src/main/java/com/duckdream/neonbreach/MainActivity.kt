@@ -31,6 +31,11 @@ class MainActivity : Activity() {
             "BASTION / DEFESA",
             "KAIRO / MOBILIDADE"
         )
+        private val HERO_DESCRIPTIONS = arrayOf(
+            "Pulso mais frequente e escudo confiável para apoiar a disputa das rotas.",
+            "Escudo mais longo e pulso de maior alcance para segurar a linha de frente.",
+            "Impulso mais longo e recarga curta para mudar de rota rapidamente."
+        )
     }
 
     init { System.loadLibrary("arena_sim") }
@@ -229,30 +234,12 @@ class MainActivity : Activity() {
             renderer.setOverviewCamera(true)
             renderer.setHeroAppearance(selectedHero)
         }
-        var touchStartX = 0f
+
+        // Preserve the existing menu composition: title and hero at the upper-left,
+        // the live arena as the background, and the primary action at bottom-center.
         val layer = FrameLayout(this).apply {
             setBackgroundColor(Color.argb(10, 5, 12, 18))
-            isClickable = true
             isFocusable = true
-            setOnTouchListener { _, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        touchStartX = event.x
-                        true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        val swipe = event.x - touchStartX
-                        if (kotlin.math.abs(swipe) > dp(42)) {
-                            selectedHero = (selectedHero + if (swipe < 0f) 1 else HEROES.size - 1) % HEROES.size
-                            showMenu()
-                        } else {
-                            startMatch()
-                        }
-                        true
-                    }
-                    else -> true
-                }
-            }
         }
         val title = label("ARENA", 17f, Color.WHITE, true).apply {
             setShadowLayer(8f, 0f, 3f, Color.BLACK)
@@ -261,19 +248,79 @@ class MainActivity : Activity() {
             marginStart = dp(24)
             topMargin = dp(18)
         })
-        val hero = label(HEROES[selectedHero].substringBefore(" / "), 10f, Color.rgb(203, 230, 226), true).apply {
+
+        val hero = label(HEROES[selectedHero], 10f, Color.rgb(203, 230, 226), true).apply {
             setShadowLayer(6f, 0f, 2f, Color.BLACK)
         }
         layer.addView(hero, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
             marginStart = dp(24)
             topMargin = dp(43)
         })
-        val prompt = label("TOQUE PARA JOGAR", 12f, Color.WHITE, true).apply {
-            gravity = Gravity.CENTER
-            setShadowLayer(8f, 0f, 2f, Color.BLACK)
-            isClickable = false
+
+        val description = label(HERO_DESCRIPTIONS[selectedHero], 9.5f, Color.rgb(232, 239, 225)).apply {
+            maxLines = 2
+            setShadowLayer(5f, 0f, 2f, Color.BLACK)
         }
-        layer.addView(prompt, FrameLayout.LayoutParams(dp(190), dp(42), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+        layer.addView(description, FrameLayout.LayoutParams(dp(430), -2, Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(24)
+            topMargin = dp(63)
+        })
+
+        val selectorHint = label("SELECIONE SEU HERÓI", 8f, Color.rgb(183, 205, 194), true)
+        layer.addView(selectorHint, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(24)
+            topMargin = dp(94)
+        })
+
+        val selectedNumber = label("", 9f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+        }
+        fun refreshHeroSelection() {
+            hero.text = HEROES[selectedHero]
+            description.text = HERO_DESCRIPTIONS[selectedHero]
+            selectedNumber.text = "%02d / %02d".format(selectedHero + 1, HEROES.size)
+            renderer.setHeroAppearance(selectedHero)
+            nativeSelectHero(selectedHero)
+        }
+        val previousHero = actionButton("‹") {
+            selectedHero = (selectedHero + HEROES.size - 1) % HEROES.size
+            refreshHeroSelection()
+        }.apply {
+            textSize = 20f
+            contentDescription = "Herói anterior"
+        }
+        layer.addView(previousHero, FrameLayout.LayoutParams(dp(42), dp(38), Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(24)
+            topMargin = dp(111)
+        })
+        layer.addView(selectedNumber, FrameLayout.LayoutParams(dp(68), dp(38), Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(70)
+            topMargin = dp(111)
+        })
+        val nextHero = actionButton("›") {
+            selectedHero = (selectedHero + 1) % HEROES.size
+            refreshHeroSelection()
+        }.apply {
+            textSize = 20f
+            contentDescription = "Próximo herói"
+        }
+        layer.addView(nextHero, FrameLayout.LayoutParams(dp(42), dp(38), Gravity.TOP or Gravity.START).apply {
+            marginStart = dp(142)
+            topMargin = dp(111)
+        })
+        refreshHeroSelection()
+
+        val matchInfo = label("PARTIDA LOCAL 5v5  •  TRÊS ROTAS  •  CERCO AO NÚCLEO",
+            8.5f, Color.rgb(226, 235, 221), true).apply {
+            gravity = Gravity.CENTER
+            setShadowLayer(6f, 0f, 2f, Color.BLACK)
+        }
+        layer.addView(matchInfo, FrameLayout.LayoutParams(-2, dp(24), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
+            bottomMargin = dp(62)
+        })
+
+        val play = actionButton("INICIAR PARTIDA") { startMatch() }
+        layer.addView(play, FrameLayout.LayoutParams(dp(190), dp(42), Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL).apply {
             bottomMargin = dp(18)
         })
         replaceLayer(layer)

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural and gameplay-contract verification for Project Arena 0.9.0."""
+"""Structural and gameplay-contract verification for Project Arena 0.9.1."""
 from pathlib import Path
 import json
 import re
@@ -22,6 +22,7 @@ native=read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake=read("app/src/main/cpp/CMakeLists.txt")
 icon=read("app/src/main/res/drawable/ic_launcher.xml")
 workflow=read(".github/workflows/android.yml")
+apk_smoke=read("tools/verify_apk.py")
 readme=read("README.md")
 changelog=read("CHANGELOG.md")
 asset_register=read("ASSETS/README.md")
@@ -31,14 +32,14 @@ avatar=ROOT/"app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets=ROOT/"app/src/main/assets/world/kaykit"
 
 checks=[
-("versionName '0.9.0'" in gradle,"versionName must be 0.9.0"),
-("versionCode 39" in gradle,"versionCode must be 39"),
+("versionName '0.9.1'" in gradle,"versionName must be 0.9.1"),
+("versionCode 40" in gradle,"versionCode must be 40"),
 ("applicationId 'com.duckdream.neonbreach'" in gradle,"applicationId must remain stable"),
 ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle,"persistent signing config missing"),
 ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow,"workflow must require persistent signing"),
 ("if: github.event_name != 'pull_request'" in workflow,"PR builds must not publish update APKs"),
-("versionCode='39' versionName='0.9.0'" in workflow,"APK package/version verification is stale"),
-("project-arena-0.9.0-update" in workflow,"artifact name must be 0.9.0"),
+("versionCode='40' versionName='0.9.1'" in workflow,"APK package/version verification is stale"),
+("project-arena-0.9.1-update" in workflow,"artifact name must be 0.9.1"),
 ("org.jetbrains.kotlin.android" in root_gradle,"external Kotlin plugin missing"),
 ("android.builtInKotlin=false" in props and "android.newDsl=false" in props,"AGP migration flags missing"),
 ("filament-android:1.77.3" in gradle and "gltfio-android:1.77.3" in gradle,"Filament dependencies missing"),
@@ -74,7 +75,12 @@ checks=[
 ("std::array<jfloat, 94> values{};" in native,"native snapshot must contain 94 floats"),
 ("36 + i * 2" in native and "37 + i * 2" in native,"lane unit coordinates missing from JNI snapshot"),
 ("updateLaneUnits(dt);" in native,"physical lane units are not simulated"),
-("TOQUE PARA JOGAR" in main and "REGRAS DA PARTIDA" not in main and "0.4.0" not in main,"immersive menu check failed"),
+("HERO_DESCRIPTIONS" in main and 'actionButton("‹")' in main and 'actionButton("›")' in main,"hero selector and character context missing"),
+("INICIAR PARTIDA" in main and "TOQUE PARA JOGAR" not in main,"menu must use an explicit primary action"),
+("val touchStartX = 0f" not in main,"menu must not start a match from an arbitrary screen tap"),
+("gSelectedHero == 2 ? 0.62f : 0.46f" in native and "gSelectedHero == 0 ? 3.6f" in native,"hero-specific mobility/support profile missing"),
+("native_sim_tests.cpp" in read("tests/native/native_sim_tests.cpp") and "FakeJFloatArray" in read("tests/native/jni.h"),"native regression harness missing"),
+("verify_apk.py" in workflow and "archive.testzip()" in apk_smoke and "JNI_METHODS" in apk_smoke,"packaged APK smoke test is not wired into CI"),
 ("CC0" in asset_register and "KayKit" in asset_register,"KayKit asset register missing"),
 ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license,"CC0 license files missing"),
 ("KayKit" in readme and "offline" in readme.lower() and "KayKit" in changelog,"environment licensing/docs missing"),
@@ -118,5 +124,5 @@ if re.search(r"(fireButton|nativeFire|shootProjectile|weaponDamage)",main+native
     raise SystemExit("Disallowed weapon mechanic found in active gameplay path")
 if not avatar.is_file() or avatar.stat().st_size<500_000:
     raise SystemExit("Quaternius CC0 humanoid GLB missing")
-print("Project Arena 0.9.0 structural verification passed.")
-print("Siege loop, lane waves, tower defense, core objectives, manual attack, KayKit assets and skeletal rendering verified.")
+print("Project Arena 0.9.1 structural verification passed.")
+print("Native siege loop, hero profiles, deliberate menu navigation, lane waves, tower defense, core objectives and CC0 assets verified.")
