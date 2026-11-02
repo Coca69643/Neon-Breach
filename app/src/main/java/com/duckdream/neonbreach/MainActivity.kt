@@ -295,60 +295,66 @@ class MainActivity : Activity() {
         renderer.setHeroAppearance(selectedHero, ArenaMetaStore.isSkinEquipped(this, selectedHero))
 
         val layer = FrameLayout(this)
+        layer.addView(ArenaMenuArtworkView(this), FrameLayout.LayoutParams(-1, -1))
+
         val header = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(22), dp(16), dp(22), dp(12))
+            setPadding(dp(24), dp(20), dp(12), dp(8))
         }
-        header.addView(label("ARENA", 23f, Color.WHITE, true))
-        header.addView(label("A batalha pelas três rotas", 11f, Color.rgb(208, 224, 211)))
+        header.addView(label("ARENA", 27f, Color.WHITE, true).apply { letterSpacing = 0.13f })
+        header.addView(label("A BATALHA PELAS TRÊS ROTAS", 10f, Color.rgb(229, 207, 164), true))
         layer.addView(header, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START))
 
-        val profile = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(14), dp(12), dp(14), dp(12))
-            background = panel()
+        val accountBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        profile.addView(label("SEU HERÓI", 9f, Color.rgb(175, 206, 189), true))
-        profile.addView(label(HERO_NAMES[selectedHero], 22f, Color.WHITE, true).apply {
-            setPadding(0, dp(3), 0, 0)
+        accountBar.addView(label(
+            "MOEDAS \${ArenaMetaStore.coins(this@MainActivity)}   •   FRAGMENTOS \${ArenaMetaStore.shards(this@MainActivity)}",
+            9f, Color.rgb(247, 219, 160), true
+        ).apply { setPadding(0, 0, dp(8), 0) })
+        accountBar.addView(actionButton("?") { showGuide() },
+            LinearLayout.LayoutParams(dp(38), dp(36)).apply { marginEnd = dp(6) })
+        accountBar.addView(actionButton("⚙") { showSettings() },
+            LinearLayout.LayoutParams(dp(42), dp(36)))
+        layer.addView(accountBar, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(18)
+            marginEnd = dp(20)
         })
-        profile.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(236, 194, 123), true))
-        profile.addView(label(HERO_SUMMARIES[selectedHero], 10f, Color.rgb(221, 229, 216)).apply {
-            maxWidth = dp(245)
-            setPadding(0, dp(7), 0, dp(7))
+
+        val featured = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(6), dp(8), dp(8))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showHeroSelect() }
+        }
+        featured.addView(label("HERÓI EM DESTAQUE", 9f, Color.rgb(225, 204, 159), true))
+        featured.addView(label(HERO_NAMES[selectedHero], 28f, Color.WHITE, true).apply {
+            setPadding(0, dp(2), 0, 0)
         })
-        profile.addView(label("${activeAbilityName()}  •  ${activeAbilityHint()}", 9f, Color.rgb(172, 214, 198)).apply {
-            maxWidth = dp(245)
+        featured.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(242, 197, 118), true))
+        featured.addView(label(HERO_SUMMARIES[selectedHero], 10f, Color.rgb(236, 234, 218)).apply {
+            maxWidth = dp(238)
+            setPadding(0, dp(5), 0, 0)
         })
-        profile.addView(actionButton("TROCAR HERÓI") { showHeroSelect() },
-            LinearLayout.LayoutParams(dp(180), dp(38)).apply { topMargin = dp(10) })
-        layer.addView(profile, FrameLayout.LayoutParams(dp(278), -2, Gravity.BOTTOM or Gravity.START).apply {
-            marginStart = dp(20)
+        layer.addView(featured, FrameLayout.LayoutParams(dp(258), -2, Gravity.BOTTOM or Gravity.START).apply {
             bottomMargin = dp(20)
         })
 
-        val navigation = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.END
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = panel()
+        val dock = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
         }
-        navigation.addView(primaryActionButton("JOGAR") { startMatch() },
-            LinearLayout.LayoutParams(dp(176), dp(50)))
-        navigation.addView(actionButton("HERÓIS") { showHeroSelect() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("COMO JOGAR") { showGuide() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("SKINS") { showSkins() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("LOJA") { showShop() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("MISSÕES / PERFIL") { showMissionsProfile() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        navigation.addView(actionButton("AJUSTES") { showSettings() },
-            LinearLayout.LayoutParams(dp(176), dp(40)).apply { topMargin = dp(7) })
-        profile.addView(label("MOEDAS  " + ArenaMetaStore.coins(this) + "   •   FRAGMENTOS  " + ArenaMetaStore.shards(this), 9f, Color.rgb(236, 194, 123), true))
-        layer.addView(navigation, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
+        dock.addView(actionButton("HERÓIS") { showHeroSelect() },
+            LinearLayout.LayoutParams(dp(82), dp(42)).apply { marginEnd = dp(6) })
+        dock.addView(actionButton("COLEÇÃO") { showSkins() },
+            LinearLayout.LayoutParams(dp(88), dp(42)).apply { marginEnd = dp(6) })
+        dock.addView(actionButton("PERFIL") { showMissionsProfile() },
+            LinearLayout.LayoutParams(dp(76), dp(42)).apply { marginEnd = dp(8) })
+        dock.addView(primaryActionButton("JOGAR") { startMatch() },
+            LinearLayout.LayoutParams(dp(126), dp(52)))
+        layer.addView(dock, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
             marginEnd = dp(20)
             bottomMargin = dp(20)
         })
@@ -476,7 +482,8 @@ class MainActivity : Activity() {
             if (owned) { ArenaMetaStore.equipSkin(this, selectedHero, true); showSkins() }
             else if (ArenaMetaStore.buySkin(this, selectedHero, 500)) showSkins()
             else showNotice("Moedas insuficientes.")
-        }, "USAR VISUAL CLÁSSICO" to { ArenaMetaStore.equipSkin(this, selectedHero, false); showSkins() }))
+        }, "USAR VISUAL CLÁSSICO" to { ArenaMetaStore.equipSkin(this, selectedHero, false); showSkins() },
+            "ABRIR LOJA" to { showShop() }))
     }
 
     private fun showShop() {
