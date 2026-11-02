@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Structural and gameplay-contract verification for Project Arena 0.11.0."""
 from pathlib import Path
+import base64
 import json
 import re
 
