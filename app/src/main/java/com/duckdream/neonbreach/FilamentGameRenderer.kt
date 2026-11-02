@@ -57,6 +57,10 @@ internal class FilamentGameRenderer(
     private var characterResources: ResourceLoader? = null
     private var characterProvider: UbershaderProvider? = null
     private var character: FilamentAsset? = null
+    private val heroGearAssets = ArrayList<FilamentAsset>(6)
+    private val heroGearInstances = ArrayList<FilamentInstance>(12)
+    private val playerGearInstances = arrayOfNulls<FilamentInstance>(3)
+    private var equippedPlayerGear = -1
     private var playerInstance: FilamentInstance? = null
     private var playerAnimator: Animator? = null
     private val botAnimators = ArrayList<Animator>(9)
@@ -76,11 +80,11 @@ internal class FilamentGameRenderer(
 
     private data class BonePose(val instance: Int, val base: FloatArray)
     private val bones = LinkedHashMap<String, BonePose>()
-    // NPC rigs stay deliberately compact: only the most visible joints are updated.
+    // NPCs use the shared humanoid skeleton, including feet and head, for grounded gait.
     private val boneNames = listOf(
-        "thigh_l", "thigh_r", "calf_l", "calf_r",
-        "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r",
-        "spine_01", "spine_02", "neck_01"
+        "pelvis", "thigh_l", "thigh_r", "calf_l", "calf_r", "foot_l", "foot_r",
+        "upperarm_l", "upperarm_r", "lowerarm_l", "lowerarm_r", "hand_l", "hand_r",
+        "spine_01", "spine_02", "spine_03", "neck_01", "Head"
     )
     // The playable hero gets additional torso, head, hand and foot articulation.
     private val playerBoneNames = listOf(
