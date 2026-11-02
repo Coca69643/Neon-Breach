@@ -1143,7 +1143,7 @@ internal class FilamentGameRenderer(
         }
         if (overview) {
             // The HUB becomes a character-led scene: one hero, no crowd of idle bots.
-            cameraX = 0f
+            cameraX = 5.2f
             cameraZ = -18.8f
             cameraY = terrainHeight(cameraX, cameraZ)
             playerYaw = Math.PI.toFloat()
