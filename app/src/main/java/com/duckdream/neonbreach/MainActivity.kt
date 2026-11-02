@@ -61,8 +61,8 @@ class MainActivity : Activity() {
 
     private enum class Screen { MENU, OPERATIVES, SETTINGS, PLAYING, PAUSED, RESULT }
 
-    private val cyan = Color.rgb(72, 220, 232)
-    private val amber = Color.rgb(255, 166, 75)
+    private val cyan = Color.rgb(174, 194, 145)
+    private val amber = Color.rgb(211, 160, 105)
     private val white = Color.rgb(246, 241, 222)
     private val muted = Color.rgb(180, 174, 149)
     private val panel = Color.argb(220, 18, 23, 14)
@@ -70,7 +70,7 @@ class MainActivity : Activity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        Log.i("ORION9Startup", "Activity.onCreate: entered")
+        Log.i("ArenaStartup", "Activity.onCreate: entered")
         hapticsEnabled = prefs.getBoolean("haptics", true)
         selectedOperative = prefs.getInt("operative", 0).coerceIn(0, 1)
         soundEnabled = prefs.getBoolean("sound_enabled", true)
@@ -138,7 +138,7 @@ class MainActivity : Activity() {
         }
     }
 
-    private fun operativeName(): String = if (selectedOperative == 0) "NEON-VANGUARD" else "STELLAR-REAPER"
+    private fun operativeName(): String = if (selectedOperative == 0) "EXPLORADOR" else "VIAJANTE"
 
     private fun playGameTone(tone: Int = ToneGenerator.TONE_PROP_BEEP, durationMs: Int = 55) {
         if (soundEnabled) toneGenerator?.startTone(tone, durationMs)
@@ -151,7 +151,7 @@ class MainActivity : Activity() {
             text = value
             textSize = size
             setTextColor(color)
-            typeface = Typeface.create("sans-serif-condensed", if (bold) Typeface.BOLD else Typeface.NORMAL)
+            typeface = Typeface.create("sans-serif", if (bold) Typeface.BOLD else Typeface.NORMAL)
             setLineSpacing(0f, 1.06f)
             includeFontPadding = true
         }
@@ -172,7 +172,7 @@ class MainActivity : Activity() {
         return text(label, 15f, if (accent) cyan else white, true).apply {
             gravity = Gravity.CENTER
             setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = buttonBackground(accent)
+            background = null
             isClickable = true
             isFocusable = true
             setOnClickListener {
@@ -224,27 +224,25 @@ class MainActivity : Activity() {
     private fun showMainMenu(preserveMission: Boolean) {
         currentScreen = Screen.MENU
         gameView.setGameMode(if (preserveMission && hasSession) 6 else 0)
-        // Keep the environment visible; actions remain in a compact left-side column.
-        val layer = overlay(Color.argb(78, 8, 12, 16))
+
+        // Full-screen composition: the 3D world stays visible and text sits directly over it.
+        val layer = overlay(Color.argb(24, 18, 19, 14), false)
         val left = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             setPadding(0, dp(4), 0, dp(4))
         }
-        addVertical(left, text("DUCK DREAM STUDIOS", 10f, cyan, true), 8)
-        addVertical(left, text("ORION-9", 32f, white, true), 1)
-        addVertical(left, View(this).apply { setBackgroundColor(cyan) }, 8, dp(176), dp(2))
-        addVertical(left, text("PROTOCOLO DE CONTENÇÃO", 11f, muted, true), 8)
-        addVertical(left, text("OPERADOR  ${operativeName()}", 12f, amber, true), 10)
-        addVertical(left, menuCommandButton("INICIAR OPERAÇÃO", true) { startNewMission() }, 6, dp(181), dp(35))
+        addVertical(left, text("DUCK DREAM STUDIOS", 10f, muted, true), 14)
+        addVertical(left, text("PROJETO ARENA", 34f, white, true), 2)
+        addVertical(left, text("EXPLORAÇÃO  •  AVENTURA", 10f, muted, true), 22)
+        addVertical(left, menuCommandButton("COMEÇAR", true) { startNewMission() }, 8, dp(220), dp(42))
         val continueBtn = menuCommandButton("CONTINUAR") { continueMission() }
         continueBtn.isEnabled = hasSession
-        continueBtn.alpha = if (hasSession) 1f else 0.40f
-        addVertical(left, continueBtn, 6, dp(181), dp(33))
-        addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 6, dp(181), dp(33))
-        addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 6, dp(181), dp(33))
-        addVertical(left, text("SITE ORION-9  •  0.9.6", 9f, muted, true), 10)
-        layer.addView(left, FrameLayout.LayoutParams(dp(225), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
-            marginStart = dp(28)
+        continueBtn.alpha = if (hasSession) 1f else 0.38f
+        addVertical(left, continueBtn, 8, dp(220), dp(40))
+        addVertical(left, menuCommandButton("PERSONAGENS") { showOperativeSelect() }, 8, dp(220), dp(40))
+        addVertical(left, menuCommandButton("AJUSTES") { showSettings() }, 8, dp(220), dp(40))
+        layer.addView(left, FrameLayout.LayoutParams(dp(250), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
+            marginStart = dp(32)
         })
         attachLayer(layer)
     }
@@ -252,75 +250,68 @@ class MainActivity : Activity() {
     private fun showOperativeSelect() {
         currentScreen = Screen.OPERATIVES
         gameView.setGameMode(if (hasSession) 6 else 0)
-        val layer = overlay(Color.argb(112, 4, 10, 15))
+        val layer = overlay(Color.argb(28, 18, 19, 14), false)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(6), dp(8), dp(6))
+            setPadding(0, dp(4), 0, dp(4))
         }
-        addVertical(content, text("SELECIONE SEU OPERADOR", 25f, white, true), 5)
-        addVertical(content, text("Duas identidades de combate com padrões de disparo diferentes.", 12f, muted), 14)
-        val names = arrayOf("NEON-VANGUARD", "STELLAR-REAPER")
-        val roles = arrayOf("TIRO DUPLO", "DISPARO EM CONE")
-        val descriptions = arrayOf(
-            "Armadura azul-neon. Velocidade padrão e dois projéteis paralelos por rajada.",
-            "Armadura dourada. Movimento 20% mais rápido e três projéteis em leque."
-        )
-        val stats = arrayOf("AZUL #00E5FF\nVELOCIDADE 100%", "DOURADO #FFD600\nVELOCIDADE 120%")
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
+        addVertical(content, text("PERSONAGENS", 28f, white, true), 18)
+
+        val row = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+        }
+        val names = arrayOf("EXPLORADOR", "VIAJANTE")
         for (index in names.indices) {
             val selected = index == selectedOperative
-            val card = LinearLayout(this).apply {
+            val option = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(10), dp(10), dp(10), dp(10))
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(12).toFloat()
-                    setColor(Color.argb(if (selected) 202 else 142, 13, 24, 31))
-                    setStroke(dp(if (selected) 2 else 1), if (selected) cyan else Color.argb(100, 147, 166, 169))
-                }
+                gravity = Gravity.CENTER
+                setPadding(dp(14), dp(12), dp(14), dp(12))
             }
-            addVertical(card, actionButton(if (selected) "✓  ${names[index]}" else names[index], selected) {
+            addVertical(option, actionButton(
+                if (selected) "●  ${names[index]}" else names[index],
+                selected
+            ) {
                 selectedOperative = index
                 prefs.edit().putInt("operative", selectedOperative).apply()
                 gameView.setOperative(selectedOperative)
                 playGameTone(ToneGenerator.TONE_PROP_ACK, 60)
                 showOperativeSelect()
-            }, 7, dp(225), dp(45))
-            addVertical(card, text(roles[index], 12f, amber, true), 8)
-            addVertical(card, text(descriptions[index], 12f, white), 8)
-            addVertical(card, text(stats[index], 10f, muted, true), 0)
-            row.addView(card, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(6), 0, dp(6), 0) })
+            }, 0, dp(210), dp(54))
+            row.addView(option, LinearLayout.LayoutParams(0, -2, 1f).apply {
+                setMargins(dp(12), 0, dp(12), 0)
+            })
         }
-        addVertical(content, row, 14)
-        addVertical(content, actionButton("VOLTAR", true) { showMainMenu(hasSession) }, 4, dp(250), dp(42))
-        layer.addView(content, FrameLayout.LayoutParams(dp(540), -2, Gravity.CENTER))
+        addVertical(content, row, 20)
+        addVertical(content, actionButton("VOLTAR") { showMainMenu(hasSession) }, 0, dp(220), dp(44))
+        layer.addView(content, FrameLayout.LayoutParams(dp(500), -2, Gravity.CENTER))
         attachLayer(layer)
     }
 
     private fun showSettings() {
         currentScreen = Screen.SETTINGS
         gameView.setGameMode(3)
-        val layer = overlay(Color.argb(190, 8, 13, 18))
+        val layer = overlay(Color.argb(28, 18, 19, 14), false)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(8), dp(6), dp(8), dp(6))
+            gravity = Gravity.CENTER_HORIZONTAL
+            setPadding(0, dp(4), 0, dp(4))
         }
-        addVertical(content, text("CONFIGURAÇÕES", 28f, white, true), 4)
-        addVertical(content, text("ÁUDIO E CONTROLES", 13f, cyan, true), 8)
-        addVertical(content, text("ESQUERDA — MOVIMENTO\nARRASTE O LADO DIREITO — MIRA\nMANTENHA ATIRAR PRESSIONADO — DISPARO CONTÍNUO", 11f, muted), 10)
+        addVertical(content, text("AJUSTES", 28f, white, true), 20)
 
-        val soundLabel = if (soundEnabled) "SOM DE JOGO: LIGADO" else "SOM DE JOGO: DESLIGADO"
+        val soundLabel = if (soundEnabled) "SOM  •  LIGADO" else "SOM  •  DESLIGADO"
         addVertical(content, actionButton(soundLabel, soundEnabled) {
             soundEnabled = !soundEnabled
             prefs.edit().putBoolean("sound_enabled", soundEnabled).apply()
             gameView.setGameSoundEnabled(soundEnabled)
             if (soundEnabled) playGameTone(ToneGenerator.TONE_PROP_ACK, 70)
             showSettings()
-        }, 8, dp(330), dp(46))
+        }, 10, dp(330), dp(46))
 
-        val sensitivityLabel = text("SENSIBILIDADE DO TOQUE: ${(touchSensitivity * 100f).toInt()}%", 13f, white, true)
-        addVertical(content, sensitivityLabel, 12)
+        val sensitivityLabel = text("TOQUE  •  ${(touchSensitivity * 100f).toInt()}%", 13f, white, true)
+        addVertical(content, sensitivityLabel, 6)
         val sensitivity = SeekBar(this).apply {
             max = 100
             progress = ((touchSensitivity - 0.5f) * 100f).toInt().coerceIn(0, 100)
@@ -329,7 +320,7 @@ class MainActivity : Activity() {
             setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
                 override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
                     touchSensitivity = 0.5f + progress / 100f
-                    sensitivityLabel.text = "SENSIBILIDADE DO TOQUE: ${(touchSensitivity * 100f).toInt()}%"
+                    sensitivityLabel.text = "TOQUE  •  ${(touchSensitivity * 100f).toInt()}%"
                     gameView.setTouchSensitivity(touchSensitivity)
                 }
                 override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
@@ -338,17 +329,16 @@ class MainActivity : Activity() {
                 }
             })
         }
-        addVertical(content, sensitivity, 4, dp(330), dp(42))
-        addVertical(content, text("Faixa ajustável de 50% a 150%. A escolha fica salva entre sessões.", 11f, muted), 8)
+        addVertical(content, sensitivity, 8, dp(330), dp(42))
 
-        val hapticLabel = if (hapticsEnabled) "VIBRAÇÃO DE INTERFACE: LIGADA" else "VIBRAÇÃO DE INTERFACE: DESLIGADA"
+        val hapticLabel = if (hapticsEnabled) "VIBRAÇÃO  •  LIGADA" else "VIBRAÇÃO  •  DESLIGADA"
         addVertical(content, actionButton(hapticLabel, hapticsEnabled) {
             hapticsEnabled = !hapticsEnabled
             prefs.edit().putBoolean("haptics", hapticsEnabled).apply()
             showSettings()
-        }, 12, dp(330), dp(44))
-        addVertical(content, actionButton("VOLTAR") { showMainMenu(hasSession) }, 8, dp(330), dp(44))
-        layer.addView(content, FrameLayout.LayoutParams(dp(360), -2, Gravity.CENTER))
+        }, 14, dp(330), dp(44))
+        addVertical(content, actionButton("VOLTAR") { showMainMenu(hasSession) }, 0, dp(330), dp(44))
+        layer.addView(content, FrameLayout.LayoutParams(dp(390), -2, Gravity.CENTER))
         attachLayer(layer)
     }
 
@@ -375,20 +365,19 @@ class MainActivity : Activity() {
         currentScreen = Screen.PAUSED
         hasSession = true
         gameView.setGameMode(2)
-        val layer = overlay(Color.argb(168, 12, 16, 8))
+        val layer = overlay(Color.argb(34, 18, 19, 14), false)
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(4), dp(8), dp(4))
+            setPadding(0, dp(4), 0, dp(4))
         }
-        addVertical(content, text("PAUSA", 27f, white, true), 6)
-        addVertical(content, text("A expedição continua daqui quando voltar.", 13f, muted), 18)
+        addVertical(content, text("PAUSA", 28f, white, true), 18)
         addVertical(content, actionButton("RETOMAR", true) { resumeMission() }, 8, dp(270), dp(46))
-        addVertical(content, actionButton("REINICIAR OPERAÇÃO") { startNewMission() }, 8, dp(270), dp(46))
-        addVertical(content, actionButton("VOLTAR AO MENU") {
+        addVertical(content, actionButton("RECOMEÇAR") { startNewMission() }, 8, dp(270), dp(46))
+        addVertical(content, actionButton("MENU") {
             gameView.setGameMode(6)
             showMainMenu(true)
-        }, 8, dp(270), dp(46))
+        }, 0, dp(270), dp(46))
         layer.addView(content, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
         attachLayer(layer)
     }
@@ -407,7 +396,7 @@ class MainActivity : Activity() {
             setPadding(0, 0, 0, 0)
             isClickable = false
         }
-        addVertical(left, text("ORION-9  /  SITE", 10f, Color.argb(210, 72, 220, 232), true), 3)
+        addVertical(left, text("PROJETO ARENA", 10f, Color.argb(210, 174, 194, 145), true), 3)
         addVertical(left, text("OPERADOR  ${operativeName()}", 9f, Color.argb(190, 255, 183, 112), true), 5)
         relayStatus = text("RELÉS  0 / 3", 10f, hudColor, true)
         addVertical(left, relayStatus, 2)
@@ -419,7 +408,7 @@ class MainActivity : Activity() {
             marginStart = dp(18); topMargin = dp(13)
         })
 
-        objectiveText = text("RESTAURE OS RELÉS DE CONTENÇÃO", 10f, hudColor, true).apply {
+        objectiveText = text("ATIVE OS MARCADORES", 10f, hudColor, true).apply {
             gravity = Gravity.CENTER
             alpha = 0.88f
             setPadding(dp(5), dp(4), dp(5), dp(4))
