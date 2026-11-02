@@ -20,7 +20,7 @@ class HeroGearGlbBuilderTest {
                 assertTrue(jsonLength > 0)
                 assertEquals(0x4e4f534a, glb.getInt(16))
                 val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
-                assertTrue(json.contains("DuckDreamStudios-HeroGear-0.14"))
+                assertTrue(json.contains("DuckDreamStudios-HeroGear-0.15"))
                 listOf(
                     "gear_torso", "gear_trim", "gear_head", "gear_head_trim", "gear_back",
                     "gear_shoulder_l", "gear_shoulder_r", "gear_forearm_l", "gear_forearm_r",
