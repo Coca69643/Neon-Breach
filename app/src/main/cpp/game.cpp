@@ -1535,29 +1535,29 @@ void fixedUpdate(float dt){
 } // namespace
 
 extern "C" JNIEXPORT jint JNICALL JNI_OnLoad(JavaVM*, void*) {
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","JNI_OnLoad: native library load completed");
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","JNI_OnLoad: native library load completed");
   return JNI_VERSION_1_6;
 }
 
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSetAssetManager(JNIEnv*env,jobject,jobject manager){
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSetAssetManager: begin");
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSetAssetManager: begin");
   androidAssets=AAssetManager_fromJava(env,manager);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Android asset manager %s",androidAssets?"available":"missing");
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceCreated(JNIEnv*,jobject){
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: begin");
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: begin");
   // Initialize dungeon metadata once; EGL context recreation must not reset mission progress.
   if(!roomWorldInitialized){configureArena(false);rooms[0].visited=true;}
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: arena metadata ready");
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: arena metadata ready");
   // EGL can recreate the context after resume: rebuild every GL object.
   // EGL can recreate the context after resume: rebuild every GL object from a clean state.
   program=0;fallbackProgram=0;fallbackVao=0;postProgram=0;postVao=0;
   projectileProgram=0;projectileVao=0;projectileQuadVbo=0;projectileIndexBuffer=0;projectileInstanceVbo=0;
   sceneFramebuffer=0;sceneColorTexture=0;sceneDepthBuffer=0;sceneTargetW=sceneTargetH=0;
   cubeMesh={};sphereMesh={};organicMesh={};
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: compiling scene shaders");
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: compiling scene shaders");
   program=make3DProgram();
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: scene shader result=%u",(unsigned int)program);
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: scene shader result=%u",(unsigned int)program);
   if(!program){__android_log_print(ANDROID_LOG_ERROR,"NeonBreach","3D renderer failed, showing diagnostic fallback");fallbackProgram=makeFallbackProgram();}
   if(program){
     mvpLoc=glGetUniformLocation(program,"uMVP");modelLoc=glGetUniformLocation(program,"uModel");
@@ -1576,17 +1576,17 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
       postResolutionLoc=glGetUniformLocation(postProgram,"uResolution");
       glGenVertexArrays(1,&postVao);
     }
-    __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: creating procedural meshes");
+    __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: creating procedural meshes");
     createMeshes();
-    __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: loading GLB/PNG assets");
+    __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: loading GLB/PNG assets");
     loadWorldAssets();
-    __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: asset pipeline returned");
+    __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: asset pipeline returned");
   }else if(fallbackProgram){fallbackResLoc=glGetUniformLocation(fallbackProgram,"uRes");glGenVertexArrays(1,&fallbackVao);}
   const GLubyte*version=glGetString(GL_VERSION);
   __android_log_print(ANDROID_LOG_INFO,"NeonBreach","Renderer startup: GLES=%s 3D=%s",version?(const char*)version:"unknown",program?"enabled":"fallback");
   glEnable(GL_DEPTH_TEST);glDepthFunc(GL_LEQUAL);glDisable(GL_CULL_FACE);glDisable(GL_BLEND);
   glClearColor(0.024f,0.032f,0.040f,1.0f);previousFrame=std::chrono::steady_clock::now();publishSnapshot();
-  __android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeSurfaceCreated: completed");
+  __android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeSurfaceCreated: completed");
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSurfaceChanged(JNIEnv*,jobject,jint w,jint h){
   screenW=std::max(1,(int)w);screenH=std::max(1,(int)h);
@@ -1595,7 +1595,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeDrawFrame(JNIEnv*,jobject){
   static bool firstNativeFrame=true;
-  if(firstNativeFrame)__android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeDrawFrame: first frame entered");
+  if(firstNativeFrame)__android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeDrawFrame: first frame entered");
   auto now=std::chrono::steady_clock::now();
   float frame=std::chrono::duration<float>(now-previousFrame).count();previousFrame=now;
   frame=std::clamp(frame,0.0f,0.05f);visualTime+=frame;accumulator+=frame;
@@ -1611,7 +1611,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
   glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
   if(!program){
     if(fallbackProgram){glUseProgram(fallbackProgram);glUniform2f(fallbackResLoc,(float)screenW,(float)screenH);glBindVertexArray(fallbackVao);glDrawArrays(GL_TRIANGLES,0,3);}
-    if(firstNativeFrame){firstNativeFrame=false;__android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeDrawFrame: first fallback frame returned");}
+    if(firstNativeFrame){firstNativeFrame=false;__android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeDrawFrame: first fallback frame returned");}
     return;
   }
   V3 camera{cameraFocusX,16.0f,cameraFocusZ+11.0f};
@@ -1659,7 +1659,7 @@ extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_n
     glBindTexture(GL_TEXTURE_2D,0);
     glEnable(GL_DEPTH_TEST);
   }
-  if(firstNativeFrame){firstNativeFrame=false;__android_log_print(ANDROID_LOG_INFO,"ORION9Startup","nativeDrawFrame: first 3D frame returned");}
+  if(firstNativeFrame){firstNativeFrame=false;__android_log_print(ANDROID_LOG_INFO,"ArenaStartup","nativeDrawFrame: first 3D frame returned");}
 }
 extern "C" JNIEXPORT void JNICALL Java_com_duckdream_neonbreach_NativeRenderer_nativeSetMode(JNIEnv*,jobject,jint mode){
   if(mode>=0&&mode<=6){
