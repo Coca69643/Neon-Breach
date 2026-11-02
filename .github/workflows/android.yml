@@ -106,4 +106,5 @@ jobs:
             Pré-lançamento: validar fluxo de partida, leitura do mapa, desempenho e estabilidade em aparelho Android.
           draft: false
           prerelease: true
+          overwrite_files: true
           files: app/build/outputs/apk/debug/app-debug.apk
