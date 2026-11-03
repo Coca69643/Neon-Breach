@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <mutex>
 #include "ArenaPhysics.h"
+#include "ArenaWorldDefinition.h"
 
 namespace {
 struct Vec2 { float x; float z; };
@@ -113,12 +114,9 @@ Vec2 normalized(Vec2 v) {
     const float d = std::max(length(v), 0.001f);
     return {v.x / d, v.z / d};
 }
-float terrainHeight(float x, float z) { return arena_physics::terrainHeight(x, z); }
+float terrainHeight(float x, float z) { return arena_world::terrainHeight(x, z); }
 float laneCenterX(int lane, float z) {
-    const float bend = std::sin((z + 4.0f) * 0.105f) * 1.15f;
-    if (lane == 0) return -14.2f + bend;
-    if (lane == 1) return 0.5f + std::sin(z * 0.12f) * 0.72f;
-    return 14.2f - bend * 0.82f;
+    return arena_world::laneCenterX(lane, z);
 }
 Vec2 lanePoint(int lane, float z, float offset = 0.0f) {
     return {laneCenterX(lane, z) + offset, z};
@@ -136,9 +134,7 @@ int towerIndex(int team, int lane, int tier) {
     return team * 9 + lane * 3 + tier;
 }
 float towerZ(int team, int tier) {
-    // Tier 0 is the outer tower closest to the river; tier 2 protects the core.
-    const float z = tier == 0 ? 8.0f : (tier == 1 ? 15.0f : 22.0f);
-    return team == 0 ? -z : z;
+    return arena_world::towerZ(team, tier);
 }
 int activeTowerTier(int defendingTeam, int lane) {
     for (int tier = 0; tier < 3; ++tier) {
@@ -156,16 +152,19 @@ bool anyLaneOpen(int defendingTeam) {
 Vec2 towerPosition(int team, int lane, int tier) {
     return lanePoint(lane, towerZ(team, tier));
 }
-Vec2 corePosition(int team) { return {0.0f, team == 0 ? -27.2f : 27.2f}; }
+Vec2 corePosition(int team) {
+    const auto p = arena_world::corePosition(team);
+    return {p.x, p.z};
+}
 Vec2 campPosition(int index) {
-    static constexpr std::array<Vec2, kCampCount> positions{{
-        {-8.2f, -14.5f}, {8.2f, -14.5f}, {-20.2f, -10.0f}, {20.2f, -10.0f},
-        {-8.2f, 14.5f}, {8.2f, 14.5f}, {-20.2f, 10.0f}, {20.2f, 10.0f}
-    }};
-    return positions[static_cast<std::size_t>(index)];
+    const auto p = arena_world::kCampPositions[static_cast<std::size_t>(
+        std::clamp(index, 0, kCampCount - 1))];
+    return {p.x, p.z};
 }
 Vec2 objectivePosition(int objective) {
-    return objective == 0 ? Vec2{-7.0f, 0.2f} : Vec2{7.0f, 0.2f};
+    const auto p = arena_world::kObjectivePositions[static_cast<std::size_t>(
+        std::clamp(objective, 0, 1))];
+    return {p.x, p.z};
 }
 int playerRole() {
     if (gPlayerSelectedHero == 1) return 0; // Bastion: solo lane
