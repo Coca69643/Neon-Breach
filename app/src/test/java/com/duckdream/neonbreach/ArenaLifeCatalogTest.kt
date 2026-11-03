@@ -4,9 +4,23 @@ import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
 import kotlin.math.abs
 
 class ArenaLifeCatalogTest {
+
+    @Before
+    fun installCanonicalWorldFixture() {
+        ArenaWorldDefinition.installSourceForTests(ArenaWorldTestFixture)
+    }
+
+    @After
+    fun restoreCanonicalWorldSource() {
+        ArenaWorldDefinition.restoreNativeSource()
+    }
+
+
     @Test
     fun lifeCatalogContainsDistinctAmbientAndCampSpecies() {
         assertEquals(6, ArenaLifeCatalog.wildlife.size)
