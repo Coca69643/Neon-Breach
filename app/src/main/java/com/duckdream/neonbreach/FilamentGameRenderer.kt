@@ -597,12 +597,14 @@ internal class FilamentGameRenderer(
             return instance
         }
 
-        for (style in 0..2) {
-            val instance = createAttached(style, 0, bones)
+        // Lyra has a complete project-authored body and does not use Quaternius gear.
+        // Bastion and Kairo keep their existing compatible base/attachment pipeline.
+        for (style in 1..2) {
+            val instance = createAttached(style, 0, genericPlayerBones)
             playerGearInstances[style] = instance
-            if (style != activeHero) viewer.scene.removeEntities(instance.entities)
+            viewer.scene.removeEntities(instance.entities)
         }
-        equippedPlayerGear = activeHero
+        equippedPlayerGear = -1
         rebuildBotGearForHero()
         Log.i(TAG, "Articulated gear loaded: 3 playable identities and 5 AI role silhouettes; source buffers retained for loadout changes")
     }
@@ -1298,12 +1300,10 @@ internal class FilamentGameRenderer(
 
     fun setHeroAppearance(hero: Int, alternateSkin: Boolean = false) {
         activeHero = hero.coerceIn(0, 2)
+        activatePlayerModel(activeHero)
         rebuildBotGearForHero()
-        if (equippedPlayerGear >= 0 && equippedPlayerGear != activeHero) {
-            playerGearInstances.getOrNull(equippedPlayerGear)?.let { viewer.scene.removeEntities(it.entities) }
-            playerGearInstances.getOrNull(activeHero)?.let { viewer.scene.addEntities(it.entities) }
-            equippedPlayerGear = activeHero
-        }
+        // Lyra's authored material palette is part of her identity, not a global tint.
+        if (activeHero == 0) return
         val tint = if (alternateSkin) {
             when (activeHero) {
                 1 -> floatArrayOf(0.22f, 0.72f, 0.76f, 1.0f)
@@ -1410,12 +1410,19 @@ internal class FilamentGameRenderer(
             equippedPlayerGear = -1
             heroGearAssets.forEach { asset -> characterLoader?.destroyAsset(asset) }
             heroGearAssets.clear()
-            playerInstance?.let { viewer.scene.removeEntities(it.entities) }
+            genericPlayerInstance?.let { viewer.scene.removeEntities(it.entities) }
+            lyraPlayerInstance?.let { viewer.scene.removeEntities(it.entities) }
+            genericPlayerInstance = null
+            lyraPlayerInstance = null
             playerInstance = null
             playerAnimator = null
             playerMaterials.clear()
+            genericPlayerBones.clear()
+            lyraPlayerBones.clear()
             botAnimators.clear()
             minionLastPositions.forEach { it[0] = Float.NaN; it[1] = Float.NaN }
+            lyraCharacterAsset?.let { asset -> characterLoader?.destroyAsset(asset) }
+            lyraCharacterAsset = null
             character?.let { asset -> characterLoader?.destroyAsset(asset) }
             character = null
             botBones.clear()
