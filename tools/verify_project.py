@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.15.12."""
+"""Structural verification for Project Arena."""
 from pathlib import Path
 import base64
 import hashlib
 import json
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,6 +24,8 @@ renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer
 presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
 presentation_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroPresentationTest.kt")
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
+map_kotlin = read("app/src/main/java/com/duckdream/neonbreach/ArenaMapDefinition.kt")
+map_native = read("app/src/main/cpp/ArenaMapDefinition.h")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
 physics_h = read("app/src/main/cpp/ArenaPhysics.h")
@@ -47,6 +50,31 @@ kaykit_license = read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
 quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
+
+def extract_pairs(source, start, end, pattern):
+    block = source.split(start, 1)[1].split(end, 1)[0]
+    return [(float(a), float(b)) for a, b in re.findall(pattern, block)]
+
+kotlin_lanes = extract_pairs(
+    map_kotlin, "val lanes = listOf(", "val camps = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_lanes = extract_pairs(
+    map_native, "kLanes{{", "kCampPositions",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+kotlin_camps = extract_pairs(
+    map_kotlin, "val camps = listOf(", "val objectives = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_camps = extract_pairs(
+    map_native, "kCampPositions{{", "kObjectivePositions",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_lanes != native_lanes:
+    raise SystemExit("Kotlin and C++ lane coordinates differ")
+if kotlin_camps != native_camps:
+    raise SystemExit("Kotlin and C++ camp coordinates differ")
 
 checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
@@ -139,7 +167,7 @@ checks = [
     ("renderer.updatePlayerSignals(result)" in main and "fun updatePlayerSignals(snapshot: FloatArray)" in renderer, "animation state bridge missing"),
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
-    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "ArenaMapDefinition.treeBlockers" in renderer and "ArenaMapDefinition.lanes" in world and "ArenaMapDefinition.camps" in world and "ArenaMapDefinition.objectives" in world and "ArenaMapDefinition.kLanes" in native_sim and "arena_map::kTreeBlockers" in native_physics and "arena_map::kCampPositions" in native_sim and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, canonical forest and objective geometry missing"),
+    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "ArenaMapDefinition.treeBlockers" in renderer and "ArenaMapDefinition.lanes" in world and "ArenaMapDefinition.camps" in world and "ArenaMapDefinition.objectives" in world and "ArenaMapDefinition.h" in native and "ArenaMapDefinition.h" in physics and "arena_map::kTreeBlockers" in physics and "arena_map::kCampPositions" in native and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, canonical forest and objective geometry missing"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
