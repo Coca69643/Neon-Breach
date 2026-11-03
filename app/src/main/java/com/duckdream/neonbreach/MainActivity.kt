@@ -196,7 +196,9 @@ class MainActivity : Activity() {
             startRenderLoop()
         } catch (error: Throwable) {
             Log.e(TAG, "Startup failed", error)
-            enterRecovery("Não foi possível inicializar o renderer 3D.")
+            val rootCause = generateSequence(error as Throwable?) { it.cause }.lastOrNull() ?: error
+            val detail = (rootCause.message ?: rootCause.javaClass.simpleName).replace('\n', ' ').take(112)
+            enterRecovery("Não foi possível inicializar o renderer 3D. Diagnóstico: $detail")
         }
     }
 
@@ -337,6 +339,9 @@ class MainActivity : Activity() {
             maxWidth = dp(238)
             setPadding(0, dp(5), 0, 0)
         })
+        renderer.lyraModelWarning?.let {
+            featured.addView(label("MODELO LYRA EM COMPATIBILIDADE", 8f, Color.rgb(242, 197, 118), true))
+        }
         layer.addView(featured, FrameLayout.LayoutParams(dp(258), -2, Gravity.BOTTOM or Gravity.START).apply {
             bottomMargin = dp(20)
         })
@@ -383,6 +388,9 @@ class MainActivity : Activity() {
         content.addView(label(activeAbilityHint(), 10f, Color.rgb(221, 229, 216)).apply {
             setPadding(0, dp(3), 0, dp(12))
         })
+        renderer.lyraModelWarning?.let {
+            content.addView(label("Lyra está usando o modelo de compatibilidade nesta sessão.", 9f, Color.rgb(242, 197, 118), true))
+        }
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         controls.addView(actionButton("‹") {
             selectedHero = (selectedHero + HERO_NAMES.size - 1) % HERO_NAMES.size
