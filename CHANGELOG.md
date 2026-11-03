@@ -1,5 +1,16 @@
 # Changelog — Projeto Arena
 
+## [0.16.0] — Em desenvolvimento
+
+### Vale das Coroas — fundação compartilhada do mundo
+- Criada uma definição nativa canônica para altura do terreno, rio, três rotas, torres, acampamentos, objetivos, árvores, clareiras, limites do mapa e vegetação rasteira.
+- Simulação e colisão passam a consumir os mesmos pontos para terreno, estruturas e obstáculos principais.
+- Renderer Filament e minimapa consomem o mesmo traçado de rotas e os mesmos pontos de acampamentos, objetivos e vegetação.
+- Adicionada uma grade de altura nativa amostrada uma vez e interpolada no Kotlin, evitando chamadas JNI por vértice/frame.
+- Adicionados testes de simetria dos acampamentos, ordenação das rotas, posições das torres, limite do mapa e paridade da função de terreno.
+
+**Escopo desta etapa:** fundação técnica da reconstrução. A nova arquitetura visual do vale, os modelos de cenário e a revisão de mecânicas ainda estão em desenvolvimento; não considerar esta entrada uma release instalável.
+
 ## [0.15.12] — 2026-11-03
 
 ### Orientação e identidade visual dos heróis
