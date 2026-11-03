@@ -163,9 +163,12 @@ checks = [
     ("arena_physics::move(body" in native and "arena_physics::separate(" in native and "resolveActorContacts()" in native, "player/NPC collision and movement must share physics"),
     ("arena_physics::avoidObstacles(body" in native and "void avoidObstacles(" in physics_h and "bestProjection" in physics, "AI steering must avoid static map colliders"),
     ("kFixedStep = 1.0f / 60.0f" in native and "gSimulationAccumulator" in native, "fixed 60 Hz simulation step missing"),
-    ("arena_world::insideIsland" in world_bridge and "arena_world::worldEdgeFactor" in world_definition and
-     "nativeUndergrowthPositions" in world_bridge and "arena_world::undergrowthPosition" in physics,
-     "shared island boundary and undergrowth placement are not wired across native and renderer"),
+    ("inline bool insideIsland(float x, float z)" in world_definition and
+     "nativeIslandMask" in world_bridge and "islandMask" in world_bridge and
+     "ArenaWorldDefinition.insideIsland" in world and
+     "nativeUndergrowthPositions" in world_bridge and
+     "arena_world::undergrowthPosition" in physics,
+     "shared island boundary mask and undergrowth placement are not wired across native and renderer"),
     ("terrainHeight(float x,float z)" in physics and "slideUphill" in physics and "hitCircle" in physics and "hitBox" in physics and "confine" in physics, "terrain, slope, obstacle or world-boundary physics missing"),
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
