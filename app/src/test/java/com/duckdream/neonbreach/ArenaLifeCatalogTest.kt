@@ -19,6 +19,21 @@ class ArenaLifeCatalogTest {
     }
 
     @Test
+    fun wildlifePlacesAnAnimalInsideTheOpeningBlueSideCameraReach() {
+        val initialPlayerX = -14f
+        val initialPlayerZ = -25f
+        val nearestDistance = ArenaLifeCatalog.wildlife.minOf { actor ->
+            val dx = actor.x - initialPlayerX
+            val dz = actor.z - initialPlayerZ
+            kotlin.math.sqrt(dx * dx + dz * dz)
+        }
+        assertTrue(
+            "At least one ambient animal must be near the opening camera; nearest distance=$nearestDistance",
+            nearestDistance <= 8f
+        )
+    }
+
+    @Test
     fun campGuardianLocationsMatchNativeCampSnapshotOrder() {
         val guardians = ArenaLifeCatalog.campGuardians()
         assertEquals(-8.2f, guardians[0].x, 0.001f)

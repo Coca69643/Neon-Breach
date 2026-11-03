@@ -521,8 +521,11 @@ internal class FilamentGameRenderer(
             val campAlive = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) {
                 snapshot?.getOrNull(270 + spawn.campIndex)?.let { it > 0f } ?: true
             } else true
-            val dx = spawn.x - playerX
-            val dz = spawn.z - playerZ
+            // Cull against the actor's current path position, not its original anchor.
+            // A moving animal may have wandered several metres from its spawn point.
+            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX, playerZ)
+            val dx = sample.x - playerX
+            val dz = sample.z - playerZ
             val maxDistance = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f
             val inRange = dx * dx + dz * dz <= maxDistance * maxDistance
             val shouldShow = campAlive && inRange
@@ -533,7 +536,6 @@ internal class FilamentGameRenderer(
             }
             if (!shouldShow) continue
 
-            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX, playerZ)
             val profile = ArenaLifeCatalog.species.getValue(spawn.species)
             val clip = if (sample.moving) actor.moveClip else actor.idleClip
             if (clip >= 0) {

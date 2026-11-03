@@ -58,13 +58,16 @@ internal object ArenaLifeCatalog {
             listOf("idle", "float", "hover"), listOf("float", "fly", "move", "walk"))
     ).associateBy { it.id }
 
+    // Keep one deer inside the opening blue-side camera footprint, then distribute
+    // the remaining wildlife along both jungle flanks and the central clearings.
+    // These are visual-only actors; the native lane/camp simulation remains authoritative.
     val wildlife = listOf(
-        LifeActorSpawn("deer_west", "deer", LifeActorKind.WILDLIFE, -25f, -22f, 2.4f, 0.4f, 0.34f),
-        LifeActorSpawn("deer_east", "deer", LifeActorKind.WILDLIFE, 25f, 22f, 2.6f, 2.1f, 0.31f),
-        LifeActorSpawn("wolf_west", "wolf", LifeActorKind.WILDLIFE, -25f, 22f, 2.8f, 1.2f, 0.43f),
-        LifeActorSpawn("wolf_east", "wolf", LifeActorKind.WILDLIFE, 25f, -22f, 2.7f, 2.8f, 0.39f),
-        LifeActorSpawn("bird_west", "bird", LifeActorKind.WILDLIFE, -24f, 0f, 3.8f, 0.7f, 0.58f),
-        LifeActorSpawn("bird_east", "bird", LifeActorKind.WILDLIFE, 24f, 0f, 4.0f, 2.5f, 0.62f)
+        LifeActorSpawn("deer_west", "deer", LifeActorKind.WILDLIFE, -17f, -20f, 1.65f, 0.4f, 0.34f),
+        LifeActorSpawn("deer_east", "deer", LifeActorKind.WILDLIFE, 17f, 20f, 1.65f, 2.1f, 0.31f),
+        LifeActorSpawn("wolf_west", "wolf", LifeActorKind.WILDLIFE, -22f, 7f, 2.2f, 1.2f, 0.43f),
+        LifeActorSpawn("wolf_east", "wolf", LifeActorKind.WILDLIFE, 22f, -7f, 2.2f, 2.8f, 0.39f),
+        LifeActorSpawn("bird_west", "bird", LifeActorKind.WILDLIFE, -8.5f, -16.5f, 2.8f, 0.7f, 0.58f),
+        LifeActorSpawn("bird_east", "bird", LifeActorKind.WILDLIFE, 8.5f, 16.5f, 2.8f, 2.5f, 0.62f)
     )
 
     private val campPoints = listOf(

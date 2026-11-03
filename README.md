@@ -1,6 +1,13 @@
-# Projeto Arena 0.15.9
+# Projeto Arena 0.15.10
 
-MOBA 3D nativo para Android, landscape e offline. A 0.15.9 substitui os três corpos jogáveis por GLBs CC0 individuais. A 0.15.8 amplia o campo de batalha com flora agrupada por material, seis animais de fauna ambiente e oito guardiões neutros em três silhuetas CC0. Bots e tropas também ganham leitura mais distinta por função.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.10 corrige o posicionamento e a visibilidade dos animais próximos à câmera inicial. A 0.15.9 introduz três corpos jogáveis CC0 independentes; a 0.15.8 acrescenta fauna, guardiões e vegetação agrupada.
+
+## Fauna visível — 0.15.10
+
+- Os animais agora ocupam clareiras de selva junto às rotas, em vez de ficarem concentrados nas bordas externas do mapa.
+- Um veado fica dentro do alcance inicial da câmera do lado azul; os demais animais estão distribuídos simetricamente pelos flancos e clareiras centrais.
+- O culling usa a posição atual do percurso do animal, não apenas a âncora original de spawn.
+- A fauna continua visual: não altera colisão, combate, economia ou objetivos. A confirmação visual e de desempenho ainda depende do Realme C53.
 
 ## Playable heroes — 0.15.9
 

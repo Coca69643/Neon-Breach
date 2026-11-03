@@ -1,5 +1,15 @@
 # Changelog — Projeto Arena
 
+## [0.15.10] — 2026-11-03
+
+### Fauna trazida para o campo de visão
+- Reposicionados veados, lobos e aves em clareiras próximas às rotas e aos flancos da selva; um veado fica próximo ao ponto inicial do jogador azul para tornar a fauna imediatamente observável.
+- A posição usada pelo culling agora é a posição corrente do animal no percurso, evitando que o renderer teste somente a âncora estática.
+- Adicionado teste JVM que impede regressão para uma distribuição de fauna totalmente fora do enquadramento inicial.
+- Preservados os seis GLBs CC0, os três corpos jogáveis independentes, a simulação MOBA nativa e o comportamento visual-only dos animais.
+- CI deve validar versão 0.15.10 / versionCode 56; a aparência e o desempenho precisam ser confirmados no Realme C53.
+
+
 ## [0.15.9] — 2026-11-03
 
 ### Três heróis com corpos CC0 independentes
