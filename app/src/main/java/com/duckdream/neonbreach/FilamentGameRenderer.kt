@@ -364,14 +364,15 @@ internal class FilamentGameRenderer(
         }
 
         val placements = buildList {
-            add(WorldPlacement("castle_blue", 0f, -27.3f, 1.0f))
-            add(WorldPlacement("castle_red", 0f, 27.3f, 1.0f, Math.PI.toFloat()))
-            add(WorldPlacement("home_blue", -4.5f, -24.0f, 2.05f))
-            add(WorldPlacement("home_blue", 4.5f, -24.0f, 2.05f))
-            add(WorldPlacement("home_red", -4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("home_red", 4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("church_blue", -8.0f, -25.3f, 1.55f))
-            add(WorldPlacement("church_red", 8.0f, 25.3f, 1.55f, Math.PI.toFloat()))
+            val mapScale = ArenaMapDefinition.WORLD_SCALE
+            add(WorldPlacement("castle_blue", 0f, -27.3f * mapScale, 1.0f))
+            add(WorldPlacement("castle_red", 0f, 27.3f * mapScale, 1.0f, Math.PI.toFloat()))
+            add(WorldPlacement("home_blue", -4.5f * mapScale, -24.0f * mapScale, 2.05f))
+            add(WorldPlacement("home_blue", 4.5f * mapScale, -24.0f * mapScale, 2.05f))
+            add(WorldPlacement("home_red", -4.5f * mapScale, 24.0f * mapScale, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("home_red", 4.5f * mapScale, 24.0f * mapScale, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("church_blue", -8.0f * mapScale, -25.3f * mapScale, 1.55f))
+            add(WorldPlacement("church_red", 8.0f * mapScale, 25.3f * mapScale, 1.55f, Math.PI.toFloat()))
 
             // Tower transforms are generated from the canonical battlefield catalog.
             for (team in 0..1) {
@@ -380,17 +381,17 @@ internal class FilamentGameRenderer(
                         val point = ArenaMapDefinition.towerPosition(team, lane, tier)
                         val model = if (team == 0) "tower_blue" else "tower_red"
                         val yaw = if (team == 0) 0f else Math.PI.toFloat()
-                        add(WorldPlacement(model, point.x, point.z, 1.48f, yaw))
+                        add(WorldPlacement(model, point.x * mapScale, point.z * mapScale, 1.48f, yaw))
                     }
                 }
             }
             for (lane in ArenaMapDefinition.lanes) {
                 val crossing = lane.points.minByOrNull { kotlin.math.abs(it.z) } ?: continue
-                add(WorldPlacement("bridge_a", crossing.x, crossing.z, 1.42f))
+                add(WorldPlacement("bridge_a", crossing.x * mapScale, crossing.z * mapScale, 1.42f))
             }
             ArenaMapDefinition.treeBlockers.forEachIndexed { index, point ->
                 val scale = 1.48f + (index % 4) * 0.12f
-                add(WorldPlacement("trees_a", point.x, point.z, scale, (index * 0.73f) % 6.28f))
+                add(WorldPlacement("trees_a", point.x * mapScale, point.z * mapScale, scale, (index * 0.73f) % 6.28f))
             }
         }
 
@@ -489,9 +490,11 @@ internal class FilamentGameRenderer(
                 // Actors enter the scene only when the current view/player range needs them.
                 actor.visible = false
                 val sample = ArenaLifeCatalog.sample(spawn, spawn.phase, spawn.x + 30f, spawn.z + 30f)
-                val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - minY * scale
+                val worldX = sample.x * ArenaMapDefinition.WORLD_SCALE
+                val worldZ = sample.z * ArenaMapDefinition.WORLD_SCALE
+                val y = terrainHeight(worldX, worldZ) + profile.airHeight + sample.heightOffset - minY * scale
                 transforms.setTransform(root, terrainAlignedTransform(
-                    sample.x, sample.z, sample.yaw + profile.yawOffset, scale, scale, y
+                    worldX, worldZ, sample.yaw + profile.yawOffset, scale, scale, y
                 ))
                 if (idleClip >= 0) animator.applyAnimation(idleClip, 0f)
                 animator.updateBoneMatrices()
@@ -516,10 +519,13 @@ internal class FilamentGameRenderer(
             } else true
             // Cull against the actor's current path position, not its original anchor.
             // A moving animal may have wandered several metres from its spawn point.
-            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX, playerZ)
-            val dx = sample.x - playerX
-            val dz = sample.z - playerZ
-            val maxDistance = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f
+            val mapScale = ArenaMapDefinition.WORLD_SCALE
+            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX / mapScale, playerZ / mapScale)
+            val worldX = sample.x * mapScale
+            val worldZ = sample.z * mapScale
+            val dx = worldX - playerX
+            val dz = worldZ - playerZ
+            val maxDistance = (if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f) * mapScale
             val inRange = dx * dx + dz * dz <= maxDistance * maxDistance
             val shouldShow = campAlive && inRange
             if (actor.visible != shouldShow) {
@@ -536,9 +542,9 @@ internal class FilamentGameRenderer(
                 val offset = if (clip == actor.moveClip) spawn.phase * 0.37f else spawn.phase
                 actor.animator.applyAnimation(clip, (lifeClock + offset) % duration)
             }
-            val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - actor.minY * actor.scale
+            val y = terrainHeight(worldX, worldZ) + profile.airHeight + sample.heightOffset - actor.minY * actor.scale
             transforms.setTransform(actor.root, terrainAlignedTransform(
-                sample.x, sample.z, sample.yaw + profile.yawOffset,
+                worldX, worldZ, sample.yaw + profile.yawOffset,
                 actor.scale, actor.scale, y
             ))
             if (clip >= 0) actor.animator.updateBoneMatrices()
@@ -617,8 +623,9 @@ internal class FilamentGameRenderer(
             val localInLane = local % 8
             val slot = localInLane % 4
             val group = localInLane / 4
-            val z = if (team == 0) -28f - group * 1.25f else 28f + group * 1.25f
-            val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f }
+            val mapScale = ArenaMapDefinition.WORLD_SCALE
+            val z = (if (team == 0) -28f - group * 1.25f else 28f + group * 1.25f) * mapScale
+            val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f } * mapScale
             setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
 
@@ -1408,8 +1415,10 @@ internal class FilamentGameRenderer(
         }
     }
 
-    private fun laneCenterX(lane: Int, z: Float): Float =
-        ArenaMapDefinition.laneCenterX(lane, z)
+    private fun laneCenterX(lane: Int, worldZ: Float): Float {
+        val scale = ArenaMapDefinition.WORLD_SCALE
+        return ArenaMapDefinition.laneCenterX(lane, worldZ / scale) * scale
+    }
 
     private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)
 
@@ -1500,10 +1509,11 @@ internal class FilamentGameRenderer(
     fun setOverviewCamera(overview: Boolean) {
         showcaseMode = false
         overviewCamera = overview
+        val mapScale = ArenaMapDefinition.WORLD_SCALE
         val spawn = when (activeHero) {
-            1 -> laneCenterX(0, -25f) to -25f
-            2 -> -8.2f to -14.5f
-            else -> laneCenterX(2, -25f) + 1.8f to -25f
+            1 -> laneCenterX(0, -25f * mapScale) to -25f * mapScale
+            2 -> -8.2f * mapScale to -14.5f * mapScale
+            else -> laneCenterX(2, -25f * mapScale) + 1.8f * mapScale to -25f * mapScale
         }
         if (overview) {
             cameraX = spawn.first
@@ -1540,8 +1550,9 @@ internal class FilamentGameRenderer(
             return
         }
         // Fixed north-facing isometric framing: hero yaw never rotates the camera.
-        val distance = if (overviewCamera) 9.4f else 8.3f
-        val height = if (overviewCamera) 9.6f else 9.2f
+        val mapScale = ArenaMapDefinition.WORLD_SCALE
+        val distance = (if (overviewCamera) 9.4f else 8.3f) * mapScale
+        val height = (if (overviewCamera) 9.6f else 9.2f) * mapScale
         val fov = if (overviewCamera) 48.0 else 44.0
         viewer.camera.setProjection(
             fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
