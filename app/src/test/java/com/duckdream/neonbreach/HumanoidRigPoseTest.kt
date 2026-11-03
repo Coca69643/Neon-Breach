@@ -42,7 +42,7 @@ class HumanoidRigPoseTest {
             Q(0.149803013, -0.691130758, 0.149388448, 0.691071928)
         }
         val sign = HumanoidRigPose.lateralSign(if (left) "upperarm_l" else "upperarm_r")
-        val localAngle = HumanoidRigPose.localFlexion(0.62, sign).toDouble()
+        val localAngle = HumanoidRigPose.localFlexion(0.62f, sign).toDouble()
         val world = root * pelvis * spine1 * spine2 * spine3 * clavicle * upperArm * rotationZ(localAngle)
         return world.rotate(doubleArrayOf(0.0, 1.0, 0.0))
     }
