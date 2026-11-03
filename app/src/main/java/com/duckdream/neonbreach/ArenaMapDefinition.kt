@@ -14,6 +14,7 @@ internal object ArenaMapDefinition {
     data class Tower(val team: Int, val lane: Int, val tier: Int, val position: Point)
     data class Landmark(val id: String, val position: Point, val radius: Float)
 
+    const val WORLD_SCALE = 1.15f
     const val HALF_EXTENT_X = 35f
     const val HALF_EXTENT_Z = 33f
     const val RIVER_WIDTH = 1.72f
@@ -90,6 +91,7 @@ internal object ArenaMapDefinition {
         require(lanes.size == 3 && lanes.all { it.points.size >= 2 })
         require(camps.size == 8 && camps.map { it.id }.toSet().size == camps.size)
         require(objectives.size == 2)
+        require(WORLD_SCALE > 1f)
         require(lanes.all { lane -> lane.points.all { kotlin.math.abs(it.x) <= HALF_EXTENT_X && kotlin.math.abs(it.z) <= HALF_EXTENT_Z } })
         require(camps.all { kotlin.math.abs(it.position.x) < HALF_EXTENT_X && kotlin.math.abs(it.position.z) < HALF_EXTENT_Z })
     }
