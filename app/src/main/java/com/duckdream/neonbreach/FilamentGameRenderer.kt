@@ -543,7 +543,30 @@ internal class FilamentGameRenderer(
     }
 
     private fun activatePlayerModel(hero: Int) {
-        val useLyra = hero == 0 && lyraModelReady && lyraPlayerInstance != null
+        if (hero == 0 && lyraModelReady && lyraPlayerInstance != null) {
+            try {
+                activatePlayerModelInternal(hero, useLyra = true)
+                return
+            } catch (error: Throwable) {
+                lyraModelReady = false
+                lyraModelWarning = "activation: " + (error.message ?: error.javaClass.simpleName)
+                Log.e(TAG, "Lyra activation failed; switching to the compatibility character", error)
+                lyraPlayerInstance?.let { failedInstance ->
+                    runCatching { viewer.scene.removeEntities(failedInstance.entities) }
+                }
+                if (playerInstance === lyraPlayerInstance) playerInstance = null
+                lyraPlayerInstance = null
+                lyraPlayerBones.clear()
+                lyraCharacterAsset?.let { failedAsset ->
+                    runCatching { characterLoader?.destroyAsset(failedAsset) }
+                }
+                lyraCharacterAsset = null
+            }
+        }
+        activatePlayerModelInternal(hero, useLyra = false)
+    }
+
+    private fun activatePlayerModelInternal(hero: Int, useLyra: Boolean) {
         val target = if (useLyra) {
             lyraPlayerInstance ?: error("Original Lyra instance is unavailable")
         } else {
