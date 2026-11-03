@@ -4,22 +4,48 @@ import kotlin.math.floor
 
 internal data class ArenaPoint(val x: Float, val z: Float)
 
+/** Testable contract between the native world definition and Kotlin presentation. */
+internal interface ArenaWorldDataSource {
+    fun terrainGrid(steps: Int, size: Float): FloatArray
+    fun laneCenterX(lane: Int, z: Float): Float
+    fun towerZ(team: Int, tier: Int): Float
+    fun riverCenterZ(x: Float): Float
+    fun insideIsland(x: Float, z: Float): Boolean
+    fun campPositions(): FloatArray
+    fun objectivePositions(): FloatArray
+    fun forestTreePositions(): FloatArray
+    fun jungleGrovePositions(): FloatArray
+    fun undergrowthPositions(): FloatArray
+}
+
 /**
- * JNI bridge to the canonical C++ world definition.
- * The simulation and collision world own the coordinates; Kotlin consumes
- * sampled terrain and placement data for rendering and presentation.
+ * JNI implementation. Native C++ remains authoritative for simulation,
+ * collision and terrain; Kotlin only receives a sampled grid and shared points.
  */
 internal object ArenaWorldNative {
     external fun nativeTerrainGrid(steps: Int, size: Float): FloatArray
     external fun nativeLaneCenterX(lane: Int, z: Float): Float
     external fun nativeTowerZ(team: Int, tier: Int): Float
-    external fun nativeInsideIsland(x: Float, z: Float): Boolean
-    external fun nativeUndergrowthPositions(): FloatArray
     external fun nativeRiverCenterZ(x: Float): Float
+    external fun nativeInsideIsland(x: Float, z: Float): Boolean
     external fun nativeCampPositions(): FloatArray
     external fun nativeObjectivePositions(): FloatArray
     external fun nativeForestTreePositions(): FloatArray
     external fun nativeJungleGrovePositions(): FloatArray
+    external fun nativeUndergrowthPositions(): FloatArray
+}
+
+private object NativeArenaWorldDataSource : ArenaWorldDataSource {
+    override fun terrainGrid(steps: Int, size: Float) = ArenaWorldNative.nativeTerrainGrid(steps, size)
+    override fun laneCenterX(lane: Int, z: Float) = ArenaWorldNative.nativeLaneCenterX(lane, z)
+    override fun towerZ(team: Int, tier: Int) = ArenaWorldNative.nativeTowerZ(team, tier)
+    override fun riverCenterZ(x: Float) = ArenaWorldNative.nativeRiverCenterZ(x)
+    override fun insideIsland(x: Float, z: Float) = ArenaWorldNative.nativeInsideIsland(x, z)
+    override fun campPositions() = ArenaWorldNative.nativeCampPositions()
+    override fun objectivePositions() = ArenaWorldNative.nativeObjectivePositions()
+    override fun forestTreePositions() = ArenaWorldNative.nativeForestTreePositions()
+    override fun jungleGrovePositions() = ArenaWorldNative.nativeJungleGrovePositions()
+    override fun undergrowthPositions() = ArenaWorldNative.nativeUndergrowthPositions()
 }
 
 internal object ArenaWorldDefinition {
@@ -28,31 +54,58 @@ internal object ArenaWorldDefinition {
     private const val GRID_START = -GRID_SIZE * 0.5f
     private const val GRID_CELL = GRID_SIZE / GRID_STEPS
 
-    private val terrain by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
-        ArenaWorldNative.nativeTerrainGrid(GRID_STEPS, GRID_SIZE).also {
-            check(it.size == (GRID_STEPS + 1) * (GRID_STEPS + 1)) {
-                "Native terrain grid has an unexpected sample count: ${it.size}"
+    private data class Snapshot(
+        val terrain: FloatArray,
+        val camps: List<ArenaPoint>,
+        val objectives: List<ArenaPoint>,
+        val trees: List<ArenaPoint>,
+        val groves: List<ArenaPoint>,
+        val undergrowth: List<ArenaPoint>
+    )
+
+    @Volatile private var source: ArenaWorldDataSource = NativeArenaWorldDataSource
+    @Volatile private var cachedSnapshot: Snapshot? = null
+
+    private fun snapshot(): Snapshot {
+        cachedSnapshot?.let { return it }
+        return synchronized(this) {
+            cachedSnapshot ?: run {
+                val current = source
+                val terrain = current.terrainGrid(GRID_STEPS, GRID_SIZE)
+                check(terrain.size == (GRID_STEPS + 1) * (GRID_STEPS + 1)) {
+                    "World terrain grid has an unexpected sample count: ${terrain.size}"
+                }
+                Snapshot(
+                    terrain = terrain,
+                    camps = decodePoints(current.campPositions(), "camps"),
+                    objectives = decodePoints(current.objectivePositions(), "objectives"),
+                    trees = decodePoints(current.forestTreePositions(), "forest trees"),
+                    groves = decodePoints(current.jungleGrovePositions(), "jungle groves"),
+                    undergrowth = decodePoints(current.undergrowthPositions(), "undergrowth")
+                ).also { cachedSnapshot = it }
             }
         }
     }
 
-    private val camps by lazy { decodePoints(ArenaWorldNative.nativeCampPositions(), "camps") }
-    private val objectives by lazy { decodePoints(ArenaWorldNative.nativeObjectivePositions(), "objectives") }
-    private val trees by lazy { decodePoints(ArenaWorldNative.nativeForestTreePositions(), "forest trees") }
-    private val groves by lazy { decodePoints(ArenaWorldNative.nativeJungleGrovePositions(), "jungle groves") }
-    private val undergrowth by lazy { decodePoints(ArenaWorldNative.nativeUndergrowthPositions(), "undergrowth") }
+    /** Allows JVM tests to supply deterministic world data without loading Android JNI. */
+    @Synchronized
+    internal fun installSourceForTests(testSource: ArenaWorldDataSource) {
+        source = testSource
+        cachedSnapshot = null
+    }
+
+    @Synchronized
+    internal fun restoreNativeSource() {
+        source = NativeArenaWorldDataSource
+        cachedSnapshot = null
+    }
 
     fun initialize() {
-        terrain
-        camps
-        objectives
-        trees
-        groves
-        undergrowth
+        snapshot()
     }
 
     fun heightAt(x: Float, z: Float): Float {
-        val grid = terrain
+        val grid = snapshot().terrain
         val gx = ((x - GRID_START) / GRID_CELL).coerceIn(0f, GRID_STEPS.toFloat())
         val gz = ((z - GRID_START) / GRID_CELL).coerceIn(0f, GRID_STEPS.toFloat())
         val x0 = floor(gx).toInt().coerceAtMost(GRID_STEPS - 1)
@@ -70,24 +123,23 @@ internal object ArenaWorldDefinition {
     }
 
     fun laneCenterX(lane: Int, z: Float): Float =
-        ArenaWorldNative.nativeLaneCenterX(lane.coerceIn(0, 2), z)
+        source.laneCenterX(lane.coerceIn(0, 2), z)
 
     fun towerZ(team: Int, tier: Int): Float =
-        ArenaWorldNative.nativeTowerZ(team.coerceIn(0, 1), tier.coerceIn(0, 2))
+        source.towerZ(team.coerceIn(0, 1), tier.coerceIn(0, 2))
 
-    fun insideIsland(x: Float, z: Float): Boolean = ArenaWorldNative.nativeInsideIsland(x, z)
+    fun riverCenterZ(x: Float): Float = source.riverCenterZ(x)
+    fun insideIsland(x: Float, z: Float): Boolean = source.insideIsland(x, z)
 
-    fun riverCenterZ(x: Float): Float = ArenaWorldNative.nativeRiverCenterZ(x)
-
-    fun campPositions(): List<ArenaPoint> = camps
-    fun objectivePositions(): List<ArenaPoint> = objectives
-    fun forestTreePositions(): List<ArenaPoint> = trees
-    fun jungleGrovePositions(): List<ArenaPoint> = groves
-    fun undergrowthPositions(): List<ArenaPoint> = undergrowth
+    fun campPositions(): List<ArenaPoint> = snapshot().camps
+    fun objectivePositions(): List<ArenaPoint> = snapshot().objectives
+    fun forestTreePositions(): List<ArenaPoint> = snapshot().trees
+    fun jungleGrovePositions(): List<ArenaPoint> = snapshot().groves
+    fun undergrowthPositions(): List<ArenaPoint> = snapshot().undergrowth
 
     private fun decodePoints(values: FloatArray, label: String): List<ArenaPoint> {
         check(values.isNotEmpty() && values.size % 2 == 0) {
-            "Native $label layout is malformed: ${values.size} values"
+            "World $label layout is malformed: ${values.size} values"
         }
         return values.asList().chunked(2).map { ArenaPoint(it[0], it[1]) }
     }
