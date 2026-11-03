@@ -4,8 +4,7 @@ package com.duckdream.neonbreach
  * Canonical Vale das Coroas battlefield coordinates.
  *
  * Keep render placements, minimap landmarks and native simulation coordinates
- * aligned with this catalog. The matching native constants are verified by
- * ArenaMapDefinitionTest and arena_map_definition_tests.cpp.
+ * aligned with this catalog. Kotlin invariants are covered by ArenaMapDefinitionTest.
  */
 internal object ArenaMapDefinition {
     data class Point(val x: Float, val z: Float)
