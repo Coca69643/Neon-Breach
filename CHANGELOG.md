@@ -1,5 +1,20 @@
 # Changelog — Projeto Arena
 
+## [0.15.5] — 2026-11-03
+
+### Primeira personagem autoral — Lyra
+- Introduz corpo completo original em GLB, com cabeça estilizada ampliada, túnica índigo, capa ameixa, cabelo castanho, botas e materiais próprios.
+- Rig compacto de 19 juntas, com nomes compatíveis com o controlador de animação já usado pelo renderer.
+- Skinning glTF real com atributos `JOINTS_0`, `WEIGHTS_0` e matrizes inversas de bind.
+- Pesos secundários nas transições de ombros, cotovelos, quadris, joelhos e tornozelos; influências limitadas a juntas semanticamente adjacentes.
+- Lyra recebe instância, esqueleto, materiais, bounds e pose próprios. O renderer alterna entre seu corpo e o corpo-base legado sem compartilhar referências de junta.
+- Bastion e Kairo permanecem temporariamente no corpo Quaternius com acessórios próprios; bots e tropas não foram alterados nesta etapa.
+
+### Regressões
+- Teste do GLB valida cabeçalho, skin, nomes das 19 juntas, materiais e atributos de skinning.
+- Teste binário percorre os buffers de cada primitiva, valida índices dentro do skin e confirma soma de pesos igual a 1 para cada vértice.
+- Teste de pose verifica que a configuração de bind de Lyra flexiona ambos os braços para baixo.
+
 ## [0.15.4] — 2026-11-03
 
 ### Preview e câmera
