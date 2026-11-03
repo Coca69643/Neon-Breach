@@ -12,6 +12,7 @@ internal data class ArenaPoint(val x: Float, val z: Float)
 internal object ArenaWorldNative {
     external fun nativeTerrainGrid(steps: Int, size: Float): FloatArray
     external fun nativeLaneCenterX(lane: Int, z: Float): Float
+    external fun nativeTowerZ(team: Int, tier: Int): Float
     external fun nativeRiverCenterZ(x: Float): Float
     external fun nativeCampPositions(): FloatArray
     external fun nativeObjectivePositions(): FloatArray
@@ -20,8 +21,8 @@ internal object ArenaWorldNative {
 }
 
 internal object ArenaWorldDefinition {
-    private const val GRID_STEPS = 136
-    private const val GRID_SIZE = 76f
+    internal const val GRID_STEPS = 136
+    internal const val GRID_SIZE = 76f
     private const val GRID_START = -GRID_SIZE * 0.5f
     private const val GRID_CELL = GRID_SIZE / GRID_STEPS
 
@@ -66,6 +67,9 @@ internal object ArenaWorldDefinition {
 
     fun laneCenterX(lane: Int, z: Float): Float =
         ArenaWorldNative.nativeLaneCenterX(lane.coerceIn(0, 2), z)
+
+    fun towerZ(team: Int, tier: Int): Float =
+        ArenaWorldNative.nativeTowerZ(team.coerceIn(0, 1), tier.coerceIn(0, 2))
 
     fun riverCenterZ(x: Float): Float = ArenaWorldNative.nativeRiverCenterZ(x)
 
