@@ -109,6 +109,13 @@ native_trees = extract_pairs(
 if kotlin_trees != native_trees:
     raise SystemExit("Kotlin and C++ tree blocker coordinates differ")
 
+kotlin_scale = float(map_kotlin.split("const val WORLD_SCALE = ", 1)[1].split("f", 1)[0])
+native_scale = float(map_native.split("kWorldScale = ", 1)[1].split("f", 1)[0])
+if abs(kotlin_scale - native_scale) > 0.000001:
+    raise SystemExit("Kotlin and C++ world scale values differ")
+if "p.add(x * scale)" not in world or "arena_map::kWorldScale" not in physics or "arena_map::kWorldScale" not in native:
+    raise SystemExit("Map scale is not applied across geometry and native gameplay")
+
 checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
      "renderer.updateMenuPresentation(dt)" in main and "renderer.render(frameTimeNanos)" in main and
