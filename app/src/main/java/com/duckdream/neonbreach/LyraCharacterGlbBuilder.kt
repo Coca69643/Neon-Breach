@@ -107,7 +107,7 @@ internal object LyraCharacterGlbBuilder {
 
     private fun buildGeometry() {
         // 0 skin, 1 indigo cloth, 2 plum cape, 3 gold, 4 chestnut hair, 5 leather, 6 turquoise.
-        ellipsoid(1,0f,1.26f,0f,0.285f,0.31f,0.19f,3)
+        ellipsoid(1,0f,1.26f,0f,0.285f,0.31f,0.19f,3,secondaryJoint=4,primaryWeight=0.88f)
         ellipsoid(1,0f,0.90f,0f,0.345f,0.22f,0.225f,1)
         ellipsoid(1,0f,1.05f,0.015f,0.29f,0.095f,0.205f,1)
         ellipsoid(2,0f,1.10f,-0.16f,0.345f,0.43f,0.075f,2)
@@ -117,12 +117,12 @@ internal object LyraCharacterGlbBuilder {
             val upper=if(side<0f)7 else 8
             val lower=if(side<0f)9 else 10
             val hand=if(side<0f)11 else 12
-            ellipsoid(1,side*0.31f,1.43f,0f,0.17f,0.135f,0.17f,upper)
+            ellipsoid(1,side*0.31f,1.43f,0f,0.17f,0.135f,0.17f,upper,secondaryJoint=4,primaryWeight=0.82f)
             ellipsoid(1,side*0.425f,1.34f,0f,0.205f,0.13f,0.13f,upper)
-            ellipsoid(0,side*0.435f,1.345f,0.01f,0.135f,0.105f,0.11f,upper)
+            ellipsoid(0,side*0.435f,1.345f,0.01f,0.135f,0.105f,0.11f,upper,secondaryJoint=4,primaryWeight=0.88f)
             ellipsoid(3,side*0.555f,1.255f,0.015f,0.075f,0.105f,0.135f,lower)
-            ellipsoid(0,side*0.615f,1.17f,0.005f,0.105f,0.145f,0.105f,lower)
-            ellipsoid(0,side*0.735f,1.065f,0.015f,0.105f,0.085f,0.105f,hand)
+            ellipsoid(0,side*0.615f,1.17f,0.005f,0.105f,0.145f,0.105f,lower,secondaryJoint=upper,primaryWeight=0.88f)
+            ellipsoid(0,side*0.735f,1.065f,0.015f,0.105f,0.085f,0.105f,hand,secondaryJoint=lower,primaryWeight=0.84f)
             ellipsoid(6,side*0.305f,1.50f,0.025f,0.105f,0.065f,0.15f,upper)
             ellipsoid(3,side*0.30f,1.55f,0.01f,0.11f,0.035f,0.14f,upper)
         }
@@ -130,10 +130,10 @@ internal object LyraCharacterGlbBuilder {
             val thigh=if(side<0f)13 else 14
             val calf=if(side<0f)15 else 16
             val foot=if(side<0f)17 else 18
-            ellipsoid(5,side*0.145f,0.625f,0f,0.145f,0.245f,0.145f,thigh)
-            ellipsoid(5,side*0.145f,0.34f,0f,0.12f,0.185f,0.125f,calf)
+            ellipsoid(5,side*0.145f,0.625f,0f,0.145f,0.245f,0.145f,thigh,secondaryJoint=1,primaryWeight=0.90f)
+            ellipsoid(5,side*0.145f,0.34f,0f,0.12f,0.185f,0.125f,calf,secondaryJoint=thigh,primaryWeight=0.88f)
             ellipsoid(3,side*0.145f,0.19f,0.025f,0.145f,0.09f,0.15f,foot)
-            ellipsoid(5,side*0.145f,0.12f,0.075f,0.155f,0.12f,0.235f,foot)
+            ellipsoid(5,side*0.145f,0.12f,0.075f,0.155f,0.12f,0.235f,foot,secondaryJoint=calf,primaryWeight=0.85f)
             ellipsoid(3,side*0.145f,0.205f,0.17f,0.13f,0.035f,0.055f,foot)
         }
 
