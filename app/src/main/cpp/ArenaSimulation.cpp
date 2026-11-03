@@ -872,7 +872,8 @@ jfloatArray worldPointsToJava(JNIEnv *env, const std::array<arena_world::Point, 
 extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_duckdream_neonbreach_ArenaWorldNative_nativeTerrainGrid(
     JNIEnv *env, jobject, jint steps, jfloat size) {
-    if (steps < 2 || steps > 512 || size <= 0.0f) return nullptr;
+    if (steps != arena_world::kTerrainGridSteps ||
+        std::abs(size - arena_world::kWorldMeshSize) > 0.001f) return nullptr;
     const int stride = steps + 1;
     const jsize count = static_cast<jsize>(stride * stride);
     std::vector<jfloat> values(static_cast<std::size_t>(count));
@@ -896,10 +897,27 @@ Java_com_duckdream_neonbreach_ArenaWorldNative_nativeLaneCenterX(
     return arena_world::laneCenterX(std::clamp(static_cast<int>(lane), 0, 2), z);
 }
 
-extern "C" JNIEXPORT jboolean JNICALL
-Java_com_duckdream_neonbreach_ArenaWorldNative_nativeInsideIsland(
-    JNIEnv *, jobject, jfloat x, jfloat z) {
-    return arena_world::insideIsland(x, z) ? JNI_TRUE : JNI_FALSE;
+extern "C" JNIEXPORT jbooleanArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeIslandMask(
+    JNIEnv *env, jobject, jint steps, jfloat size) {
+    if (steps != arena_world::kTerrainGridSteps ||
+        std::abs(size - arena_world::kWorldMeshSize) > 0.001f) return nullptr;
+    std::vector<jboolean> values(static_cast<std::size_t>(steps * steps));
+    const float start = -size * 0.5f;
+    const float cell = size / static_cast<float>(steps);
+    for (int z = 0; z < steps; ++z) {
+        for (int x = 0; x < steps; ++x) {
+            const float worldX = start + (static_cast<float>(x) + 0.5f) * cell;
+            const float worldZ = start + (static_cast<float>(z) + 0.5f) * cell;
+            values[static_cast<std::size_t>(z * steps + x)] =
+                arena_world::insideIsland(worldX, worldZ) ? JNI_TRUE : JNI_FALSE;
+        }
+    }
+    jbooleanArray result = env->NewBooleanArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        env->SetBooleanArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
