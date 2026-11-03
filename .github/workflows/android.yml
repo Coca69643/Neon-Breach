@@ -94,13 +94,13 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='50' versionName='0.15.4'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='51' versionName='0.15.5'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.15.4-update
+          name: project-arena-0.15.5-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
