@@ -29,12 +29,13 @@ internal object LyraCharacterGlbBuilder {
     )
     private val parts=List(7){Part(it)}
 
-    private fun addVertex(part:Part,p:FloatArray,n:FloatArray,joint:Int):Int {
+    private fun addVertex(part:Part,p:FloatArray,n:FloatArray,joint:Int,secondaryJoint:Int=-1,primaryWeight:Float=1f):Int {
         val id=part.p.size/3
         part.p.add(p[0]);part.p.add(p[1]);part.p.add(p[2])
         part.n.add(n[0]);part.n.add(n[1]);part.n.add(n[2])
-        part.joints.add(joint);part.joints.add(0);part.joints.add(0);part.joints.add(0)
-        part.weights.add(1f);part.weights.add(0f);part.weights.add(0f);part.weights.add(0f)
+        val blend=if(secondaryJoint>=0)(1f-primaryWeight.coerceIn(0.65f,1f)) else 0f
+        part.joints.add(joint);part.joints.add(if(secondaryJoint>=0)secondaryJoint else 0);part.joints.add(0);part.joints.add(0)
+        part.weights.add(1f-blend);part.weights.add(blend);part.weights.add(0f);part.weights.add(0f)
         return id
     }
     private fun triangle(part:Part,a:Int,b:Int,c:Int) {
@@ -52,7 +53,7 @@ internal object LyraCharacterGlbBuilder {
     }
     private fun ellipsoid(
         material:Int,cx:Float,cy:Float,cz:Float,rx:Float,ry:Float,rz:Float,joint:Int,
-        rotationZ:Float=0f,segments:Int=14,rings:Int=9
+        rotationZ:Float=0f,segments:Int=14,rings:Int=9,secondaryJoint:Int=-1,primaryWeight:Float=1f
     ) {
         val part=parts[material];val c=cos(rotationZ);val s=sin(rotationZ)
         val grid=Array(rings+1){IntArray(segments+1)}
@@ -69,7 +70,7 @@ internal object LyraCharacterGlbBuilder {
                 val ox=nx*c-ny*s;val oy=nx*s+ny*c
                 nx=ox;ny=oy
                 val len=sqrt(nx*nx+ny*ny+nz*nz).coerceAtLeast(0.0001f)
-                grid[j][i]=addVertex(part,floatArrayOf(x,y,z),floatArrayOf(nx/len,ny/len,nz/len),joint)
+                grid[j][i]=addVertex(part,floatArrayOf(x,y,z),floatArrayOf(nx/len,ny/len,nz/len),joint,secondaryJoint,primaryWeight)
             }
         }
         for(j in 0 until rings)for(i in 0 until segments){
