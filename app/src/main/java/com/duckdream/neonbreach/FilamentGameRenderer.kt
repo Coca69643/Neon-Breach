@@ -90,8 +90,10 @@ internal class FilamentGameRenderer(
         val minY: Float,
         val idleClip: Int,
         val moveClip: Int,
+        val attackClip: Int,
         val idleDuration: Float,
         val moveDuration: Float,
+        val attackDuration: Float,
         var visible: Boolean = false
     )
     private val lifeAssets = LinkedHashMap<String, FilamentAsset>()
@@ -481,11 +483,13 @@ internal class FilamentGameRenderer(
                 // no matching clip, the deterministic root motion remains active.
                 val idleClip = findClip(profile.idleTokens)
                 val moveClip = findClip(profile.moveTokens).let { if (it >= 0) it else idleClip }
+                val attackClip = findClip(profile.attackTokens)
                 val idleDuration = if (idleClip >= 0) animator.getAnimationDuration(idleClip).coerceAtLeast(0.1f) else 1f
                 val moveDuration = if (moveClip >= 0) animator.getAnimationDuration(moveClip).coerceAtLeast(0.1f) else 1f
+                val attackDuration = if (attackClip >= 0) animator.getAnimationDuration(attackClip).coerceAtLeast(0.1f) else 0.5f
                 val actor = LifeActorRuntime(
                     spawn, instance, root, animator, scale, minY,
-                    idleClip, moveClip, idleDuration, moveDuration
+                    idleClip, moveClip, attackClip, idleDuration, moveDuration, attackDuration
                 )
                 lifeActors.add(actor)
                 // Actors enter the scene only when the current view/player range needs them.
@@ -537,15 +541,33 @@ internal class FilamentGameRenderer(
             if (!shouldShow) continue
 
             val profile = ArenaLifeCatalog.species.getValue(spawn.species)
-            val clip = if (sample.moving) actor.moveClip else actor.idleClip
+            val attacking = spawn.kind == LifeActorKind.CAMP_GUARDIAN &&
+                snapshot?.getOrNull(312 + spawn.campIndex)?.let { it > 0f } == true
+            val clip = when {
+                attacking && actor.attackClip >= 0 -> actor.attackClip
+                sample.moving -> actor.moveClip
+                else -> actor.idleClip
+            }
             if (clip >= 0) {
-                val duration = if (clip == actor.moveClip) actor.moveDuration else actor.idleDuration
-                val offset = if (clip == actor.moveClip) spawn.phase * 0.37f else spawn.phase
+                val duration = when (clip) {
+                    actor.attackClip -> actor.attackDuration
+                    actor.moveClip -> actor.moveDuration
+                    else -> actor.idleDuration
+                }
+                val offset = when (clip) {
+                    actor.attackClip -> spawn.phase * 0.19f
+                    actor.moveClip -> spawn.phase * 0.37f
+                    else -> spawn.phase
+                }
                 actor.animator.applyAnimation(clip, (lifeClock + offset) % duration)
             }
-            val y = terrainHeight(worldX, worldZ) + profile.airHeight + sample.heightOffset - actor.minY * actor.scale
+            val proceduralAttack = attacking && actor.attackClip < 0
+            val attackSway = if (proceduralAttack) kotlin.math.sin(lifeClock * 15f + spawn.phase) * 0.20f else 0f
+            val attackLift = if (proceduralAttack) kotlin.math.abs(kotlin.math.sin(lifeClock * 17f + spawn.phase)) * 0.11f else 0f
+            val y = terrainHeight(worldX, worldZ) + profile.airHeight + sample.heightOffset +
+                attackLift - actor.minY * actor.scale
             transforms.setTransform(actor.root, terrainAlignedTransform(
-                worldX, worldZ, sample.yaw + profile.yawOffset,
+                worldX, worldZ, sample.yaw + profile.yawOffset + attackSway,
                 actor.scale, actor.scale, y
             ))
             if (clip >= 0) actor.animator.updateBoneMatrices()
