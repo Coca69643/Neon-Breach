@@ -59,3 +59,11 @@ CI runs:
 - Desaturated meadow, trail, forest and water material values and neutralized the environment lighting.
 - Added a JVM check for distance from the showcase point to towers, neutral camps and objective shrines.
 
+
+## Character pipeline vertical slice — Lyra 0.15.5
+
+The first playable hero no longer reuses the Quaternius body. `LyraCharacterGlbBuilder.kt` authors a separate stylized body mesh, seven PBR materials and a 19-joint skeleton whose semantic joint names match the existing procedural pose controller.
+
+The generated GLB contains `JOINTS_0`, `WEIGHTS_0` and `inverseBindMatrices`. Primary/secondary influences are blended across shoulder, elbow, hip, knee and ankle transitions. The renderer keeps a dedicated FilamentAsset, FilamentInstance, animator, material list, bounds and BonePose map for Lyra.
+
+Bastion and Kairo continue using the previous Quaternius body and their existing bone-parented gear. Bots and lane units also retain the shared CC0 base, limiting the scope of this first replacement. JVM tests inspect the actual binary GLB buffers and check that all joint indices are valid and per-vertex weights sum to one.
