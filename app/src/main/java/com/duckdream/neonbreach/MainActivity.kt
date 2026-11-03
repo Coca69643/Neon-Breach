@@ -880,6 +880,10 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         color = Color.rgb(216, 183, 101)
         style = Paint.Style.FILL
     }
+    private val campAlertPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(238, 118, 76)
+        style = Paint.Style.FILL
+    }
     private val objectivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(247, 215, 120)
         style = Paint.Style.STROKE
@@ -966,9 +970,10 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
             // Neutral camps appear only while their creatures are alive.
             ArenaMapDefinition.camps.forEachIndexed { index, camp ->
                 if (snapshot[270 + index] > 0f) {
+                    val paint = if (snapshot[312 + index] > 0f) campAlertPaint else campPaint
                     canvas.drawCircle(
                         px(camp.position.x * mapScale), py(camp.position.z * mapScale),
-                        2.4f, campPaint
+                        2.4f, paint
                     )
                 }
             }
