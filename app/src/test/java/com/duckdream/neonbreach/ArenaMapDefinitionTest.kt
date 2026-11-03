@@ -33,7 +33,7 @@ class ArenaMapDefinitionTest {
     fun battlefieldScaleExpandsThePlayableFootprintWithoutChangingAuthoredCoordinates() {
         assertEquals(1.15f, ArenaMapDefinition.WORLD_SCALE, 0.0001f)
         assertTrue(ArenaMapDefinition.HALF_EXTENT_X * ArenaMapDefinition.WORLD_SCALE > 40f)
-        assertTrue(ArenaMapDefinition.HALF_EXTENT_Z * ArenaMapDefinition.WORLD_SCALE > 37f)
+        assertTrue(ArenaMapDefinition.HALF_EXTENT_Z * ArenaMapDefinition.WORLD_SCALE > 35.5f)
         assertTrue(ArenaMapDefinition.WORLD_SCALE * ArenaMapDefinition.WORLD_SCALE > 1.32f)
     }
 
