@@ -22,6 +22,7 @@ struct Colliders {
 
         for (std::size_t n=0;n<arena_map::kCampPositions.size();++n) {
             const auto &camp = arena_map::kCampPositions[n];
+            circles.push_back({camp.x*scale,camp.z*scale,0.72f*scale});
             for (int i=0;i<7;++i) {
                 const float a=2*kPi*static_cast<float>(i)/7+static_cast<float>(n)*0.31f;
                 circles.push_back({(camp.x+std::cos(a)*2.65f)*scale,
