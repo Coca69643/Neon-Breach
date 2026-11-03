@@ -67,7 +67,18 @@ internal object ArenaWorldTestFixture : ArenaWorldDataSource {
         }
     }
 
-    override fun laneCenterX(lane: Int, z: Float): Float {
+    override fun laneCenterGrid(steps: Int, size: Float): FloatArray {
+        val stride = steps + 1
+        val start = -size * 0.5f
+        val cell = size / steps
+        return FloatArray(3 * stride) { index ->
+            val lane = index / stride
+            val zIndex = index % stride
+            laneCenterX(lane, start + zIndex * cell)
+        }
+    }
+
+    private fun laneCenterX(lane: Int, z: Float): Float {
         val bend = sin((z + 4f) * 0.105f) * 1.15f
         return when (lane) {
             0 -> -14.2f + bend
