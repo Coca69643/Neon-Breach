@@ -17,6 +17,9 @@ void testSharedArenaMapCatalog() {
     assert(arena_map::kObjectivePositions.size()==2);
     assert(arena_map::kGroveCenters.size()==12);
     assert(arena_map::kTreeBlockers.size()==32);
+    assert(std::abs(arena_map::kWorldScale-1.15f)<0.0001f);
+    assert(arena_map::kHalfExtentX*arena_map::kWorldScale>40.0f);
+    assert(arena_map::kHalfExtentZ*arena_map::kWorldScale>37.0f);
     for(std::size_t lane=0;lane<arena_map::kLanes.size();++lane) {
         const auto &points=arena_map::kLanes[lane].points;
         for(std::size_t i=0;i<points.size();++i) {
@@ -56,23 +59,27 @@ void testTerrainSurface() {
     assert(maxSlope<std::tan(43.0f*3.14159265f/180.0f));
 }
 void testTreeCollisionAndSliding() {
-    arena_physics::Body body{-12.2f,-23.0f,0.0f,0.0f,0.43f};
+    const float scale=arena_map::kWorldScale;
+    arena_physics::Body body{-12.2f*scale,-23.0f*scale,0.0f,0.0f,0.43f};
     for(int i=0;i<120;++i) arena_physics::move(body,3.0f,0.0f,1.0f/60.0f);
-    assert(distance(body.x,body.z,-10.5f,-23.0f)>=1.19f);
+    assert(distance(body.x,body.z,-10.5f*scale,-23.0f*scale)>=1.19f);
     assert(std::isfinite(body.x)&&std::isfinite(body.z));
 }
 void testStructureCollision() {
-    const float towerZ=22.0f;
-    const float towerX=arena_map::towerPosition(1,1,2).x;
-    arena_physics::Body body{towerX,19.0f,0.0f,0.0f,0.43f};
+    const float scale=arena_map::kWorldScale;
+    const auto tower=arena_map::towerPosition(1,1,2);
+    const float towerZ=22.0f*scale;
+    const float towerX=tower.x*scale;
+    arena_physics::Body body{towerX,19.0f*scale,0.0f,0.0f,0.43f};
     for(int i=0;i<180;++i) arena_physics::move(body,0.0f,4.0f,1.0f/60.0f);
     assert(body.z>19.0f);
     assert(distance(body.x,body.z,towerX,towerZ)>=1.049f);
 }
 void testWorldBoundary() {
-    arena_physics::Body body{40.0f,0.0f,0.0f,0.0f,0.45f};
+    const float scale=arena_map::kWorldScale;
+    arena_physics::Body body{40.0f*scale,0.0f,0.0f,0.0f,0.45f};
     arena_physics::resolveWorld(body);
-    assert(std::abs(body.x)<36.0f);
+    assert(std::abs(body.x)<36.0f*scale);
 }
 void testBraking() {
     arena_physics::Body body{0.0f,-5.0f,0.0f,0.0f,0.35f};
