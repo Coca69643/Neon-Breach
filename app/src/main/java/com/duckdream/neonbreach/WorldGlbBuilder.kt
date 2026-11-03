@@ -469,25 +469,25 @@ internal object WorldGlbBuilder {
         }
         val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water")
         val colors=listOf(
-            listOf(0.17f,0.25f,0.11f,1f),
-            listOf(0.27f,0.35f,0.15f,1f),
-            listOf(0.08f,0.14f,0.07f,1f),
-            listOf(0.39f,0.32f,0.23f,1f),
-            listOf(0.16f,0.14f,0.10f,1f),
-            listOf(0.035f,0.12f,0.18f,1f),
-            listOf(0.13f,0.12f,0.10f,1f),
-            listOf(0.08f,0.56f,0.95f,1f),
-            listOf(0.76f,0.56f,0.13f,1f),
-            listOf(0.31f,0.20f,0.11f,1f),
-            listOf(0.29f,0.30f,0.27f,1f),
-            listOf(0.22f,0.19f,0.13f,1f),
-            listOf(0.31f,0.27f,0.19f,1f),
-            listOf(0.09f,0.14f,0.07f,1f),
-            listOf(0.12f,0.20f,0.08f,1f),
-            listOf(0.25f,0.27f,0.23f,1f),
-            listOf(0.31f,0.32f,0.30f,1f),
-            listOf(0.42f,0.38f,0.29f,1f),
-            listOf(0.025f,0.085f,0.13f,1f))
+            listOf(0.13f,0.17f,0.075f,1f),
+            listOf(0.19f,0.24f,0.10f,1f),
+            listOf(0.06f,0.095f,0.045f,1f),
+            listOf(0.30f,0.245f,0.17f,1f),
+            listOf(0.13f,0.11f,0.075f,1f),
+            listOf(0.025f,0.075f,0.11f,1f),
+            listOf(0.105f,0.10f,0.085f,1f),
+            listOf(0.07f,0.39f,0.72f,1f),
+            listOf(0.72f,0.50f,0.12f,1f),
+            listOf(0.26f,0.16f,0.085f,1f),
+            listOf(0.24f,0.245f,0.22f,1f),
+            listOf(0.18f,0.15f,0.10f,1f),
+            listOf(0.26f,0.22f,0.15f,1f),
+            listOf(0.07f,0.11f,0.05f,1f),
+            listOf(0.09f,0.15f,0.055f,1f),
+            listOf(0.22f,0.23f,0.19f,1f),
+            listOf(0.27f,0.27f,0.24f,1f),
+            listOf(0.34f,0.30f,0.22f,1f),
+            listOf(0.02f,0.06f,0.09f,1f))
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
