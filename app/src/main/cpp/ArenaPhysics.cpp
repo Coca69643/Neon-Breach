@@ -15,16 +15,17 @@ struct Colliders {
     std::vector<Circle> circles;
     std::vector<Box> boxes;
     Colliders() {
+        const float scale = arena_map::kWorldScale;
         circles.reserve(220);
-        for (const auto &p : arena_map::kTreeBlockers) circles.push_back({p.x, p.z, 0.78f});
+        for (const auto &p : arena_map::kTreeBlockers) circles.push_back({p.x * scale, p.z * scale, 0.78f});
 
 
         for (std::size_t n=0;n<arena_map::kCampPositions.size();++n) {
             const auto &camp = arena_map::kCampPositions[n];
             for (int i=0;i<7;++i) {
                 const float a=2*kPi*static_cast<float>(i)/7+static_cast<float>(n)*0.31f;
-                circles.push_back({camp.x+std::cos(a)*2.65f,
-                    camp.z+std::sin(a)*2.0f,0.27f});
+                circles.push_back({(camp.x+std::cos(a)*2.65f)*scale,
+                    (camp.z+std::sin(a)*2.0f)*scale,0.27f*scale});
             }
         }
         for (std::size_t objective=0;objective<arena_map::kObjectivePositions.size();++objective) {
@@ -32,16 +33,17 @@ struct Colliders {
             const float radius=arena_map::kObjectiveRadii[objective];
             for (int i=0;i<12;++i) {
                 const float a=2*kPi*static_cast<float>(i)/12;
-                circles.push_back({center.x+std::cos(a)*radius,center.z+std::sin(a)*3.75f,0.34f});
+                circles.push_back({(center.x+std::cos(a)*radius)*scale,
+                    (center.z+std::sin(a)*3.75f)*scale,0.34f*scale});
             }
-            boxes.push_back({center.x,center.z,1.55f,1.42f});
+            boxes.push_back({center.x*scale,center.z*scale,1.55f*scale,1.42f*scale});
         }
         for (std::size_t n=0;n<arena_map::kGroveCenters.size();++n) {
             const auto &grove=arena_map::kGroveCenters[n];
             for (int j=0;j<4;++j) {
                 const float a=2*kPi*static_cast<float>(j)/4+static_cast<float>(n)*0.43f;
-                circles.push_back({grove.x+std::cos(a)*1.8f,
-                    grove.z+std::sin(a)*1.4f,0.26f});
+                circles.push_back({(grove.x+std::cos(a)*1.8f)*scale,
+                    (grove.z+std::sin(a)*1.4f)*scale,0.26f*scale});
             }
         }
         for (int i=0;i<56;++i) {
@@ -49,21 +51,21 @@ struct Colliders {
             const float x=base+std::sin(static_cast<float>(i)*1.71f)*0.82f;
             const float z=-22.0f+static_cast<float>(i/4)*3.15f;
             if (std::abs(z)<=24.0f && !(i%8<4 && z>0.0f))
-                circles.push_back({x,z,0.21f});
+                circles.push_back({x*scale,z*scale,0.21f*scale});
         }
-        const auto laneX=[](int lane,float z) {
-            return arena_map::laneCenterX(lane,z);
+        const auto laneX=[scale](int lane,float worldZ) {
+            return arena_map::laneCenterX(lane,worldZ/scale)*scale;
         };
         for (int team=0;team<2;++team) {
             const float sign=team==0?-1.0f:1.0f;
-            boxes.push_back({0,sign*27.3f,2.6f,2.0f});
-            boxes.push_back({-4.5f,sign*24.0f,1.25f,1.1f});
-            boxes.push_back({4.5f,sign*24.0f,1.25f,1.1f});
-            boxes.push_back({sign*8.0f,sign*25.3f,0.82f,0.82f});
-            boxes.push_back({-7,sign*24.2f,2.6f,0.38f});
-            boxes.push_back({7,sign*24.2f,2.6f,0.38f});
+            boxes.push_back({0,sign*27.3f*scale,2.6f*scale,2.0f*scale});
+            boxes.push_back({-4.5f*scale,sign*24.0f*scale,1.25f*scale,1.1f*scale});
+            boxes.push_back({4.5f*scale,sign*24.0f*scale,1.25f*scale,1.1f*scale});
+            boxes.push_back({sign*8.0f*scale,sign*25.3f*scale,0.82f*scale,0.82f*scale});
+            boxes.push_back({-7*scale,sign*24.2f*scale,2.6f*scale,0.38f*scale});
+            boxes.push_back({7*scale,sign*24.2f*scale,2.6f*scale,0.38f*scale});
             for (int lane=0;lane<3;++lane) for (int tier=0;tier<3;++tier) {
-                const float z=sign*(tier==0?8.0f:tier==1?15.0f:22.0f);
+                const float z=sign*(tier==0?8.0f:tier==1?15.0f:22.0f)*scale;
                 circles.push_back({laneX(lane,z),z,0.62f});
             }
         }
@@ -84,11 +86,13 @@ float riverZ(float x) {
     return p.back()[1];
 }
 void confine(Body &b) {
-    const float a=std::atan2(b.z/arena_map::kHalfExtentZ,b.x/arena_map::kHalfExtentX);
+    const float halfX=arena_map::kHalfExtentX*arena_map::kWorldScale;
+    const float halfZ=arena_map::kHalfExtentZ*arena_map::kWorldScale;
+    const float a=std::atan2(b.z/halfZ,b.x/halfX);
     const float edge=1.0f+0.035f*std::sin(a*5.0f)+0.020f*std::sin(a*9.0f+1.4f)+0.012f*std::cos(a*13.0f);
-    const float nx=b.x/arena_map::kHalfExtentX,nz=b.z/arena_map::kHalfExtentZ;
+    const float nx=b.x/halfX,nz=b.z/halfZ;
     const float r=std::sqrt(nx*nx+nz*nz);
-    const float limit=std::max(0.0f,edge-b.radius/arena_map::kHalfExtentZ);
+    const float limit=std::max(0.0f,edge-b.radius/halfZ);
     if(r>limit && r>kEpsilon){const float s=limit/r;b.x*=s;b.z*=s;}
 }
 void hitCircle(Body &b,const Circle &c) {
@@ -123,6 +127,8 @@ void slideUphill(Body &b,float maxSlope) {
 } // namespace
 
 float terrainHeight(float x,float z) {
+    x/=arena_map::kWorldScale;
+    z/=arena_map::kWorldScale;
     const float west=2.35f*std::exp(-((x+24)*(x+24))/44.0f)*(0.58f+0.42f*std::cos(z*0.075f));
     const float east=2.18f*std::exp(-((x-24)*(x-24))/48.0f)*(0.58f+0.42f*std::cos(z*0.07f));
     const float south=1.55f*std::exp(-((z+27)*(z+27))/36.0f)*std::exp(-(x*x)/420.0f);
