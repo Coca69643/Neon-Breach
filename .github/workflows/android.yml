@@ -76,6 +76,8 @@ jobs:
           test -d "$SDK_ROOT/platforms/android-37.0"
           ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
           test -d "$SDK_ROOT/platforms/android-37"
+      - name: Fetch and verify pinned CC0 life assets
+        run: python3 tools/fetch_cc0_life_assets.py
       - name: Compile and run native physics tests
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
@@ -94,13 +96,13 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='53' versionName='0.15.7'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='54' versionName='0.15.8'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.15.7-update
+          name: project-arena-0.15.8-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
