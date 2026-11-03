@@ -38,6 +38,7 @@ pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTes
 life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
 life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
 life_fetch = read("tools/fetch_cc0_life_assets.py")
+vale_fetch = read("tools/fetch_cc0_vale_assets.py")
 hero_catalog = read("app/src/main/java/com/duckdream/neonbreach/HeroModelCatalog.kt")
 hero_catalog_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroModelCatalogTest.kt")
 showcase = read("app/src/main/java/com/duckdream/neonbreach/ArenaShowcaseLayout.kt")
@@ -50,6 +51,7 @@ kaykit_license = read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
 quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
+vale_assets = ROOT / "app/src/main/assets/world/vale"
 
 checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
@@ -219,6 +221,17 @@ checks = [
     ("Fetch and verify pinned CC0 life assets" in workflow and
      "tools/fetch_cc0_life_assets.py" in workflow,
      "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
+    ("J-Ponzo/gltf-medieval-village-megakit" in vale_fetch and
+     "21104b4045261c28fc312360841ed1a7b0ac8782" in vale_fetch and
+     "CC0-1.0" in vale_fetch and
+     "eeb87453aa572b543388f8bd8ff7e993c13f9181" in vale_fetch and
+     "Image.Resampling.LANCZOS" in vale_fetch and "512, 512" in vale_fetch and
+     'material.pop("normalTexture", None)' in vale_fetch,
+     "pinned CC0 environment importer or mobile texture optimization is incomplete"),
+    ("Fetch and optimize pinned CC0 medieval environment assets" in workflow and
+     "tools/fetch_cc0_vale_assets.py" in workflow and "Pillow==11.3.0" in workflow,
+     "CI must fetch and optimize the pinned medieval environment subset before validation"),
+
     ("fern_leaves" in world and "meadow_flower_petals" in world and
      "camp_mushroom_caps" in world and "fallen_timber" in world and
      "River reeds" not in world and "riverCenterZ(x)" in world,
@@ -256,6 +269,38 @@ for name in model_names:
 atlas = world_assets / "hexagons_medieval.png"
 if not atlas.is_file() or atlas.stat().st_size < 1000:
     raise SystemExit("Shared KayKit texture atlas missing")
+
+vale_manifest_path = vale_assets / "cc0-manifest.json"
+vale_license_path = vale_assets / "CC0-1.0.txt"
+if not vale_manifest_path.is_file() or not vale_license_path.is_file():
+    raise SystemExit("Pinned CC0 Vale environment manifest/license missing")
+vale_manifest = json.loads(vale_manifest_path.read_text(encoding="utf-8"))
+if (vale_manifest.get("license") != "CC0-1.0" or
+        vale_manifest.get("source_commit") != "21104b4045261c28fc312360841ed1a7b0ac8782"):
+    raise SystemExit("Vale environment provenance does not match the pinned CC0 source")
+vale_models = ["Wall_Arch", "Wall_Plaster_Straight", "Wall_UnevenBrick_Straight",
+               "Stairs_Exterior_Straight", "Prop_Vine1", "Roof_RoundTiles_4x4"]
+for model_name in vale_models:
+    model_path = vale_assets / "models" / (model_name + ".gltf")
+    if not model_path.is_file():
+        raise SystemExit("Missing pinned Vale glTF model: " + model_name)
+    model_data = json.loads(model_path.read_text(encoding="utf-8"))
+    if model_data.get("asset", {}).get("version") != "2.0" or not model_data.get("meshes"):
+        raise SystemExit("Invalid or empty Vale glTF model: " + model_name)
+    for material in model_data.get("materials", []):
+        if material.get("normalTexture") or material.get("pbrMetallicRoughness", {}).get("metallicRoughnessTexture"):
+            raise SystemExit("Unbudgeted PBR maps remain in Vale model: " + model_name)
+    for resource in model_data.get("buffers", []) + model_data.get("images", []):
+        uri = resource.get("uri")
+        if uri and ("/" in uri or "\\" in uri or not (vale_assets / "models" / uri).is_file()):
+            raise SystemExit("Missing/unsafe Vale resource URI " + str(uri) + " in " + model_name)
+for texture_name, info in vale_manifest.get("runtime_textures", {}).items():
+    dimensions = info.get("runtime_dimensions", [])
+    texture_path = vale_assets / "models" / texture_name
+    if (not texture_path.is_file() or len(dimensions) != 2 or
+            max(dimensions) > 512 or info.get("runtime_bytes", 0) != texture_path.stat().st_size):
+        raise SystemExit("Vale texture budget/provenance check failed: " + texture_name)
+print("Pinned CC0 Vale architecture, local GLTF resources, base-color-only materials and 512px texture budget verified.")
 if "private fun sphere(" in world or "private fun cylinder(" in world:
     raise SystemExit("Legacy procedural sphere/cylinder geometry remains")
 if "applyRestPose" not in renderer or "runtime.animator.updateBoneMatrices()" not in renderer:
