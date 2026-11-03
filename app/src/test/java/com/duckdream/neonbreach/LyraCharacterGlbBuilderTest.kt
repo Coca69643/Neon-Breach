@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.json.JSONObject
 
 class LyraCharacterGlbBuilderTest {
     @Test
@@ -35,20 +36,44 @@ class LyraCharacterGlbBuilderTest {
     }
 
     @Test
-    fun everyVertexUsesOneNormalizedValidJointInfluence() {
+    fun everyVertexHasNormalizedBlendWeightsAndValidJointInfluences() {
         val bytes=LyraCharacterGlbBuilder.build()
         val glb=ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val jsonLength=glb.getInt(12)
         val json=String(bytes,20,jsonLength,Charsets.UTF_8)
-        assertTrue(json.contains("\"componentType\":5123"))
-        assertTrue(json.contains("\"componentType\":5126"))
-        // Builder writes four weights per vertex: [1, 0, 0, 0].
-        assertTrue(json.contains("\"WEIGHTS_0\""))
-        assertTrue(json.contains("\"JOINTS_0\""))
-        val binaryHeader=20+jsonLength
-        assertEquals(0x004e4942,glb.getInt(binaryHeader+4))
-        val binaryLength=glb.getInt(binaryHeader)
-        assertTrue(binaryLength>0)
-        assertTrue(binaryHeader+8+binaryLength<=bytes.size)
+        val root=JSONObject(json)
+        val views=root.getJSONArray("bufferViews")
+        val accessors=root.getJSONArray("accessors")
+        val primitives=root.getJSONArray("meshes").getJSONObject(0).getJSONArray("primitives")
+        val binaryStart=20+jsonLength+8
+        val data=ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        var blendedVertices=0
+        var checkedVertices=0
+
+        for(primitiveIndex in 0 until primitives.length()){
+            val attributes=primitives.getJSONObject(primitiveIndex).getJSONObject("attributes")
+            val jointAccessor=accessors.getJSONObject(attributes.getInt("JOINTS_0"))
+            val weightAccessor=accessors.getJSONObject(attributes.getInt("WEIGHTS_0"))
+            val jointView=views.getJSONObject(jointAccessor.getInt("bufferView"))
+            val weightView=views.getJSONObject(weightAccessor.getInt("bufferView"))
+            val jointStart=binaryStart+jointView.optInt("byteOffset",0)+jointAccessor.optInt("byteOffset",0)
+            val weightStart=binaryStart+weightView.optInt("byteOffset",0)+weightAccessor.optInt("byteOffset",0)
+            val count=weightAccessor.getInt("count")
+            assertEquals(count,jointAccessor.getInt("count"))
+
+            for(vertex in 0 until count){
+                val jointOffset=jointStart+vertex*8
+                val weightOffset=weightStart+vertex*16
+                val joints=IntArray(4){data.getShort(jointOffset+it*2).toInt() and 0xffff}
+                val weights=FloatArray(4){data.getFloat(weightOffset+it*4)}
+                assertTrue("Joint index outside the 19-joint skin",joints.all{it in 0 until 19})
+                assertTrue("Negative skin weight",weights.all{it>=0f})
+                assertEquals("Vertex weights must sum to one",1f,weights.sum(),0.0001f)
+                if(weights[1]>0.0001f)blendedVertices++
+                checkedVertices++
+            }
+        }
+        assertTrue("No vertices use secondary joint influences",blendedVertices>0)
+        assertTrue("No skinned vertices were inspected",checkedVertices>500)
     }
 }
