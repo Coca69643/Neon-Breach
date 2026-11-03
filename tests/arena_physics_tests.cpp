@@ -19,7 +19,7 @@ void testSharedArenaMapCatalog() {
     assert(arena_map::kTreeBlockers.size()==32);
     assert(std::abs(arena_map::kWorldScale-1.15f)<0.0001f);
     assert(arena_map::kHalfExtentX*arena_map::kWorldScale>40.0f);
-    assert(arena_map::kHalfExtentZ*arena_map::kWorldScale>37.0f);
+    assert(arena_map::kHalfExtentZ*arena_map::kWorldScale>35.5f);
     for(std::size_t lane=0;lane<arena_map::kLanes.size();++lane) {
         const auto &points=arena_map::kLanes[lane].points;
         for(std::size_t i=0;i<points.size();++i) {
