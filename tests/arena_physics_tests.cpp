@@ -1,6 +1,7 @@
 #include "../app/src/main/cpp/ArenaPhysics.h"
 #include "../app/src/main/cpp/ArenaMapDefinition.h"
 #include "../app/src/main/cpp/ArenaNavigation.h"
+#include "../app/src/main/cpp/ArenaCampCombat.h"
 
 #include <cassert>
 #include <cmath>
@@ -12,6 +13,17 @@ float distance(float ax,float az,float bx,float bz) {
     const float x=bx-ax,z=bz-az;
     return std::sqrt(x*x+z*z);
 }
+void testNeutralCampCombatRules() {
+    assert(arena_camp::canAggro(180.0f,7.0f,12.0f,10.0f));
+    assert(!arena_camp::canAggro(0.0f,1.0f,12.0f,10.0f));
+    assert(!arena_camp::canAggro(180.0f,10.5f,12.0f,10.0f));
+    assert(arena_camp::canStrike(180.0f,0.0f,2.2f,2.8f,10.0f));
+    assert(!arena_camp::canStrike(180.0f,0.1f,2.2f,2.8f,10.0f));
+    assert(!arena_camp::canStrike(180.0f,0.0f,3.2f,2.8f,10.0f));
+    assert(!arena_camp::canStrike(0.0f,0.0f,1.0f,2.8f,10.0f));
+    assert(!arena_camp::canStrike(180.0f,0.0f,1.0f,2.8f,0.8f));
+}
+
 void testArenaNavigationGraph() {
     const auto &graph=arena_navigation::mapGraph();
     assert(graph.nodes.size()==static_cast<std::size_t>(arena_navigation::kNodeCount));
@@ -121,6 +133,16 @@ void testBraking() {
     for(int i=0;i<90;++i) arena_physics::move(body,0.0f,0.0f,1.0f/60.0f);
     assert(std::sqrt(body.vx*body.vx+body.vz*body.vz)<0.15f);
 }
+void testCampGuardianCollision() {
+    const float scale=arena_map::kWorldScale;
+    const auto &camp=arena_map::kCampPositions[0];
+    const float campX=camp.x*scale;
+    const float campZ=camp.z*scale;
+    arena_physics::Body body{campX-1.8f,campZ,0.0f,0.0f,0.43f};
+    for(int i=0;i<120;++i) arena_physics::move(body,3.0f,0.0f,1.0f/60.0f);
+    assert(distance(body.x,body.z,campX,campZ)>=1.12f);
+}
+
 void testObstacleSteering() {
     const float scale=arena_map::kWorldScale;
     arena_physics::Body body{-12.2f*scale,-23.0f*scale,0.0f,0.0f,0.43f};
@@ -139,6 +161,7 @@ void testCharacterSeparation() {
 }
 }
 int main() {
+    testNeutralCampCombatRules();
     testArenaNavigationGraph();
     testSharedArenaMapCatalog();
     testTerrainSurface();
@@ -147,6 +170,7 @@ int main() {
     testWorldBoundary();
     testBraking();
     testObstacleSteering();
+    testCampGuardianCollision();
     testCharacterSeparation();
     std::cout<<"Arena physics tests passed (terrain, obstacles, structures, bounds, braking, AI steering, actor separation).\n";
     return 0;
