@@ -5,7 +5,9 @@ MOBA 3D nativo para Android, landscape e offline. A 0.15.3 corrige a flexão do 
 ## Rework visual 0.15.0
 
 - Cinco conjuntos de silhueta para os papéis de IA: defensor de rota, jungler, conjurador de meio, carry e suporte. O herói jogável mantém os três estilos selecionáveis.
-- Corrigido o eixo das rotações dos braços: o rig base usa ossos de braço orientados no eixo local Y; os movimentos agora usam rotação X, com amplitude e flexão de cotovelo reduzidas.
+- Corrigido o T-pose: os ombros orientam os braços para fora no espaço do mundo; a flexão usa rotação local Z com sinais espelhados entre os lados.
+- Jogador, bots e tropas compartilham essa convenção de rig; um teste JVM verifica a direção dos dois braços usando as rotações bind do GLB.
+- A seleção centraliza o modelo 3D, aproxima a câmera e mantém uma rotação de repouso suave no preview.
 - Bots recebem cadência, ângulo de prontidão e flexão de cotovelo por função; tropas corpo a corpo e de distância têm postura de braço distinta.
 - Relevo ampliado com cristas laterais, planaltos de selva, colinas nas aproximações e vale fluvial mais profundo. Malha do terreno refinada para 136 × 136 células.
 - A mesma função de altura foi sincronizada entre WorldGlbBuilder.kt e ArenaPhysics.cpp. O teste nativo mede amplitude do relevo e restringe gradientes a menos de 43° na região amostrada.
