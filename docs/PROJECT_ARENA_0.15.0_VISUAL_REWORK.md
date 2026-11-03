@@ -29,6 +29,12 @@ This branch responds to the 0.14.0 in-game captures: identical humanoid silhouet
 - Moves Help and Settings into small utility controls. Shop is available from Collection.
 - Skips 3D frame rendering while the HUB state is active to avoid rendering an unseen scene under the illustration.
 
+## Follow-up correction — 0.15.3
+
+- Replaced the incorrect local-X arm swing with mirrored local-Z flexion, using the checked-in GLB bind rotations as the rig contract.
+- Centered the hero-selection preview and tightened its camera framing; the HUB uses a subtle procedural turn to make the 3D model visibly alive.
+- Added a JVM regression test that evaluates both upper-arm world directions from the GLB bind quaternions.
+
 ## Validation
 
 CI runs:
