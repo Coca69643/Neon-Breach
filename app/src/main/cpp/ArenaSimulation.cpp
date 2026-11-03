@@ -979,6 +979,22 @@ Java_com_duckdream_neonbreach_ArenaWorldNative_nativeObjectivePositions(
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeObjectiveWallPositions(
+    JNIEnv *env, jobject) {
+    return worldPointsToJava(env, arena_world::kObjectiveWallPositions);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeRiverCrossingPositions(
+    JNIEnv *env, jobject) {
+    std::array<arena_world::Point, arena_world::kLaneCount> points{};
+    for (int lane = 0; lane < arena_world::kLaneCount; ++lane) {
+        points[static_cast<std::size_t>(lane)] = arena_world::riverCrossingPosition(lane);
+    }
+    return worldPointsToJava(env, points);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_duckdream_neonbreach_ArenaWorldNative_nativeForestTreePositions(
     JNIEnv *env, jobject) {
     return worldPointsToJava(env, arena_world::kForestTreePositions);
