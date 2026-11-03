@@ -29,6 +29,9 @@ gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
+life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
+life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
+life_fetch = read("tools/fetch_cc0_life_assets.py")
 lyra_builder = read("app/src/main/java/com/duckdream/neonbreach/LyraCharacterGlbBuilder.kt")
 lyra_tests = read("app/src/test/java/com/duckdream/neonbreach/LyraCharacterGlbBuilderTest.kt")
 showcase = read("app/src/main/java/com/duckdream/neonbreach/ArenaShowcaseLayout.kt")
@@ -112,13 +115,13 @@ checks = [
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 53" in gradle and "versionName '0.15.7'" in gradle, "app version must be 0.15.7 / code 53"),
+    ("versionCode 54" in gradle and "versionName '0.15.8'" in gradle, "app version must be 0.15.8 / code 54"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='53' versionName='0.15.7'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.15.7-update" in workflow, "0.15.7 artifact name missing"),
+    ("versionCode='54' versionName='0.15.8'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.15.8-update" in workflow, "0.15.8 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -176,6 +179,38 @@ checks = [
     ("KayKit" in asset_register and "CC0" in asset_register, "KayKit asset register missing"),
     ("Creative Commons Zero, CC0" in kaykit_license and "creativecommons.org/publicdomain/zero/1.0" in kaykit_license and "CC0 1.0 Universal" in quaternius_license, "CC0 license files missing"),
     ("0.15.0" in readme and "offline" in readme.lower() and "0.15.0" in changelog, "release documentation missing"),
+    ("loadLivingWorld()" in renderer and "updateLivingWorld(" in renderer and
+     "LifeActorRuntime" in renderer and "animator.applyAnimation" in renderer and
+     "animator.getAnimationCount()" in renderer,
+     "Filament wildlife and camp guardian instances/animation are not integrated"),
+    ("snapshot?.getOrNull(270 + spawn.campIndex)" in renderer and
+     "38f * 38f" in renderer and "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
+     "neutral guardians and ambient wildlife must be visibility- and distance-managed"),
+    ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
+     "deer" in life_catalog and "wolf" in life_catalog and "bird" in life_catalog and
+     "mushroom" in life_catalog and "walking-tree" in life_catalog and "ghost" in life_catalog,
+     "ambient and neutral life roster is incomplete"),
+    ("wildlifeMovesAndRetreatsFromNearbyPlayer" in life_tests and
+     "campGuardiansStayAnchoredButHaveIdleMotion" in life_tests and
+     "lifeCatalogContainsDistinctAmbientAndCampSpecies" in life_tests,
+     "life roster and movement regression tests are missing"),
+    ("source_commit" in life_fetch and "git_blob_sha" in life_fetch and
+     "ASSETS" not in life_fetch and "external buffer URI would break offline packaging" in life_fetch,
+     "pinned CC0 asset fetcher must verify binary assets and offline self-containment"),
+    ("Fetch and verify pinned CC0 life assets" in workflow and
+     "tools/fetch_cc0_life_assets.py" in workflow,
+     "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
+    ("fern_leaves" in world and "meadow_flower_petals" in world and
+     "camp_mushroom_caps" in world and "fallen_timber" in world and
+     "River reeds" in world if "River reeds" in world else "riverCenterZ(x)" in world,
+     "batched flora, camp groundcover and river vegetation are missing"),
+    ("Four readable lane-unit silhouettes" in renderer and
+     "val width = when (slot) { 0 -> 1.16f" in renderer and
+     "val height = when (slot) { 0 -> 0.92f" in renderer,
+     "lane units must have role-distinct body proportions"),
+    ("0.91f,0.70f,0.28f" in gear and "0.18f,0.73f,0.70f" in gear and
+     "0.63f,0.45f,0.82f" in gear,
+     "five bot role accents must be visually distinct"),
 ]
 for ok, message in checks:
     if not ok:
@@ -224,7 +259,7 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.15.7 structural verification passed.")
+print("Project Arena 0.15.8 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
 print("Mirrored GLB arm flexion and character motion regression tests verified.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")
