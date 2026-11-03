@@ -9,7 +9,7 @@ package com.duckdream.neonbreach
 internal object ArenaMapDefinition {
     data class Point(val x: Float, val z: Float)
     data class Lane(val id: Int, val width: Float, val points: List<Point>)
-    data class Camp(val id: Int, val position: Point, val kind: CampKind)
+    data class Camp(val id: String, val position: Point, val kind: CampKind)
     enum class CampKind { SMALL, LARGE }
     data class Tower(val team: Int, val lane: Int, val tier: Int, val position: Point)
     data class Landmark(val id: String, val position: Point, val radius: Float)
@@ -67,12 +67,17 @@ internal object ArenaMapDefinition {
     )
 
     fun laneCenterX(lane: Int, z: Float): Float {
-        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
-        return when (lane) {
-            0 -> -14.2f + bend
-            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
-            else -> 14.2f - bend * 0.82f
+        val points = lanes[lane.coerceIn(0, lanes.lastIndex)].points
+        val sampleZ = z.coerceIn(points.first().z, points.last().z)
+        for (index in 0 until points.lastIndex) {
+            val a = points[index]
+            val b = points[index + 1]
+            if (sampleZ <= b.z) {
+                val t = ((sampleZ - a.z) / (b.z - a.z)).coerceIn(0f, 1f)
+                return a.x + (b.x - a.x) * t
+            }
         }
+        return points.last().x
     }
 
     fun towerPosition(team: Int, lane: Int, tier: Int): Point {
