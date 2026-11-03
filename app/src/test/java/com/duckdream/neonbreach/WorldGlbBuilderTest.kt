@@ -1,9 +1,10 @@
 package com.duckdream.neonbreach
 
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
-import kotlin.math.sqrt
-import kotlin.math.tan
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 class WorldGlbBuilderTest {
     @Test
@@ -28,5 +29,25 @@ class WorldGlbBuilderTest {
         }
         assertTrue("Terrain relief must exceed 3.2 world units", high - low > 3.2f)
         assertTrue("Playable terrain exceeds the 43-degree walkability cap", steepest < tan(Math.toRadians(43.0)).toFloat())
+    }
+
+    @Test
+    fun worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover() {
+        val bytes = WorldGlbBuilder.build()
+        val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        assertEquals(0x46546c67, glb.getInt(0))
+        assertEquals(2, glb.getInt(4))
+        assertEquals(bytes.size, glb.getInt(8))
+        val jsonLength = glb.getInt(12)
+        assertTrue(jsonLength > 0)
+        val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
+        listOf(
+            "fern_leaves", "meadow_flower_stems", "meadow_flower_petals",
+            "camp_mushroom_stems", "camp_mushroom_caps", "fallen_timber",
+            "Neutral camp markers", "Forest soil", "River water"
+        ).forEach { name ->
+            assertTrue("Missing world GLB part/material: $name", json.contains(name))
+        }
+        assertTrue("World GLB should have the expanded 25-material palette", json.contains("Fallen timber"))
     }
 }
