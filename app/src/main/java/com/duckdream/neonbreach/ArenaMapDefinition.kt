@@ -16,7 +16,7 @@ internal object ArenaMapDefinition {
 
     const val WORLD_SCALE = 1.15f
     const val HALF_EXTENT_X = 35f
-    const val HALF_EXTENT_Z = 33f
+    const val HALF_EXTENT_Z = 31f
     const val RIVER_WIDTH = 1.72f
 
     val lanes = listOf(
