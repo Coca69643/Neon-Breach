@@ -50,3 +50,12 @@ CI runs:
 - Locomotion/combat motion remains procedural. The upstream humanoid GLB contains no animation clips; this branch does not add a full motion-capture library.
 - Physics is the existing deterministic kinematic/collider model, not a full rigid-body solver or triangle-mesh navigation system.
 - CI cannot certify visual quality, FPS under load, touch comfort, sustained temperature or crash-free runtime on a physical Realme C53. Those require manual device validation.
+
+## Follow-up correction — 0.15.4
+
+- Moved the showcase hero away from the centre-lane tower. The previous preview transform at x=0, z=-7 placed Lyra/Bastion/Kairo directly behind the tower in the camera line.
+- Reserved a clear point at x=-15, z=4 and shifted the look target left so the hero reads to the right of the selection panel.
+- Increased the in-match character framing while preserving the tactical isometric camera and minimap.
+- Desaturated meadow, trail, forest and water material values and neutralized the environment lighting.
+- Added a JVM check for distance from the showcase point to towers, neutral camps and objective shrines.
+
