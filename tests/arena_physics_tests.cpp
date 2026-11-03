@@ -61,6 +61,11 @@ void testSharedArenaMapCatalog() {
     assert(arena_map::kLanes.size()==3);
     assert(arena_map::kCampPositions.size()==8);
     assert(arena_map::kObjectivePositions.size()==2);
+    assert(arena_map::kRiverCenterline.size()==12);
+    for(const auto &point:arena_map::kRiverCenterline) {
+        assert(std::abs(point.x)<arena_map::kHalfExtentX);
+        assert(std::abs(point.z)<arena_map::kHalfExtentZ);
+    }
     assert(arena_map::kGroveCenters.size()==12);
     assert(arena_map::kTreeBlockers.size()==32);
     assert(std::abs(arena_map::kWorldScale-1.15f)<0.0001f);
