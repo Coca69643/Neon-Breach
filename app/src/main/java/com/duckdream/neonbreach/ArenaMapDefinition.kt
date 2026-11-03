@@ -34,6 +34,13 @@ internal object ArenaMapDefinition {
             Point(14.8f,16f), Point(14.2f,24f), Point(14.2f,31f)))
     )
 
+    val riverCenterline = listOf(
+        Point(-34f,1.1f), Point(-28f,0.55f), Point(-21f,0.05f),
+        Point(-15f,-0.45f), Point(-9f,-0.22f), Point(-3f,0.25f),
+        Point(4f,0.38f), Point(10f,0.02f), Point(16f,-0.38f),
+        Point(23f,-0.18f), Point(29f,0.22f), Point(34f,0.8f)
+    )
+
     val camps = listOf(
         Camp("west_south", Point(-8.2f,-14.5f), CampKind.SMALL),
         Camp("east_south", Point(8.2f,-14.5f), CampKind.SMALL),
@@ -89,6 +96,8 @@ internal object ArenaMapDefinition {
 
     fun validate() {
         require(lanes.size == 3 && lanes.all { it.points.size >= 2 })
+        require(riverCenterline.size == 12)
+        require(riverCenterline.all { kotlin.math.abs(it.x) < HALF_EXTENT_X && kotlin.math.abs(it.z) < HALF_EXTENT_Z })
         require(camps.size == 8 && camps.map { it.id }.toSet().size == camps.size)
         require(objectives.size == 2)
         require(WORLD_SCALE > 1f)
