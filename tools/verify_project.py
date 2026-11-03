@@ -110,6 +110,17 @@ native_trees = extract_pairs(
 if kotlin_trees != native_trees:
     raise SystemExit("Kotlin and C++ tree blocker coordinates differ")
 
+kotlin_river = extract_pairs(
+    map_kotlin, "val riverCenterline = listOf(", "val camps = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_river = extract_pairs(
+    map_native, "kRiverCenterline{{", "kCampPositions",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_river != native_river:
+    raise SystemExit("Kotlin and C++ river centerline coordinates differ")
+
 kotlin_scale = float(map_kotlin.split("const val WORLD_SCALE = ", 1)[1].split("f", 1)[0])
 native_scale = float(map_native.split("kWorldScale = ", 1)[1].split("f", 1)[0])
 if abs(kotlin_scale - native_scale) > 0.000001:
@@ -222,7 +233,8 @@ checks = [
      "moveActorOnMap(bot.position, bot.velocity, objective" in native,
      "jungle AI must rotate to its side's neutral objective through map navigation"),
     ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
-     "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.laneCenterX" in main and
+     "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.riverCenterline" in main and
+     "ArenaMapDefinition.riverCenterline" in world and "ArenaMapDefinition.laneCenterX" in main and
      "campAlertPaint" in main and "snapshot[312 + index]" in main,
      "minimap is not aligned with the expanded canonical battlefield or camp combat state"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
