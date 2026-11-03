@@ -10,7 +10,7 @@ This branch responds to the 0.14.0 in-game captures: identical humanoid silhouet
 - Extends the authored gear generator to five role silhouettes. AI role IDs select Bastion/solo, Kairo/jungle, Arcanist/mid, Ranger/carry and Lyra/support.
 - Each set is split across torso, head, back, shoulder, forearm, thigh and boot attachments, parented to matching skeleton joints.
 - The common Quaternius humanoid base is still shared. This revision does not claim five independent full-body meshes or imported motion-capture clips.
-- Inspected the source GLB hierarchy: arm bones extend along local +Y. Previous shoulder/elbow poses rotated them around local Z and over-abducted the arms. The new procedural swing rotates around local X with a neutral shoulder, controlled elbow flexion, role-dependent cadence and distinct ranged-minion readiness.
+- The source GLB hierarchy has local +Y upper-arm child offsets, but the shoulder bind rotations place the two arms along opposite world-space X directions. Rotating around local X spins around each arm's longitudinal axis and leaves the T-pose intact. The 0.15.3 correction uses local-Z flexion with mirrored left/right signs, then layers role cadence and distinct lane-unit readiness.
 - Body width and height are also varied by bot role; the selected hero retains its three original equipment sets.
 
 ## Battlefield
