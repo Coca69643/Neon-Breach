@@ -27,6 +27,7 @@ world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
 map_kotlin = read("app/src/main/java/com/duckdream/neonbreach/ArenaMapDefinition.kt")
 map_native = read("app/src/main/cpp/ArenaMapDefinition.h")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
+camp_behavior = read("app/src/main/cpp/ArenaCampCombat.h")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
 physics_h = read("app/src/main/cpp/ArenaPhysics.h")
 physics = read("app/src/main/cpp/ArenaPhysics.cpp")
@@ -212,6 +213,13 @@ checks = [
     ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
      "moveActorOnMap" in native and "testArenaNavigationGraph" in read("tests/arena_physics_tests.cpp"),
      "MOBA bots are not using the lane/jungle navigation graph"),
+    ("ArenaCampCombat.h" in native and "arena_camp::canAggro" in native and
+     "arena_camp::canStrike" in native and "values[static_cast<std::size_t>(312 + i)]" in native and
+     "attackTokens" in life_catalog and "snapshot?.getOrNull(312 + spawn.campIndex)" in renderer,
+     "neutral camp guardians lack native aggro, attacks or visual attack state"),
+    ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
+     "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.laneCenterX" in main,
+     "minimap is not aligned with the expanded canonical battlefield"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
