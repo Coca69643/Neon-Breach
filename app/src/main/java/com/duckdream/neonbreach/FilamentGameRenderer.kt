@@ -543,20 +543,22 @@ internal class FilamentGameRenderer(
             val profile = ArenaLifeCatalog.species.getValue(spawn.species)
             val attacking = spawn.kind == LifeActorKind.CAMP_GUARDIAN &&
                 snapshot?.getOrNull(312 + spawn.campIndex)?.let { it > 0f } == true
+            val usingAttackClip = attacking && actor.attackClip >= 0
+            val usingMoveClip = !usingAttackClip && sample.moving
             val clip = when {
-                attacking && actor.attackClip >= 0 -> actor.attackClip
-                sample.moving -> actor.moveClip
+                usingAttackClip -> actor.attackClip
+                usingMoveClip -> actor.moveClip
                 else -> actor.idleClip
             }
             if (clip >= 0) {
-                val duration = when (clip) {
-                    actor.attackClip -> actor.attackDuration
-                    actor.moveClip -> actor.moveDuration
+                val duration = when {
+                    usingAttackClip -> actor.attackDuration
+                    usingMoveClip -> actor.moveDuration
                     else -> actor.idleDuration
                 }
-                val offset = when (clip) {
-                    actor.attackClip -> spawn.phase * 0.19f
-                    actor.moveClip -> spawn.phase * 0.37f
+                val offset = when {
+                    usingAttackClip -> spawn.phase * 0.19f
+                    usingMoveClip -> spawn.phase * 0.37f
                     else -> spawn.phase
                 }
                 actor.animator.applyAnimation(clip, (lifeClock + offset) % duration)
