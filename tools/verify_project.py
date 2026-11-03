@@ -29,6 +29,8 @@ gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
+lyra_builder = read("app/src/main/java/com/duckdream/neonbreach/LyraCharacterGlbBuilder.kt")
+lyra_tests = read("app/src/test/java/com/duckdream/neonbreach/LyraCharacterGlbBuilderTest.kt")
 showcase = read("app/src/main/java/com/duckdream/neonbreach/ArenaShowcaseLayout.kt")
 showcase_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaShowcaseLayoutTest.kt")
 workflow = read(".github/workflows/android.yml")
@@ -71,6 +73,18 @@ checks = [
      "combat camera must keep a closer readable character framing"),
     ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
      "terrain palette must use the lower-saturation olive values"),
+    ("LyraCharacterGlbBuilder.build()" in renderer and
+     "lyraCharacterAsset" in renderer and "lyraPlayerBones" in renderer and
+     "genericPlayerBones" in renderer and "activatePlayerModel(0)" in renderer,
+     "original Lyra model is not isolated from the generic NPC/player model"),
+    ("JOINTS_0" in lyra_builder and "WEIGHTS_0" in lyra_builder and
+     "inverseBindMatrices" in lyra_builder and "Lyra_Original_Character" in lyra_builder and
+     "Lyra_Humanoid_Rig" in lyra_builder and "Lyra_Plum_Cape" in lyra_builder,
+     "original Lyra GLB must contain a skinned body, bind matrices and authored costume geometry"),
+    ("lyraModelContainsOriginalSilhouetteMaterialsAndSkinnedRig" in lyra_tests and
+     "everyVertexUsesOneNormalizedValidJointInfluence" in lyra_tests and
+     "LyraCharacterGlbBuilder.build()" in lyra_tests,
+     "Lyra GLB and skinning regression tests are missing"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
