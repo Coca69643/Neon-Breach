@@ -373,31 +373,24 @@ internal class FilamentGameRenderer(
             add(WorldPlacement("church_blue", -8.0f, -25.3f, 1.55f))
             add(WorldPlacement("church_red", 8.0f, 25.3f, 1.55f, Math.PI.toFloat()))
 
-            // Three defensive structures per lane; the renderer maps each to its native health slot.
-            for (lane in 0..2) {
-                val crossingX = laneCenterX(lane, 0f)
-                for (tier in 0..2) {
-                    val z = when (tier) { 0 -> 22f; 1 -> 15f; else -> 8f }
-                    add(WorldPlacement("tower_blue", laneCenterX(lane, -z), -z, 1.48f))
-                    add(WorldPlacement("tower_red", laneCenterX(lane, z), z, 1.48f, Math.PI.toFloat()))
+            // Tower transforms are generated from the canonical battlefield catalog.
+            for (team in 0..1) {
+                for (lane in 0..2) {
+                    for (tier in 0..2) {
+                        val point = ArenaMapDefinition.towerPosition(team, lane, tier)
+                        val model = if (team == 0) "tower_blue" else "tower_red"
+                        val yaw = if (team == 0) 0f else Math.PI.toFloat()
+                        add(WorldPlacement(model, point.x, point.z, 1.48f, yaw))
+                    }
                 }
-                add(WorldPlacement("bridge_a", crossingX, 0f, 1.42f))
             }
-
-            // Dense, deliberately clustered tree lines define four jungle quadrants.
-            val forestTrees = listOf(
-                -10.5f to -23f, -6.2f to -22f, -11.5f to -17.5f, -5.5f to -17f,
-                -10.2f to -10f, -6.4f to -8f, 10.5f to -23f, 6.2f to -22f,
-                11.5f to -17.5f, 5.5f to -17f, 10.2f to -10f, 6.4f to -8f,
-                -22.8f to -18f, -26f to -13f, -22.4f to -6f, -18.5f to -20f,
-                22.8f to -18f, 26f to -13f, 22.4f to -6f, 18.5f to -20f,
-                -10.5f to 23f, -6.2f to 22f, -11.5f to 17.5f, -5.5f to 17f,
-                -10.2f to 10f, -6.4f to 8f, 10.5f to 23f, 6.2f to 22f,
-                11.5f to 17.5f, 5.5f to 17f, 10.2f to 10f, 6.4f to 8f
-            )
-            forestTrees.forEachIndexed { index, point ->
+            for (lane in ArenaMapDefinition.lanes) {
+                val crossing = lane.points.minByOrNull { kotlin.math.abs(it.z) } ?: continue
+                add(WorldPlacement("bridge_a", crossing.x, crossing.z, 1.42f))
+            }
+            ArenaMapDefinition.treeBlockers.forEachIndexed { index, point ->
                 val scale = 1.48f + (index % 4) * 0.12f
-                add(WorldPlacement("trees_a", point.first, point.second, scale, (index * 0.73f) % 6.28f))
+                add(WorldPlacement("trees_a", point.x, point.z, scale, (index * 0.73f) % 6.28f))
             }
         }
 
@@ -1415,14 +1408,8 @@ internal class FilamentGameRenderer(
         }
     }
 
-    private fun laneCenterX(lane: Int, z: Float): Float {
-        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
-        return when (lane) {
-            0 -> -14.2f + bend
-            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
-            else -> 14.2f - bend * 0.82f
-        }
-    }
+    private fun laneCenterX(lane: Int, z: Float): Float =
+        ArenaMapDefinition.laneCenterX(lane, z)
 
     private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)
 
