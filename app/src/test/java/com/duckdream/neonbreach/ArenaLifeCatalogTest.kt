@@ -19,6 +19,15 @@ class ArenaLifeCatalogTest {
     }
 
     @Test
+    fun neutralGuardiansExposeAttackClipAliases() {
+        for (speciesId in listOf("mushroom", "walking-tree", "ghost")) {
+            val profile = ArenaLifeCatalog.species.getValue(speciesId)
+            assertTrue("$speciesId must define attack clip aliases", profile.attackTokens.isNotEmpty())
+        }
+        assertTrue(ArenaLifeCatalog.species.getValue("deer").attackTokens.isEmpty())
+    }
+
+    @Test
     fun wildlifePlacesAnAnimalInsideTheOpeningBlueSideCameraReach() {
         val initialPlayerX = -14f
         val initialPlayerZ = -25f
