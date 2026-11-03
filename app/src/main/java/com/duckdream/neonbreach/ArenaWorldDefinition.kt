@@ -12,6 +12,7 @@ internal interface ArenaWorldDataSource {
     fun towerZ(team: Int, tier: Int): Float
     fun riverCenterZ(x: Float): Float
     fun islandMask(steps: Int, size: Float): BooleanArray
+    fun baseLandmarkPositions(): FloatArray
     fun campPositions(): FloatArray
     fun objectivePositions(): FloatArray
     fun forestTreePositions(): FloatArray
@@ -29,6 +30,7 @@ internal object ArenaWorldNative {
     external fun nativeTowerZ(team: Int, tier: Int): Float
     external fun nativeRiverCenterZ(x: Float): Float
     external fun nativeIslandMask(steps: Int, size: Float): BooleanArray
+    external fun nativeBaseLandmarkPositions(): FloatArray
     external fun nativeCampPositions(): FloatArray
     external fun nativeObjectivePositions(): FloatArray
     external fun nativeForestTreePositions(): FloatArray
@@ -42,6 +44,7 @@ private object NativeArenaWorldDataSource : ArenaWorldDataSource {
     override fun towerZ(team: Int, tier: Int) = ArenaWorldNative.nativeTowerZ(team, tier)
     override fun riverCenterZ(x: Float) = ArenaWorldNative.nativeRiverCenterZ(x)
     override fun islandMask(steps: Int, size: Float) = ArenaWorldNative.nativeIslandMask(steps, size)
+    override fun baseLandmarkPositions() = ArenaWorldNative.nativeBaseLandmarkPositions()
     override fun campPositions() = ArenaWorldNative.nativeCampPositions()
     override fun objectivePositions() = ArenaWorldNative.nativeObjectivePositions()
     override fun forestTreePositions() = ArenaWorldNative.nativeForestTreePositions()
@@ -62,6 +65,7 @@ internal object ArenaWorldDefinition {
         val trees: List<ArenaPoint>,
         val groves: List<ArenaPoint>,
         val undergrowth: List<ArenaPoint>,
+        val baseLandmarks: List<ArenaPoint>,
         val islandMask: BooleanArray
     )
 
@@ -84,6 +88,9 @@ internal object ArenaWorldDefinition {
                     trees = decodePoints(current.forestTreePositions(), "forest trees"),
                     groves = decodePoints(current.jungleGrovePositions(), "jungle groves"),
                     undergrowth = decodePoints(current.undergrowthPositions(), "undergrowth"),
+                    baseLandmarks = decodePoints(current.baseLandmarkPositions(), "base landmarks").also {
+                        check(it.size == 14) { "World base landmark count mismatch: ${it.size}" }
+                    },
                     islandMask = current.islandMask(GRID_STEPS, GRID_SIZE).also {
                         check(it.size == GRID_STEPS * GRID_STEPS) {
                             "World island mask has an unexpected sample count: ${it.size}"
@@ -142,6 +149,14 @@ internal object ArenaWorldDefinition {
         val gz = ((z - GRID_START) / GRID_CELL - 0.5f).roundToInt().coerceIn(0, GRID_STEPS - 1)
         return snapshot().islandMask[gz * GRID_STEPS + gx]
     }
+
+    fun castlePosition(team: Int): ArenaPoint = snapshot().baseLandmarks[team.coerceIn(0, 1)]
+    fun homePosition(team: Int, side: Int): ArenaPoint =
+        snapshot().baseLandmarks[2 + team.coerceIn(0, 1) * 2 + side.coerceIn(0, 1)]
+    fun churchPosition(team: Int): ArenaPoint = snapshot().baseLandmarks[6 + team.coerceIn(0, 1)]
+    fun baseWallPosition(team: Int, side: Int): ArenaPoint =
+        snapshot().baseLandmarks[8 + team.coerceIn(0, 1) * 2 + side.coerceIn(0, 1)]
+    fun baseGatePavingPosition(team: Int): ArenaPoint = snapshot().baseLandmarks[12 + team.coerceIn(0, 1)]
 
     fun campPositions(): List<ArenaPoint> = snapshot().camps
     fun objectivePositions(): List<ArenaPoint> = snapshot().objectives
