@@ -1,5 +1,17 @@
 # Changelog — Projeto Arena
 
+## [0.15.4] — 2026-11-03
+
+### Preview e câmera
+- Retirado o personagem da seleção/menu de cima da torre azul central; preview movido para clareira reservada fora das rotas principais.
+- Ficha de herói continua à esquerda; câmera desloca o modelo para a área livre à direita, com escala maior.
+- Câmera de combate aproximada e FOV vertical reduzido para tornar heróis e bots mais legíveis em landscape.
+
+### Leitura do cenário
+- Reduzida a saturação e a dominante ciano nos materiais de grama, trilhas, pedra e água.
+- Skybox e iluminação indireta ajustados para uma temperatura mais neutra.
+- Teste JVM verifica distância mínima do preview a torres, camps e santuários.
+
 ## [0.15.3] — 2026-11-02
 
 ### Rig e apresentação 3D
