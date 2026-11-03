@@ -6,6 +6,7 @@
 #include <mutex>
 #include "ArenaPhysics.h"
 #include "ArenaMapDefinition.h"
+#include "ArenaNavigation.h"
 
 namespace {
 struct Vec2 { float x; float z; };
@@ -348,6 +349,13 @@ void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed,
     arena_physics::move(body, desired.x, desired.z, dt, 18.0f, 25.0f, 41.0f);
     position = {body.x, body.z};
     velocity = {body.vx, body.vz};
+}
+
+void moveActorOnMap(Vec2 &position, Vec2 &velocity, Vec2 target, float speed, float dt,
+                    float radius = 0.38f) {
+    const arena_navigation::Vec2 waypoint = arena_navigation::nextWaypoint(
+        {position.x, position.z}, {target.x, target.z});
+    moveActor(position, velocity, {waypoint.x, waypoint.z}, speed, dt, radius);
 }
 int nearestEnemyBot(Vec2 position, int team, float range) {
     int target = -1;
@@ -698,7 +706,7 @@ void updateBots(float dt) {
             int camp = nearestCamp(bot.position, bot.team, 18.0f);
             if (camp >= 0) {
                 NeutralCamp &target = gCamps[static_cast<std::size_t>(camp)];
-                if (distance(bot.position, target.position) > 2.5f) moveActor(bot.position, bot.velocity, target.position, kBotSpeed * 1.05f, dt);
+                if (distance(bot.position, target.position) > 2.5f) moveActorOnMap(bot.position, bot.velocity, target.position, kBotSpeed * 1.05f, dt);
                 else if (bot.attackCooldown <= 0.0f) {
                     damageCamp(camp, bot.team, 32.0f);
                     bot.attackCooldown = 0.95f;
@@ -708,7 +716,7 @@ void updateBots(float dt) {
             // The jungler rotates toward a contested neutral objective before returning to camps.
             if ((gObjectiveOneHealth > 0.0f || gObjectiveTwoHealth > 0.0f) && bot.thinkCooldown <= 0.0f) {
                 const Vec2 objective = gObjectiveTwoHealth > 0.0f ? objectivePosition(1) : objectivePosition(0);
-                if (distance(bot.position, objective) > 2.7f) moveActor(bot.position, bot.velocity, objective, kBotSpeed, dt);
+                if (distance(bot.position, objective) > 2.7f) moveActorOnMap(bot.position, bot.velocity, objective, kBotSpeed, dt);
                 else if (bot.attackCooldown <= 0.0f) {
                     if (gObjectiveTwoHealth > 0.0f) damageObjective(1, bot.team, 27.0f);
                     else damageObjective(0, bot.team, 22.0f);
@@ -720,7 +728,7 @@ void updateBots(float dt) {
                 const int tier = activeTowerTier(1 - bot.team, desiredLane);
                 const Vec2 target = tier >= 0 ? lanePoint(desiredLane, (bot.team == 0 ? 2.0f : -2.0f) * arena_map::kWorldScale)
                                                 : corePosition(1 - bot.team);
-                moveActor(bot.position, bot.velocity, target, kBotSpeed, dt);
+                moveActorOnMap(bot.position, bot.velocity, target, kBotSpeed, dt);
             }
             continue;
         }
@@ -738,7 +746,7 @@ void updateBots(float dt) {
         const int tier = activeTowerTier(defendingTeam, lane);
         const Vec2 laneGoal = tier >= 0 ? lanePoint(lane, frontZ, bot.role == 4 ? 1.7f : -0.6f)
                                         : corePosition(defendingTeam);
-        moveActor(bot.position, bot.velocity, laneGoal, kBotSpeed * (bot.role == 3 ? 1.02f : 0.92f), dt);
+        moveActorOnMap(bot.position, bot.velocity, laneGoal, kBotSpeed * (bot.role == 3 ? 1.02f : 0.92f), dt);
         if (tier >= 0 && distance(bot.position, towerPosition(defendingTeam, lane, tier)) <= 4.4f &&
             friendlyMinionSupports(bot.team, lane, towerPosition(defendingTeam, lane, tier), 7.2f) &&
             bot.attackCooldown <= 0.0f) {
