@@ -16,6 +16,13 @@ internal object ArenaWorldTestFixture : ArenaWorldDataSource {
         floatArrayOf(29f, 0.22f), floatArrayOf(34f, 0.8f)
     )
 
+    private val baseLandmarks = floatArrayOf(
+        0f, -27.3f, 0f, 27.3f,
+        -4.5f, -24f, 4.5f, -24f, -4.5f, 24f, 4.5f, 24f,
+        -8f, -25.3f, 8f, 25.3f,
+        -7f, -24.2f, 7f, -24.2f, -7f, 24.2f, 7f, 24.2f,
+        0f, -27f, 0f, 27f
+    )
     private val camps = floatArrayOf(
         -8.2f, -14.5f, 8.2f, -14.5f, -20.2f, -10f, 20.2f, -10f,
         -8.2f, 14.5f, 8.2f, 14.5f, -20.2f, 10f, 20.2f, 10f
@@ -100,6 +107,7 @@ internal object ArenaWorldTestFixture : ArenaWorldDataSource {
         }
     }
 
+    override fun baseLandmarkPositions() = baseLandmarks.copyOf()
     override fun campPositions() = camps.copyOf()
     override fun objectivePositions() = objectives.copyOf()
     override fun forestTreePositions() = trees.copyOf()
