@@ -22,10 +22,12 @@ Copied from `schulerj89/vanta-city` at source commit
 used by the game at runtime.
 
 Each model contains its own `HumanArmature` skin and original material palette.
-Only non-combat `Idle`, `Walk` and `Run` clips are selected. Source
-coordinates are Y-up, front is -Z, and authored height is approximately 4.64
-units; renderer normalizes to the current 2.12-unit hero presentation and
-compensates for source facing.
+Only non-combat `Idle`, `Walk` and `Run` clips are selected. The source
+mesh is Y-up; the bundled GLBs apply a -90-degree X rotation to the mesh and
+armature nodes, placing the visible front on scene +Z. The renderer normalizes
+the authored height (approximately 4.64 units) to the 2.12-unit presentation
+without adding a gameplay half-turn. Distinct SRGB material palettes are
+applied per playable hero because these GLBs contain no embedded textures.
 
 Each hero loads as an independent FilamentAsset/instance. The legacy shared
 Quaternius rig remains only for bots and lane troops.
