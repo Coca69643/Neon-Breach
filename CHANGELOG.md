@@ -1,5 +1,13 @@
 # Changelog — Projeto Arena
 
+## [0.15.3] — 2026-11-02
+
+### Rig e apresentação 3D
+- Corrigida a causa do T-pose: a flexão dos braços passa a usar o eixo Z local do rig com sinal espelhado entre os lados.
+- Jogador, bots e tropas compartilham a mesma convenção de flexão; um teste JVM usa as rotações de bind do GLB para verificar que ambos os braços apontam para baixo.
+- Seleção de heróis reposicionada no centro da câmera, com enquadramento mais próximo e leve rotação de apresentação.
+- O preview do HUB mantém idle procedural ativo enquanto o cenário 3D é renderizado.
+
 ## [0.15.0] — 2026-11-02
 
 ### Silhuetas, rig e movimento
