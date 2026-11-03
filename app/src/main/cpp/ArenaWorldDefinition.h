@@ -133,4 +133,28 @@ inline Point corePosition(int team) noexcept {
     return {0.0f, team == 0 ? -27.2f : 27.2f};
 }
 
+inline float teamDirection(int team) noexcept {
+    return team == 0 ? -1.0f : 1.0f;
+}
+
+inline Point castlePosition(int team) noexcept {
+    return {0.0f, teamDirection(team) * 27.3f};
+}
+
+inline Point homePosition(int team, int side) noexcept {
+    return {side == 0 ? -4.5f : 4.5f, teamDirection(team) * 24.0f};
+}
+
+inline Point churchPosition(int team) noexcept {
+    return team == 0 ? Point{-8.0f, -25.3f} : Point{8.0f, 25.3f};
+}
+
+inline Point baseWallPosition(int team, int side) noexcept {
+    return {side == 0 ? -7.0f : 7.0f, teamDirection(team) * 24.2f};
+}
+
+inline Point baseGatePavingPosition(int team) noexcept {
+    return {0.0f, teamDirection(team) * 27.0f};
+}
+
 } // namespace arena_world
