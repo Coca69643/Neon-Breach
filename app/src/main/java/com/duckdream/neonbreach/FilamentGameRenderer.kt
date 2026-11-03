@@ -61,6 +61,9 @@ internal class FilamentGameRenderer(
     private var genericPlayerInstance: FilamentInstance? = null
     private var lyraPlayerInstance: FilamentInstance? = null
     private var lyraModelReady = false
+    private var lyraRigReady = false
+    val isLyraModelReady: Boolean get() = lyraModelReady
+    val isLyraRigReady: Boolean get() = lyraRigReady
     var lyraModelWarning: String? = null
         private set
     private val genericPlayerBones = LinkedHashMap<String, BonePose>()
@@ -499,6 +502,7 @@ internal class FilamentGameRenderer(
         genericPlayerInstance!!.animator.updateBoneMatrices()
 
         lyraModelReady = false
+        lyraRigReady = false
         lyraModelWarning = null
         try {
             val lyraBytes = LyraCharacterGlbBuilder.build()
@@ -507,14 +511,28 @@ internal class FilamentGameRenderer(
                 ?: throw IllegalStateException("Filament returned null while parsing the Lyra GLB")
             lyraPlayerInstance = characterLoader!!.createInstance(lyraCharacterAsset!!)
                 ?: throw IllegalStateException("Filament returned null while creating the Lyra instance")
-            lyraPlayerBones.putAll(captureLyraRig(lyraPlayerInstance!!))
-            applyRestPose(lyraPlayerBones)
-            lyraPlayerInstance!!.animator.updateBoneMatrices()
+
+            // Keep the authored mesh visible even if the procedural controller
+            // cannot bind every joint. Rig failure must not discard the character.
             lyraModelReady = true
-            Log.i(TAG, "Original Lyra character loaded successfully")
-        } catch (error: Throwable) {
-            lyraModelWarning = error.message ?: error.javaClass.simpleName
-            Log.e(TAG, "Original Lyra GLB failed; keeping the game bootable with the compatibility character", error)
+            try {
+                val boundRig = captureLyraRig(lyraPlayerInstance!!)
+                applyRestPose(boundRig)
+                lyraPlayerInstance!!.animator.updateBoneMatrices()
+                lyraPlayerBones.putAll(boundRig)
+                lyraRigReady = true
+                Log.i(TAG, "Original Lyra character and 18 animated joints loaded successfully")
+            } catch (rigError: Throwable) {
+                lyraRigReady = false
+                lyraPlayerBones.clear()
+                lyraModelWarning = "Rig: ${rigError.message ?: rigError.javaClass.simpleName}"
+                Log.e(TAG, "Lyra mesh loaded; keeping the original body visible with neutral joint pose", rigError)
+            }
+        } catch (loadError: Throwable) {
+            lyraModelWarning = "GLB: ${loadError.message ?: loadError.javaClass.simpleName}"
+            Log.e(TAG, "Original Lyra GLB could not be created; compatibility model required", loadError)
+            lyraModelReady = false
+            lyraRigReady = false
             lyraPlayerInstance = null
             lyraPlayerBones.clear()
             lyraCharacterAsset?.let { failedAsset ->
@@ -582,9 +600,11 @@ internal class FilamentGameRenderer(
         playerMaterials.clear()
         target.materialInstances.forEach { playerMaterials.add(it) }
         bones.clear()
-        bones.putAll(if (useLyra) lyraPlayerBones else genericPlayerBones)
+        bones.putAll(if (useLyra && lyraRigReady) lyraPlayerBones else if (useLyra) emptyMap() else genericPlayerBones)
         if (hero == 0 && !useLyra) {
-            Log.w(TAG, "Lyra compatibility body selected for this session; warning=${lyraModelWarning ?: "unknown"}")
+            Log.w(TAG, "Lyra compatibility body selected; warning=${lyraModelWarning ?: "unknown"}")
+        } else if (hero == 0 && useLyra && !lyraRigReady) {
+            Log.w(TAG, "Lyra original body selected with neutral pose; rig warning=${lyraModelWarning ?: "unknown"}")
         }
 
         val sourceAsset = if (useLyra) {
