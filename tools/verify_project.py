@@ -160,10 +160,11 @@ checks = [
     ("HERO_X = -15.0f" in showcase and "HERO_Z = 4.0f" in showcase and
      "previewClearingDoesNotOverlapMajorBattlefieldProps" in showcase_tests,
      "hero showcase must remain clear of towers, camps and shrines"),
-    ("val distance = if (overviewCamera) 9.4f else 8.3f" in renderer and
-     "val height = if (overviewCamera) 9.6f else 9.2f" in renderer and
+    ("val mapScale = ArenaMapDefinition.WORLD_SCALE" in renderer and
+     "val distance = (if (overviewCamera) 9.4f else 8.3f) * mapScale" in renderer and
+     "val height = (if (overviewCamera) 9.6f else 9.2f) * mapScale" in renderer and
      "val fov = if (overviewCamera) 48.0 else 44.0" in renderer,
-     "combat camera must keep a closer readable character framing"),
+     "combat camera must keep a closer readable character framing and scale with the battlefield"),
     ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
      "terrain palette must use the lower-saturation olive values"),
     ("Diagnóstico:" in main and "rootCause.message" in main,
