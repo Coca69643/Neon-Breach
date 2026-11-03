@@ -40,8 +40,8 @@ void testCanonicalWorldDefinition() {
     }
 
     for (std::size_t i = 0; i < 4; ++i) {
-        const auto west = arena_world::kCampPositions[i];
-        const auto east = arena_world::kCampPositions[i + 1];
+        const auto west = arena_world::kCampPositions[i * 2];
+        const auto east = arena_world::kCampPositions[i * 2 + 1];
         assert(std::abs(west.x + east.x) < 0.001f);
         assert(std::abs(west.z - east.z) < 0.001f);
     }
