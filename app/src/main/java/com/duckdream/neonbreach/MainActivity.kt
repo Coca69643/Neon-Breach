@@ -896,14 +896,8 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         invalidate()
     }
 
-    private fun laneX(lane: Int, z: Float): Float {
-        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
-        return when (lane) {
-            0 -> -14.2f + bend
-            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
-            else -> 14.2f - bend * 0.82f
-        }
-    }
+    private fun laneX(lane: Int, z: Float): Float =
+        ArenaWorldDefinition.laneCenterX(lane, z)
 
     override fun onDraw(canvas: Canvas) {
         super.onDraw(canvas)

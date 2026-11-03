@@ -23,6 +23,8 @@ renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer
 presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
 presentation_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroPresentationTest.kt")
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
+world_definition = read("app/src/main/cpp/ArenaWorldDefinition.h")
+world_bridge = read("app/src/main/java/com/duckdream/neonbreach/ArenaWorldDefinition.kt")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
 physics_h = read("app/src/main/cpp/ArenaPhysics.h")
@@ -31,10 +33,12 @@ physics_tests = read("tests/arena_physics_tests.cpp")
 gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
+world_definition_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaWorldDefinitionTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
 life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
 life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
 life_fetch = read("tools/fetch_cc0_life_assets.py")
+vale_fetch = read("tools/fetch_cc0_vale_assets.py")
 hero_catalog = read("app/src/main/java/com/duckdream/neonbreach/HeroModelCatalog.kt")
 hero_catalog_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroModelCatalogTest.kt")
 showcase = read("app/src/main/java/com/duckdream/neonbreach/ArenaShowcaseLayout.kt")
@@ -47,6 +51,7 @@ kaykit_license = read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
 quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
+vale_assets = ROOT / "app/src/main/assets/world/vale"
 
 checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
@@ -101,8 +106,17 @@ checks = [
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
-    ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
-    ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
+    ("ArenaWorldDefinition.GRID_STEPS" in world and "ArenaWorldDefinition.heightAt" in world and
+     "namespace arena_world" in world_definition and "inline float terrainHeight" in world_definition and
+     "nativeTerrainGrid" in world_bridge and "kWorldMeshSize" in world_definition,
+     "terrain mesh must consume canonical native height samples"),
+    ("nativeLaneCenterGrid" in world_bridge and "laneCenterGrid" in world_bridge and
+     "val laneCenters" in world_bridge and
+     "laneCenterCacheMatchesCanonicalSamplesAtEveryGridRow" in world_definition_tests,
+     "lane centerlines must be sampled once and interpolated without per-frame JNI calls"),
+    ("arena_world::terrainHeight(x,z)" in physics and "arena_world::terrainHeight(x, z)" in native and
+     "high-low>3.2f" in physics_tests and "testCanonicalWorldDefinition" in physics_tests,
+     "native terrain and canonical world-definition regression are not connected"),
     ("versionCode 58" in gradle and "versionName '0.15.12'" in gradle, "app version must be 0.15.12 / code 58"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
@@ -139,10 +153,15 @@ checks = [
     ("renderer.updatePlayerSignals(result)" in main and "fun updatePlayerSignals(snapshot: FloatArray)" in renderer, "animation state bridge missing"),
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
-    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "forestTrees" in renderer and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, forest and objective geometry missing"),
+    ("ArenaWorldDefinition.laneCenterX" in renderer and "ArenaWorldDefinition.forestTreePositions" in renderer and
+     "ArenaWorldDefinition.heightAt(x, z)" in renderer and "ArenaWorldDefinition.campPositions()" in life_catalog and
+     "private fun shrine(" in world and "surrounding_water" in world,
+     "renderer, living-world catalog and terrain geometry must consume canonical world coordinates"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
-    ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
+    ("private fun terrainHeight(x: Float, z: Float): Float =" in renderer and
+     "ArenaWorldDefinition.heightAt(x, z)" in renderer and "ArenaWorldDefinition.heightAt(x,z)" in world,
+     "terrain rendering and actor placement must use the canonical height grid"),
     ("WorldPlacement(\"flag_blue\"" not in renderer and "WorldPlacement(\"flag_red\"" not in renderer, "objective/camp flags still used as map geometry"),
     ("result[116 + it]" in main and "result[104]" in main and "result[106]" in main, "HUD objective and three-tier tower fields missing"),
     ("snapshot[270 + index]" in main and "snapshot[222 + index]" in main, "minimap camps and minion snapshot fields missing"),
@@ -152,6 +171,17 @@ checks = [
     ("arena_physics::move(body" in native and "arena_physics::separate(" in native and "resolveActorContacts()" in native, "player/NPC collision and movement must share physics"),
     ("arena_physics::avoidObstacles(body" in native and "void avoidObstacles(" in physics_h and "bestProjection" in physics, "AI steering must avoid static map colliders"),
     ("kFixedStep = 1.0f / 60.0f" in native and "gSimulationAccumulator" in native, "fixed 60 Hz simulation step missing"),
+    ("inline bool insideIsland(float x, float z)" in world_definition and
+     "nativeIslandMask" in world_bridge and "islandMask" in world_bridge and
+     "ArenaWorldDefinition.insideIsland" in world and
+     "nativeUndergrowthPositions" in world_bridge and
+     "arena_world::undergrowthPosition" in physics and
+     "nativeBaseLandmarkPositions" in world_bridge and
+     "kBaseLandmarkPositions" in world_definition and
+     "arena_world::castlePosition" in physics and
+     "ArenaWorldDefinition.castlePosition" in renderer and
+     "ArenaWorldDefinition.baseWallPosition" in world,
+     "shared island boundary, undergrowth and fortress landmarks are not wired across native and renderer"),
     ("terrainHeight(float x,float z)" in physics and "slideUphill" in physics and "hitCircle" in physics and "hitBox" in physics and "confine" in physics, "terrain, slope, obstacle or world-boundary physics missing"),
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
@@ -191,6 +221,17 @@ checks = [
     ("Fetch and verify pinned CC0 life assets" in workflow and
      "tools/fetch_cc0_life_assets.py" in workflow,
      "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
+    ("J-Ponzo/gltf-medieval-village-megakit" in vale_fetch and
+     "21104b4045261c28fc312360841ed1a7b0ac8782" in vale_fetch and
+     "CC0-1.0" in vale_fetch and
+     "eeb87453aa572b543388f8bd8ff7e993c13f9181" in vale_fetch and
+     "Image.Resampling.LANCZOS" in vale_fetch and "512, 512" in vale_fetch and
+     'material.pop("normalTexture", None)' in vale_fetch,
+     "pinned CC0 environment importer or mobile texture optimization is incomplete"),
+    ("Fetch and optimize pinned CC0 medieval environment assets" in workflow and
+     "tools/fetch_cc0_vale_assets.py" in workflow and "Pillow==11.3.0" in workflow,
+     "CI must fetch and optimize the pinned medieval environment subset before validation"),
+
     ("fern_leaves" in world and "meadow_flower_petals" in world and
      "camp_mushroom_caps" in world and "fallen_timber" in world and
      "River reeds" not in world and "riverCenterZ(x)" in world,
@@ -228,6 +269,38 @@ for name in model_names:
 atlas = world_assets / "hexagons_medieval.png"
 if not atlas.is_file() or atlas.stat().st_size < 1000:
     raise SystemExit("Shared KayKit texture atlas missing")
+
+vale_manifest_path = vale_assets / "cc0-manifest.json"
+vale_license_path = vale_assets / "CC0-1.0.txt"
+if not vale_manifest_path.is_file() or not vale_license_path.is_file():
+    raise SystemExit("Pinned CC0 Vale environment manifest/license missing")
+vale_manifest = json.loads(vale_manifest_path.read_text(encoding="utf-8"))
+if (vale_manifest.get("license") != "CC0-1.0" or
+        vale_manifest.get("source_commit") != "21104b4045261c28fc312360841ed1a7b0ac8782"):
+    raise SystemExit("Vale environment provenance does not match the pinned CC0 source")
+vale_models = ["Wall_Arch", "Wall_Plaster_Straight", "Wall_UnevenBrick_Straight",
+               "Stairs_Exterior_Straight", "Prop_Vine1", "Roof_RoundTiles_4x4"]
+for model_name in vale_models:
+    model_path = vale_assets / "models" / (model_name + ".gltf")
+    if not model_path.is_file():
+        raise SystemExit("Missing pinned Vale glTF model: " + model_name)
+    model_data = json.loads(model_path.read_text(encoding="utf-8"))
+    if model_data.get("asset", {}).get("version") != "2.0" or not model_data.get("meshes"):
+        raise SystemExit("Invalid or empty Vale glTF model: " + model_name)
+    for material in model_data.get("materials", []):
+        if material.get("normalTexture") or material.get("pbrMetallicRoughness", {}).get("metallicRoughnessTexture"):
+            raise SystemExit("Unbudgeted PBR maps remain in Vale model: " + model_name)
+    for resource in model_data.get("buffers", []) + model_data.get("images", []):
+        uri = resource.get("uri")
+        if uri and ("/" in uri or "\\" in uri or not (vale_assets / "models" / uri).is_file()):
+            raise SystemExit("Missing/unsafe Vale resource URI " + str(uri) + " in " + model_name)
+for texture_name, info in vale_manifest.get("runtime_textures", {}).items():
+    dimensions = info.get("runtime_dimensions", [])
+    texture_path = vale_assets / "models" / texture_name
+    if (not texture_path.is_file() or len(dimensions) != 2 or
+            max(dimensions) > 512 or info.get("runtime_bytes", 0) != texture_path.stat().st_size):
+        raise SystemExit("Vale texture budget/provenance check failed: " + texture_name)
+print("Pinned CC0 Vale architecture, local GLTF resources, base-color-only materials and 512px texture budget verified.")
 if "private fun sphere(" in world or "private fun cylinder(" in world:
     raise SystemExit("Legacy procedural sphere/cylinder geometry remains")
 if "applyRestPose" not in renderer or "runtime.animator.updateBoneMatrices()" not in renderer:

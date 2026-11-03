@@ -3,12 +3,26 @@ package com.duckdream.neonbreach
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import org.junit.Before
+import org.junit.After
 import kotlin.math.sqrt
 import kotlin.math.tan
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
 class WorldGlbBuilderTest {
+
+    @Before
+    fun installCanonicalWorldFixture() {
+        ArenaWorldDefinition.installSourceForTests(ArenaWorldTestFixture)
+    }
+
+    @After
+    fun restoreCanonicalWorldSource() {
+        ArenaWorldDefinition.restoreNativeSource()
+    }
+
+
     @Test
     fun remasteredTerrainHasReadableReliefAndWalkableGradients() {
         var low = Float.POSITIVE_INFINITY

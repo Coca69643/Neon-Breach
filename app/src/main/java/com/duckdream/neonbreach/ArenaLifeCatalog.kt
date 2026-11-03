@@ -70,12 +70,7 @@ internal object ArenaLifeCatalog {
         LifeActorSpawn("bird_east", "bird", LifeActorKind.WILDLIFE, 8.5f, 16.5f, 2.8f, 2.5f, 0.62f)
     )
 
-    private val campPoints = listOf(
-        -8.2f to -14.5f, 8.2f to -14.5f,
-        -20.2f to -10f, 20.2f to -10f,
-        -8.2f to 14.5f, 8.2f to 14.5f,
-        -20.2f to 10f, 20.2f to 10f
-    )
+    private val campPoints = ArenaWorldDefinition.campPositions().map { it.x to it.z }
 
     fun campGuardians(): List<LifeActorSpawn> = campPoints.mapIndexed { index, point ->
         val species = when (index % 3) {

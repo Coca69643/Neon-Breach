@@ -78,6 +78,12 @@ jobs:
           test -d "$SDK_ROOT/platforms/android-37"
       - name: Fetch and verify pinned CC0 life assets
         run: python3 tools/fetch_cc0_life_assets.py
+      - name: Prepare CC0 environment texture optimizer
+        run: |
+          python3 -m venv "$RUNNER_TEMP/vale-assets-venv"
+          "$RUNNER_TEMP/vale-assets-venv/bin/python" -m pip install --disable-pip-version-check --no-cache-dir Pillow==11.3.0
+      - name: Fetch and optimize pinned CC0 medieval environment assets
+        run: "$RUNNER_TEMP/vale-assets-venv/bin/python" tools/fetch_cc0_vale_assets.py
       - name: Compile and run native physics tests
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
