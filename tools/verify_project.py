@@ -33,6 +33,7 @@ physics_tests = read("tests/arena_physics_tests.cpp")
 gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
+world_definition_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaWorldDefinitionTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
 life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
 life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
@@ -107,6 +108,10 @@ checks = [
      "namespace arena_world" in world_definition and "inline float terrainHeight" in world_definition and
      "nativeTerrainGrid" in world_bridge and "kWorldMeshSize" in world_definition,
      "terrain mesh must consume canonical native height samples"),
+    ("nativeLaneCenterGrid" in world_bridge and "laneCenterGrid" in world_bridge and
+     "val laneCenters" in world_bridge and
+     "laneCenterCacheMatchesCanonicalSamplesAtEveryGridRow" in world_definition_tests,
+     "lane centerlines must be sampled once and interpolated without per-frame JNI calls"),
     ("arena_world::terrainHeight(x,z)" in physics and "arena_world::terrainHeight(x, z)" in native and
      "high-low>3.2f" in physics_tests and "testCanonicalWorldDefinition" in physics_tests,
      "native terrain and canonical world-definition regression are not connected"),
