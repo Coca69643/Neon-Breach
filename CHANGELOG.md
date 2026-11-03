@@ -1,5 +1,13 @@
 # Changelog — Projeto Arena
 
+## [0.15.6] — 2026-11-03
+
+### Recuperação de inicialização 3D
+- Binding das 18 juntas animadas de Lyra passou a usar os índices exatos da lista `skins[0].joints` do GLB, eliminando dependência de lookup de nomes do Filament.
+- A falha no GLB autoral passa a ser isolada: o renderer registra o erro e seleciona o corpo Quaternius de compatibilidade para manter a aplicação jogável.
+- Hub e seleção indicam quando a sessão está usando o corpo de compatibilidade.
+- A tela de recuperação mostra também a causa raiz de uma eventual falha do renderer, em vez de apenas uma mensagem genérica.
+
 ## [0.15.5] — 2026-11-03
 
 ### Primeira personagem autoral — Lyra
