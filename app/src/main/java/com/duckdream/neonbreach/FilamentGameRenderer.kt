@@ -57,6 +57,11 @@ internal class FilamentGameRenderer(
     private var characterResources: ResourceLoader? = null
     private var characterProvider: UbershaderProvider? = null
     private var character: FilamentAsset? = null
+    private var lyraCharacterAsset: FilamentAsset? = null
+    private var genericPlayerInstance: FilamentInstance? = null
+    private var lyraPlayerInstance: FilamentInstance? = null
+    private val genericPlayerBones = LinkedHashMap<String, BonePose>()
+    private val lyraPlayerBones = LinkedHashMap<String, BonePose>()
     private val heroGearAssets = ArrayList<FilamentAsset>(10)
     private val heroGearInstances = ArrayList<FilamentInstance>(20)
     private val botGearInstances = arrayOfNulls<FilamentInstance>(9)
@@ -102,21 +107,22 @@ internal class FilamentGameRenderer(
 
     private fun captureHumanoidRig(
         instance: FilamentInstance,
-        owner: String
+        owner: String,
+        sourceAsset: FilamentAsset = character ?: error("Humanoid source asset is unavailable for $owner"),
+        flexionSignMultiplier: Float = 1f
     ): LinkedHashMap<String, BonePose> {
-        val source = character ?: error("Humanoid source asset is unavailable for $owner")
         val joints = if (instance.skinCount > 0) instance.getJointsAt(0) else intArrayOf()
-        check(joints.size >= 63) {
-            "$owner GLB skin is incomplete: expected at least 63 joints, found ${joints.size}"
+        check(joints.size >= boneNames.size) {
+            "$owner GLB skin is incomplete: expected at least ${boneNames.size} named joints, found ${joints.size}"
         }
 
         val entityByName = LinkedHashMap<String, Int>()
         for (entity in joints) {
-            val name = source.getName(entity)?.trim().orEmpty()
+            val name = sourceAsset.getName(entity)?.trim().orEmpty()
             if (name.isNotEmpty()) entityByName.putIfAbsent(name, entity)
         }
         for (entity in instance.entities) {
-            val name = source.getName(entity)?.trim().orEmpty()
+            val name = sourceAsset.getName(entity)?.trim().orEmpty()
             if (name.isNotEmpty()) entityByName.putIfAbsent(name, entity)
         }
 
@@ -129,7 +135,7 @@ internal class FilamentGameRenderer(
             if (entity == 0) continue
             val boneInstance = transforms.getInstance(entity)
             if (boneInstance != 0) {
-                val lateralSign = HumanoidRigPose.lateralSign(name)
+                val lateralSign = HumanoidRigPose.lateralSign(name) * flexionSignMultiplier
                 rig[name] = BonePose(boneInstance, transforms.getTransform(boneInstance, null), lateralSign)
             }
         }
