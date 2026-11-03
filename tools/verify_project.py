@@ -192,17 +192,20 @@ checks = [
      "ambient and neutral life roster is incomplete"),
     ("wildlifeMovesAndRetreatsFromNearbyPlayer" in life_tests and
      "campGuardiansStayAnchoredButHaveIdleMotion" in life_tests and
-     "lifeCatalogContainsDistinctAmbientAndCampSpecies" in life_tests,
-     "life roster and movement regression tests are missing"),
+     "lifeCatalogContainsDistinctAmbientAndCampSpecies" in life_tests and
+     "worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover" in world_tests,
+     "life roster, movement and scenery regression tests are missing"),
     ("source_commit" in life_fetch and "git_blob_sha" in life_fetch and
-     "ASSETS" not in life_fetch and "external buffer URI would break offline packaging" in life_fetch,
+     "af7c09239feb1b675ae3ad469bbcacd7b56975f2" in life_fetch and
+     "ff80d2ea1eaeb3eedbcd6ce43eda1957a8e6b9b4" in life_fetch and
+     "external buffer URI would break offline packaging" in life_fetch,
      "pinned CC0 asset fetcher must verify binary assets and offline self-containment"),
     ("Fetch and verify pinned CC0 life assets" in workflow and
      "tools/fetch_cc0_life_assets.py" in workflow,
      "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
     ("fern_leaves" in world and "meadow_flower_petals" in world and
      "camp_mushroom_caps" in world and "fallen_timber" in world and
-     "River reeds" in world if "River reeds" in world else "riverCenterZ(x)" in world,
+     "River reeds" not in world and "riverCenterZ(x)" in world,
      "batched flora, camp groundcover and river vegetation are missing"),
     ("Four readable lane-unit silhouettes" in renderer and
      "val width = when (slot) { 0 -> 1.16f" in renderer and
