@@ -385,14 +385,6 @@ class MainActivity : Activity() {
         content.addView(label(activeAbilityHint(), 10f, Color.rgb(221, 229, 216)).apply {
             setPadding(0, dp(3), 0, dp(12))
         })
-        renderer.lyraModelWarning?.let { diagnostic ->
-            val status = if (renderer.isLyraModelReady) {
-                "O corpo original da Lyra foi carregado; falha no rig: $diagnostic"
-            } else {
-                "O GLB da Lyra não foi carregado: $diagnostic"
-            }
-            content.addView(label(status.take(140), 9f, Color.rgb(242, 197, 118), true))
-        }
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         controls.addView(actionButton("‹") {
             selectedHero = (selectedHero + HERO_NAMES.size - 1) % HERO_NAMES.size

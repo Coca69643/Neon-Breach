@@ -225,7 +225,7 @@ hero_assets = ROOT / "app/src/main/assets/heroes"
 hero_expected = {
     "lyra.glb": ("99c4df0aaabd19022809facc68f5fb5f564d35df3a9893c273a31fdaacf68e96", ["Female_Idle", "Female_Walk", "Female_Run"]),
     "bastion.glb": ("48536b0e0ea375f0831dbf5154b4c2eafda8b6c9c19ba0996dd298f2fcc9164c", ["Man_Idle", "Man_Walk", "Man_Run"]),
-    "kairo.glb": ("9809532f4562ebfd3976bd96eeebd1efc1008d781aa71a15048db5bf5ae7344", ["Female_Idle", "Female_Walk", "Female_Run"]),
+    "kairo.glb": ("9809532f4562ebfd3976bd96eeebd1efc1008d781aa71a15048db5bf5ae7344c", ["Female_Idle", "Female_Walk", "Female_Run"]),
 }
 for filename, (expected_hash, clips) in hero_expected.items():
     model_path = hero_assets / filename

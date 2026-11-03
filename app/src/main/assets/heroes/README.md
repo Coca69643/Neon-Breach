@@ -6,7 +6,7 @@ Three independent, self-contained GLB 2.0 character models are bundled offline.
 | --- | --- | --- | --- |
 | Lyra | `lyra.glb` | Woman Casual — Animated Women Pack | `99c4df0aaabd19022809facc68f5fb5f564d35df3a9893c273a31fdaacf68e96` |
 | Bastion | `bastion.glb` | Man in Long Sleeves — Animated Men Pack | `48536b0e0ea375f0831dbf5154b4c2eafda8b6c9c19ba0996dd298f2fcc9164c` |
-| Kairo | `kairo.glb` | Woman in Tank Top — Animated Women Pack | `9809532f4562ebfd3976bd96eeebd1efc1008d781aa71a15048db5bf5ae7344` |
+| Kairo | `kairo.glb` | Woman in Tank Top — Animated Women Pack | `9809532f4562ebfd3976bd96eeebd1efc1008d781aa71a15048db5bf5ae7344c` |
 
 Creator: Quaternius. License: CC0 1.0 Universal / Public Domain. CC0 permits
 commercial use, modification and redistribution. Sources:
