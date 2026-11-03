@@ -365,14 +365,22 @@ internal class FilamentGameRenderer(
         }
 
         val placements = buildList {
-            add(WorldPlacement("castle_blue", 0f, -27.3f, 1.0f))
-            add(WorldPlacement("castle_red", 0f, 27.3f, 1.0f, Math.PI.toFloat()))
-            add(WorldPlacement("home_blue", -4.5f, -24.0f, 2.05f))
-            add(WorldPlacement("home_blue", 4.5f, -24.0f, 2.05f))
-            add(WorldPlacement("home_red", -4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("home_red", 4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("church_blue", -8.0f, -25.3f, 1.55f))
-            add(WorldPlacement("church_red", 8.0f, 25.3f, 1.55f, Math.PI.toFloat()))
+            val blueCastle = ArenaWorldDefinition.castlePosition(0)
+            val redCastle = ArenaWorldDefinition.castlePosition(1)
+            val blueHomeLeft = ArenaWorldDefinition.homePosition(0, 0)
+            val blueHomeRight = ArenaWorldDefinition.homePosition(0, 1)
+            val redHomeLeft = ArenaWorldDefinition.homePosition(1, 0)
+            val redHomeRight = ArenaWorldDefinition.homePosition(1, 1)
+            val blueChurch = ArenaWorldDefinition.churchPosition(0)
+            val redChurch = ArenaWorldDefinition.churchPosition(1)
+            add(WorldPlacement("castle_blue", blueCastle.x, blueCastle.z, 1.0f))
+            add(WorldPlacement("castle_red", redCastle.x, redCastle.z, 1.0f, Math.PI.toFloat()))
+            add(WorldPlacement("home_blue", blueHomeLeft.x, blueHomeLeft.z, 2.05f))
+            add(WorldPlacement("home_blue", blueHomeRight.x, blueHomeRight.z, 2.05f))
+            add(WorldPlacement("home_red", redHomeLeft.x, redHomeLeft.z, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("home_red", redHomeRight.x, redHomeRight.z, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("church_blue", blueChurch.x, blueChurch.z, 1.55f))
+            add(WorldPlacement("church_red", redChurch.x, redChurch.z, 1.55f, Math.PI.toFloat()))
 
             // Three defensive structures per lane; the renderer maps each to its native health slot.
             for (lane in 0..2) {
