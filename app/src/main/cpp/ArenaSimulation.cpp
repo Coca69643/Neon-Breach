@@ -896,6 +896,13 @@ Java_com_duckdream_neonbreach_ArenaWorldNative_nativeLaneCenterX(
 }
 
 extern "C" JNIEXPORT jfloat JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeTowerZ(
+    JNIEnv *, jobject, jint team, jint tier) {
+    return arena_world::towerZ(std::clamp(static_cast<int>(team), 0, 1),
+                               std::clamp(static_cast<int>(tier), 0, 2));
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
 Java_com_duckdream_neonbreach_ArenaWorldNative_nativeRiverCenterZ(
     JNIEnv *, jobject, jfloat x) {
     return arena_world::riverCenterZ(x);
