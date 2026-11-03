@@ -32,6 +32,28 @@ void testCanonicalWorldDefinition() {
     assert(arena_world::kJungleGrovePositions.size() == 12);
     assert(arena_world::insideIsland(0.0f, 0.0f));
     assert(!arena_world::insideIsland(60.0f, 0.0f));
+
+    for (int team = 0; team < 2; ++team) {
+        const auto castle = arena_world::castlePosition(team);
+        const auto church = arena_world::churchPosition(team);
+        const auto gate = arena_world::baseGatePavingPosition(team);
+        assert(std::abs(castle.x) < 0.001f);
+        assert(std::abs(castle.z + arena_world::castlePosition(1 - team).z) < 0.001f);
+        assert(std::abs(church.x + arena_world::churchPosition(1 - team).x) < 0.001f);
+        assert(std::abs(church.z + arena_world::churchPosition(1 - team).z) < 0.001f);
+        assert(std::abs(gate.x) < 0.001f);
+        assert(std::abs(gate.z + arena_world::baseGatePavingPosition(1 - team).z) < 0.001f);
+        for (int side = 0; side < 2; ++side) {
+            const auto home = arena_world::homePosition(team, side);
+            const auto wall = arena_world::baseWallPosition(team, side);
+            assert(std::abs(home.x + arena_world::homePosition(1 - team, side).x) < 0.001f);
+            assert(std::abs(home.z + arena_world::homePosition(1 - team, side).z) < 0.001f);
+            assert(std::abs(wall.x + arena_world::baseWallPosition(1 - team, side).x) < 0.001f);
+            assert(std::abs(wall.z + arena_world::baseWallPosition(1 - team, side).z) < 0.001f);
+        }
+    }
+    assert(arena_world::kBaseLandmarkPositions.size() == 14);
+
     for (int i = 0; i < 56; ++i) {
         const auto point = arena_world::undergrowthPosition(i);
         assert(std::isfinite(point.x) && std::isfinite(point.z));
