@@ -212,12 +212,12 @@ internal class FilamentGameRenderer(
         backendName = created.third
 
         skybox = Skybox.Builder()
-            .color(floatArrayOf(0.24f, 0.33f, 0.37f, 1f))
+            .color(floatArrayOf(0.27f, 0.29f, 0.25f, 1f))
             .build(engine)
         viewer.scene.skybox = skybox
         indirectLight = IndirectLight.Builder()
-            .irradiance(1, floatArrayOf(0.23f, 0.25f, 0.22f))
-            .intensity(15_500.0f)
+            .irradiance(1, floatArrayOf(0.20f, 0.21f, 0.18f))
+            .intensity(9_500.0f)
             .build(engine)
         viewer.scene.indirectLight = indirectLight
 
@@ -225,7 +225,7 @@ internal class FilamentGameRenderer(
         // Angle it across the map so foliage, towers and lane walls gain readable form.
         engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
         engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
-        engine.lightManager.setIntensity(viewer.light, 62_000.0f)
+        engine.lightManager.setIntensity(viewer.light, 46_000.0f)
         viewer.camera.setExposure(15.5f, 1.0f / 100.0f, 80.0f)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
@@ -970,11 +970,11 @@ internal class FilamentGameRenderer(
     }
 
     fun setMenuPresentation(hero: Int, alternateSkin: Boolean = false) {
-        configureShowcase(hero, alternateSkin, heroX = 0.0f, targetX = 0.0f, scale = 1.02f)
+        configureShowcase(hero, alternateSkin, heroX = ArenaShowcaseLayout.HERO_X, targetX = ArenaShowcaseLayout.TARGET_X, scale = ArenaShowcaseLayout.MENU_SCALE)
     }
 
     fun setHeroSelectionPresentation(hero: Int) {
-        configureShowcase(hero, false, heroX = 0.0f, targetX = 0.0f, scale = 1.16f)
+        configureShowcase(hero, false, heroX = ArenaShowcaseLayout.HERO_X, targetX = ArenaShowcaseLayout.TARGET_X, scale = ArenaShowcaseLayout.SELECT_SCALE)
     }
 
     private fun configureShowcase(
@@ -992,11 +992,11 @@ internal class FilamentGameRenderer(
         showcaseMode = true
         overviewCamera = true
         showcaseHeroX = heroX
-        showcaseHeroZ = -7.0f
+        showcaseHeroZ = ArenaShowcaseLayout.HERO_Z
         showcaseTargetX = targetX
         showcaseScale = scale
-        showcaseHeight = if (scale > 1.05f) 2.7f else 2.45f
-        showcaseDistance = if (scale > 1.05f) 6.2f else 6.8f
+        showcaseHeight = if (scale > 1.17f) ArenaShowcaseLayout.SELECT_CAMERA_HEIGHT else ArenaShowcaseLayout.MENU_CAMERA_HEIGHT
+        showcaseDistance = if (scale > 1.17f) ArenaShowcaseLayout.SELECT_CAMERA_DISTANCE else ArenaShowcaseLayout.MENU_CAMERA_DISTANCE
         showcaseYaw = Math.PI.toFloat()
         playerYaw = showcaseYaw
         val scaled = characterScale * showcaseScale
@@ -1305,7 +1305,7 @@ internal class FilamentGameRenderer(
         if (showcaseMode) {
             val targetY = terrainHeight(showcaseTargetX, showcaseHeroZ) + 1.0f
             viewer.camera.setProjection(
-                32.0, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
+                ArenaShowcaseLayout.CAMERA_FOV, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
                 Camera.Fov.VERTICAL
             )
             viewer.camera.lookAt(
@@ -1318,9 +1318,9 @@ internal class FilamentGameRenderer(
             return
         }
         // Fixed north-facing isometric framing: hero yaw never rotates the camera.
-        val distance = if (overviewCamera) 9.4f else 9.8f
-        val height = if (overviewCamera) 9.6f else 11.2f
-        val fov = if (overviewCamera) 48.0 else 48.0
+        val distance = if (overviewCamera) 9.4f else 8.3f
+        val height = if (overviewCamera) 9.6f else 9.2f
+        val fov = if (overviewCamera) 48.0 else 44.0
         viewer.camera.setProjection(
             fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
             Camera.Fov.VERTICAL
