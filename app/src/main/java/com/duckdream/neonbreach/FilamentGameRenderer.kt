@@ -486,9 +486,9 @@ internal class FilamentGameRenderer(
                 val clipNames = (0 until animationCount).map { animator.getAnimationName(it).lowercase() }
                 fun findClip(tokens: List<String>): Int =
                     clipNames.indexOfFirst { name -> tokens.any { token -> name.contains(token) } }
-                val idleClip = findClip(profile.idleTokens).let {
-                    if (it >= 0) it else if (clipNames.isNotEmpty()) 0 else -1
-                }
+                // Only use harmless idle/locomotion clips. If a source model has
+                // no matching clip, the deterministic root motion remains active.
+                val idleClip = findClip(profile.idleTokens)
                 val moveClip = findClip(profile.moveTokens).let { if (it >= 0) it else idleClip }
                 val idleDuration = if (idleClip >= 0) animator.getAnimationDuration(idleClip).coerceAtLeast(0.1f) else 1f
                 val moveDuration = if (moveClip >= 0) animator.getAnimationDuration(moveClip).coerceAtLeast(0.1f) else 1f
@@ -527,8 +527,8 @@ internal class FilamentGameRenderer(
             } else true
             val dx = spawn.x - playerX
             val dz = spawn.z - playerZ
-            val inRange = spawn.kind == LifeActorKind.CAMP_GUARDIAN ||
-                dx * dx + dz * dz <= 38f * 38f
+            val maxDistance = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f
+            val inRange = dx * dx + dz * dz <= maxDistance * maxDistance
             val shouldShow = campAlive && inRange
             if (actor.visible != shouldShow) {
                 if (shouldShow) viewer.scene.addEntities(actor.instance.entities)
