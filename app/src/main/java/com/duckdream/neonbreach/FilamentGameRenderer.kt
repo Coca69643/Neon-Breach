@@ -60,6 +60,9 @@ internal class FilamentGameRenderer(
     private var lyraCharacterAsset: FilamentAsset? = null
     private var genericPlayerInstance: FilamentInstance? = null
     private var lyraPlayerInstance: FilamentInstance? = null
+    private var lyraModelReady = false
+    var lyraModelWarning: String? = null
+        private set
     private val genericPlayerBones = LinkedHashMap<String, BonePose>()
     private val lyraPlayerBones = LinkedHashMap<String, BonePose>()
     private val heroGearAssets = ArrayList<FilamentAsset>(10)
@@ -104,6 +107,32 @@ internal class FilamentGameRenderer(
         "thigh_r" to 60, "calf_r" to 61, "foot_r" to 62
     )
     private val bones = LinkedHashMap<String, BonePose>()
+    private val lyraJointIndex = mapOf(
+        "pelvis" to 1, "spine_01" to 2, "spine_02" to 3, "spine_03" to 4,
+        "neck_01" to 5, "Head" to 6,
+        "upperarm_l" to 7, "upperarm_r" to 8, "lowerarm_l" to 9, "lowerarm_r" to 10,
+        "hand_l" to 11, "hand_r" to 12, "thigh_l" to 13, "thigh_r" to 14,
+        "calf_l" to 15, "calf_r" to 16, "foot_l" to 17, "foot_r" to 18
+    )
+
+    private fun captureLyraRig(instance: FilamentInstance): LinkedHashMap<String, BonePose> {
+        val joints = if (instance.skinCount > 0) instance.getJointsAt(0) else intArrayOf()
+        check(joints.size == 19) { "Lyra GLB skin must expose 19 ordered joints; found ${joints.size}" }
+        val transforms = engine.transformManager
+        val result = LinkedHashMap<String, BonePose>()
+        for ((name, index) in lyraJointIndex) {
+            val boneInstance = transforms.getInstance(joints[index])
+            check(boneInstance != 0) { "Lyra joint has no transform: $name (index $index)" }
+            result[name] = BonePose(
+                boneInstance,
+                transforms.getTransform(boneInstance, null),
+                HumanoidRigPose.lateralSign(name) * -1f
+            )
+        }
+        check(result.size == boneNames.size) { "Lyra rig binding is incomplete: ${result.size}/${boneNames.size}" }
+        Log.i(TAG, "Lyra GLB rig bound by explicit skin order: ${result.size}/${boneNames.size} joints")
+        return result
+    }
 
     private fun captureHumanoidRig(
         instance: FilamentInstance,
@@ -243,8 +272,11 @@ internal class FilamentGameRenderer(
         }
         viewer.view.antiAliasing = View.AntiAliasing.FXAA
 
+        Log.i(TAG, "Startup stage: procedural MOBA world")
         loadWorld()
+        Log.i(TAG, "Startup stage: KayKit environment")
         loadKayKitEnvironment()
+        Log.i(TAG, "Startup stage: characters and rigs")
         loadCharacter()
         updateCamera(16f / 9f)
         sceneLoaded = true
@@ -466,16 +498,30 @@ internal class FilamentGameRenderer(
         applyRestPose(genericPlayerBones)
         genericPlayerInstance!!.animator.updateBoneMatrices()
 
-        lyraCharacterAsset = characterLoader!!.createAsset(ByteBuffer.wrap(LyraCharacterGlbBuilder.build()))
-            ?: throw IllegalStateException("Original Lyra GLB failed to load")
-        lyraPlayerInstance = characterLoader!!.createInstance(lyraCharacterAsset!!)
-            ?: throw IllegalStateException("Could not create the original Lyra instance")
-        lyraPlayerBones.putAll(captureHumanoidRig(
-            lyraPlayerInstance!!, "lyra-player",
-            sourceAsset = lyraCharacterAsset!!, flexionSignMultiplier = -1f
-        ))
-        applyRestPose(lyraPlayerBones)
-        lyraPlayerInstance!!.animator.updateBoneMatrices()
+        lyraModelReady = false
+        lyraModelWarning = null
+        try {
+            val lyraBytes = LyraCharacterGlbBuilder.build()
+            Log.i(TAG, "Lyra authored GLB generated: ${lyraBytes.size} bytes")
+            lyraCharacterAsset = characterLoader!!.createAsset(ByteBuffer.wrap(lyraBytes))
+                ?: throw IllegalStateException("Filament returned null while parsing the Lyra GLB")
+            lyraPlayerInstance = characterLoader!!.createInstance(lyraCharacterAsset!!)
+                ?: throw IllegalStateException("Filament returned null while creating the Lyra instance")
+            lyraPlayerBones.putAll(captureLyraRig(lyraPlayerInstance!!))
+            applyRestPose(lyraPlayerBones)
+            lyraPlayerInstance!!.animator.updateBoneMatrices()
+            lyraModelReady = true
+            Log.i(TAG, "Original Lyra character loaded successfully")
+        } catch (error: Throwable) {
+            lyraModelWarning = error.message ?: error.javaClass.simpleName
+            Log.e(TAG, "Original Lyra GLB failed; keeping the game bootable with the compatibility character", error)
+            lyraPlayerInstance = null
+            lyraPlayerBones.clear()
+            lyraCharacterAsset?.let { failedAsset ->
+                runCatching { characterLoader?.destroyAsset(failedAsset) }
+            }
+            lyraCharacterAsset = null
+        }
 
         for (index in minionRootInstances.indices) {
             val team = if (index < 24) 0 else 1
@@ -497,7 +543,7 @@ internal class FilamentGameRenderer(
     }
 
     private fun activatePlayerModel(hero: Int) {
-        val useLyra = hero == 0
+        val useLyra = hero == 0 && lyraModelReady && lyraPlayerInstance != null
         val target = if (useLyra) {
             lyraPlayerInstance ?: error("Original Lyra instance is unavailable")
         } else {
@@ -514,6 +560,9 @@ internal class FilamentGameRenderer(
         target.materialInstances.forEach { playerMaterials.add(it) }
         bones.clear()
         bones.putAll(if (useLyra) lyraPlayerBones else genericPlayerBones)
+        if (hero == 0 && !useLyra) {
+            Log.w(TAG, "Lyra compatibility body selected for this session; warning=${lyraModelWarning ?: "unknown"}")
+        }
 
         val sourceAsset = if (useLyra) {
             lyraCharacterAsset ?: error("Original Lyra asset is unavailable")
@@ -1303,7 +1352,7 @@ internal class FilamentGameRenderer(
         activatePlayerModel(activeHero)
         rebuildBotGearForHero()
         // Lyra's authored material palette is part of her identity, not a global tint.
-        if (activeHero == 0) return
+        if (activeHero == 0 && lyraModelReady) return
         val tint = if (alternateSkin) {
             when (activeHero) {
                 1 -> floatArrayOf(0.22f, 0.72f, 0.76f, 1.0f)
