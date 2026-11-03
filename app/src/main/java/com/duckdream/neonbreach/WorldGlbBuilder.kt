@@ -25,22 +25,9 @@ internal object WorldGlbBuilder {
     private lateinit var trail:Part
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
-    private fun h(x:Float,z:Float):Float {
-        val westRidge = 2.35f * exp(-((x + 24f).pow(2)) / 44f) * (0.58f + 0.42f * cos(z * 0.075f))
-        val eastRidge = 2.18f * exp(-((x - 24f).pow(2)) / 48f) * (0.58f + 0.42f * cos(z * 0.07f))
-        val southHighland = 1.55f * exp(-((z + 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
-        val northHighland = 1.55f * exp(-((z - 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
-        val jungleKnolls = 0.78f * exp(-((abs(x) - 8.5f).pow(2)) / 8.5f) * exp(-((abs(z) - 14f).pow(2)) / 42f)
-        val riverDistance = abs(z - riverCenterZ(x))
-        val riverBed = -0.58f * exp(-(riverDistance * riverDistance) / 8.5f)
-        val riverBank = 0.72f * exp(-((riverDistance - 2.55f).pow(2)) / 1.9f)
-        val rolling = 0.26f*sin(x*0.18f)*cos(z*0.14f)+0.16f*sin((x+z)*0.29f)
-        val shelf = 0.52f * exp(-((abs(x) - 18.5f).pow(2)) / 5.5f) * exp(-((abs(z) - 13f).pow(2)) / 110f)
-        return rolling + westRidge + eastRidge + southHighland + northHighland +
-            jungleKnolls + riverBed + riverBank + shelf
-    }
+    private fun h(x:Float,z:Float):Float = ArenaWorldDefinition.heightAt(x,z)
 
-    internal fun heightAt(x: Float, z: Float): Float = h(x, z)
+    internal fun heightAt(x: Float, z: Float): Float = ArenaWorldDefinition.heightAt(x,z)
     internal fun normalAt(x: Float, z: Float): FloatArray {
         val e = 0.08f
         val dx = (h(x + e, z) - h(x - e, z)) / (2f * e)
@@ -165,28 +152,12 @@ internal object WorldGlbBuilder {
         return radius <= edge
     }
 
-    private val riverProfile = arrayOf(
-        floatArrayOf(-34f,1.1f), floatArrayOf(-28f,0.55f), floatArrayOf(-21f,0.05f),
-        floatArrayOf(-15f,-0.45f), floatArrayOf(-9f,-0.22f), floatArrayOf(-3f,0.25f),
-        floatArrayOf(4f,0.38f), floatArrayOf(10f,0.02f), floatArrayOf(16f,-0.38f),
-        floatArrayOf(23f,-0.18f), floatArrayOf(29f,0.22f), floatArrayOf(34f,0.8f)
-    )
-
-    private fun riverCenterZ(x: Float): Float {
-        val points = riverProfile
-        for (i in 0 until points.lastIndex) {
-            if (x <= points[i + 1][0]) {
-                val t = ((x - points[i][0]) / (points[i + 1][0] - points[i][0])).coerceIn(0f, 1f)
-                return points[i][1] + (points[i + 1][1] - points[i][1]) * t
-            }
-        }
-        return points.last()[1]
-    }
+    private fun riverCenterZ(x: Float): Float = ArenaWorldDefinition.riverCenterZ(x)
 
     private fun terrainMesh() {
-        val steps = 136
-        val size = 76f
-        val start = -38f
+        val steps = ArenaWorldDefinition.GRID_STEPS
+        val size = ArenaWorldDefinition.GRID_SIZE
+        val start = -size * 0.5f
         val cell = size / steps
         for (zi in 0 until steps) {
             val z0 = start + zi * cell
@@ -432,22 +403,14 @@ internal object WorldGlbBuilder {
         ringMesh(pulse,0.88f,1.08f)
         ringMesh(shield,0.98f,1.15f)
 
-        // Three asymmetric but readable lanes; each bends independently through the battlefield.
-        val west=listOf(
-            floatArrayOf(-14.2f,-31f),floatArrayOf(-15.2f,-23f),floatArrayOf(-14.6f,-15f),
-            floatArrayOf(-13.4f,-7f),floatArrayOf(-13.0f,0f),floatArrayOf(-13.7f,8f),
-            floatArrayOf(-14.8f,16f),floatArrayOf(-14.2f,24f),floatArrayOf(-14.2f,31f)
-        )
-        val center=listOf(
-            floatArrayOf(0.5f,-31f),floatArrayOf(0.1f,-23f),floatArrayOf(-0.1f,-15f),
-            floatArrayOf(-0.25f,-7f),floatArrayOf(0.5f,0f),floatArrayOf(0.3f,8f),
-            floatArrayOf(-0.2f,16f),floatArrayOf(0.4f,24f),floatArrayOf(0.5f,31f)
-        )
-        val east=listOf(
-            floatArrayOf(14.2f,-31f),floatArrayOf(15.2f,-23f),floatArrayOf(14.6f,-15f),
-            floatArrayOf(13.4f,-7f),floatArrayOf(13.0f,0f),floatArrayOf(13.7f,8f),
-            floatArrayOf(14.8f,16f),floatArrayOf(14.2f,24f),floatArrayOf(14.2f,31f)
-        )
+        // The lane centerlines are sampled from the exact function used by native simulation.
+        val routeZ = listOf(-31f, -23f, -15f, -7f, 0f, 8f, 16f, 24f, 31f)
+        fun lanePath(lane: Int) = routeZ.map { z ->
+            floatArrayOf(ArenaWorldDefinition.laneCenterX(lane, z), z)
+        }
+        val west = lanePath(0)
+        val center = lanePath(1)
+        val east = lanePath(2)
         ribbon(routeEdge,west,3.18f,0.025f);ribbon(trail,west,2.42f,0.075f)
         ribbon(routeEdge,center,3.12f,0.025f);ribbon(trail,center,2.36f,0.075f)
         ribbon(routeEdge,east,3.18f,0.025f);ribbon(trail,east,2.42f,0.075f)
@@ -458,22 +421,15 @@ internal object WorldGlbBuilder {
         ribbon(earth,listOf(floatArrayOf(-7f,2f),floatArrayOf(-9.1f,8f),floatArrayOf(-8.2f,14.5f),floatArrayOf(-8.8f,20f),floatArrayOf(-8.2f,27f)),0.62f,0.095f)
         ribbon(earth,listOf(floatArrayOf(7f,2f),floatArrayOf(9.1f,8f),floatArrayOf(8.2f,14.5f),floatArrayOf(8.8f,20f),floatArrayOf(8.2f,27f)),0.62f,0.095f)
 
-        val river=listOf(
-            floatArrayOf(-34f,1.1f),floatArrayOf(-28f,0.55f),floatArrayOf(-21f,0.05f),
-            floatArrayOf(-15f,-0.45f),floatArrayOf(-9f,-0.22f),floatArrayOf(-3f,0.25f),
-            floatArrayOf(4f,0.38f),floatArrayOf(10f,0.02f),floatArrayOf(16f,-0.38f),
-            floatArrayOf(23f,-0.18f),floatArrayOf(29f,0.22f),floatArrayOf(34f,0.8f)
-        )
+        val riverX = listOf(-34f, -28f, -21f, -15f, -9f, -3f, 4f, 10f, 16f, 23f, 29f, 34f)
+        val river = riverX.map { x ->
+            floatArrayOf(x, ArenaWorldDefinition.riverCenterZ(x))
+        }
         ribbon(water,river,1.72f,0.10f)
         ribbon(earth,river,2.18f,0.035f)
 
         // Forest clearings, camps and river sanctuaries are modeled as world geometry.
-        val camps = listOf(
-            -8.2f to -14.5f, 8.2f to -14.5f,
-            -20.2f to -10f, 20.2f to -10f,
-            -8.2f to 14.5f, 8.2f to 14.5f,
-            -20.2f to 10f, 20.2f to 10f
-        )
+        val camps = ArenaWorldDefinition.campPositions().map { it.x to it.z }
         camps.forEachIndexed { index, point ->
             val x=point.first; val z=point.second
             groundDisc(forestFloor,x,z,3.2f,2.65f,0.035f)
@@ -492,24 +448,19 @@ internal object WorldGlbBuilder {
         camps.forEach { point -> ringMeshAt(campMarks,point.first,point.second,2.05f,2.22f) }
 
         // Distinct objective arenas: raised stone dais, broken arches and exposed rock.
-        groundDisc(forestFloor,-7f,0.2f,5.15f,4.25f,0.045f)
-        groundDisc(forestFloor,7f,0.2f,5.15f,4.25f,0.045f)
-        ringMeshAt(objectiveMarks,-7f,0.2f,4.12f,4.32f)
-        ringMeshAt(objectiveMarks,7f,0.2f,4.12f,4.32f)
-        shrine(shrineStone,-7f,0.2f,0.92f,true)
-        shrine(shrineStone,7f,0.2f,0.92f,false)
-        for(i in 0 until 12) {
-            val a=2f*PI.toFloat()*i/12f
-            boulder(boulderField,-7f+cos(a)*4.55f,0.2f+sin(a)*3.75f,0.48f,0.5f,0.42f,a)
-            boulder(boulderField,7f+cos(a)*4.55f,0.2f+sin(a)*3.75f,0.48f,0.5f,0.42f,a+1f)
+        val objectives = ArenaWorldDefinition.objectivePositions()
+        objectives.forEachIndexed { index, point ->
+            groundDisc(forestFloor,point.x,point.z,5.15f,4.25f,0.045f)
+            ringMeshAt(objectiveMarks,point.x,point.z,4.12f,4.32f)
+            shrine(shrineStone,point.x,point.z,0.92f,index == 0)
+            for(i in 0 until 12) {
+                val a=2f*PI.toFloat()*i/12f
+                boulder(boulderField,point.x+cos(a)*4.55f,point.z+sin(a)*3.75f,0.48f,0.5f,0.42f,a+index)
+            }
         }
 
         // Additional elevation and rubble make the outer jungle and base approaches readable.
-        val groves=listOf(
-            -25f to -19f,-27f to -8f,-23f to 8f,-26f to 19f,
-            25f to -19f,27f to -8f,23f to 8f,26f to 19f,
-            -8.5f to -21f,8.5f to -21f,-8.5f to 21f,8.5f to 21f
-        )
+        val groves = ArenaWorldDefinition.jungleGrovePositions().map { it.x to it.z }
         groves.forEachIndexed { index, point ->
             groundDisc(forestFloor,point.first,point.second,2.8f,2.1f,0.02f)
             for(j in 0 until 4) {
