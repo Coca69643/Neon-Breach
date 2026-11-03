@@ -35,7 +35,8 @@ void testSharedArenaMapCatalog() {
     for(int lane=0;lane<3;++lane) for(int tier=0;tier<3;++tier) {
         const auto blue=arena_map::towerPosition(0,lane,tier);
         const auto red=arena_map::towerPosition(1,lane,tier);
-        assert(std::abs(blue.x-red.x)<0.0001f);
+        assert(std::abs(blue.x-arena_map::laneCenterX(lane,blue.z))<0.0001f);
+        assert(std::abs(red.x-arena_map::laneCenterX(lane,red.z))<0.0001f);
         assert(std::abs(blue.z+red.z)<0.0001f);
     }
 }
