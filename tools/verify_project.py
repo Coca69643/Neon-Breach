@@ -20,6 +20,8 @@ manifest = read("app/src/main/AndroidManifest.xml")
 main = read("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt")
 meta = read("app/src/main/java/com/duckdream/neonbreach/ArenaMetaStore.kt")
 renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer.kt")
+presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
+presentation_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroPresentationTest.kt")
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
@@ -66,8 +68,17 @@ checks = [
      "targetX = ArenaShowcaseLayout.TARGET_X" in renderer and
      "showcaseHeroZ = ArenaShowcaseLayout.HERO_Z" in renderer and
      "ArenaShowcaseLayout.SELECT_SCALE" in renderer and
-     "showcaseYaw = sin(animationClock * 0.42f) * 0.14f" in renderer,
+     "showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f" in renderer,
      "hero preview must retain its reserved area and source-facing axis"),
+    ("HeroFacing.yawFromVelocity(velocityX, velocityZ)" in renderer and
+     "terrainAlignedTransform(x, z, playerYaw, scaleX, scaleY, rootY)" in renderer and
+     "terrainAlignedTransform(x, z, playerYaw + Math.PI.toFloat()" not in renderer,
+     "playable heroes must face the actual movement vector without a second half-turn"),
+    ("applyHeroPalette(hero)" in renderer and "HeroMaterialPalette.forHero(hero)" in renderer and
+     "showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f" in renderer and
+     "gameplayYawMatchesAllFourWorldDirections" in presentation_tests and
+     "eachHeroHasDistinctMultiPartPaletteMatchingItsGlb" in presentation_tests,
+     "three playable heroes must keep individual readable palettes and verified facing"),
     ("loadPlayableHeroModels()" in renderer and "HeroModelCatalog.models" in renderer and
      "playableHeroes.all { it != null }" in renderer and "animatePlayableHero(speed)" in renderer and
      "runtime.animator.applyAnimation" in renderer,
