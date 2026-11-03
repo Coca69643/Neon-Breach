@@ -90,8 +90,9 @@ checks = [
      "Lyra activation failed; switching to the compatibility character" in renderer and
      "activatePlayerModel(0)" in renderer,
      "Lyra load failure must not abort all Filament startup"),
-    ("lyraModelWarning" in renderer and "MODELO LYRA EM COMPATIBILIDADE" in main,
-     "Lyra compatibility fallback must be visible and diagnosable"),
+    ("lyraModelWarning" in renderer and "LYRA ORIGINAL" in main and
+     "FALHA AO CARREGAR LYRA" in main,
+     "Lyra mesh/rig state must expose a specific diagnostic"),
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
     ("LyraCharacterGlbBuilder.build()" in renderer and
