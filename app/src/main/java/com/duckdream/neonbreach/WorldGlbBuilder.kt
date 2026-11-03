@@ -609,7 +609,11 @@ internal object WorldGlbBuilder {
             listOf(0.10f,0.19f,0.07f,1f),
             listOf(0.92f,0.62f,0.17f,1f),
             listOf(0.78f,0.68f,0.52f,1f),
-            listOf(0.68f,0.21f,0.15f,1f))
+            listOf(0.68f,0.21f,0.15f,1f),
+            listOf(0.30f,0.19f,0.10f,1f))
+        check(names.size == colors.size && parts.size == names.size) {
+            "World GLB palette mismatch: parts=${parts.size}, names=${names.size}, colors=${colors.size}"
+        }
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
