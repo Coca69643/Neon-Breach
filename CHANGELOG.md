@@ -1,5 +1,15 @@
 # Changelog — Projeto Arena
 
+## [0.15.9] — 2026-11-03
+
+### Três heróis com corpos CC0 independentes
+- Lyra passa a usar Woman Casual; Bastion, Man in Long Sleeves; Kairo, Woman in Tank Top. Os três GLBs de corpo completo são distintos e substituem as bases genéricas/procedurais do jogador.
+- Cada personagem carrega seu próprio FilamentAsset, instância, rig, roupas, cabelo, bounds e materiais originais.
+- O renderer escolhe Idle, Walk e Run do arquivo correspondente pelo nome; escala e orientação são ajustadas à apresentação existente.
+- Os três arquivos ficam dentro do APK, sem rede. O CI confere SHA-256, glTF 2.0, skin, recursos embutidos e clipes de locomoção.
+- Falha de um modelo obrigatório é explícita; não há retorno silencioso ao corpo genérico anterior.
+- A visibilidade real do mapa/fauna continua pendente de confirmação em aparelhos e não é declarada resolvida por esta versão.
+
 ## [0.15.8] — 2026-11-03
 
 ### Cenário e seres vivos

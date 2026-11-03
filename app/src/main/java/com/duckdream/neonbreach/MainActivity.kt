@@ -339,14 +339,6 @@ class MainActivity : Activity() {
             maxWidth = dp(238)
             setPadding(0, dp(5), 0, 0)
         })
-        renderer.lyraModelWarning?.let { diagnostic ->
-            val status = if (renderer.isLyraModelReady) {
-                "LYRA ORIGINAL • RIG PENDENTE: $diagnostic"
-            } else {
-                "FALHA AO CARREGAR LYRA: $diagnostic"
-            }
-            featured.addView(label(status.take(96), 8f, Color.rgb(242, 197, 118), true))
-        }
         layer.addView(featured, FrameLayout.LayoutParams(dp(258), -2, Gravity.BOTTOM or Gravity.START).apply {
             bottomMargin = dp(20)
         })

@@ -2,6 +2,7 @@
 """Structural verification for Project Arena 0.15.0."""
 from pathlib import Path
 import base64
+import hashlib
 import json
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -32,8 +33,8 @@ pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTes
 life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
 life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
 life_fetch = read("tools/fetch_cc0_life_assets.py")
-lyra_builder = read("app/src/main/java/com/duckdream/neonbreach/LyraCharacterGlbBuilder.kt")
-lyra_tests = read("app/src/test/java/com/duckdream/neonbreach/LyraCharacterGlbBuilderTest.kt")
+hero_catalog = read("app/src/main/java/com/duckdream/neonbreach/HeroModelCatalog.kt")
+hero_catalog_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroModelCatalogTest.kt")
 showcase = read("app/src/main/java/com/duckdream/neonbreach/ArenaShowcaseLayout.kt")
 showcase_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaShowcaseLayoutTest.kt")
 workflow = read(".github/workflows/android.yml")
@@ -65,8 +66,18 @@ checks = [
      "targetX = ArenaShowcaseLayout.TARGET_X" in renderer and
      "showcaseHeroZ = ArenaShowcaseLayout.HERO_Z" in renderer and
      "ArenaShowcaseLayout.SELECT_SCALE" in renderer and
-     "showcaseYaw = Math.PI.toFloat() + sin(animationClock * 0.42f) * 0.14f" in renderer,
-     "hero preview must use a reserved clear area and animated presentation"),
+     "showcaseYaw = sin(animationClock * 0.42f) * 0.14f" in renderer,
+     "hero preview must retain its reserved area and source-facing axis"),
+    ("loadPlayableHeroModels()" in renderer and "HeroModelCatalog.models" in renderer and
+     "playableHeroes.all { it != null }" in renderer and "animatePlayableHero(speed)" in renderer and
+     "runtime.animator.applyAnimation" in renderer,
+     "three independent playable GLBs and locomotion animation are not active"),
+    ("heroes/lyra.glb" in hero_catalog and "heroes/bastion.glb" in hero_catalog and
+     "heroes/kairo.glb" in hero_catalog and "Female_Idle" in hero_catalog and "Man_Idle" in hero_catalog,
+     "hero catalog does not map three distinct CC0 models"),
+    ("threePlayableHeroesUseDistinctCc0Assets" in hero_catalog_tests and
+     "animatorNamesResolveWithOrWithoutRigPrefix" in hero_catalog_tests,
+     "hero catalog tests are missing"),
     ("HERO_X = -15.0f" in showcase and "HERO_Z = 4.0f" in showcase and
      "previewClearingDoesNotOverlapMajorBattlefieldProps" in showcase_tests,
      "hero showcase must remain clear of towers, camps and shrines"),
@@ -76,52 +87,23 @@ checks = [
      "combat camera must keep a closer readable character framing"),
     ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
      "terrain palette must use the lower-saturation olive values"),
-    ("lyraRigReady" in renderer and "val isLyraModelReady: Boolean" in renderer and
-     "val isLyraRigReady: Boolean" in renderer and
-     "Lyra mesh loaded; keeping the original body visible with neutral joint pose" in renderer,
-     "Lyra mesh must remain selected when only procedural joint binding fails"),
-    ("bones.putAll(if (useLyra && lyraRigReady) lyraPlayerBones else if (useLyra) emptyMap() else genericPlayerBones)" in renderer,
-     "unbound Lyra rig must not silently swap the authored body to the generic body"),
-    ("LYRA ORIGINAL" in main and "FALHA AO CARREGAR LYRA" in main and
-     "MODELO LYRA EM COMPATIBILIDADE" not in main,
-     "Lyra diagnostics must distinguish authored mesh from GLB load failure"),
-    ("captureLyraRig" in renderer and "lyraJointIndex" in renderer and
-     "joints.size == 19" in renderer and "getInstance(joints[index])" in renderer,
-     "Lyra skin must bind by explicit GLB joint order, not name lookup"),
-    ("lyraModelReady" in renderer and "Original Lyra GLB could not be created; compatibility model required" in renderer and
-     "activatePlayerModelInternal(hero, useLyra = true)" in renderer and
-     "Lyra activation failed; switching to the compatibility character" in renderer and
-     "activatePlayerModel(0)" in renderer,
-     "Lyra load failure must not abort all Filament startup"),
-    ("lyraModelWarning" in renderer and "LYRA ORIGINAL" in main and
-     "FALHA AO CARREGAR LYRA" in main,
-     "Lyra mesh/rig state must expose a specific diagnostic"),
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
-    ("LyraCharacterGlbBuilder.build()" in renderer and
-     "lyraCharacterAsset" in renderer and "lyraPlayerBones" in renderer and
-     "genericPlayerBones" in renderer and "activatePlayerModel(0)" in renderer,
-     "original Lyra model is not isolated from the generic NPC/player model"),
     ("JOINTS_0" in lyra_builder and "WEIGHTS_0" in lyra_builder and
      "inverseBindMatrices" in lyra_builder and "Lyra_Original_Character" in lyra_builder and
      "Lyra_Humanoid_Rig" in lyra_builder and "Lyra_Plum_Cape" in lyra_builder and
      "secondaryJoint" in lyra_builder and "primaryWeight" in lyra_builder,
      "original Lyra GLB must contain a skinned body, bind matrices and authored costume geometry"),
-    ("lyraModelContainsOriginalSilhouetteMaterialsAndSkinnedRig" in lyra_tests and
-     "everyVertexHasNormalizedBlendWeightsAndValidJointInfluences" in lyra_tests and
-     "lyraAerialArmBindAnglesFlexTowardTheTorso" in lyra_tests and
-     "LyraCharacterGlbBuilder.build()" in lyra_tests,
-     "Lyra GLB and skinning regression tests are missing"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 54" in gradle and "versionName '0.15.8'" in gradle, "app version must be 0.15.8 / code 54"),
+    ("versionCode 55" in gradle and "versionName '0.15.9'" in gradle, "app version must be 0.15.9 / code 55"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='54' versionName='0.15.8'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.15.8-update" in workflow, "0.15.8 artifact name missing"),
+    ("versionCode='55' versionName='0.15.9'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.15.9-update" in workflow, "0.15.9 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -242,8 +224,38 @@ if not atlas.is_file() or atlas.stat().st_size < 1000:
     raise SystemExit("Shared KayKit texture atlas missing")
 if "private fun sphere(" in world or "private fun cylinder(" in world:
     raise SystemExit("Legacy procedural sphere/cylinder geometry remains")
-if "applyRestPose" not in renderer or "playerAnimator?.updateBoneMatrices()" not in renderer:
+if "applyRestPose" not in renderer or "runtime.animator.updateBoneMatrices()" not in renderer:
     raise SystemExit("Player skeletal skinning update missing")
+hero_assets = ROOT / "app/src/main/assets/heroes"
+hero_expected = {
+    "lyra.glb": ("99c4df0aaabd19022809facc68f5fb5f564d35df3a9893c273a31fdaacf68e96", ["Female_Idle", "Female_Walk", "Female_Run"]),
+    "bastion.glb": ("48536b0e0ea375f0831dbf5154b4c2eafda8b6c9c19ba0996dd298f2fcc9164c", ["Man_Idle", "Man_Walk", "Man_Run"]),
+    "kairo.glb": ("9809532f4562ebfd3976bd96eeebd1efc1008d781aa71a15048db5bf5ae7344", ["Female_Idle", "Female_Walk", "Female_Run"]),
+}
+for filename, (expected_hash, clips) in hero_expected.items():
+    model_path = hero_assets / filename
+    if not model_path.is_file():
+        raise SystemExit("Missing independent playable hero GLB: " + filename)
+    model_bytes = model_path.read_bytes()
+    if hashlib.sha256(model_bytes).hexdigest() != expected_hash:
+        raise SystemExit("CC0 hero GLB SHA-256 mismatch: " + filename)
+    if model_bytes[:4] != b"glTF" or int.from_bytes(model_bytes[4:8], "little") != 2:
+        raise SystemExit("Invalid GLB 2.0 header: " + filename)
+    json_length = int.from_bytes(model_bytes[12:16], "little")
+    model_data = json.loads(model_bytes[20:20 + json_length].decode("utf-8"))
+    if not model_data.get("skins") or not model_data.get("meshes"):
+        raise SystemExit("Playable hero must contain a skinned mesh: " + filename)
+    animation_names = [animation.get("name", "").split("|")[-1] for animation in model_data.get("animations", [])]
+    if any(clip not in animation_names for clip in clips):
+        raise SystemExit("Missing Idle/Walk/Run clip in " + filename + ": " + repr(animation_names))
+    for resource in model_data.get("buffers", []) + model_data.get("images", []):
+        if resource.get("uri"):
+            raise SystemExit("Playable hero has an external resource URI: " + filename)
+hero_manifest = json.loads((hero_assets / "cc0-manifest.json").read_text(encoding="utf-8"))
+if hero_manifest.get("license") != "CC0-1.0" or len(hero_manifest.get("models", [])) != 3:
+    raise SystemExit("Three-model CC0 hero manifest is missing or incomplete")
+print("Three independent CC0 hero GLBs, SHA-256, skin and locomotion clips verified.")
+
 if not avatar.is_file() or avatar.stat().st_size < 500_000:
     raise SystemExit("Quaternius CC0 humanoid GLB missing")
 raw_model = base64.b64decode(avatar.read_text(encoding="ascii"))
@@ -262,7 +274,7 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.15.8 structural verification passed.")
+print("Project Arena 0.15.9 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
 print("Mirrored GLB arm flexion and character motion regression tests verified.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")

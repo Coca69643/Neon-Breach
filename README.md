@@ -1,6 +1,17 @@
-# Projeto Arena 0.15.8
+# Projeto Arena 0.15.9
 
-MOBA 3D nativo para Android, landscape e offline. A 0.15.8 amplia o campo de batalha com flora agrupada por material, seis animais de fauna ambiente e oito guardiões neutros em três silhuetas CC0. Bots e tropas também ganham leitura mais distinta por função.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.9 substitui os três corpos jogáveis por GLBs CC0 individuais. A 0.15.8 amplia o campo de batalha com flora agrupada por material, seis animais de fauna ambiente e oito guardiões neutros em três silhuetas CC0. Bots e tropas também ganham leitura mais distinta por função.
+
+## Playable heroes — 0.15.9
+
+- Lyra, Bastion and Kairo use three separate Quaternius CC0 full-body GLBs: Woman Casual, Man in Long Sleeves and Woman in Tank Top.
+- The shared generic player body and procedural Lyra GLB are no longer used by the playable roster. Bots and lane units retain their separate shared rig.
+- Each hero loads through its own FilamentAsset/instance with its own rig, clothing, hair, bounds and authored material palette.
+- Runtime locomotion selects only the source Idle, Walk and Run clips. The native simulation remains authoritative for movement, collision, health, skills and progression.
+- All three GLBs are bundled offline. CI validates SHA-256, GLB 2.0, skinned mesh, embedded resources and locomotion clips.
+- Source Y-up/-Z facing and height are normalized to the existing gameplay presentation.
+
+The 0.15.9 character update does not claim to resolve the separate map/fauna visibility feedback. That remains pending on-device validation.
 
 ## Living world — 0.15.8
 
