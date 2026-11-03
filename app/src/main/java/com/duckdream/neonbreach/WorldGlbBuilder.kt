@@ -494,12 +494,14 @@ internal object WorldGlbBuilder {
             flowerClump(flowerStems,flowerPetals,x,z,0.62f,i*0.63f)
         }
 
-        // Fortified base approach walls and gatehouse paving.
-        for(sign in listOf(-1f,1f)) {
-            val z=sign*24.2f
-            box(masonry,-7.0f,h(-7f,z)+0.72f,z,5.2f,1.35f,0.72f)
-            box(masonry,7.0f,h(7f,z)+0.72f,z,5.2f,1.35f,0.72f)
-            box(masonry,0f,h(0f,sign*27f)+0.09f,sign*27f,13.2f,0.18f,4.8f)
+        // Base walls and gatehouse paving use the same landmarks as native collision.
+        for (team in 0..1) {
+            val wallLeft = ArenaWorldDefinition.baseWallPosition(team, 0)
+            val wallRight = ArenaWorldDefinition.baseWallPosition(team, 1)
+            val gate = ArenaWorldDefinition.baseGatePavingPosition(team)
+            box(masonry,wallLeft.x,h(wallLeft.x,wallLeft.z)+0.72f,wallLeft.z,5.2f,1.35f,0.72f)
+            box(masonry,wallRight.x,h(wallRight.x,wallRight.z)+0.72f,wallRight.z,5.2f,1.35f,0.72f)
+            box(masonry,gate.x,h(gate.x,gate.z)+0.09f,gate.z,13.2f,0.18f,4.8f)
         }
 
         // A dark-blue water plane below the island cliffs adds a real horizon layer.
