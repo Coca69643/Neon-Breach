@@ -1,5 +1,6 @@
 #include "../app/src/main/cpp/ArenaPhysics.h"
 #include "../app/src/main/cpp/ArenaMapDefinition.h"
+#include "../app/src/main/cpp/ArenaNavigation.h"
 
 #include <cassert>
 #include <cmath>
@@ -11,6 +12,39 @@ float distance(float ax,float az,float bx,float bz) {
     const float x=bx-ax,z=bz-az;
     return std::sqrt(x*x+z*z);
 }
+void testArenaNavigationGraph() {
+    const auto &graph=arena_navigation::mapGraph();
+    assert(graph.nodes.size()==static_cast<std::size_t>(arena_navigation::kNodeCount));
+    for(int node=0;node<arena_navigation::kNodeCount;++node) {
+        const auto &entry=graph.nodes[static_cast<std::size_t>(node)];
+        assert(entry.neighborCount>0);
+        for(int edge=0;edge<entry.neighborCount;++edge) {
+            const int neighbor=entry.neighbors[static_cast<std::size_t>(edge)];
+            assert(neighbor>=0 && neighbor<arena_navigation::kNodeCount);
+            const auto &other=graph.nodes[static_cast<std::size_t>(neighbor)];
+            bool reciprocal=false;
+            for(int reverse=0;reverse<other.neighborCount;++reverse) {
+                if(other.neighbors[static_cast<std::size_t>(reverse)]==node) reciprocal=true;
+            }
+            assert(reciprocal);
+        }
+    }
+    const auto westCrossing=graph.nodes[4].position;
+    const auto eastCrossing=graph.nodes[22].position;
+    const auto firstStep=arena_navigation::nextWaypoint(westCrossing,eastCrossing);
+    const auto westObjective=graph.nodes[arena_navigation::kObjectiveNodeStart].position;
+    assert(distance(firstStep.x,firstStep.z,westObjective.x,westObjective.z)<0.001f);
+
+    const auto camp=graph.nodes[arena_navigation::kCampNodeStart].position;
+    const auto objective=graph.nodes[arena_navigation::kObjectiveNodeStart+1].position;
+    const auto jungleStep=arena_navigation::nextWaypoint(camp,objective);
+    assert(std::isfinite(jungleStep.x) && std::isfinite(jungleStep.z));
+    assert(distance(camp.x,camp.z,jungleStep.x,jungleStep.z)>0.5f);
+    const auto shortStep=arena_navigation::nextWaypoint(
+        {objective.x+1.0f,objective.z},objective);
+    assert(distance(shortStep.x,shortStep.z,objective.x,objective.z)<0.0001f);
+}
+
 void testSharedArenaMapCatalog() {
     assert(arena_map::kLanes.size()==3);
     assert(arena_map::kCampPositions.size()==8);
@@ -105,6 +139,7 @@ void testCharacterSeparation() {
 }
 }
 int main() {
+    testArenaNavigationGraph();
     testSharedArenaMapCatalog();
     testTerrainSurface();
     testTreeCollisionAndSliding();
