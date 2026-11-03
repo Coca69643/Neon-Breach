@@ -89,7 +89,7 @@ internal class FilamentGameRenderer(
     private var characterScale = 1f
     private var characterMinY = 0f
 
-    private data class BonePose(val instance: Int, val base: FloatArray)
+    private data class BonePose(val instance: Int, val base: FloatArray, val lateralSign: Float = 1f)
     private val fallbackJointIndices = mapOf(
         "pelvis" to 1, "spine_01" to 2, "spine_02" to 3, "spine_03" to 4,
         "neck_01" to 5, "Head" to 6,
@@ -129,7 +129,8 @@ internal class FilamentGameRenderer(
             if (entity == 0) continue
             val boneInstance = transforms.getInstance(entity)
             if (boneInstance != 0) {
-                rig[name] = BonePose(boneInstance, transforms.getTransform(boneInstance, null))
+                val lateralSign = HumanoidRigPose.lateralSign(name)
+                rig[name] = BonePose(boneInstance, transforms.getTransform(boneInstance, null), lateralSign)
             }
         }
 
@@ -810,17 +811,18 @@ internal class FilamentGameRenderer(
 
         val upperLeft = 0.52f - stride * 0.34f * strideScale +
             cast * (0.18f + castBias) - guard * 0.12f - hit * 0.06f
-        val upperRight = -0.52f + stride * 0.34f * strideScale -
+        val upperRight = 0.52f + stride * 0.34f * strideScale -
             cast * (0.48f - castBias) + guard * 0.12f + hit * 0.06f
         val lowerLeft = 0.32f + leftLift * 0.10f + cast * 0.08f + guard * 0.10f
         val lowerRight = 0.34f + rightLift * 0.10f - cast * 0.42f + guard * 0.10f
 
-        animateHeroBone("upperarm_l", upperLeft, dt)
-        animateHeroBone("upperarm_r", upperRight, dt)
-        animateHeroBone("lowerarm_l", lowerLeft, dt)
-        animateHeroBone("lowerarm_r", lowerRight, dt)
-        animateHeroBone("hand_l", 0.035f * sin(phase) * moving - cast * 0.08f, dt)
-        animateHeroBone("hand_r", -0.035f * sin(phase) * moving + cast * 0.10f, dt)
+        animateHeroArmBone("upperarm_l", upperLeft, dt)
+        animateHeroArmBone("upperarm_r", upperRight, dt)
+        animateHeroArmBone("lowerarm_l", lowerLeft, dt)
+        animateHeroArmBone("lowerarm_r", lowerRight, dt)
+        val wristMotion = 0.035f * sin(phase) * moving - cast * 0.08f
+        animateHeroArmBone("hand_l", wristMotion, dt)
+        animateHeroArmBone("hand_r", wristMotion, dt)
 
         val kneeBias = if (activeHero == 1) 0.07f else 0.015f
         animateHeroBone("thigh_l", stride * 0.57f * strideScale + down * 0.42f, dt)
@@ -839,6 +841,15 @@ internal class FilamentGameRenderer(
         animateHeroBone("spine_03", -torsoPitch * 0.18f + turnLean * 0.38f, dt)
         animateHeroBone("neck_01", -torsoPitch * 0.22f - turnLean * 0.20f, dt)
         animateHeroBone("Head", -torsoPitch * 0.18f - turnLean * 0.18f, dt)
+    }
+
+    private fun animateHeroArmBone(name: String, targetAngle: Float, dt: Float) {
+        val bone = bones[name] ?: return
+        val current = heroPoseAngles[name] ?: targetAngle
+        val blend = (1f - kotlin.math.exp(-dt * 17f)).coerceIn(0f, 1f)
+        val next = current + (targetAngle - current) * blend
+        heroPoseAngles[name] = next
+        animatePose(bone, HumanoidRigPose.localFlexion(next, bone.lateralSign), HumanoidRigPose.FLEXION_AXIS)
     }
 
     private fun animateHeroBone(name: String, targetAngle: Float, dt: Float, axis: Int = 0) {
@@ -963,7 +974,7 @@ internal class FilamentGameRenderer(
     }
 
     fun setHeroSelectionPresentation(hero: Int) {
-        configureShowcase(hero, false, heroX = 6.4f, targetX = 4.1f, scale = 1.12f)
+        configureShowcase(hero, false, heroX = 0.0f, targetX = 0.0f, scale = 1.16f)
     }
 
     private fun configureShowcase(
@@ -984,8 +995,8 @@ internal class FilamentGameRenderer(
         showcaseHeroZ = -7.0f
         showcaseTargetX = targetX
         showcaseScale = scale
-        showcaseHeight = if (scale > 1.05f) 3.4f else 3.0f
-        showcaseDistance = if (scale > 1.05f) 7.0f else 7.3f
+        showcaseHeight = if (scale > 1.05f) 2.7f else 2.45f
+        showcaseDistance = if (scale > 1.05f) 6.2f else 6.8f
         showcaseYaw = Math.PI.toFloat()
         playerYaw = showcaseYaw
         val scaled = characterScale * showcaseScale
@@ -1005,6 +1016,7 @@ internal class FilamentGameRenderer(
         updateHeroPose(0f, 0f, 0f, 0f, dt)
         val scaled = characterScale * showcaseScale
         val bob = sin(animationClock * 1.35f) * 0.018f
+        showcaseYaw = Math.PI.toFloat() + sin(animationClock * 0.42f) * 0.14f
         val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) + bob - characterMinY * scaled
         engine.transformManager.setTransform(
             characterRootInstance,
@@ -1044,10 +1056,10 @@ internal class FilamentGameRenderer(
             val kneeLift = if (slot == 3) 0.38f else 0.46f
             val rangedReady = if (slot == 3) 0.48f else 0.54f
             animateArmPose(rig["upperarm_l"], rangedReady - stride * 0.28f + idle * 0.025f)
-            animateArmPose(rig["upperarm_r"], -rangedReady + stride * 0.28f - idle * 0.025f)
+            animateArmPose(rig["upperarm_r"], rangedReady + stride * 0.28f - idle * 0.025f)
             animateArmPose(rig["lowerarm_l"], if (slot == 3) 0.34f else 0.30f + max(0f, stride) * 0.08f)
             animateArmPose(rig["lowerarm_r"], if (slot == 3) 0.38f else 0.32f + max(0f, -stride) * 0.08f)
-            animateArmPose(rig["hand_l"], -stride * 0.025f)
+            animateArmPose(rig["hand_l"], stride * 0.025f)
             animateArmPose(rig["hand_r"], stride * 0.025f)
             animatePose(rig["pelvis"], sin(minionAnimationPhase * 2f + index) * 0.022f * moving, 2)
             animatePose(rig["thigh_l"], stride * 0.60f)
@@ -1114,11 +1126,11 @@ internal class FilamentGameRenderer(
             val braking = smoothStep01((2.0f - speed) / 2.0f) * moving
             val readyPose = when (role) { 0 -> 0.56f; 1 -> 0.50f; 2 -> 0.54f; 3 -> 0.60f; else -> 0.52f }
             animateArmPose(rig["upperarm_l"], readyPose - stride * armDrive - turnLean * 0.05f)
-            animateArmPose(rig["upperarm_r"], -readyPose + stride * armDrive - turnLean * 0.05f)
+            animateArmPose(rig["upperarm_r"], readyPose + stride * armDrive - turnLean * 0.05f)
             val elbow = when (role) { 0 -> 0.36f; 1 -> 0.30f; 2 -> 0.34f; 3 -> 0.42f; else -> 0.32f }
             animateArmPose(rig["lowerarm_l"], elbow + max(0f, stride) * 0.10f)
             animateArmPose(rig["lowerarm_r"], elbow + max(0f, -stride) * 0.10f)
-            animateArmPose(rig["hand_l"], -stride * 0.035f)
+            animateArmPose(rig["hand_l"], stride * 0.035f)
             animateArmPose(rig["hand_r"], stride * 0.035f)
             animatePose(rig["pelvis"], turnLean * 0.055f + sin(botAnimationPhase * 2f + index) * 0.018f * moving, 2)
             animatePose(rig["thigh_l"], stride * 0.60f)
@@ -1184,10 +1196,10 @@ internal class FilamentGameRenderer(
 
     private fun applyRestPose(rig: Map<String, BonePose>) {
         // Original unarmed idle stance: lowered shoulders, gently bent elbows and a relaxed spine.
-        animateArmPose(rig["upperarm_l"], 0.52f)
-        animateArmPose(rig["upperarm_r"], -0.52f)
-        animateArmPose(rig["lowerarm_l"], 0.32f)
-        animateArmPose(rig["lowerarm_r"], 0.34f)
+        animateArmPose(rig["upperarm_l"], 0.62f)
+        animateArmPose(rig["upperarm_r"], 0.62f)
+        animateArmPose(rig["lowerarm_l"], 0.28f)
+        animateArmPose(rig["lowerarm_r"], 0.28f)
         animatePose(rig["spine_01"], 0.015f)
         animatePose(rig["spine_02"], -0.012f)
         animatePose(rig["neck_01"], 0f)
@@ -1198,8 +1210,10 @@ internal class FilamentGameRenderer(
     }
 
     private fun animateArmPose(bone: BonePose?, angle: Float) {
-        // Humanoid arm bones run along local +Y; X rotation swings them in the sagittal plane.
-        animatePose(bone, angle, 0)
+        // The shared humanoid rig's arm direction is local +Y, but the shoulder's world-space axis is lateral.
+        // Flexion therefore uses local Z; the sign is mirrored so both arms rotate down toward the torso.
+        if (bone == null) return
+        animatePose(bone, HumanoidRigPose.localFlexion(angle, bone.lateralSign), HumanoidRigPose.FLEXION_AXIS)
     }
 
     private fun animatePose(bone: BonePose?, angle: Float, axis: Int = 0) {
@@ -1291,7 +1305,7 @@ internal class FilamentGameRenderer(
         if (showcaseMode) {
             val targetY = terrainHeight(showcaseTargetX, showcaseHeroZ) + 1.0f
             viewer.camera.setProjection(
-                38.0, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
+                32.0, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
                 Camera.Fov.VERTICAL
             )
             viewer.camera.lookAt(
