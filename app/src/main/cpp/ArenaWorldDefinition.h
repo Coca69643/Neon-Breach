@@ -48,6 +48,34 @@ inline constexpr std::array<Point, 12> kJungleGrovePositions{{
     {-8.5f,-21.0f}, {8.5f,-21.0f}, {-8.5f,21.0f}, {8.5f,21.0f}
 }};
 
+inline constexpr float kWorldRadiusX = 35.0f;
+inline constexpr float kWorldRadiusZ = 31.0f;
+
+inline float worldEdgeFactor(float angle) noexcept {
+    return 1.0f + 0.035f * std::sin(angle * 5.0f) +
+        0.020f * std::sin(angle * 9.0f + 1.4f) +
+        0.012f * std::cos(angle * 13.0f);
+}
+
+inline float normalizedWorldRadius(float x, float z) noexcept {
+    const float nx = x / kWorldRadiusX;
+    const float nz = z / kWorldRadiusZ;
+    return std::sqrt(nx * nx + nz * nz);
+}
+
+inline bool insideIsland(float x, float z) noexcept {
+    const float angle = std::atan2(z / kWorldRadiusZ, x / kWorldRadiusX);
+    return normalizedWorldRadius(x, z) <= worldEdgeFactor(angle);
+}
+
+inline Point undergrowthPosition(int index) noexcept {
+    const float base = index % 4 == 0 ? -10.1f :
+        (index % 4 == 1 ? -6.1f : (index % 4 == 2 ? 6.1f : 10.1f));
+    const float x = base + std::sin(static_cast<float>(index) * 1.71f) * 0.82f;
+    const float z = -22.0f + static_cast<float>(index / 4) * 3.15f;
+    return {x, z};
+}
+
 inline float riverCenterZ(float x) noexcept {
     for (std::size_t i = 0; i + 1 < kRiverControlPoints.size(); ++i) {
         const Point a = kRiverControlPoints[i];
