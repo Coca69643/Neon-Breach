@@ -8,6 +8,7 @@
 - Simulação e colisão passam a consumir os mesmos pontos para terreno, estruturas e obstáculos principais.
 - Renderer Filament e minimapa consomem o mesmo traçado de rotas e os mesmos pontos de acampamentos, objetivos e vegetação.
 - Adicionada uma grade de altura nativa amostrada uma vez e interpolada no Kotlin, evitando chamadas JNI por vértice/frame.
+- Curvas das três rotas e máscara do limite da ilha também são amostradas em lote uma vez e interpoladas/consultadas no Kotlin, sem chamadas JNI por frame ou por célula do terreno.
 - Adicionados testes de simetria dos acampamentos, ordenação das rotas, posições das torres, limite do mapa e paridade da função de terreno.
 
 **Escopo desta etapa:** fundação técnica da reconstrução. A nova arquitetura visual do vale, os modelos de cenário e a revisão de mecânicas ainda estão em desenvolvimento; não considerar esta entrada uma release instalável.
