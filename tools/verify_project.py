@@ -104,8 +104,9 @@ checks = [
      "renderer startup recovery must expose the technical root cause"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("ArenaWorldDefinition.GRID_STEPS" in world and "ArenaWorldDefinition.heightAt" in world and
-     "arena_world::terrainHeight" in world_definition and "nativeTerrainGrid" in world_bridge and
-     "kWorldMeshSize" in world_definition, "terrain mesh must consume canonical native height samples"),
+     "namespace arena_world" in world_definition and "inline float terrainHeight" in world_definition and
+     "nativeTerrainGrid" in world_bridge and "kWorldMeshSize" in world_definition,
+     "terrain mesh must consume canonical native height samples"),
     ("arena_world::terrainHeight(x,z)" in physics and "arena_world::terrainHeight(x, z)" in native and
      "high-low>3.2f" in physics_tests and "testCanonicalWorldDefinition" in physics_tests,
      "native terrain and canonical world-definition regression are not connected"),
