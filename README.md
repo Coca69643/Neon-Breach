@@ -1,6 +1,17 @@
-# Projeto Arena 0.15.6
+# Projeto Arena 0.15.8
 
-MOBA 3D nativo para Android, landscape e offline. A 0.15.5 introduz a primeira personagem jogável com corpo autoral completo: Lyra, em GLB próprio com 19 juntas, JOINTS_0/WEIGHTS_0 e pesos secundários nas principais articulações. Bastion, Kairo, bots e tropas mantêm o pipeline legado nesta etapa.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.8 amplia o campo de batalha com flora agrupada por material, seis animais de fauna ambiente e oito guardiões neutros em três silhuetas CC0. Bots e tropas também ganham leitura mais distinta por função.
+
+## Living world — 0.15.8
+
+- Six ambient wildlife actors: two deer, two wolves and two birds. They follow bounded paths, turn with movement and retreat when the player approaches.
+- Eight neutral camp guardians use three separate CC0 silhouettes: mushroom, walking tree and ghost. Their visibility follows the existing native camp-health/respawn snapshot; the actors are visual only and do not alter collision, damage, gold, XP or simulation.
+- Quaternius CC0 GLB assets are fetched at build time from a pinned source commit, verified by expected size and Git blob SHA-1, then bundled in the APK. Runtime has no network dependency.
+- Each species is loaded once and shared across its instances. Animation clips are discovered by name through Filament's Animator API; distance-based visibility/update keeps distant actors out of the active render set.
+- WorldGlbBuilder adds batched ferns, flowers, mushroom clusters, river reeds and fallen logs using shared material groups.
+- Five bot roles now have separate accent palettes; four lane-unit slots receive more distinct body proportions.
+
+This update does not resolve the separate Lyra GLB loading problem observed on the test phone. The diagnostic/fallback remains; no claim is made that Lyra's authored body now loads.
 
 ## Recuperação de inicialização 3D — 0.15.6
 
