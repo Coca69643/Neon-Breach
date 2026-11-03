@@ -7,6 +7,7 @@
 #include "ArenaPhysics.h"
 #include "ArenaMapDefinition.h"
 #include "ArenaNavigation.h"
+#include "ArenaCampCombat.h"
 
 namespace {
 struct Vec2 { float x; float z; };
@@ -38,6 +39,9 @@ struct NeutralCamp {
     Vec2 position{};
     float health = 180.0f;
     float respawnTime = 0.0f;
+    float attackCooldown = 0.0f;
+    float attackPulse = 0.0f;
+    float aggroTime = 0.0f;
     int kind = 0;
 };
 constexpr int kBotCount = 9;
@@ -223,6 +227,9 @@ void initializeCamps() {
         camp.position = campPosition(i);
         camp.health = 180.0f + (i % 2) * 45.0f;
         camp.respawnTime = 0.0f;
+        camp.attackCooldown = 0.0f;
+        camp.attackPulse = 0.0f;
+        camp.aggroTime = 0.0f;
         camp.kind = i % 2;
     }
 }
@@ -429,6 +436,8 @@ void damageCamp(int campIndex, int sourceTeam, float damage) {
     camp.health = std::max(0.0f, camp.health - damage);
     if (camp.health <= 0.0f) {
         camp.respawnTime = camp.kind == 0 ? 54.0f : 72.0f;
+        camp.attackPulse = 0.0f;
+        camp.aggroTime = 0.0f;
         awardTeam(sourceTeam, camp.kind == 0 ? 90.0f : 130.0f,
                   camp.kind == 0 ? 70.0f : 95.0f);
     }
@@ -474,10 +483,70 @@ void updateObjectives(float dt) {
     for (float &buff : gTeamSiegeBuff) buff = std::max(0.0f, buff - dt);
 }
 void updateCamps(float dt) {
+    const float scale = arena_map::kWorldScale;
     for (NeutralCamp &camp : gCamps) {
-        if (camp.health > 0.0f) continue;
-        camp.respawnTime = std::max(0.0f, camp.respawnTime - dt);
-        if (camp.respawnTime <= 0.0f) camp.health = camp.kind == 0 ? 180.0f : 225.0f;
+        camp.attackPulse = std::max(0.0f, camp.attackPulse - dt);
+        camp.aggroTime = std::max(0.0f, camp.aggroTime - dt);
+        if (camp.health <= 0.0f) {
+            camp.respawnTime = std::max(0.0f, camp.respawnTime - dt);
+            if (camp.respawnTime <= 0.0f) {
+                camp.health = camp.kind == 0 ? 180.0f : 225.0f;
+                camp.attackCooldown = 0.0f;
+                camp.attackPulse = 0.0f;
+                camp.aggroTime = 0.0f;
+            }
+            continue;
+        }
+
+        camp.attackCooldown = std::max(0.0f, camp.attackCooldown - dt);
+        const float aggroRadius = 12.0f * scale;
+        const float leashRadius = 10.0f * scale;
+        const float attackRange = (camp.kind == 0 ? 2.45f : 2.85f) * scale;
+        float nearestDistance = aggroRadius;
+        bool targetPlayer = false;
+        int targetBot = -1;
+
+        if (gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f) {
+            const float d = distance(camp.position, gPlayerPosition);
+            if (d < nearestDistance && arena_camp::canAggro(
+                    camp.health, d, aggroRadius, leashRadius)) {
+                nearestDistance = d;
+                targetPlayer = true;
+                targetBot = -1;
+            }
+        }
+
+        for (int index = 0; index < kBotCount; ++index) {
+            const Bot &bot = gBots[static_cast<std::size_t>(index)];
+            if (bot.health <= 0.0f || bot.disabled > 0.0f) continue;
+            const float d = distance(camp.position, bot.position);
+            if (d < nearestDistance && arena_camp::canAggro(
+                    camp.health, d, aggroRadius, leashRadius)) {
+                nearestDistance = d;
+                targetPlayer = false;
+                targetBot = index;
+            }
+        }
+
+        if (nearestDistance < aggroRadius) {
+            camp.aggroTime = 0.8f;
+            if (arena_camp::canStrike(camp.health, camp.attackCooldown,
+                    nearestDistance, attackRange, leashRadius)) {
+                const float damage = camp.kind == 0 ? 8.0f : 11.5f;
+                if (targetPlayer) {
+                    gPlayerHealth = std::max(0.0f, gPlayerHealth - playerDamageTaken(damage));
+                } else if (targetBot >= 0) {
+                    Bot &target = gBots[static_cast<std::size_t>(targetBot)];
+                    target.health = std::max(0.0f, target.health - damage);
+                    if (target.health <= 0.0f) {
+                        target.disabled = 5.0f;
+                        target.velocity = {0.0f, 0.0f};
+                    }
+                }
+                camp.attackCooldown = camp.kind == 0 ? 1.35f : 1.55f;
+                camp.attackPulse = 0.52f;
+            }
+        }
     }
 }
 void updatePlayerTimers(float dt) {
@@ -1122,6 +1191,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
     for (int i = 0; i < kCampCount; ++i) {
         values[static_cast<std::size_t>(270 + i)] = gCamps[static_cast<std::size_t>(i)].health;
         values[static_cast<std::size_t>(278 + i)] = gCamps[static_cast<std::size_t>(i)].respawnTime;
+        values[static_cast<std::size_t>(312 + i)] = gCamps[static_cast<std::size_t>(i)].attackPulse;
     }
     values[286] = static_cast<float>(gItemCounts[0]);
     values[287] = static_cast<float>(gItemCounts[1]);
