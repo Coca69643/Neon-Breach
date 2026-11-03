@@ -944,6 +944,12 @@ Java_com_duckdream_neonbreach_ArenaWorldNative_nativeRiverCenterZ(
 }
 
 extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeBaseLandmarkPositions(
+    JNIEnv *env, jobject) {
+    return worldPointsToJava(env, arena_world::kBaseLandmarkPositions);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
 Java_com_duckdream_neonbreach_ArenaWorldNative_nativeCampPositions(
     JNIEnv *env, jobject) {
     return worldPointsToJava(env, arena_world::kCampPositions);
