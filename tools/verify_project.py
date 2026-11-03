@@ -74,7 +74,7 @@ checks = [
     ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
      "terrain palette must use the lower-saturation olive values"),
     ("captureLyraRig" in renderer and "lyraJointIndex" in renderer and
-     "joints.size == 19" in renderer and "getTransform(joints[index])" in renderer,
+     "joints.size == 19" in renderer and "getInstance(joints[index])" in renderer,
      "Lyra skin must bind by explicit GLB joint order, not name lookup"),
     ("lyraModelReady" in renderer and "keeping the game bootable with the compatibility character" in renderer and
      "activatePlayerModel(0)" in renderer,
