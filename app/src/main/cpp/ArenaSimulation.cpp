@@ -896,6 +896,22 @@ Java_com_duckdream_neonbreach_ArenaWorldNative_nativeLaneCenterX(
     return arena_world::laneCenterX(std::clamp(static_cast<int>(lane), 0, 2), z);
 }
 
+extern "C" JNIEXPORT jboolean JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeInsideIsland(
+    JNIEnv *, jobject, jfloat x, jfloat z) {
+    return arena_world::insideIsland(x, z) ? JNI_TRUE : JNI_FALSE;
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeUndergrowthPositions(
+    JNIEnv *env, jobject) {
+    std::array<arena_world::Point, 56> points{};
+    for (std::size_t i = 0; i < points.size(); ++i) {
+        points[i] = arena_world::undergrowthPosition(static_cast<int>(i));
+    }
+    return worldPointsToJava(env, points);
+}
+
 extern "C" JNIEXPORT jfloat JNICALL
 Java_com_duckdream_neonbreach_ArenaWorldNative_nativeTowerZ(
     JNIEnv *, jobject, jint team, jint tier) {
