@@ -225,8 +225,8 @@ internal class FilamentGameRenderer(
     private var previousHeroSpeed = 0f
 
     private var cameraAspect = 16f / 9f
-    private var cameraX = -12f
-    private var cameraZ = -8.5f
+    private var cameraX = -12f * ArenaMapDefinition.WORLD_SCALE
+    private var cameraZ = -8.5f * ArenaMapDefinition.WORLD_SCALE
     private var cameraY = 0f
     private var phase = 0f
     private var playerYaw = 0f
@@ -418,9 +418,10 @@ internal class FilamentGameRenderer(
             if (placement.model == "tower_blue" || placement.model == "tower_red") {
                 val team = if (placement.model == "tower_blue") 0 else 1
                 val lane = (0..2).minByOrNull { kotlin.math.abs(laneCenterX(it, placement.z) - placement.x) } ?: 1
+                val mapScale = ArenaMapDefinition.WORLD_SCALE
                 val tier = when {
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 8f) < 1f -> 0
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 15f) < 1f -> 1
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 8f * mapScale) < 1f -> 0
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 15f * mapScale) < 1f -> 1
                     else -> 2
                 }
                 val towerIndex = team * 9 + lane * 3 + tier
