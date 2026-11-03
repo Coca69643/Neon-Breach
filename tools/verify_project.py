@@ -73,6 +73,15 @@ checks = [
      "combat camera must keep a closer readable character framing"),
     ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
      "terrain palette must use the lower-saturation olive values"),
+    ("lyraRigReady" in renderer and "val isLyraModelReady: Boolean" in renderer and
+     "val isLyraRigReady: Boolean" in renderer and
+     "Lyra mesh loaded; keeping the original body visible with neutral joint pose" in renderer,
+     "Lyra mesh must remain selected when only procedural joint binding fails"),
+    ("bones.putAll(if (useLyra && lyraRigReady) lyraPlayerBones else if (useLyra) emptyMap() else genericPlayerBones)" in renderer,
+     "unbound Lyra rig must not silently swap the authored body to the generic body"),
+    ("LYRA ORIGINAL" in main and "FALHA AO CARREGAR LYRA" in main and
+     "MODELO LYRA EM COMPATIBILIDADE" not in main,
+     "Lyra diagnostics must distinguish authored mesh from GLB load failure"),
     ("captureLyraRig" in renderer and "lyraJointIndex" in renderer and
      "joints.size == 19" in renderer and "getInstance(joints[index])" in renderer,
      "Lyra skin must bind by explicit GLB joint order, not name lookup"),
@@ -102,13 +111,13 @@ checks = [
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 52" in gradle and "versionName '0.15.6'" in gradle, "app version must be 0.15.6 / code 52"),
+    ("versionCode 53" in gradle and "versionName '0.15.7'" in gradle, "app version must be 0.15.7 / code 53"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='52' versionName='0.15.6'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.15.6-update" in workflow, "0.15.6 artifact name missing"),
+    ("versionCode='53' versionName='0.15.7'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.15.7-update" in workflow, "0.15.7 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -214,7 +223,7 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.15.6 structural verification passed.")
+print("Project Arena 0.15.7 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
 print("Mirrored GLB arm flexion and character motion regression tests verified.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")
