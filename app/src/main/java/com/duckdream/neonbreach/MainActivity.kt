@@ -339,8 +339,13 @@ class MainActivity : Activity() {
             maxWidth = dp(238)
             setPadding(0, dp(5), 0, 0)
         })
-        renderer.lyraModelWarning?.let {
-            featured.addView(label("MODELO LYRA EM COMPATIBILIDADE", 8f, Color.rgb(242, 197, 118), true))
+        renderer.lyraModelWarning?.let { diagnostic ->
+            val status = if (renderer.isLyraModelReady) {
+                "LYRA ORIGINAL • RIG PENDENTE: $diagnostic"
+            } else {
+                "FALHA AO CARREGAR LYRA: $diagnostic"
+            }
+            featured.addView(label(status.take(96), 8f, Color.rgb(242, 197, 118), true))
         }
         layer.addView(featured, FrameLayout.LayoutParams(dp(258), -2, Gravity.BOTTOM or Gravity.START).apply {
             bottomMargin = dp(20)
@@ -388,8 +393,13 @@ class MainActivity : Activity() {
         content.addView(label(activeAbilityHint(), 10f, Color.rgb(221, 229, 216)).apply {
             setPadding(0, dp(3), 0, dp(12))
         })
-        renderer.lyraModelWarning?.let {
-            content.addView(label("Lyra está usando o modelo de compatibilidade nesta sessão.", 9f, Color.rgb(242, 197, 118), true))
+        renderer.lyraModelWarning?.let { diagnostic ->
+            val status = if (renderer.isLyraModelReady) {
+                "O corpo original da Lyra foi carregado; falha no rig: $diagnostic"
+            } else {
+                "O GLB da Lyra não foi carregado: $diagnostic"
+            }
+            content.addView(label(status.take(140), 9f, Color.rgb(242, 197, 118), true))
         }
         val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
         controls.addView(actionButton("‹") {
