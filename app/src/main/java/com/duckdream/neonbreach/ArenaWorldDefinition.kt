@@ -13,6 +13,8 @@ internal object ArenaWorldNative {
     external fun nativeTerrainGrid(steps: Int, size: Float): FloatArray
     external fun nativeLaneCenterX(lane: Int, z: Float): Float
     external fun nativeTowerZ(team: Int, tier: Int): Float
+    external fun nativeInsideIsland(x: Float, z: Float): Boolean
+    external fun nativeUndergrowthPositions(): FloatArray
     external fun nativeRiverCenterZ(x: Float): Float
     external fun nativeCampPositions(): FloatArray
     external fun nativeObjectivePositions(): FloatArray
@@ -38,6 +40,7 @@ internal object ArenaWorldDefinition {
     private val objectives by lazy { decodePoints(ArenaWorldNative.nativeObjectivePositions(), "objectives") }
     private val trees by lazy { decodePoints(ArenaWorldNative.nativeForestTreePositions(), "forest trees") }
     private val groves by lazy { decodePoints(ArenaWorldNative.nativeJungleGrovePositions(), "jungle groves") }
+    private val undergrowth by lazy { decodePoints(ArenaWorldNative.nativeUndergrowthPositions(), "undergrowth") }
 
     fun initialize() {
         terrain
@@ -45,6 +48,7 @@ internal object ArenaWorldDefinition {
         objectives
         trees
         groves
+        undergrowth
     }
 
     fun heightAt(x: Float, z: Float): Float {
@@ -71,12 +75,15 @@ internal object ArenaWorldDefinition {
     fun towerZ(team: Int, tier: Int): Float =
         ArenaWorldNative.nativeTowerZ(team.coerceIn(0, 1), tier.coerceIn(0, 2))
 
+    fun insideIsland(x: Float, z: Float): Boolean = ArenaWorldNative.nativeInsideIsland(x, z)
+
     fun riverCenterZ(x: Float): Float = ArenaWorldNative.nativeRiverCenterZ(x)
 
     fun campPositions(): List<ArenaPoint> = camps
     fun objectivePositions(): List<ArenaPoint> = objectives
     fun forestTreePositions(): List<ArenaPoint> = trees
     fun jungleGrovePositions(): List<ArenaPoint> = groves
+    fun undergrowthPositions(): List<ArenaPoint> = undergrowth
 
     private fun decodePoints(values: FloatArray, label: String): List<ArenaPoint> {
         check(values.isNotEmpty() && values.size % 2 == 0) {
