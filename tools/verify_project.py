@@ -76,6 +76,39 @@ if kotlin_lanes != native_lanes:
 if kotlin_camps != native_camps:
     raise SystemExit("Kotlin and C++ camp coordinates differ")
 
+kotlin_objectives = extract_pairs(
+    map_kotlin, "val objectives = listOf(", "val groveCenters = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_objectives = extract_pairs(
+    map_native, "kObjectivePositions{{", "kObjectiveRadii",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_objectives != native_objectives:
+    raise SystemExit("Kotlin and C++ objective coordinates differ")
+
+kotlin_groves = extract_pairs(
+    map_kotlin, "val groveCenters = listOf(", "val treeBlockers = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_groves = extract_pairs(
+    map_native, "kGroveCenters{{", "kTreeBlockers",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_groves != native_groves:
+    raise SystemExit("Kotlin and C++ grove coordinates differ")
+
+kotlin_trees = extract_pairs(
+    map_kotlin, "val treeBlockers = listOf(", "fun laneCenterX",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_trees = extract_pairs(
+    map_native, "kTreeBlockers{{", "inline float laneCenterX",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_trees != native_trees:
+    raise SystemExit("Kotlin and C++ tree blocker coordinates differ")
+
 checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
      "renderer.updateMenuPresentation(dt)" in main and "renderer.render(frameTimeNanos)" in main and
