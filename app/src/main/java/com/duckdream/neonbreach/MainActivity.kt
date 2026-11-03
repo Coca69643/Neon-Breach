@@ -934,15 +934,9 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
 
         // The river links both jungles and the three lane crossings.
         val river = Path()
-        val riverPoints = arrayOf(
-            floatArrayOf(-34f, 1.1f), floatArrayOf(-28f, 0.55f), floatArrayOf(-21f, 0.05f),
-            floatArrayOf(-15f, -0.45f), floatArrayOf(-9f, -0.22f), floatArrayOf(-3f, 0.25f),
-            floatArrayOf(4f, 0.38f), floatArrayOf(10f, 0.02f), floatArrayOf(16f, -0.38f),
-            floatArrayOf(23f, -0.18f), floatArrayOf(29f, 0.22f), floatArrayOf(34f, 0.8f)
-        )
-        riverPoints.forEachIndexed { index, point ->
-            val x = point[0] * mapScale
-            val z = point[1] * mapScale
+        ArenaMapDefinition.riverCenterline.forEachIndexed { index, point ->
+            val x = point.x * mapScale
+            val z = point.z * mapScale
             if (index == 0) river.moveTo(px(x), py(z))
             else river.lineTo(px(x), py(z))
         }
