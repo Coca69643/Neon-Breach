@@ -62,7 +62,7 @@ void testTreeCollisionAndSliding() {
 }
 void testStructureCollision() {
     const float towerZ=22.0f;
-    const float towerX=0.5f+std::sin(towerZ*0.12f)*0.72f;
+    const float towerX=arena_map::towerPosition(0,1,2).x;
     arena_physics::Body body{towerX,19.0f,0.0f,0.0f,0.43f};
     for(int i=0;i<180;++i) arena_physics::move(body,0.0f,4.0f,1.0f/60.0f);
     assert(body.z>19.0f);
