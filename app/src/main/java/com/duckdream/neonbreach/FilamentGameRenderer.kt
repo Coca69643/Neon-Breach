@@ -57,17 +57,13 @@ internal class FilamentGameRenderer(
     private var characterResources: ResourceLoader? = null
     private var characterProvider: UbershaderProvider? = null
     private var character: FilamentAsset? = null
-    private var lyraCharacterAsset: FilamentAsset? = null
-    private var genericPlayerInstance: FilamentInstance? = null
-    private var lyraPlayerInstance: FilamentInstance? = null
-    private var lyraModelReady = false
-    private var lyraRigReady = false
-    val isLyraModelReady: Boolean get() = lyraModelReady
-    val isLyraRigReady: Boolean get() = lyraRigReady
-    var lyraModelWarning: String? = null
-        private set
-    private val genericPlayerBones = LinkedHashMap<String, BonePose>()
-    private val lyraPlayerBones = LinkedHashMap<String, BonePose>()
+    private data class PlayableHeroRuntime(
+        val definition: HeroModelSpec, val asset: FilamentAsset, val instance: FilamentInstance,
+        val root: Int, val animator: Animator, val idleClip: Int, val walkClip: Int, val runClip: Int,
+        val idleDuration: Float, val walkDuration: Float, val runDuration: Float,
+        val scale: Float, val minY: Float
+    )
+    private val playableHeroes = arrayOfNulls<PlayableHeroRuntime>(3)
     private val heroGearAssets = ArrayList<FilamentAsset>(10)
     private val heroGearInstances = ArrayList<FilamentInstance>(20)
     private val botGearInstances = arrayOfNulls<FilamentInstance>(9)
@@ -110,7 +106,7 @@ internal class FilamentGameRenderer(
     private var showcaseScale = 1.0f
     private var showcaseHeight = 3.2f
     private var showcaseDistance = 6.5f
-    private var showcaseYaw = Math.PI.toFloat()
+    private var showcaseYaw = 0f
     private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
@@ -619,56 +615,6 @@ internal class FilamentGameRenderer(
             }
         }
 
-        // Keep the neutral Quaternius player only for Bastion/Kairo. Lyra receives
-        // a separate project-authored skinned GLB with its own body proportions.
-        genericPlayerInstance = characterLoader!!.createInstance(asset)
-            ?: throw IllegalStateException("Could not create the generic player instance")
-        genericPlayerBones.putAll(captureHumanoidRig(
-            genericPlayerInstance!!, "generic-player", sourceAsset = asset
-        ))
-        applyRestPose(genericPlayerBones)
-        genericPlayerInstance!!.animator.updateBoneMatrices()
-
-        lyraModelReady = false
-        lyraRigReady = false
-        lyraModelWarning = null
-        try {
-            val lyraBytes = LyraCharacterGlbBuilder.build()
-            Log.i(TAG, "Lyra authored GLB generated: ${lyraBytes.size} bytes")
-            lyraCharacterAsset = characterLoader!!.createAsset(ByteBuffer.wrap(lyraBytes))
-                ?: throw IllegalStateException("Filament returned null while parsing the Lyra GLB")
-            lyraPlayerInstance = characterLoader!!.createInstance(lyraCharacterAsset!!)
-                ?: throw IllegalStateException("Filament returned null while creating the Lyra instance")
-
-            // Keep the authored mesh visible even if the procedural controller
-            // cannot bind every joint. Rig failure must not discard the character.
-            lyraModelReady = true
-            try {
-                val boundRig = captureLyraRig(lyraPlayerInstance!!)
-                applyRestPose(boundRig)
-                lyraPlayerInstance!!.animator.updateBoneMatrices()
-                lyraPlayerBones.putAll(boundRig)
-                lyraRigReady = true
-                Log.i(TAG, "Original Lyra character and 18 animated joints loaded successfully")
-            } catch (rigError: Throwable) {
-                lyraRigReady = false
-                lyraPlayerBones.clear()
-                lyraModelWarning = "Rig: ${rigError.message ?: rigError.javaClass.simpleName}"
-                Log.e(TAG, "Lyra mesh loaded; keeping the original body visible with neutral joint pose", rigError)
-            }
-        } catch (loadError: Throwable) {
-            lyraModelWarning = "GLB: ${loadError.message ?: loadError.javaClass.simpleName}"
-            Log.e(TAG, "Original Lyra GLB could not be created; compatibility model required", loadError)
-            lyraModelReady = false
-            lyraRigReady = false
-            lyraPlayerInstance = null
-            lyraPlayerBones.clear()
-            lyraCharacterAsset?.let { failedAsset ->
-                runCatching { characterLoader?.destroyAsset(failedAsset) }
-            }
-            lyraCharacterAsset = null
-        }
-
         for (index in minionRootInstances.indices) {
             val team = if (index < 24) 0 else 1
             val local = index % 24
@@ -681,86 +627,103 @@ internal class FilamentGameRenderer(
             setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
 
+        loadPlayableHeroModels()
         createHeroGear()
         activatePlayerModel(0)
         asset.releaseSourceData()
-        lyraCharacterAsset?.releaseSourceData()
-        Log.i(TAG, "Character models loaded: original Lyra GLB with 19-joint skin; Quaternius fallback retained for Bastion/Kairo, bots and lane units")
+        Log.i(TAG, "Three separate CC0 hero assets loaded; legacy shared rig remains isolated to bots and lane units")
+    }
+
+    private fun loadPlayableHeroModels() {
+        val loader = characterLoader ?: error("Hero asset loader is unavailable")
+        val resources = characterResources ?: error("Hero resource loader is unavailable")
+        val transforms = engine.transformManager
+        HeroModelCatalog.models.forEachIndexed { heroIndex, definition ->
+            val bytes = context.assets.open(definition.assetPath).use { it.readBytes() }
+            require(bytes.size > 100_000 && bytes[0] == 0x67.toByte() &&
+                bytes[1] == 0x6c.toByte() && bytes[2] == 0x54.toByte() && bytes[3] == 0x46.toByte()) {
+                "Invalid bundled GLB for ${definition.id}: ${bytes.size} bytes"
+            }
+            val asset = loader.createAsset(ByteBuffer.wrap(bytes))
+                ?: error("Filament could not parse ${definition.assetPath}")
+            var instance: FilamentInstance? = null
+            try {
+                for (uri in asset.resourceUris) {
+                    if (!resources.hasResourceData(uri)) {
+                        val resource = context.assets.open("heroes/$uri").use { it.readBytes() }
+                        resources.addResourceData(uri, ByteBuffer.wrap(resource))
+                    }
+                }
+                resources.loadResources(asset)
+                instance = loader.createInstance(asset)
+                    ?: error("Filament could not instance ${definition.id}")
+                check(instance.skinCount > 0) { "${definition.id} GLB has no skinned body" }
+                val joints = instance.getJointsAt(0)
+                check(joints.size >= 25) { "${definition.id} humanoid rig is incomplete: ${joints.size} joints" }
+                val animator = instance.animator
+                val names = List(animator.getAnimationCount()) { animator.getAnimationName(it) }
+                val idle = HeroModelCatalog.animationIndex(names, definition.idleClip)
+                val walk = HeroModelCatalog.animationIndex(names, definition.walkClip)
+                val run = HeroModelCatalog.animationIndex(names, definition.runClip)
+                check(idle >= 0 && walk >= 0 && run >= 0) {
+                    "${definition.id} is missing Idle/Walk/Run clips: ${names.joinToString()}"
+                }
+                val half = asset.boundingBox.getHalfExtent(null)
+                val center = asset.boundingBox.getCenter(null)
+                val root = transforms.getInstance(instance.root)
+                check(root != 0) { "${definition.id} root transform is missing" }
+                val height = max(0.1f, half[1] * 2f)
+                val idleDuration = animator.getAnimationDuration(idle).coerceAtLeast(0.01f)
+                val walkDuration = animator.getAnimationDuration(walk).coerceAtLeast(0.01f)
+                val runDuration = animator.getAnimationDuration(run).coerceAtLeast(0.01f)
+                animator.applyAnimation(idle, 0f)
+                animator.updateBoneMatrices()
+                playableHeroes[heroIndex] = PlayableHeroRuntime(
+                    definition, asset, instance, root, animator, idle, walk, run,
+                    idleDuration, walkDuration, runDuration, 2.12f / height, center[1] - half[1]
+                )
+                asset.releaseSourceData()
+                Log.i(TAG, "Playable CC0 hero ready: ${definition.id}; safe clips loaded; joints=${joints.size}")
+            } catch (error: Throwable) {
+                instance?.let { failed -> runCatching { viewer.scene.removeEntities(failed.entities) } }
+                runCatching { loader.destroyAsset(asset) }
+                throw IllegalStateException("Required playable hero failed to load: ${definition.id}", error)
+            }
+        }
+        check(playableHeroes.all { it != null }) { "All three independent playable GLBs must be available" }
+    }
+
+    private fun animatePlayableHero(speed: Float) {
+        val runtime = playableHeroes.getOrNull(activeHero) ?: return
+        val (clip, duration) = when {
+            speed >= 3.0f -> runtime.runClip to runtime.runDuration
+            speed >= 0.18f -> runtime.walkClip to runtime.walkDuration
+            else -> runtime.idleClip to runtime.idleDuration
+        }
+        runtime.animator.applyAnimation(clip, animationClock % duration.coerceAtLeast(0.01f))
+        runtime.animator.updateBoneMatrices()
     }
 
     private fun activatePlayerModel(hero: Int) {
-        if (hero == 0 && lyraModelReady && lyraPlayerInstance != null) {
-            try {
-                activatePlayerModelInternal(hero, useLyra = true)
-                return
-            } catch (error: Throwable) {
-                lyraModelReady = false
-                lyraModelWarning = "activation: " + (error.message ?: error.javaClass.simpleName)
-                Log.e(TAG, "Lyra activation failed; switching to the compatibility character", error)
-                lyraPlayerInstance?.let { failedInstance ->
-                    runCatching { viewer.scene.removeEntities(failedInstance.entities) }
-                }
-                if (playerInstance === lyraPlayerInstance) playerInstance = null
-                lyraPlayerInstance = null
-                lyraPlayerBones.clear()
-                lyraCharacterAsset?.let { failedAsset ->
-                    runCatching { characterLoader?.destroyAsset(failedAsset) }
-                }
-                lyraCharacterAsset = null
-            }
-        }
-        activatePlayerModelInternal(hero, useLyra = false)
-    }
-
-    private fun activatePlayerModelInternal(hero: Int, useLyra: Boolean) {
-        val target = if (useLyra) {
-            lyraPlayerInstance ?: error("Original Lyra instance is unavailable")
-        } else {
-            genericPlayerInstance ?: error("Generic hero instance is unavailable")
-        }
+        val runtime = playableHeroes.getOrNull(hero.coerceIn(0, 2))
+            ?: error("Independent CC0 hero asset is missing for index $hero")
+        val target = runtime.instance
         if (playerInstance !== target) {
             playerInstance?.let { viewer.scene.removeEntities(it.entities) }
             playerInstance = target
             viewer.scene.addEntities(target.entities)
         }
-
-        playerAnimator = target.animator
+        playerAnimator = runtime.animator
         playerMaterials.clear()
-        target.materialInstances.forEach { playerMaterials.add(it) }
+        runtime.instance.materialInstances.forEach { playerMaterials.add(it) }
         bones.clear()
-        bones.putAll(if (useLyra && lyraRigReady) lyraPlayerBones else if (useLyra) emptyMap() else genericPlayerBones)
-        if (hero == 0 && !useLyra) {
-            Log.w(TAG, "Lyra compatibility body selected; warning=${lyraModelWarning ?: "unknown"}")
-        } else if (hero == 0 && useLyra && !lyraRigReady) {
-            Log.w(TAG, "Lyra original body selected with neutral pose; rig warning=${lyraModelWarning ?: "unknown"}")
-        }
-
-        val sourceAsset = if (useLyra) {
-            lyraCharacterAsset ?: error("Original Lyra asset is unavailable")
-        } else {
-            character ?: error("Generic hero asset is unavailable")
-        }
-        characterRootInstance = engine.transformManager.getInstance(target.root)
-        require(characterRootInstance != 0) { "Playable hero root transform is missing" }
-        val half = sourceAsset.boundingBox.getHalfExtent(null)
-        val center = sourceAsset.boundingBox.getCenter(null)
-        val height = max(0.1f, half[1] * 2f)
-        characterScale = 2.12f / height
-        characterMinY = center[1] - half[1]
-
-        if (useLyra) {
-            playerGearInstances.filterNotNull().forEach { viewer.scene.removeEntities(it.entities) }
-            equippedPlayerGear = -1
-        } else {
-            playerGearInstances.forEachIndexed { index, instance ->
-                instance ?: return@forEachIndexed
-                if (index == hero) viewer.scene.addEntities(instance.entities)
-                else viewer.scene.removeEntities(instance.entities)
-            }
-            equippedPlayerGear = hero
-        }
-        target.animator.updateBoneMatrices()
-        Log.i(TAG, "Playable model activated: " + if (useLyra) "Lyra original skinned GLB" else "Quaternius base with hero gear")
+        characterRootInstance = runtime.root
+        characterScale = runtime.scale
+        characterMinY = runtime.minY
+        equippedPlayerGear = -1
+        runtime.animator.applyAnimation(runtime.idleClip, 0f)
+        runtime.animator.updateBoneMatrices()
+        Log.i(TAG, "Playable model activated: ${runtime.definition.id} / ${runtime.definition.assetPath}")
     }
 
     private fun createHeroGear() {
@@ -817,16 +780,11 @@ internal class FilamentGameRenderer(
             return instance
         }
 
-        // Lyra has a complete project-authored body and does not use Quaternius gear.
-        // Bastion and Kairo keep their existing compatible base/attachment pipeline.
-        for (style in 1..2) {
-            val instance = createAttached(style, 0, genericPlayerBones)
-            playerGearInstances[style] = instance
-            viewer.scene.removeEntities(instance.entities)
-        }
+        // Playable heroes now carry full-body CC0 meshes and authored clothing.
+        // Bone-attached role geometry remains exclusively in the bot pipeline.
         equippedPlayerGear = -1
         rebuildBotGearForHero()
-        Log.i(TAG, "Articulated gear loaded: 3 playable identities and 5 AI role silhouettes; source buffers retained for loadout changes")
+        Log.i(TAG, "AI role silhouettes loaded; playable hero gear overlays are disabled")
     }
 
     private fun botStyleForRole(role: Int): Int = when (role.coerceIn(0, 4)) {
@@ -1009,7 +967,7 @@ internal class FilamentGameRenderer(
         val respawnOffset = smoothStep01(heroRespawnBlend / 0.72f) * 0.045f
         val rootY = terrainHeight(x, z) + gaitBob + groundedOffset + downOffset + respawnOffset -
             characterMinY * scaleY
-        val matrix = terrainAlignedTransform(x, z, playerYaw, scaleX, scaleY, rootY)
+        val matrix = terrainAlignedTransform(x, z, playerYaw + Math.PI.toFloat(), scaleX, scaleY, rootY)
         engine.transformManager.setTransform(characterRootInstance, matrix)
 
         updateHeroPose(speed, turnRate, moving, runBlend, dt)
@@ -1020,7 +978,7 @@ internal class FilamentGameRenderer(
         heroRespawnBlend = max(0f, heroRespawnBlend - dt)
 
         previousHeroSpeed = speed
-        playerAnimator?.updateBoneMatrices()
+        animatePlayableHero(speed)
         updateCamera(cameraAspect)
     }
 
@@ -1275,7 +1233,7 @@ internal class FilamentGameRenderer(
         showcaseScale = scale
         showcaseHeight = if (scale > 1.17f) ArenaShowcaseLayout.SELECT_CAMERA_HEIGHT else ArenaShowcaseLayout.MENU_CAMERA_HEIGHT
         showcaseDistance = if (scale > 1.17f) ArenaShowcaseLayout.SELECT_CAMERA_DISTANCE else ArenaShowcaseLayout.MENU_CAMERA_DISTANCE
-        showcaseYaw = Math.PI.toFloat()
+        showcaseYaw = 0f
         playerYaw = showcaseYaw
         val scaled = characterScale * showcaseScale
         val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) - characterMinY * scaled
@@ -1295,13 +1253,13 @@ internal class FilamentGameRenderer(
         updateHeroPose(0f, 0f, 0f, 0f, dt)
         val scaled = characterScale * showcaseScale
         val bob = sin(animationClock * 1.35f) * 0.018f
-        showcaseYaw = Math.PI.toFloat() + sin(animationClock * 0.42f) * 0.14f
+        showcaseYaw = sin(animationClock * 0.42f) * 0.14f
         val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) + bob - characterMinY * scaled
         engine.transformManager.setTransform(
             characterRootInstance,
             terrainAlignedTransform(showcaseHeroX, showcaseHeroZ, showcaseYaw, scaled, scaled, rootY)
         )
-        playerAnimator?.updateBoneMatrices()
+        animatePlayableHero(0f)
     }
 
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
@@ -1526,31 +1484,8 @@ internal class FilamentGameRenderer(
         activeHero = hero.coerceIn(0, 2)
         activatePlayerModel(activeHero)
         rebuildBotGearForHero()
-        // Lyra's authored material palette is part of her identity, not a global tint.
-        if (activeHero == 0 && lyraModelReady) return
-        val tint = if (alternateSkin) {
-            when (activeHero) {
-                1 -> floatArrayOf(0.22f, 0.72f, 0.76f, 1.0f)
-                2 -> floatArrayOf(0.88f, 0.34f, 0.20f, 1.0f)
-                else -> floatArrayOf(0.82f, 0.70f, 0.36f, 1.0f)
-            }
-        } else {
-            when (activeHero) {
-                1 -> floatArrayOf(0.88f, 0.62f, 0.28f, 1.0f)
-                2 -> floatArrayOf(0.58f, 0.46f, 0.92f, 1.0f)
-                else -> floatArrayOf(0.78f, 0.91f, 0.77f, 1.0f)
-            }
-        }
-        playerMaterials.forEach { material ->
-            runCatching {
-                material.setParameter(
-                    "baseColorFactor", Colors.RgbaType.SRGB,
-                    tint[0], tint[1], tint[2], tint[3]
-                )
-            }.onFailure { error ->
-                Log.w(TAG, "Hero material tint fallback", error)
-            }
-        }
+        // Retain each CC0 source mesh, clothing, hair and original material palette.
+        if (alternateSkin) Log.i(TAG, "Alternate skin request does not flatten the authored CC0 material palette")
     }
 
     fun setOverviewCamera(overview: Boolean) {
@@ -1569,7 +1504,7 @@ internal class FilamentGameRenderer(
             val rootY = cameraY - characterMinY * characterScale
             val scale = characterScale
             engine.transformManager.setTransform(characterRootInstance,
-                terrainAlignedTransform(cameraX, cameraZ, playerYaw, scale, scale, rootY))
+                terrainAlignedTransform(cameraX, cameraZ, playerYaw + Math.PI.toFloat(), scale, scale, rootY))
         } else {
             cameraX = spawn.first
             cameraZ = spawn.second
@@ -1638,19 +1573,18 @@ internal class FilamentGameRenderer(
             equippedPlayerGear = -1
             heroGearAssets.forEach { asset -> characterLoader?.destroyAsset(asset) }
             heroGearAssets.clear()
-            genericPlayerInstance?.let { viewer.scene.removeEntities(it.entities) }
-            lyraPlayerInstance?.let { viewer.scene.removeEntities(it.entities) }
-            genericPlayerInstance = null
-            lyraPlayerInstance = null
+            playableHeroes.forEach { runtime ->
+                runtime?.let { hero ->
+                    viewer.scene.removeEntities(hero.instance.entities)
+                    characterLoader?.destroyAsset(hero.asset)
+                }
+            }
+            playableHeroes.fill(null)
             playerInstance = null
             playerAnimator = null
             playerMaterials.clear()
-            genericPlayerBones.clear()
-            lyraPlayerBones.clear()
             botAnimators.clear()
             minionLastPositions.forEach { it[0] = Float.NaN; it[1] = Float.NaN }
-            lyraCharacterAsset?.let { asset -> characterLoader?.destroyAsset(asset) }
-            lyraCharacterAsset = null
             character?.let { asset -> characterLoader?.destroyAsset(asset) }
             character = null
             botBones.clear()
