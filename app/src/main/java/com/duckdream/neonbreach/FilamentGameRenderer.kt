@@ -85,6 +85,22 @@ internal class FilamentGameRenderer(
     private val minionAlive = BooleanArray(48) { false }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.78f
+    private data class LifeActorRuntime(
+        val spawn: LifeActorSpawn,
+        val instance: FilamentInstance,
+        val root: Int,
+        val animator: Animator,
+        val scale: Float,
+        val minY: Float,
+        val idleClip: Int,
+        val moveClip: Int,
+        val idleDuration: Float,
+        val moveDuration: Float,
+        var visible: Boolean = false
+    )
+    private val lifeAssets = LinkedHashMap<String, FilamentAsset>()
+    private val lifeActors = ArrayList<LifeActorRuntime>(14)
+    private var lifeClock = 0f
     private var minionsVisible = false
     private var botsVisible = true
     private var showcaseMode = false
@@ -281,6 +297,8 @@ internal class FilamentGameRenderer(
         loadKayKitEnvironment()
         Log.i(TAG, "Startup stage: characters and rigs")
         loadCharacter()
+        Log.i(TAG, "Startup stage: wildlife and camp guardians")
+        loadLivingWorld()
         updateCamera(16f / 9f)
         sceneLoaded = true
         Log.i(TAG, "Filament backend=$backendName, first outdoor scene ready")
@@ -424,6 +442,116 @@ internal class FilamentGameRenderer(
 
         worldAssets.values.forEach { it.releaseSourceData() }
         Log.i(TAG, "KayKit CC0 environment loaded: ${worldAssets.size} models, ${worldInstances.size} placements")
+    }
+
+    private fun loadLivingWorld() {
+        val loader = characterLoader ?: error("Character AssetLoader is unavailable for CC0 life models")
+        val resources = characterResources ?: error("Character ResourceLoader is unavailable for CC0 life models")
+        val spawns = ArenaLifeCatalog.wildlife + ArenaLifeCatalog.campGuardians()
+        val neededSpecies = spawns.map { it.species }.distinct()
+        val transforms = engine.transformManager
+
+        for (speciesId in neededSpecies) {
+            try {
+                val bytes = context.assets.open("life/$speciesId.glb").use { it.readBytes() }
+                val asset = loader.createAsset(ByteBuffer.wrap(bytes))
+                    ?: throw IllegalStateException("Filament rejected life/$speciesId.glb")
+                for (uri in asset.resourceUris) {
+                    val data = context.assets.open("life/$uri").use { it.readBytes() }
+                    resources.addResourceData(uri, ByteBuffer.wrap(data))
+                }
+                resources.loadResources(asset)
+                lifeAssets[speciesId] = asset
+                Log.i(TAG, "CC0 life model loaded: $speciesId, bytes=${bytes.size}")
+            } catch (error: Throwable) {
+                Log.e(TAG, "Could not load CC0 life model: $speciesId", error)
+            }
+        }
+
+        for (spawn in spawns) {
+            val asset = lifeAssets[spawn.species] ?: continue
+            try {
+                val instance = loader.createInstance(asset)
+                    ?: throw IllegalStateException("Could not instance ${spawn.species}")
+                val root = transforms.getInstance(instance.root)
+                check(root != 0) { "Life model root is missing: ${spawn.id}" }
+                val half = asset.boundingBox.getHalfExtent(null)
+                val center = asset.boundingBox.getCenter(null)
+                val sourceHeight = (half[1] * 2f).coerceAtLeast(0.1f)
+                val profile = ArenaLifeCatalog.species.getValue(spawn.species)
+                val scale = profile.targetHeight / sourceHeight
+                val minY = center[1] - half[1]
+                val animator = instance.animator
+                val animationCount = animator.getAnimationCount()
+                val clipNames = (0 until animationCount).map { animator.getAnimationName(it).lowercase() }
+                fun findClip(tokens: List<String>): Int =
+                    clipNames.indexOfFirst { name -> tokens.any { token -> name.contains(token) } }
+                val idleClip = findClip(profile.idleTokens).let {
+                    if (it >= 0) it else if (clipNames.isNotEmpty()) 0 else -1
+                }
+                val moveClip = findClip(profile.moveTokens).let { if (it >= 0) it else idleClip }
+                val idleDuration = if (idleClip >= 0) animator.getAnimationDuration(idleClip).coerceAtLeast(0.1f) else 1f
+                val moveDuration = if (moveClip >= 0) animator.getAnimationDuration(moveClip).coerceAtLeast(0.1f) else 1f
+                val actor = LifeActorRuntime(
+                    spawn, instance, root, animator, scale, minY,
+                    idleClip, moveClip, idleDuration, moveDuration
+                )
+                lifeActors.add(actor)
+                viewer.scene.addEntities(instance.entities)
+                actor.visible = true
+                val sample = ArenaLifeCatalog.sample(spawn, spawn.phase, spawn.x + 30f, spawn.z + 30f)
+                val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - minY * scale
+                transforms.setTransform(root, terrainAlignedTransform(
+                    sample.x, sample.z, sample.yaw + profile.yawOffset, scale, scale, y
+                ))
+                if (idleClip >= 0) animator.applyAnimation(idleClip, 0f)
+                animator.updateBoneMatrices()
+                Log.i(TAG, "Life actor ready: ${spawn.id}, clips=${clipNames.joinToString()}")
+            } catch (error: Throwable) {
+                Log.e(TAG, "Could not create life actor: ${spawn.id}", error)
+            }
+        }
+
+        lifeAssets.values.forEach { it.releaseSourceData() }
+        Log.i(TAG, "Living world ready: ${lifeAssets.size}/${neededSpecies.size} CC0 species, ${lifeActors.size}/${spawns.size} actors")
+    }
+
+    private fun updateLivingWorld(deltaTime: Float, playerX: Float, playerZ: Float, snapshot: FloatArray? = null) {
+        if (lifeActors.isEmpty()) return
+        lifeClock += deltaTime.coerceIn(0f, 0.05f)
+        val transforms = engine.transformManager
+        for (actor in lifeActors) {
+            val spawn = actor.spawn
+            val campAlive = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) {
+                snapshot?.getOrNull(270 + spawn.campIndex)?.let { it > 0f } ?: true
+            } else true
+            val dx = spawn.x - playerX
+            val dz = spawn.z - playerZ
+            val inRange = spawn.kind == LifeActorKind.CAMP_GUARDIAN ||
+                dx * dx + dz * dz <= 38f * 38f
+            val shouldShow = campAlive && inRange
+            if (actor.visible != shouldShow) {
+                if (shouldShow) viewer.scene.addEntities(actor.instance.entities)
+                else viewer.scene.removeEntities(actor.instance.entities)
+                actor.visible = shouldShow
+            }
+            if (!shouldShow) continue
+
+            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX, playerZ)
+            val profile = ArenaLifeCatalog.species.getValue(spawn.species)
+            val clip = if (sample.moving) actor.moveClip else actor.idleClip
+            if (clip >= 0) {
+                val duration = if (clip == actor.moveClip) actor.moveDuration else actor.idleDuration
+                val offset = if (clip == actor.moveClip) spawn.phase * 0.37f else spawn.phase
+                actor.animator.applyAnimation(clip, (lifeClock + offset) % duration)
+            }
+            val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - actor.minY * actor.scale
+            transforms.setTransform(actor.root, terrainAlignedTransform(
+                sample.x, sample.z, sample.yaw + profile.yawOffset,
+                actor.scale, actor.scale, y
+            ))
+            if (clip >= 0) actor.animator.updateBoneMatrices()
+        }
     }
 
     private fun loadCharacter() {
@@ -1161,6 +1289,7 @@ internal class FilamentGameRenderer(
         val dt = deltaTime.coerceIn(0f, 0.05f)
         if (dt <= 0f) return
         animationClock += dt
+        updateLivingWorld(dt, showcaseHeroX, showcaseHeroZ)
         updateHeroPose(0f, 0f, 0f, 0f, dt)
         val scaled = characterScale * showcaseScale
         val bob = sin(animationClock * 1.35f) * 0.018f
@@ -1175,6 +1304,7 @@ internal class FilamentGameRenderer(
 
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
         if (!sceneLoaded || snapshot.size < 318) return
+        updateLivingWorld(deltaTime, snapshot[0], snapshot[2], snapshot)
         minionAnimationPhase += deltaTime * 7.2f
         for (index in minionInstances.indices) {
             val alive = snapshot[222 + index] > 0.0f
@@ -1486,6 +1616,10 @@ internal class FilamentGameRenderer(
             minionInstances.clear()
             minionAnimators.clear()
             minionBones.clear()
+            lifeActors.forEach { actor -> viewer.scene.removeEntities(actor.instance.entities) }
+            lifeActors.clear()
+            lifeAssets.values.forEach { asset -> characterLoader?.destroyAsset(asset) }
+            lifeAssets.clear()
             worldInstances.forEach { viewer.scene.removeEntities(it.entities) }
             worldInstances.clear()
             worldAssets.values.forEach { asset -> worldAssetLoader?.destroyAsset(asset) }
