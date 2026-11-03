@@ -8,7 +8,7 @@ internal data class ArenaPoint(val x: Float, val z: Float)
 /** Testable contract between the native world definition and Kotlin presentation. */
 internal interface ArenaWorldDataSource {
     fun terrainGrid(steps: Int, size: Float): FloatArray
-    fun laneCenterX(lane: Int, z: Float): Float
+    fun laneCenterGrid(steps: Int, size: Float): FloatArray
     fun towerZ(team: Int, tier: Int): Float
     fun riverCenterZ(x: Float): Float
     fun islandMask(steps: Int, size: Float): BooleanArray
@@ -26,7 +26,7 @@ internal interface ArenaWorldDataSource {
  */
 internal object ArenaWorldNative {
     external fun nativeTerrainGrid(steps: Int, size: Float): FloatArray
-    external fun nativeLaneCenterX(lane: Int, z: Float): Float
+    external fun nativeLaneCenterGrid(steps: Int, size: Float): FloatArray
     external fun nativeTowerZ(team: Int, tier: Int): Float
     external fun nativeRiverCenterZ(x: Float): Float
     external fun nativeIslandMask(steps: Int, size: Float): BooleanArray
@@ -40,7 +40,7 @@ internal object ArenaWorldNative {
 
 private object NativeArenaWorldDataSource : ArenaWorldDataSource {
     override fun terrainGrid(steps: Int, size: Float) = ArenaWorldNative.nativeTerrainGrid(steps, size)
-    override fun laneCenterX(lane: Int, z: Float) = ArenaWorldNative.nativeLaneCenterX(lane, z)
+    override fun laneCenterGrid(steps: Int, size: Float) = ArenaWorldNative.nativeLaneCenterGrid(steps, size)
     override fun towerZ(team: Int, tier: Int) = ArenaWorldNative.nativeTowerZ(team, tier)
     override fun riverCenterZ(x: Float) = ArenaWorldNative.nativeRiverCenterZ(x)
     override fun islandMask(steps: Int, size: Float) = ArenaWorldNative.nativeIslandMask(steps, size)
@@ -60,6 +60,7 @@ internal object ArenaWorldDefinition {
 
     private data class Snapshot(
         val terrain: FloatArray,
+        val laneCenters: FloatArray,
         val camps: List<ArenaPoint>,
         val objectives: List<ArenaPoint>,
         val trees: List<ArenaPoint>,
@@ -81,8 +82,13 @@ internal object ArenaWorldDefinition {
                 check(terrain.size == (GRID_STEPS + 1) * (GRID_STEPS + 1)) {
                     "World terrain grid has an unexpected sample count: ${terrain.size}"
                 }
+                val laneCenters = current.laneCenterGrid(GRID_STEPS, GRID_SIZE)
+                check(laneCenters.size == 3 * (GRID_STEPS + 1)) {
+                    "World lane-center grid has an unexpected sample count: ${laneCenters.size}"
+                }
                 Snapshot(
                     terrain = terrain,
+                    laneCenters = laneCenters,
                     camps = decodePoints(current.campPositions(), "camps"),
                     objectives = decodePoints(current.objectivePositions(), "objectives"),
                     trees = decodePoints(current.forestTreePositions(), "forest trees"),
@@ -136,8 +142,17 @@ internal object ArenaWorldDefinition {
         return near + (far - near) * tz
     }
 
-    fun laneCenterX(lane: Int, z: Float): Float =
-        source.laneCenterX(lane.coerceIn(0, 2), z)
+    fun laneCenterX(lane: Int, z: Float): Float {
+        val index = lane.coerceIn(0, 2)
+        val position = ((z - GRID_START) / GRID_CELL).coerceIn(0f, GRID_STEPS.toFloat())
+        val lower = floor(position).toInt().coerceAtMost(GRID_STEPS - 1)
+        val fraction = (position - lower).coerceIn(0f, 1f)
+        val stride = GRID_STEPS + 1
+        val samples = snapshot().laneCenters
+        val a = samples[index * stride + lower]
+        val b = samples[index * stride + lower + 1]
+        return a + (b - a) * fraction
+    }
 
     fun towerZ(team: Int, tier: Int): Float =
         source.towerZ(team.coerceIn(0, 1), tier.coerceIn(0, 2))
