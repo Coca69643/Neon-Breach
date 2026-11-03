@@ -30,13 +30,13 @@ SOURCES = {
     "models/Prop_Vine1.bin": ("glTF/Prop_Vine1.bin", 5580, "b7737f593c9f2385d0d2f72632c02868caa1b79f"),
     "models/Roof_RoundTiles_4x4.gltf": ("glTF/Roof_RoundTiles_4x4.gltf", 4337, "d1ca604799ebb49cb4a0abca7e250e0932bd165f"),
     "models/Roof_RoundTiles_4x4.bin": ("glTF/Roof_RoundTiles_4x4.bin", 107176, "617878d038c7577dffc0a019020112d058f5f559"),
-    "textures/T_WoodTrim_BaseColor.png": ("glTF/T_WoodTrim_BaseColor.png", 2082310, "3547da835b7b1aa89e27e98c68b1582bd203ef93"),
-    "textures/T_Plaster_BaseColor.png": ("glTF/T_Plaster_BaseColor.png", 3316410, "14ff755f0dc786a775faea8eb9d51ef1e4dcd613"),
-    "textures/T_UnevenBrick_BaseColor.png": ("glTF/T_UnevenBrick_BaseColor.png", 2945342, "fd30c5496aa1c44fa6f22ed3281e7412091bc17f"),
-    "textures/T_RockTrim_BaseColor.png": ("glTF/T_RockTrim_BaseColor.png", 1908835, "66d38c3389b53c261dca7253a8898a5fa92cecfe"),
-    "textures/T_Brick_BaseColor.png": ("glTF/T_Brick_BaseColor.png", 2447169, "fdef46f78d9ccaeaf3b1efee6ca7cbca5b0769d1"),
-    "textures/T_VineLeaf_png.png": ("glTF/T_VineLeaf_png.png", 162432, "64d615c88f6a8c7dfa5e4c1836f18713eaabe9a4"),
-    "textures/T_RoundTiles_BaseColor.png": ("glTF/T_RoundTiles_BaseColor.png", 4352034, "1499f2b4d6eda2da8ca7512c342ed29632cf3d1e"),
+    "models/T_WoodTrim_BaseColor.png": ("glTF/T_WoodTrim_BaseColor.png", 2082310, "3547da835b7b1aa89e27e98c68b1582bd203ef93"),
+    "models/T_Plaster_BaseColor.png": ("glTF/T_Plaster_BaseColor.png", 3316410, "14ff755f0dc786a775faea8eb9d51ef1e4dcd613"),
+    "models/T_UnevenBrick_BaseColor.png": ("glTF/T_UnevenBrick_BaseColor.png", 2945342, "fd30c5496aa1c44fa6f22ed3281e7412091bc17f"),
+    "models/T_RockTrim_BaseColor.png": ("glTF/T_RockTrim_BaseColor.png", 1908835, "66d38c3389b53c261dca7253a8898a5fa92cecfe"),
+    "models/T_Brick_BaseColor.png": ("glTF/T_Brick_BaseColor.png", 2447169, "fdef46f78d9ccaeaf3b1efee6ca7cbca5b0769d1"),
+    "models/T_VineLeaf_png.png": ("glTF/T_VineLeaf_png.png", 162432, "64d615c88f6a8c7dfa5e4c1836f18713eaabe9a4"),
+    "models/T_RoundTiles_BaseColor.png": ("glTF/T_RoundTiles_BaseColor.png", 4352034, "1499f2b4d6eda2da8ca7512c342ed29632cf3d1e"),
     "CC0-1.0.txt": ("LICENSE", 7048, "0e259d42c996742e9e3cba14c677129b2c1b6311"),
 }
 
@@ -51,7 +51,7 @@ MODELS = (
 
 
 def git_blob_sha(data: bytes) -> str:
-    return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\\0" + data).hexdigest()
+    return hashlib.sha1(b"blob " + str(len(data)).encode("ascii") + b"\0" + data).hexdigest()
 
 
 def download(url: str) -> bytes:
@@ -103,7 +103,7 @@ def sanitize_gltf(raw: bytes, model_name: str) -> tuple[bytes, list[str]]:
     doc["textures"] = selected_textures
     doc["images"] = selected_images
     image_names = [image.get("uri", "") for image in selected_images]
-    if any(not name or name.startswith("data:") or "/" in name or "\\\\" in name for name in image_names):
+    if any(not name or name.startswith("data:") or "/" in name or "\\" in name for name in image_names):
         raise RuntimeError(f"{model_name}: expected local, flat texture filenames")
 
     # The selected kit uses one shared sampler; preserve sampler 0 when textures remain.
@@ -117,7 +117,7 @@ def sanitize_gltf(raw: bytes, model_name: str) -> tuple[bytes, list[str]]:
             raise RuntimeError(f"{model_name}: expected a local .bin buffer")
     if not doc.get("meshes") or not doc.get("nodes"):
         raise RuntimeError(f"{model_name}: missing mesh or node geometry")
-    return (json.dumps(doc, separators=(",", ":"), ensure_ascii=False) + "\\n").encode("utf-8"), image_names
+    return (json.dumps(doc, separators=(",", ":"), ensure_ascii=False) + "\n").encode("utf-8"), image_names
 
 
 def optimize_texture(path: Path) -> dict:
@@ -165,7 +165,7 @@ def main() -> None:
         target.write_bytes(data)
 
     texture_manifest = {}
-    for texture_path in sorted((DEST / "textures").glob("*.png")):
+    for texture_path in sorted((DEST / "models").glob("*.png")):
         texture_manifest[texture_path.name] = optimize_texture(texture_path)
 
     model_manifest = {}
@@ -174,7 +174,7 @@ def main() -> None:
         target = DEST / source_relative
         sanitized, texture_names = sanitize_gltf(fetched[source_relative], model_name)
         target.write_bytes(sanitized)
-        missing = [name for name in texture_names if not (DEST / "textures" / name).is_file()]
+        missing = [name for name in texture_names if not (DEST / "models" / name).is_file()]
         if missing:
             raise RuntimeError(f"{model_name}: missing color textures: {missing}")
         model_manifest[model_name] = {
@@ -198,7 +198,7 @@ def main() -> None:
         "models": model_manifest,
     }
     (DEST / "cc0-manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n", encoding="utf-8"
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
 
     total = sum(path.stat().st_size for path in DEST.rglob("*") if path.is_file())
