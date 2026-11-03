@@ -98,14 +98,41 @@ jobs:
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
           echo "$BADGING" | grep -F "package: name='com.duckdream.projectarena' versionCode='58' versionName='0.15.12'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
+      - name: Prepare versioned APK and checksum
+        run: |
+          cp app/build/outputs/apk/debug/app-debug.apk Project-Arena-0.15.12.apk
+          sha256sum Project-Arena-0.15.12.apk > Project-Arena-0.15.12.apk.sha256
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
           name: project-arena-0.15.12-update
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            Project-Arena-0.15.12.apk
+            Project-Arena-0.15.12.apk.sha256
           if-no-files-found: error
           retention-days: 14
+      - name: Publish Project Arena 0.15.12 release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: project-arena-0.15.12
+          target_commitish: ${{ github.sha }}
+          name: Projeto Arena 0.15.12 — heróis corrigidos
+          body: |
+            Projeto Arena 0.15.12 para Android.
+            Corrige a orientação de movimento de Lyra, Bastion e Kairo e aplica paletas de materiais individuais aos três modelos jogáveis.
+            Pacote Android: com.duckdream.projectarena
+            versionCode: 58
+            Commit: ${{ github.sha }}
+            APK compilado e validado pelo GitHub Actions.
+          draft: false
+          prerelease: false
+          make_latest: true
+          overwrite_files: true
+          files: |
+            Project-Arena-0.15.12.apk
+            Project-Arena-0.15.12.apk.sha256
       - name: Publish tester release
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.15.0-visual-overhaul'
         uses: softprops/action-gh-release@v2
