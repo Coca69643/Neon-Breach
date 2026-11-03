@@ -1146,8 +1146,10 @@ internal class FilamentGameRenderer(
         val root = minionRootInstances.getOrNull(index) ?: return
         if (root == 0) return
         val slot = (index % 8) % 4
-        val width = if (slot == 3) 0.92f else when (slot) { 0 -> 0.94f; 1 -> 1.02f; else -> 1.08f }
-        val height = if (slot == 3) 0.94f else when (slot) { 0 -> 1.02f; 1 -> 0.98f; else -> 1.0f }
+        // Four readable lane-unit silhouettes: compact guard, balanced scout,
+        // tall support and slender ranged class. Team tint remains independent.
+        val width = when (slot) { 0 -> 1.16f; 1 -> 0.98f; 2 -> 0.88f; else -> 0.78f }
+        val height = when (slot) { 0 -> 0.92f; 1 -> 1.02f; 2 -> 1.10f; else -> 1.18f }
         val scaleX = characterScale * minionScale * width
         val scaleY = characterScale * minionScale * height
         val y = terrainHeight(x, z) - characterMinY * scaleY
