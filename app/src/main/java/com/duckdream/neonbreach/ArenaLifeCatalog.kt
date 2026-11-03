@@ -14,7 +14,8 @@ internal data class LifeSpeciesProfile(
     val airHeight: Float,
     val yawOffset: Float,
     val idleTokens: List<String>,
-    val moveTokens: List<String>
+    val moveTokens: List<String>,
+    val attackTokens: List<String> = emptyList()
 )
 
 internal data class LifeActorSpawn(
@@ -39,8 +40,8 @@ internal data class LifeActorSample(
 
 /**
  * Deterministic, low-cost placement and motion catalog for ambient wildlife
- * and neutral camp guardians. Actors are visual-only and never change combat,
- * collision, gold, XP or objective simulation.
+ * and neutral camp guardians. Ambient wildlife remains visual-only; guardian
+ * combat state and damage are authoritative in the native simulation.
  */
 internal object ArenaLifeCatalog {
     val species = listOf(
@@ -51,11 +52,11 @@ internal object ArenaLifeCatalog {
         LifeSpeciesProfile("bird", 0.52f, 1.75f, 0f,
             listOf("idle", "perch", "look"), listOf("fly", "flap", "glide", "walk")),
         LifeSpeciesProfile("mushroom", 0.92f, 0f, 0f,
-            listOf("idle", "bounce", "look"), listOf("walk", "move", "hop")),
+            listOf("idle", "bounce", "look"), listOf("walk", "move", "hop"), listOf("attack", "swing", "hit")),
         LifeSpeciesProfile("walking-tree", 2.35f, 0f, 0f,
-            listOf("idle", "sway", "look"), listOf("walk", "move", "patrol")),
+            listOf("idle", "sway", "look"), listOf("walk", "move", "patrol"), listOf("attack", "slam", "strike")),
         LifeSpeciesProfile("ghost", 1.38f, 0.28f, 0f,
-            listOf("idle", "float", "hover"), listOf("float", "fly", "move", "walk"))
+            listOf("idle", "float", "hover"), listOf("float", "fly", "move", "walk"), listOf("attack", "cast", "strike"))
     ).associateBy { it.id }
 
     // Keep one deer inside the opening blue-side camera footprint, then distribute
