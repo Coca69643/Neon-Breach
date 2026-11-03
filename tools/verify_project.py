@@ -23,6 +23,8 @@ renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer
 presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
 presentation_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroPresentationTest.kt")
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
+world_definition = read("app/src/main/cpp/ArenaWorldDefinition.h")
+world_bridge = read("app/src/main/java/com/duckdream/neonbreach/ArenaWorldDefinition.kt")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
 physics_h = read("app/src/main/cpp/ArenaPhysics.h")
@@ -101,8 +103,12 @@ checks = [
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
-    ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
-    ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
+    ("ArenaWorldDefinition.GRID_STEPS" in world and "ArenaWorldDefinition.heightAt" in world and
+     "arena_world::terrainHeight" in world_definition and "nativeTerrainGrid" in world_bridge and
+     "kWorldMeshSize" in world_definition, "terrain mesh must consume canonical native height samples"),
+    ("arena_world::terrainHeight(x,z)" in physics and "arena_world::terrainHeight(x, z)" in native and
+     "high-low>3.2f" in physics_tests and "testCanonicalWorldDefinition" in physics_tests,
+     "native terrain and canonical world-definition regression are not connected"),
     ("versionCode 58" in gradle and "versionName '0.15.12'" in gradle, "app version must be 0.15.12 / code 58"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
@@ -139,10 +145,15 @@ checks = [
     ("renderer.updatePlayerSignals(result)" in main and "fun updatePlayerSignals(snapshot: FloatArray)" in renderer, "animation state bridge missing"),
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
-    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "forestTrees" in renderer and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, forest and objective geometry missing"),
+    ("ArenaWorldDefinition.laneCenterX" in renderer and "ArenaWorldDefinition.forestTreePositions" in renderer and
+     "ArenaWorldDefinition.heightAt(x, z)" in renderer and "ArenaWorldDefinition.campPositions()" in life_catalog and
+     "private fun shrine(" in world and "surrounding_water" in world,
+     "renderer, living-world catalog and terrain geometry must consume canonical world coordinates"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
-    ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
+    ("private fun terrainHeight(x: Float, z: Float): Float =" in renderer and
+     "ArenaWorldDefinition.heightAt(x, z)" in renderer and "ArenaWorldDefinition.heightAt(x,z)" in world,
+     "terrain rendering and actor placement must use the canonical height grid"),
     ("WorldPlacement(\"flag_blue\"" not in renderer and "WorldPlacement(\"flag_red\"" not in renderer, "objective/camp flags still used as map geometry"),
     ("result[116 + it]" in main and "result[104]" in main and "result[106]" in main, "HUD objective and three-tier tower fields missing"),
     ("snapshot[270 + index]" in main and "snapshot[222 + index]" in main, "minimap camps and minion snapshot fields missing"),
@@ -152,6 +163,9 @@ checks = [
     ("arena_physics::move(body" in native and "arena_physics::separate(" in native and "resolveActorContacts()" in native, "player/NPC collision and movement must share physics"),
     ("arena_physics::avoidObstacles(body" in native and "void avoidObstacles(" in physics_h and "bestProjection" in physics, "AI steering must avoid static map colliders"),
     ("kFixedStep = 1.0f / 60.0f" in native and "gSimulationAccumulator" in native, "fixed 60 Hz simulation step missing"),
+    ("arena_world::insideIsland" in world_bridge and "arena_world::worldEdgeFactor" in world_definition and
+     "nativeUndergrowthPositions" in world_bridge and "arena_world::undergrowthPosition" in physics,
+     "shared island boundary and undergrowth placement are not wired across native and renderer"),
     ("terrainHeight(float x,float z)" in physics and "slideUphill" in physics and "hitCircle" in physics and "hitBox" in physics and "confine" in physics, "terrain, slope, obstacle or world-boundary physics missing"),
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
