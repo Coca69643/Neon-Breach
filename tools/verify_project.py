@@ -84,6 +84,7 @@ checks = [
      "original Lyra GLB must contain a skinned body, bind matrices and authored costume geometry"),
     ("lyraModelContainsOriginalSilhouetteMaterialsAndSkinnedRig" in lyra_tests and
      "everyVertexHasNormalizedBlendWeightsAndValidJointInfluences" in lyra_tests and
+     "lyraAerialArmBindAnglesFlexTowardTheTorso" in lyra_tests and
      "LyraCharacterGlbBuilder.build()" in lyra_tests,
      "Lyra GLB and skinning regression tests are missing"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
