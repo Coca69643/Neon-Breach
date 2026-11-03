@@ -114,14 +114,14 @@ internal object ArenaLifeCatalog {
         val playerDz = baseZ - playerZ
         val distance = sqrt(playerDx * playerDx + playerDz * playerDz).coerceAtLeast(0.001f)
         val flee = ((7.5f - distance) / 7.5f).coerceIn(0f, 1f)
-        val escapeX = playerDx / distance
-        val escapeZ = playerDz / distance
+        val escapeX = if (distance <= 0.0011f) cos(spawn.phase) else playerDx / distance
+        val escapeZ = if (distance <= 0.0011f) sin(spawn.phase) else playerDz / distance
         val x = baseX + escapeX * flee * spawn.radius * 1.15f
         val z = baseZ + escapeZ * flee * spawn.radius * 1.15f
         val moving = abs(dx) + abs(dz) > 0.0015f || flee > 0.08f
         val yaw = if (flee > 0.08f) atan2(escapeX, escapeZ)
             else atan2(dx, dz)
-        val height = if (spawn.species == "bird") 1.75f + sin(time * 2.0f + spawn.phase) * 0.18f
+        val height = if (spawn.species == "bird") sin(time * 2.0f + spawn.phase) * 0.18f
             else if (spawn.species == "wolf") 0.025f
             else 0.012f
         return LifeActorSample(x, z, yaw, height, moving)
