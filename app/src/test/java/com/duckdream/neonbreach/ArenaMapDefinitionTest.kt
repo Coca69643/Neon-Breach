@@ -30,6 +30,17 @@ class ArenaMapDefinitionTest {
     }
 
     @Test
+    fun riverCenterlineHasTwelveBoundedPointsForBothRenderers() {
+        assertEquals(12, ArenaMapDefinition.riverCenterline.size)
+        assertTrue(ArenaMapDefinition.riverCenterline.all {
+            kotlin.math.abs(it.x) < ArenaMapDefinition.HALF_EXTENT_X &&
+                kotlin.math.abs(it.z) < ArenaMapDefinition.HALF_EXTENT_Z
+        })
+        assertTrue(ArenaMapDefinition.riverCenterline.first().x < 0f)
+        assertTrue(ArenaMapDefinition.riverCenterline.last().x > 0f)
+    }
+
+    @Test
     fun battlefieldScaleExpandsThePlayableFootprintWithoutChangingAuthoredCoordinates() {
         assertEquals(1.15f, ArenaMapDefinition.WORLD_SCALE, 0.0001f)
         assertTrue(ArenaMapDefinition.HALF_EXTENT_X * ArenaMapDefinition.WORLD_SCALE > 40f)
