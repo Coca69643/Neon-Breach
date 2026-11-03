@@ -106,7 +106,7 @@ internal class FilamentGameRenderer(
     private var showcaseScale = 1.0f
     private var showcaseHeight = 3.2f
     private var showcaseDistance = 6.5f
-    private var showcaseYaw = 0f
+    private var showcaseYaw = HeroFacing.SHOWCASE_YAW
     private val playerMaterials = ArrayList<MaterialInstance>(4)
     private var characterRootInstance = 0
     private var characterScale = 1f
@@ -718,6 +718,7 @@ internal class FilamentGameRenderer(
         playerAnimator = runtime.animator
         playerMaterials.clear()
         runtime.instance.materialInstances.forEach { playerMaterials.add(it) }
+        applyHeroPalette(hero)
         bones.clear()
         characterRootInstance = runtime.root
         characterScale = runtime.scale
@@ -726,6 +727,25 @@ internal class FilamentGameRenderer(
         runtime.animator.applyAnimation(runtime.idleClip, 0f)
         runtime.animator.updateBoneMatrices()
         Log.i(TAG, "Playable model activated: ${runtime.definition.id} / ${runtime.definition.assetPath}")
+    }
+
+
+    private fun applyHeroPalette(hero: Int) {
+        val palette = HeroMaterialPalette.forHero(hero)
+        if (palette.size != playerMaterials.size) {
+            Log.w(TAG, "Hero palette/material mismatch: hero=$hero palette=${palette.size} materials=${playerMaterials.size}")
+        }
+        playerMaterials.forEachIndexed { index, material ->
+            val color = palette.getOrNull(index) ?: return@forEachIndexed
+            runCatching {
+                material.setParameter(
+                    "baseColorFactor", Colors.RgbaType.SRGB,
+                    color.r, color.g, color.b, color.a
+                )
+            }.onFailure { error ->
+                Log.w(TAG, "Could not apply hero palette: hero=$hero material=$index", error)
+            }
+        }
     }
 
     private fun createHeroGear() {
@@ -910,7 +930,7 @@ internal class FilamentGameRenderer(
         val speed = kotlin.math.sqrt(velocityX * velocityX + velocityZ * velocityZ)
         var turnRate = 0f
         if (speed > 0.18f) {
-            val desiredYaw = kotlin.math.atan2(velocityX, velocityZ)
+            val desiredYaw = HeroFacing.yawFromVelocity(velocityX, velocityZ)
             if (!yawInitialized) {
                 playerYaw = desiredYaw
                 yawInitialized = true
@@ -969,7 +989,7 @@ internal class FilamentGameRenderer(
         val respawnOffset = smoothStep01(heroRespawnBlend / 0.72f) * 0.045f
         val rootY = terrainHeight(x, z) + gaitBob + groundedOffset + downOffset + respawnOffset -
             characterMinY * scaleY
-        val matrix = terrainAlignedTransform(x, z, playerYaw + Math.PI.toFloat(), scaleX, scaleY, rootY)
+        val matrix = terrainAlignedTransform(x, z, playerYaw, scaleX, scaleY, rootY)
         engine.transformManager.setTransform(characterRootInstance, matrix)
 
         updateHeroPose(speed, turnRate, moving, runBlend, dt)
@@ -1235,7 +1255,7 @@ internal class FilamentGameRenderer(
         showcaseScale = scale
         showcaseHeight = if (scale > 1.17f) ArenaShowcaseLayout.SELECT_CAMERA_HEIGHT else ArenaShowcaseLayout.MENU_CAMERA_HEIGHT
         showcaseDistance = if (scale > 1.17f) ArenaShowcaseLayout.SELECT_CAMERA_DISTANCE else ArenaShowcaseLayout.MENU_CAMERA_DISTANCE
-        showcaseYaw = 0f
+        showcaseYaw = HeroFacing.SHOWCASE_YAW
         playerYaw = showcaseYaw
         val scaled = characterScale * showcaseScale
         val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) - characterMinY * scaled
@@ -1255,7 +1275,7 @@ internal class FilamentGameRenderer(
         updateHeroPose(0f, 0f, 0f, 0f, dt)
         val scaled = characterScale * showcaseScale
         val bob = sin(animationClock * 1.35f) * 0.018f
-        showcaseYaw = sin(animationClock * 0.42f) * 0.14f
+        showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f
         val rootY = terrainHeight(showcaseHeroX, showcaseHeroZ) + bob - characterMinY * scaled
         engine.transformManager.setTransform(
             characterRootInstance,
@@ -1506,7 +1526,7 @@ internal class FilamentGameRenderer(
             val rootY = cameraY - characterMinY * characterScale
             val scale = characterScale
             engine.transformManager.setTransform(characterRootInstance,
-                terrainAlignedTransform(cameraX, cameraZ, playerYaw + Math.PI.toFloat(), scale, scale, rootY))
+                terrainAlignedTransform(cameraX, cameraZ, playerYaw, scale, scale, rootY))
         } else {
             cameraX = spawn.first
             cameraZ = spawn.second
