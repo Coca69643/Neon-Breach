@@ -36,6 +36,12 @@ inline constexpr std::array<Lane, 3> kLanes{{
     }}}
 }};
 
+inline constexpr std::array<Point, 12> kRiverCenterline{{
+    {-34.0f,1.1f}, {-28.0f,0.55f}, {-21.0f,0.05f}, {-15.0f,-0.45f},
+    {-9.0f,-0.22f}, {-3.0f,0.25f}, {4.0f,0.38f}, {10.0f,0.02f},
+    {16.0f,-0.38f}, {23.0f,-0.18f}, {29.0f,0.22f}, {34.0f,0.8f}
+}};
+
 inline constexpr std::array<Point, 8> kCampPositions{{
     {-8.2f,-14.5f}, {8.2f,-14.5f}, {-20.2f,-10.0f}, {20.2f,-10.0f},
     {-8.2f,14.5f}, {8.2f,14.5f}, {-20.2f,10.0f}, {20.2f,10.0f}
