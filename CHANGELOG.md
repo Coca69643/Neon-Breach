@@ -1,5 +1,14 @@
 # Changelog — Projeto Arena
 
+## [0.15.11] — 2026-11-03
+
+### Identidade Android e instalação
+- Novo ícone de launcher com emblema de fortaleza e três rotas, substituindo a identidade visual herdada do ORION-9.
+- Novo `applicationId`: `com.duckdream.projectarena`. A instalação do Projeto Arena passa a ser independente e pode coexistir com uma instalação antiga do ORION-9.
+- Atualizado para `versionCode 57` / `versionName 0.15.11`.
+- README reduzido à descrição do jogo e ao log resumido de versões.
+
+
 ## [0.15.10] — 2026-11-03
 
 ### Fauna trazida para o campo de visão
