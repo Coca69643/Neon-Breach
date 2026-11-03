@@ -1,4 +1,5 @@
 #include "../app/src/main/cpp/ArenaPhysics.h"
+#include "../app/src/main/cpp/ArenaWorldDefinition.h"
 
 #include <cassert>
 #include <cmath>
@@ -23,6 +24,48 @@ void testTerrainSurface() {
     }
     assert(high-low>3.2f); // Terrain must read as distinct highlands and a river valley.
     assert(maxSlope<std::tan(43.0f*3.14159265f/180.0f));
+}
+void testCanonicalWorldDefinition() {
+    assert(arena_world::kCampPositions.size() == 8);
+    assert(arena_world::kObjectivePositions.size() == 2);
+    assert(arena_world::kForestTreePositions.size() == 32);
+    assert(arena_world::kJungleGrovePositions.size() == 12);
+
+    for (float z = -30.0f; z <= 30.0f; z += 5.0f) {
+        const float left = arena_world::laneCenterX(0, z);
+        const float middle = arena_world::laneCenterX(1, z);
+        const float right = arena_world::laneCenterX(2, z);
+        assert(left + 10.0f < middle);
+        assert(middle + 10.0f < right);
+    }
+
+    for (std::size_t i = 0; i < 4; ++i) {
+        const auto west = arena_world::kCampPositions[i];
+        const auto east = arena_world::kCampPositions[i + 1];
+        assert(std::abs(west.x + east.x) < 0.001f);
+        assert(std::abs(west.z - east.z) < 0.001f);
+    }
+
+    for (int team = 0; team < 2; ++team) {
+        for (int lane = 0; lane < arena_world::kLaneCount; ++lane) {
+            for (int tier = 0; tier < arena_world::kTowerTiers; ++tier) {
+                const auto tower = arena_world::towerPosition(team, lane, tier);
+                assert(std::abs(tower.x - arena_world::laneCenterX(lane, tower.z)) < 0.001f);
+                assert((team == 0 && tower.z < 0.0f) || (team == 1 && tower.z > 0.0f));
+            }
+        }
+    }
+
+    for (float x = -32.0f; x <= 32.0f; x += 4.0f) {
+        const float riverZ = arena_world::riverCenterZ(x);
+        assert(std::isfinite(riverZ));
+        for (float z = -28.0f; z <= 28.0f; z += 4.0f) {
+            const float canonical = arena_world::terrainHeight(x, z);
+            const float physics = arena_physics::terrainHeight(x, z);
+            assert(std::isfinite(canonical));
+            assert(std::abs(canonical - physics) < 0.00001f);
+        }
+    }
 }
 void testTreeCollisionAndSliding() {
     arena_physics::Body body{-12.2f,-23.0f,0.0f,0.0f,0.43f};
@@ -66,6 +109,7 @@ void testCharacterSeparation() {
 }
 }
 int main() {
+    testCanonicalWorldDefinition();
     testTerrainSurface();
     testTreeCollisionAndSliding();
     testStructureCollision();
