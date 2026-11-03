@@ -160,6 +160,12 @@ Vec2 campPosition(int index) {
     const arena_map::Point point = arena_map::kCampPositions[static_cast<std::size_t>(index)];
     return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
 }
+Vec2 campEntryPosition(int index, float side) {
+    Vec2 position = campPosition(index);
+    // Spawn outside the guardian's body collider and the camp's inner ring.
+    position.x += side * 3.6f * arena_map::kWorldScale;
+    return position;
+}
 Vec2 objectivePosition(int objective) {
     const arena_map::Point point = arena_map::kObjectivePositions[static_cast<std::size_t>(objective)];
     return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
@@ -193,7 +199,7 @@ void awardTeam(int team, float gold, float xp) {
 void resetBot(Bot &bot, int index) {
     const float homeZ = (bot.team == 0 ? -25.0f : 25.0f) * arena_map::kWorldScale;
     if (bot.role == 1) {
-        bot.position = campPosition(bot.team == 0 ? 0 : 5);
+        bot.position = campEntryPosition(bot.team == 0 ? 0 : 5, bot.team == 0 ? -1.0f : 1.0f);
     } else {
         const int lane = bot.lane;
         const float z = homeZ + (bot.team == 0 ? 2.0f : -2.0f) * arena_map::kWorldScale;
@@ -285,7 +291,7 @@ void resetSimulation() {
     gSimulationAccumulator = 0.0f;
     gPlayerSelectedHero = std::clamp(gPlayerSelectedHero, 0, 2);
     gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f * arena_map::kWorldScale) :
-                      (playerRole() == 1 ? campPosition(0) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
+                      (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
     gPlayerVelocity = {0.0f, 0.0f};
     gLastMove = {0.0f, 1.0f};
     gDashDirection = {0.0f, 1.0f};
@@ -570,7 +576,7 @@ void updatePlayerTimers(float dt) {
         if (gPlayerRespawnTime <= 0.0f) {
             gPlayerHealth = gPlayerMaxHealth;
             gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f * arena_map::kWorldScale) :
-                              (playerRole() == 1 ? campPosition(0) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
+                              (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
             gPlayerDisrupted = 0.9f;
         }
     }
