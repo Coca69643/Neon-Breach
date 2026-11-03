@@ -196,7 +196,7 @@ checks = [
      "worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover" in world_tests,
      "life roster, movement and scenery regression tests are missing"),
     ("source_commit" in life_fetch and "git_blob_sha" in life_fetch and
-     "af7c09239feb1b675ae3ad469bbcacd7b56975f2" in life_fetch and
+     "CC0" in asset_register and "af7c09239feb1b675ae3ad469bbcacd7b56975f2" in life_fetch and
      "ff80d2ea1eaeb3eedbcd6ce43eda1957a8e6b9b4" in life_fetch and
      "external buffer URI would break offline packaging" in life_fetch,
      "pinned CC0 asset fetcher must verify binary assets and offline self-containment"),
