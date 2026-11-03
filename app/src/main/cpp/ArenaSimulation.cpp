@@ -188,7 +188,7 @@ void awardTeam(int team, float gold, float xp) {
 void resetBot(Bot &bot, int index) {
     const float homeZ = (bot.team == 0 ? -25.0f : 25.0f) * arena_map::kWorldScale;
     if (bot.role == 1) {
-        bot.position = campPosition(bot.team == 0 ? 0 : 4);
+        bot.position = campPosition(bot.team == 0 ? 0 : 5);
     } else {
         const int lane = bot.lane;
         const float z = homeZ + (bot.team == 0 ? 2.0f : -2.0f) * arena_map::kWorldScale;
