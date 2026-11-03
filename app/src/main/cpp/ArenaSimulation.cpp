@@ -891,10 +891,27 @@ Java_com_duckdream_neonbreach_ArenaWorldNative_nativeTerrainGrid(
     return result;
 }
 
-extern "C" JNIEXPORT jfloat JNICALL
-Java_com_duckdream_neonbreach_ArenaWorldNative_nativeLaneCenterX(
-    JNIEnv *, jobject, jint lane, jfloat z) {
-    return arena_world::laneCenterX(std::clamp(static_cast<int>(lane), 0, 2), z);
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeLaneCenterGrid(
+    JNIEnv *env, jobject, jint steps, jfloat size) {
+    if (steps != arena_world::kTerrainGridSteps ||
+        std::abs(size - arena_world::kWorldMeshSize) > 0.001f) return nullptr;
+    const int stride = steps + 1;
+    std::vector<jfloat> values(static_cast<std::size_t>(3 * stride));
+    const float start = -size * 0.5f;
+    const float cell = size / static_cast<float>(steps);
+    for (int lane = 0; lane < arena_world::kLaneCount; ++lane) {
+        for (int index = 0; index <= steps; ++index) {
+            const float z = start + static_cast<float>(index) * cell;
+            values[static_cast<std::size_t>(lane * stride + index)] =
+                arena_world::laneCenterX(lane, z);
+        }
+    }
+    jfloatArray result = env->NewFloatArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        env->SetFloatArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
 }
 
 extern "C" JNIEXPORT jbooleanArray JNICALL
