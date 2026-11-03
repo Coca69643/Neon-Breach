@@ -85,7 +85,7 @@ checks = [
     ("captureLyraRig" in renderer and "lyraJointIndex" in renderer and
      "joints.size == 19" in renderer and "getInstance(joints[index])" in renderer,
      "Lyra skin must bind by explicit GLB joint order, not name lookup"),
-    ("lyraModelReady" in renderer and "keeping the game bootable with the compatibility character" in renderer and
+    ("lyraModelReady" in renderer and "Original Lyra GLB could not be created; compatibility model required" in renderer and
      "activatePlayerModelInternal(hero, useLyra = true)" in renderer and
      "Lyra activation failed; switching to the compatibility character" in renderer and
      "activatePlayerModel(0)" in renderer,
