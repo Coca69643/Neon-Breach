@@ -51,14 +51,19 @@ struct Colliders {
                 circles.push_back({point.x, point.z, 0.21f});
             }
         }
-        for (int team=0;team<2;++team) {
-            const float sign=team==0?-1.0f:1.0f;
-            boxes.push_back({0,sign*27.3f,2.6f,2.0f});
-            boxes.push_back({-4.5f,sign*24.0f,1.25f,1.1f});
-            boxes.push_back({4.5f,sign*24.0f,1.25f,1.1f});
-            boxes.push_back({sign*8.0f,sign*25.3f,0.82f,0.82f});
-            boxes.push_back({-7,sign*24.2f,2.6f,0.38f});
-            boxes.push_back({7,sign*24.2f,2.6f,0.38f});
+        for (int team = 0; team < 2; ++team) {
+            const auto castle = arena_world::castlePosition(team);
+            const auto homeLeft = arena_world::homePosition(team, 0);
+            const auto homeRight = arena_world::homePosition(team, 1);
+            const auto church = arena_world::churchPosition(team);
+            const auto wallLeft = arena_world::baseWallPosition(team, 0);
+            const auto wallRight = arena_world::baseWallPosition(team, 1);
+            boxes.push_back({castle.x, castle.z, 2.6f, 2.0f});
+            boxes.push_back({homeLeft.x, homeLeft.z, 1.25f, 1.1f});
+            boxes.push_back({homeRight.x, homeRight.z, 1.25f, 1.1f});
+            boxes.push_back({church.x, church.z, 0.82f, 0.82f});
+            boxes.push_back({wallLeft.x, wallLeft.z, 2.6f, 0.38f});
+            boxes.push_back({wallRight.x, wallRight.z, 2.6f, 0.38f});
             for (int lane=0;lane<3;++lane) for (int tier=0;tier<3;++tier) {
                 const float z=arena_world::towerZ(team,tier);
                 circles.push_back({arena_world::laneCenterX(lane,z),z,0.62f});
