@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.15.11."""
+"""Structural verification for Project Arena 0.15.12."""
 from pathlib import Path
 import base64
 import hashlib
@@ -20,6 +20,8 @@ manifest = read("app/src/main/AndroidManifest.xml")
 main = read("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt")
 meta = read("app/src/main/java/com/duckdream/neonbreach/ArenaMetaStore.kt")
 renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer.kt")
+presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
+presentation_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroPresentationTest.kt")
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
@@ -66,8 +68,17 @@ checks = [
      "targetX = ArenaShowcaseLayout.TARGET_X" in renderer and
      "showcaseHeroZ = ArenaShowcaseLayout.HERO_Z" in renderer and
      "ArenaShowcaseLayout.SELECT_SCALE" in renderer and
-     "showcaseYaw = sin(animationClock * 0.42f) * 0.14f" in renderer,
+     "showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f" in renderer,
      "hero preview must retain its reserved area and source-facing axis"),
+    ("HeroFacing.yawFromVelocity(velocityX, velocityZ)" in renderer and
+     "terrainAlignedTransform(x, z, playerYaw, scaleX, scaleY, rootY)" in renderer and
+     "terrainAlignedTransform(x, z, playerYaw + Math.PI.toFloat()" not in renderer,
+     "playable heroes must face the actual movement vector without a second half-turn"),
+    ("applyHeroPalette(hero)" in renderer and "HeroMaterialPalette.forHero(hero)" in renderer and
+     "showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f" in renderer and
+     "gameplayYawMatchesAllFourWorldDirections" in presentation_tests and
+     "eachHeroHasDistinctMultiPartPaletteMatchingItsGlb" in presentation_tests,
+     "three playable heroes must keep individual readable palettes and verified facing"),
     ("loadPlayableHeroModels()" in renderer and "HeroModelCatalog.models" in renderer and
      "playableHeroes.all { it != null }" in renderer and "animatePlayableHero(speed)" in renderer and
      "runtime.animator.applyAnimation" in renderer,
@@ -92,13 +103,13 @@ checks = [
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 57" in gradle and "versionName '0.15.11'" in gradle, "app version must be 0.15.11 / code 57"),
+    ("versionCode 58" in gradle and "versionName '0.15.12'" in gradle, "app version must be 0.15.12 / code 58"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='57' versionName='0.15.11'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.15.11-update" in workflow, "0.15.9 artifact name missing"),
+    ("versionCode='58' versionName='0.15.12'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.15.12-update" in workflow, "0.15.12 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -269,7 +280,7 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.15.11 structural verification passed.")
+print("Project Arena 0.15.12 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
 print("Mirrored GLB arm flexion and character motion regression tests verified.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")

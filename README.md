@@ -4,6 +4,7 @@ MOBA 3D nativo para Android, com partidas 5v5 offline contra IA. Inclui três ro
 
 ## Log de atualizações
 
+- **0.15.12** — Corrigida a orientação dos três heróis e aplicadas paletas de materiais individuais.
 - **0.15.11** — Novo ícone e identificador Android próprio, sem conflito de instalação com ORION-9.
 - **0.15.10** — Fauna reposicionada perto das rotas; culling acompanha os animais em movimento.
 - **0.15.9** — Lyra, Bastion e Kairo com modelos CC0 independentes.

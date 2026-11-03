@@ -1,5 +1,13 @@
 # Changelog — Projeto Arena
 
+## [0.15.12] — 2026-11-03
+
+### Orientação e identidade visual dos heróis
+- Corrigida a rotação de gameplay: removida a meia-volta indevida aplicada aos três GLBs, alinhando a frente visual ao vetor real de movimento.
+- Prévia do menu/seleção continua voltada para a câmera.
+- Aplicadas paletas SRGB individuais por material para Lyra, Bastion e Kairo, substituindo os fatores de cor muito escuros dos GLBs originais.
+- Adicionados testes de orientação nos quatro eixos e de integridade das três paletas.
+
 ## [0.15.11] — 2026-11-03
 
 ### Identidade Android e instalação
