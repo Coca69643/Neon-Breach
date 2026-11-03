@@ -217,6 +217,10 @@ checks = [
      "arena_camp::canStrike" in native and "values[static_cast<std::size_t>(312 + i)]" in native and
      "attackTokens" in life_catalog and "snapshot?.getOrNull(312 + spawn.campIndex)" in renderer,
      "neutral camp guardians lack native aggro, attacks or visual attack state"),
+    ("preferredObjective = bot.team == 0 ? 0 : 1" in native and
+     "fallbackObjective = 1 - preferredObjective" in native and
+     "moveActorOnMap(bot.position, bot.velocity, objective" in native,
+     "jungle AI must rotate to its side's neutral objective through map navigation"),
     ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
      "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.laneCenterX" in main,
      "minimap is not aligned with the expanded canonical battlefield"),
