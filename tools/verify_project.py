@@ -222,8 +222,9 @@ checks = [
      "moveActorOnMap(bot.position, bot.velocity, objective" in native,
      "jungle AI must rotate to its side's neutral objective through map navigation"),
     ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
-     "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.laneCenterX" in main,
-     "minimap is not aligned with the expanded canonical battlefield"),
+     "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.laneCenterX" in main and
+     "campAlertPaint" in main and "snapshot[312 + index]" in main,
+     "minimap is not aligned with the expanded canonical battlefield or camp combat state"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
