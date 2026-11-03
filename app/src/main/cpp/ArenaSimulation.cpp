@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstddef>
 #include <mutex>
+#include <vector>
 #include "ArenaPhysics.h"
 #include "ArenaWorldDefinition.h"
 
@@ -195,7 +196,7 @@ void awardTeam(int team, float gold, float xp) {
 void resetBot(Bot &bot, int index) {
     const float homeZ = bot.team == 0 ? -25.0f : 25.0f;
     if (bot.role == 1) {
-        bot.position = bot.team == 0 ? Vec2{-8.2f, -14.5f} : Vec2{8.2f, 14.5f};
+        bot.position = campPosition(bot.team == 0 ? 0 : 5);
     } else {
         const int lane = bot.lane;
         const float z = homeZ + (bot.team == 0 ? 2.0f : -2.0f);
