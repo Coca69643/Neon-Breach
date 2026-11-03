@@ -4,6 +4,7 @@
 
 ### Vale das Coroas — fundação compartilhada do mundo
 - Criada uma definição nativa canônica para altura do terreno, rio, três rotas, torres, acampamentos, objetivos, árvores, clareiras, limites do mapa e vegetação rasteira.
+- Centralizadas também as coordenadas das fortalezas, estruturas de base, paredes e pátios de entrada; colisões e instâncias do renderer agora consultam os mesmos marcos.
 - Simulação e colisão passam a consumir os mesmos pontos para terreno, estruturas e obstáculos principais.
 - Renderer Filament e minimapa consomem o mesmo traçado de rotas e os mesmos pontos de acampamentos, objetivos e vegetação.
 - Adicionada uma grade de altura nativa amostrada uma vez e interpolada no Kotlin, evitando chamadas JNI por vértice/frame.
