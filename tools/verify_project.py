@@ -29,6 +29,8 @@ gear = read("app/src/main/java/com/duckdream/neonbreach/HeroGearGlbBuilder.kt")
 gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilderTest.kt")
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
+showcase = read("app/src/main/java/com/duckdream/neonbreach/ArenaShowcaseLayout.kt")
+showcase_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaShowcaseLayoutTest.kt")
 workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
@@ -54,19 +56,31 @@ checks = [
      "Left arm must angle downward" in pose_tests and
      "Right arm must angle downward" in pose_tests,
      "GLB bind-pose regression test for both arms is missing"),
-    ("heroX = 0.0f, targetX = 0.0f, scale = 1.16f" in renderer and
+    ("heroX = ArenaShowcaseLayout.HERO_X" in renderer and
+     "targetX = ArenaShowcaseLayout.TARGET_X" in renderer and
+     "showcaseHeroZ = ArenaShowcaseLayout.HERO_Z" in renderer and
+     "ArenaShowcaseLayout.SELECT_SCALE" in renderer and
      "showcaseYaw = Math.PI.toFloat() + sin(animationClock * 0.42f) * 0.14f" in renderer,
-     "hero selection preview must be centered and animated"),
+     "hero preview must use a reserved clear area and animated presentation"),
+    ("HERO_X = -15.0f" in showcase and "HERO_Z = 4.0f" in showcase and
+     "previewClearingDoesNotOverlapMajorBattlefieldProps" in showcase_tests,
+     "hero showcase must remain clear of towers, camps and shrines"),
+    ("val distance = if (overviewCamera) 9.4f else 8.3f" in renderer and
+     "val height = if (overviewCamera) 9.6f else 9.2f" in renderer and
+     "val fov = if (overviewCamera) 48.0 else 44.0" in renderer,
+     "combat camera must keep a closer readable character framing"),
+    ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
+     "terrain palette must use the lower-saturation olive values"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 49" in gradle and "versionName '0.15.3'" in gradle, "app version must be 0.15.3 / code 49"),
+    ("versionCode 50" in gradle and "versionName '0.15.4'" in gradle, "app version must be 0.15.4 / code 50"),
     ("applicationId 'com.duckdream.neonbreach'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='49' versionName='0.15.3'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.15.3-update" in workflow, "0.15.3 artifact name missing"),
+    ("versionCode='50' versionName='0.15.4'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.15.4-update" in workflow, "0.15.4 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -172,6 +186,7 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.15.3 structural verification passed.")
-print("Mirrored GLB arm flexion and centered 3D hero showcase verified.")
+print("Project Arena 0.15.4 structural verification passed.")
+print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
+print("Mirrored GLB arm flexion and character motion regression tests verified.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")
