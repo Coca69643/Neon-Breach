@@ -45,12 +45,11 @@ struct Colliders {
                     point.z + std::sin(a) * 1.4f, 0.26f});
             }
         }
-        for (int i=0;i<56;++i) {
-            const float base=(i%4==0)?-10.1f:(i%4==1)?-6.1f:(i%4==2)?6.1f:10.1f;
-            const float x=base+std::sin(static_cast<float>(i)*1.71f)*0.82f;
-            const float z=-22.0f+static_cast<float>(i/4)*3.15f;
-            if (std::abs(z)<=24.0f && !(i%8<4 && z>0.0f))
-                circles.push_back({x,z,0.21f});
+        for (int i = 0; i < 56; ++i) {
+            const auto point = arena_world::undergrowthPosition(i);
+            if (std::abs(point.z) <= 24.0f && !(i % 8 < 4 && point.z > 0.0f)) {
+                circles.push_back({point.x, point.z, 0.21f});
+            }
         }
         for (int team=0;team<2;++team) {
             const float sign=team==0?-1.0f:1.0f;
@@ -70,11 +69,16 @@ struct Colliders {
 const Colliders &world(){static const Colliders c;return c;}
 
 void confine(Body &b) {
-    const float a=std::atan2(b.z/31.0f,b.x/35.0f);
-    const float edge=1.0f+0.035f*std::sin(a*5.0f)+0.020f*std::sin(a*9.0f+1.4f)+0.012f*std::cos(a*13.0f);
-    const float r=std::sqrt((b.x/35.0f)*(b.x/35.0f)+(b.z/31.0f)*(b.z/31.0f));
-    const float limit=std::max(0.0f,edge-b.radius/33.0f);
-    if(r>limit && r>kEpsilon){const float s=limit/r;b.x*=s;b.z*=s;}
+    const float angle = std::atan2(b.z / arena_world::kWorldRadiusZ,
+                                   b.x / arena_world::kWorldRadiusX);
+    const float edge = arena_world::worldEdgeFactor(angle);
+    const float radius = arena_world::normalizedWorldRadius(b.x, b.z);
+    const float limit = std::max(0.0f, edge - b.radius / arena_world::kWorldRadiusZ);
+    if (radius > limit && radius > kEpsilon) {
+        const float scale = limit / radius;
+        b.x *= scale;
+        b.z *= scale;
+    }
 }
 void hitCircle(Body &b,const Circle &c) {
     const float dx=b.x-c.x,dz=b.z-c.z,min=b.radius+c.r,d2=dx*dx+dz*dz;
