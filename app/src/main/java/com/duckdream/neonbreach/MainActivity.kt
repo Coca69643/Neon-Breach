@@ -896,13 +896,9 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         invalidate()
     }
 
-    private fun laneX(lane: Int, z: Float): Float {
-        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
-        return when (lane) {
-            0 -> -14.2f + bend
-            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
-            else -> 14.2f - bend * 0.82f
-        }
+    private fun laneX(lane: Int, worldZ: Float): Float {
+        val scale = ArenaMapDefinition.WORLD_SCALE
+        return ArenaMapDefinition.laneCenterX(lane, worldZ / scale) * scale
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -913,16 +909,20 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         val bottom = height - 4f
         canvas.drawRoundRect(left, top, right, bottom, 10f, 10f, backgroundPaint)
 
-        fun px(x: Float): Float = left + 8f + (x + 34f) / 68f * (right - left - 16f)
-        fun py(z: Float): Float = top + 8f + (30f - z) / 60f * (bottom - top - 16f)
+        val mapScale = ArenaMapDefinition.WORLD_SCALE
+        val halfX = ArenaMapDefinition.HALF_EXTENT_X * mapScale
+        val halfZ = ArenaMapDefinition.HALF_EXTENT_Z * mapScale
+        fun px(x: Float): Float = left + 8f + (x + halfX) / (2f * halfX) * (right - left - 16f)
+        fun py(z: Float): Float = top + 8f + (halfZ - z) / (2f * halfZ) * (bottom - top - 16f)
 
-        // Three distinct, curved lanes.
+        // Three distinct lanes sampled from the same canonical map as gameplay.
         for (lane in 0..2) {
             val line = Path()
             for (step in 0..30) {
-                val z = -30f + step * 2f
-                val x = px(laneX(lane, z))
-                val y = py(z)
+                val rawZ = -31f + step * (62f / 30f)
+                val worldZ = rawZ * mapScale
+                val x = px(laneX(lane, worldZ))
+                val y = py(worldZ)
                 if (step == 0) line.moveTo(x, y) else line.lineTo(x, y)
             }
             canvas.drawPath(line, lanePaint)
@@ -937,8 +937,10 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
             floatArrayOf(23f, -0.18f), floatArrayOf(29f, 0.22f), floatArrayOf(34f, 0.8f)
         )
         riverPoints.forEachIndexed { index, point ->
-            if (index == 0) river.moveTo(px(point[0]), py(point[1]))
-            else river.lineTo(px(point[0]), py(point[1]))
+            val x = point[0] * mapScale
+            val z = point[1] * mapScale
+            if (index == 0) river.moveTo(px(x), py(z))
+            else river.lineTo(px(x), py(z))
         }
         canvas.drawPath(river, riverPaint)
 
@@ -952,7 +954,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
                             0 -> 8f
                             1 -> 15f
                             else -> 22f
-                        }
+                        } * mapScale
                         val x = laneX(lane, z)
                         val alive = snapshot[107 + index] > 0f
                         val paint = if (!alive) destroyedTowerPaint else if (team == 0) blueTowerPaint else redTowerPaint
@@ -962,19 +964,25 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
             }
 
             // Neutral camps appear only while their creatures are alive.
-            val campPositions = arrayOf(
-                floatArrayOf(-8.2f, -14.5f), floatArrayOf(8.2f, -14.5f),
-                floatArrayOf(-20.2f, -10f), floatArrayOf(20.2f, -10f),
-                floatArrayOf(-8.2f, 14.5f), floatArrayOf(8.2f, 14.5f),
-                floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
-            )
-            campPositions.forEachIndexed { index, point ->
-                if (snapshot[270 + index] > 0f) canvas.drawCircle(px(point[0]), py(point[1]), 2.4f, campPaint)
+            ArenaMapDefinition.camps.forEachIndexed { index, camp ->
+                if (snapshot[270 + index] > 0f) {
+                    canvas.drawCircle(
+                        px(camp.position.x * mapScale), py(camp.position.z * mapScale),
+                        2.4f, campPaint
+                    )
+                }
             }
 
             // River objective pits have a distinct marker when active.
-            if (snapshot[104] > 0f) canvas.drawCircle(px(-7f), py(0.2f), 5f, objectivePaint)
-            if (snapshot[106] > 0f) canvas.drawCircle(px(7f), py(0.2f), 5f, objectivePaint)
+            ArenaMapDefinition.objectives.forEachIndexed { index, objective ->
+                val healthIndex = if (index == 0) 104 else 106
+                if (snapshot[healthIndex] > 0f) {
+                    canvas.drawCircle(
+                        px(objective.position.x * mapScale), py(objective.position.z * mapScale),
+                        5f, objectivePaint
+                    )
+                }
+            }
 
             // Minion waves and team units.
             for (index in 0 until 48) {
