@@ -1,4 +1,5 @@
 #include "ArenaPhysics.h"
+#include "ArenaMapDefinition.h"
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -14,47 +15,34 @@ struct Colliders {
     std::vector<Circle> circles;
     std::vector<Box> boxes;
     Colliders() {
-        constexpr std::array<std::array<float,2>,32> trees{{
-            {{-10.5f,-23}},{{-6.2f,-22}},{{-11.5f,-17.5f}},{{-5.5f,-17}},
-            {{-10.2f,-10}},{{-6.4f,-8}},{{10.5f,-23}},{{6.2f,-22}},
-            {{11.5f,-17.5f}},{{5.5f,-17}},{{10.2f,-10}},{{6.4f,-8}},
-            {{-22.8f,-18}},{{-26,-13}},{{-22.4f,-6}},{{-18.5f,-20}},
-            {{22.8f,-18}},{{26,-13}},{{22.4f,-6}},{{18.5f,-20}},
-            {{-10.5f,23}},{{-6.2f,22}},{{-11.5f,17.5f}},{{-5.5f,17}},
-            {{-10.2f,10}},{{-6.4f,8}},{{10.5f,23}},{{6.2f,22}},
-            {{11.5f,17.5f}},{{5.5f,17}},{{10.2f,10}},{{6.4f,8}}
-        }};
-        circles.reserve(160);
+        circles.reserve(220);
+        for (const auto &p : arena_map::kTreeBlockers) circles.push_back({p.x, p.z, 0.78f});
+
         for (const auto &p:trees) circles.push_back({p[0],p[1],0.78f});
 
-        constexpr std::array<std::array<float,2>,8> camps{{
-            {{-8.2f,-14.5f}},{{8.2f,-14.5f}},{{-20.2f,-10}},{{20.2f,-10}},
-            {{-8.2f,14.5f}},{{8.2f,14.5f}},{{-20.2f,10}},{{20.2f,10}}
-        }};
-        for (std::size_t n=0;n<camps.size();++n) {
+        for (std::size_t n=0;n<arena_map::kCampPositions.size();++n) {
+            const auto &camp = arena_map::kCampPositions[n];
             for (int i=0;i<7;++i) {
                 const float a=2*kPi*static_cast<float>(i)/7+static_cast<float>(n)*0.31f;
-                circles.push_back({camps[n][0]+std::cos(a)*2.65f,
-                    camps[n][1]+std::sin(a)*2.0f,0.27f});
+                circles.push_back({camp.x+std::cos(a)*2.65f,
+                    camp.z+std::sin(a)*2.0f,0.27f});
             }
         }
-        for (int objective=0;objective<2;++objective) {
-            const float x=objective==0?-7.0f:7.0f;
+        for (std::size_t objective=0;objective<arena_map::kObjectivePositions.size();++objective) {
+            const auto &center=arena_map::kObjectivePositions[objective];
+            const float radius=arena_map::kObjectiveRadii[objective];
             for (int i=0;i<12;++i) {
                 const float a=2*kPi*static_cast<float>(i)/12;
-                circles.push_back({x+std::cos(a)*4.55f,0.2f+std::sin(a)*3.75f,0.34f});
+                circles.push_back({center.x+std::cos(a)*radius,center.z+std::sin(a)*3.75f,0.34f});
             }
-            boxes.push_back({x,0.2f,1.55f,1.42f});
+            boxes.push_back({center.x,center.z,1.55f,1.42f});
         }
-        constexpr std::array<std::array<float,2>,12> groves{{
-            {{-25,-19}},{{-27,-8}},{{-23,8}},{{-26,19}},{{25,-19}},{{27,-8}},
-            {{23,8}},{{26,19}},{{-8.5f,-21}},{{8.5f,-21}},{{-8.5f,21}},{{8.5f,21}}
-        }};
-        for (std::size_t n=0;n<groves.size();++n) {
+        for (std::size_t n=0;n<arena_map::kGroveCenters.size();++n) {
+            const auto &grove=arena_map::kGroveCenters[n];
             for (int j=0;j<4;++j) {
                 const float a=2*kPi*static_cast<float>(j)/4+static_cast<float>(n)*0.43f;
-                circles.push_back({groves[n][0]+std::cos(a)*1.8f,
-                    groves[n][1]+std::sin(a)*1.4f,0.26f});
+                circles.push_back({grove.x+std::cos(a)*1.8f,
+                    grove.z+std::sin(a)*1.4f,0.26f});
             }
         }
         for (int i=0;i<56;++i) {
@@ -65,8 +53,7 @@ struct Colliders {
                 circles.push_back({x,z,0.21f});
         }
         const auto laneX=[](int lane,float z) {
-            const float bend=std::sin((z+4.0f)*0.105f)*1.15f;
-            return lane==0?-14.2f+bend:lane==1?0.5f+std::sin(z*0.12f)*0.72f:14.2f-bend*0.82f;
+            return arena_map::laneCenterX(lane,z);
         };
         for (int team=0;team<2;++team) {
             const float sign=team==0?-1.0f:1.0f;
@@ -98,10 +85,11 @@ float riverZ(float x) {
     return p.back()[1];
 }
 void confine(Body &b) {
-    const float a=std::atan2(b.z/31.0f,b.x/35.0f);
+    const float a=std::atan2(b.z/arena_map::kHalfExtentZ,b.x/arena_map::kHalfExtentX);
     const float edge=1.0f+0.035f*std::sin(a*5.0f)+0.020f*std::sin(a*9.0f+1.4f)+0.012f*std::cos(a*13.0f);
-    const float r=std::sqrt((b.x/35.0f)*(b.x/35.0f)+(b.z/31.0f)*(b.z/31.0f));
-    const float limit=std::max(0.0f,edge-b.radius/33.0f);
+    const float nx=b.x/arena_map::kHalfExtentX,nz=b.z/arena_map::kHalfExtentZ;
+    const float r=std::sqrt(nx*nx+nz*nz);
+    const float limit=std::max(0.0f,edge-b.radius/arena_map::kHalfExtentZ);
     if(r>limit && r>kEpsilon){const float s=limit/r;b.x*=s;b.z*=s;}
 }
 void hitCircle(Body &b,const Circle &c) {
