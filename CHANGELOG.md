@@ -1,5 +1,20 @@
 # Changelog — Projeto Arena
 
+## [0.15.8] — 2026-11-03
+
+### Cenário e seres vivos
+- Introduz seis animais de fauna ambiente (2 veados, 2 lobos, 2 aves) com percursos delimitados, orientação pela direção de movimento e recuo quando o jogador se aproxima.
+- Introduz oito guardiões visuais de acampamento em três silhuetas CC0: cogumelo, árvore ambulante e espectro. A aparição segue a vida/respawn já publicado no snapshot nativo; não muda física, colisões, recompensas ou regras da partida.
+- Os seis GLBs (deer, wolf, bird, mushroom, walking-tree e ghost) são obtidos no CI a partir de commit fixo e conferidos por tamanho e Git blob SHA-1; ficam dentro do APK e não exigem internet no runtime.
+- O renderer compartilha um FilamentAsset por espécie, instancia os atores e limita a atualização de fauna por distância e acampamento ativo. Clipes Idle/Walk/Fly/Float são escolhidos pelo nome via Animator; quando não há clipe compatível, o movimento de raiz mantém a presença visual.
+- WorldGlbBuilder agrupa samambaias, flores, cogumelos, juncos e troncos por material num GLB estático para conter draw calls.
+- Cinco funções de bots recebem cores de acento diferentes; as quatro classes de tropa passam a ter proporções corporais mais distintas.
+
+### Validação e escopo
+- Testes JVM validam catálogo, posições dos oito acampamentos, diversidade de espécies e movimento/retirada da fauna.
+- Teste de GLB verifica as novas peças agrupadas de vegetação e materiais do cenário.
+- A questão separada do GLB autoral de Lyra permanece aberta; esta versão não afirma que o modelo autoral já carrega no aparelho.
+
 ## [0.15.6] — 2026-11-03
 
 ### Recuperação de inicialização 3D
