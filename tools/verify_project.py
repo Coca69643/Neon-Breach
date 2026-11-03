@@ -168,8 +168,13 @@ checks = [
      "nativeIslandMask" in world_bridge and "islandMask" in world_bridge and
      "ArenaWorldDefinition.insideIsland" in world and
      "nativeUndergrowthPositions" in world_bridge and
-     "arena_world::undergrowthPosition" in physics,
-     "shared island boundary mask and undergrowth placement are not wired across native and renderer"),
+     "arena_world::undergrowthPosition" in physics and
+     "nativeBaseLandmarkPositions" in world_bridge and
+     "kBaseLandmarkPositions" in world_definition and
+     "arena_world::castlePosition" in physics and
+     "ArenaWorldDefinition.castlePosition" in renderer and
+     "ArenaWorldDefinition.baseWallPosition" in world,
+     "shared island boundary, undergrowth and fortress landmarks are not wired across native and renderer"),
     ("terrainHeight(float x,float z)" in physics and "slideUphill" in physics and "hitCircle" in physics and "hitBox" in physics and "confine" in physics, "terrain, slope, obstacle or world-boundary physics missing"),
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
