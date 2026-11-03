@@ -1,6 +1,7 @@
 package com.duckdream.neonbreach
 
 import kotlin.math.floor
+import kotlin.math.roundToInt
 
 internal data class ArenaPoint(val x: Float, val z: Float)
 
@@ -10,7 +11,7 @@ internal interface ArenaWorldDataSource {
     fun laneCenterX(lane: Int, z: Float): Float
     fun towerZ(team: Int, tier: Int): Float
     fun riverCenterZ(x: Float): Float
-    fun insideIsland(x: Float, z: Float): Boolean
+    fun islandMask(steps: Int, size: Float): BooleanArray
     fun campPositions(): FloatArray
     fun objectivePositions(): FloatArray
     fun forestTreePositions(): FloatArray
@@ -27,7 +28,7 @@ internal object ArenaWorldNative {
     external fun nativeLaneCenterX(lane: Int, z: Float): Float
     external fun nativeTowerZ(team: Int, tier: Int): Float
     external fun nativeRiverCenterZ(x: Float): Float
-    external fun nativeInsideIsland(x: Float, z: Float): Boolean
+    external fun nativeIslandMask(steps: Int, size: Float): BooleanArray
     external fun nativeCampPositions(): FloatArray
     external fun nativeObjectivePositions(): FloatArray
     external fun nativeForestTreePositions(): FloatArray
@@ -40,7 +41,7 @@ private object NativeArenaWorldDataSource : ArenaWorldDataSource {
     override fun laneCenterX(lane: Int, z: Float) = ArenaWorldNative.nativeLaneCenterX(lane, z)
     override fun towerZ(team: Int, tier: Int) = ArenaWorldNative.nativeTowerZ(team, tier)
     override fun riverCenterZ(x: Float) = ArenaWorldNative.nativeRiverCenterZ(x)
-    override fun insideIsland(x: Float, z: Float) = ArenaWorldNative.nativeInsideIsland(x, z)
+    override fun islandMask(steps: Int, size: Float) = ArenaWorldNative.nativeIslandMask(steps, size)
     override fun campPositions() = ArenaWorldNative.nativeCampPositions()
     override fun objectivePositions() = ArenaWorldNative.nativeObjectivePositions()
     override fun forestTreePositions() = ArenaWorldNative.nativeForestTreePositions()
@@ -60,7 +61,8 @@ internal object ArenaWorldDefinition {
         val objectives: List<ArenaPoint>,
         val trees: List<ArenaPoint>,
         val groves: List<ArenaPoint>,
-        val undergrowth: List<ArenaPoint>
+        val undergrowth: List<ArenaPoint>,
+        val islandMask: BooleanArray
     )
 
     @Volatile private var source: ArenaWorldDataSource = NativeArenaWorldDataSource
@@ -81,7 +83,12 @@ internal object ArenaWorldDefinition {
                     objectives = decodePoints(current.objectivePositions(), "objectives"),
                     trees = decodePoints(current.forestTreePositions(), "forest trees"),
                     groves = decodePoints(current.jungleGrovePositions(), "jungle groves"),
-                    undergrowth = decodePoints(current.undergrowthPositions(), "undergrowth")
+                    undergrowth = decodePoints(current.undergrowthPositions(), "undergrowth"),
+                    islandMask = current.islandMask(GRID_STEPS, GRID_SIZE).also {
+                        check(it.size == GRID_STEPS * GRID_STEPS) {
+                            "World island mask has an unexpected sample count: ${it.size}"
+                        }
+                    }
                 ).also { cachedSnapshot = it }
             }
         }
@@ -129,7 +136,12 @@ internal object ArenaWorldDefinition {
         source.towerZ(team.coerceIn(0, 1), tier.coerceIn(0, 2))
 
     fun riverCenterZ(x: Float): Float = source.riverCenterZ(x)
-    fun insideIsland(x: Float, z: Float): Boolean = source.insideIsland(x, z)
+
+    fun insideIsland(x: Float, z: Float): Boolean {
+        val gx = ((x - GRID_START) / GRID_CELL - 0.5f).roundToInt().coerceIn(0, GRID_STEPS - 1)
+        val gz = ((z - GRID_START) / GRID_CELL - 0.5f).roundToInt().coerceIn(0, GRID_STEPS - 1)
+        return snapshot().islandMask[gz * GRID_STEPS + gx]
+    }
 
     fun campPositions(): List<ArenaPoint> = snapshot().camps
     fun objectivePositions(): List<ArenaPoint> = snapshot().objectives
