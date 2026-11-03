@@ -456,21 +456,26 @@ internal class FilamentGameRenderer(
             }
         }
 
-        // The player is a real FilamentInstance too, so its materials can be styled
-        // independently from the nine shared-geometry bot instances.
-        playerInstance = characterLoader!!.createInstance(asset)
-            ?: throw IllegalStateException("Could not create the player humanoid instance")
-        val player = playerInstance!!
-        playerAnimator = player.animator
-        playerMaterials.clear()
-        player.materialInstances.forEach { playerMaterials.add(it) }
-        viewer.scene.addEntities(player.entities)
+        // Keep the neutral Quaternius player only for Bastion/Kairo. Lyra receives
+        // a separate project-authored skinned GLB with its own body proportions.
+        genericPlayerInstance = characterLoader!!.createInstance(asset)
+            ?: throw IllegalStateException("Could not create the generic player instance")
+        genericPlayerBones.putAll(captureHumanoidRig(
+            genericPlayerInstance!!, "generic-player", sourceAsset = asset
+        ))
+        applyRestPose(genericPlayerBones)
+        genericPlayerInstance!!.animator.updateBoneMatrices()
 
-        val half = asset.boundingBox.getHalfExtent(null)
-        val center = asset.boundingBox.getCenter(null)
-        val height = max(0.1f, half[1] * 2f)
-        characterScale = 2.12f / height
-        characterMinY = center[1] - half[1]
+        lyraCharacterAsset = characterLoader!!.createAsset(ByteBuffer.wrap(LyraCharacterGlbBuilder.build()))
+            ?: throw IllegalStateException("Original Lyra GLB failed to load")
+        lyraPlayerInstance = characterLoader!!.createInstance(lyraCharacterAsset!!)
+            ?: throw IllegalStateException("Could not create the original Lyra instance")
+        lyraPlayerBones.putAll(captureHumanoidRig(
+            lyraPlayerInstance!!, "lyra-player",
+            sourceAsset = lyraCharacterAsset!!, flexionSignMultiplier = -1f
+        ))
+        applyRestPose(lyraPlayerBones)
+        lyraPlayerInstance!!.animator.updateBoneMatrices()
 
         for (index in minionRootInstances.indices) {
             val team = if (index < 24) 0 else 1
@@ -484,15 +489,58 @@ internal class FilamentGameRenderer(
             setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
 
-        characterRootInstance = transforms.getInstance(player.root)
-        require(characterRootInstance != 0) { "Humanoid player root transform is missing" }
-
-        bones.putAll(captureHumanoidRig(player, "player"))
-        applyRestPose(bones)
-        playerAnimator?.updateBoneMatrices()
         createHeroGear()
+        activatePlayerModel(0)
         asset.releaseSourceData()
-        Log.i(TAG, "CC0 humanoid loaded: " + asset.entities.size + " entities, " + bones.size + " joints; no source animation clips, procedural role motion active")
+        lyraCharacterAsset?.releaseSourceData()
+        Log.i(TAG, "Character models loaded: original Lyra GLB with 19-joint skin; Quaternius fallback retained for Bastion/Kairo, bots and lane units")
+    }
+
+    private fun activatePlayerModel(hero: Int) {
+        val useLyra = hero == 0
+        val target = if (useLyra) {
+            lyraPlayerInstance ?: error("Original Lyra instance is unavailable")
+        } else {
+            genericPlayerInstance ?: error("Generic hero instance is unavailable")
+        }
+        if (playerInstance !== target) {
+            playerInstance?.let { viewer.scene.removeEntities(it.entities) }
+            playerInstance = target
+            viewer.scene.addEntities(target.entities)
+        }
+
+        playerAnimator = target.animator
+        playerMaterials.clear()
+        target.materialInstances.forEach { playerMaterials.add(it) }
+        bones.clear()
+        bones.putAll(if (useLyra) lyraPlayerBones else genericPlayerBones)
+
+        val sourceAsset = if (useLyra) {
+            lyraCharacterAsset ?: error("Original Lyra asset is unavailable")
+        } else {
+            character ?: error("Generic hero asset is unavailable")
+        }
+        characterRootInstance = engine.transformManager.getInstance(target.root)
+        require(characterRootInstance != 0) { "Playable hero root transform is missing" }
+        val half = sourceAsset.boundingBox.getHalfExtent(null)
+        val center = sourceAsset.boundingBox.getCenter(null)
+        val height = max(0.1f, half[1] * 2f)
+        characterScale = 2.12f / height
+        characterMinY = center[1] - half[1]
+
+        if (useLyra) {
+            playerGearInstances.filterNotNull().forEach { viewer.scene.removeEntities(it.entities) }
+            equippedPlayerGear = -1
+        } else {
+            playerGearInstances.forEachIndexed { index, instance ->
+                instance ?: return@forEachIndexed
+                if (index == hero) viewer.scene.addEntities(instance.entities)
+                else viewer.scene.removeEntities(instance.entities)
+            }
+            equippedPlayerGear = hero
+        }
+        target.animator.updateBoneMatrices()
+        Log.i(TAG, "Playable model activated: " + if (useLyra) "Lyra original skinned GLB" else "Quaternius base with hero gear")
     }
 
     private fun createHeroGear() {
