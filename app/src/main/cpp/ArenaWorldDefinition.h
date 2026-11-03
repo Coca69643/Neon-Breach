@@ -31,6 +31,17 @@ inline constexpr std::array<Point, 2> kObjectivePositions{{
     {-7.0f, 0.2f}, {7.0f, 0.2f}
 }};
 
+inline constexpr Point objectiveWallPosition(int objective, int side) noexcept {
+    const Point center = kObjectivePositions[static_cast<std::size_t>(
+        objective < 0 ? 0 : (objective > 1 ? 1 : objective))];
+    return {center.x + (side == 0 ? -5.0f : 5.0f), center.z};
+}
+
+inline constexpr std::array<Point, 4> kObjectiveWallPositions{{
+    objectiveWallPosition(0, 0), objectiveWallPosition(0, 1),
+    objectiveWallPosition(1, 0), objectiveWallPosition(1, 1)
+}};
+
 inline constexpr std::array<Point, 32> kForestTreePositions{{
     {-10.5f,-23.0f}, {-6.2f,-22.0f}, {-11.5f,-17.5f}, {-5.5f,-17.0f},
     {-10.2f,-10.0f}, {-6.4f,-8.0f}, {10.5f,-23.0f}, {6.2f,-22.0f},
@@ -117,6 +128,11 @@ inline float laneCenterX(int lane, float z) noexcept {
     if (lane == 0) return -14.2f + bend;
     if (lane == 1) return 0.5f + std::sin(z * 0.12f) * 0.72f;
     return 14.2f - bend * 0.82f;
+}
+
+inline Point riverCrossingPosition(int lane) noexcept {
+    const float x = laneCenterX(lane, 0.0f);
+    return {x, riverCenterZ(x)};
 }
 
 inline float towerZ(int team, int tier) noexcept {
