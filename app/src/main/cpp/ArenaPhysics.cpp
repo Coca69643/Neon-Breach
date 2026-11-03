@@ -18,7 +18,6 @@ struct Colliders {
         circles.reserve(220);
         for (const auto &p : arena_map::kTreeBlockers) circles.push_back({p.x, p.z, 0.78f});
 
-        for (const auto &p:trees) circles.push_back({p[0],p[1],0.78f});
 
         for (std::size_t n=0;n<arena_map::kCampPositions.size();++n) {
             const auto &camp = arena_map::kCampPositions[n];
