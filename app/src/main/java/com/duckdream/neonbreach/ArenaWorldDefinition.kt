@@ -15,6 +15,8 @@ internal interface ArenaWorldDataSource {
     fun baseLandmarkPositions(): FloatArray
     fun campPositions(): FloatArray
     fun objectivePositions(): FloatArray
+    fun objectiveWallPositions(): FloatArray
+    fun riverCrossingPositions(): FloatArray
     fun forestTreePositions(): FloatArray
     fun jungleGrovePositions(): FloatArray
     fun undergrowthPositions(): FloatArray
@@ -33,6 +35,8 @@ internal object ArenaWorldNative {
     external fun nativeBaseLandmarkPositions(): FloatArray
     external fun nativeCampPositions(): FloatArray
     external fun nativeObjectivePositions(): FloatArray
+    external fun nativeObjectiveWallPositions(): FloatArray
+    external fun nativeRiverCrossingPositions(): FloatArray
     external fun nativeForestTreePositions(): FloatArray
     external fun nativeJungleGrovePositions(): FloatArray
     external fun nativeUndergrowthPositions(): FloatArray
@@ -47,6 +51,8 @@ private object NativeArenaWorldDataSource : ArenaWorldDataSource {
     override fun baseLandmarkPositions() = ArenaWorldNative.nativeBaseLandmarkPositions()
     override fun campPositions() = ArenaWorldNative.nativeCampPositions()
     override fun objectivePositions() = ArenaWorldNative.nativeObjectivePositions()
+    override fun objectiveWallPositions() = ArenaWorldNative.nativeObjectiveWallPositions()
+    override fun riverCrossingPositions() = ArenaWorldNative.nativeRiverCrossingPositions()
     override fun forestTreePositions() = ArenaWorldNative.nativeForestTreePositions()
     override fun jungleGrovePositions() = ArenaWorldNative.nativeJungleGrovePositions()
     override fun undergrowthPositions() = ArenaWorldNative.nativeUndergrowthPositions()
@@ -63,6 +69,8 @@ internal object ArenaWorldDefinition {
         val laneCenters: FloatArray,
         val camps: List<ArenaPoint>,
         val objectives: List<ArenaPoint>,
+        val objectiveWalls: List<ArenaPoint>,
+        val riverCrossings: List<ArenaPoint>,
         val trees: List<ArenaPoint>,
         val groves: List<ArenaPoint>,
         val undergrowth: List<ArenaPoint>,
@@ -91,6 +99,12 @@ internal object ArenaWorldDefinition {
                     laneCenters = laneCenters,
                     camps = decodePoints(current.campPositions(), "camps"),
                     objectives = decodePoints(current.objectivePositions(), "objectives"),
+                    objectiveWalls = decodePoints(current.objectiveWallPositions(), "objective walls").also {
+                        check(it.size == 4) { "World objective wall count mismatch: ${it.size}" }
+                    },
+                    riverCrossings = decodePoints(current.riverCrossingPositions(), "river crossings").also {
+                        check(it.size == 3) { "World river crossing count mismatch: ${it.size}" }
+                    },
                     trees = decodePoints(current.forestTreePositions(), "forest trees"),
                     groves = decodePoints(current.jungleGrovePositions(), "jungle groves"),
                     undergrowth = decodePoints(current.undergrowthPositions(), "undergrowth"),
@@ -175,6 +189,8 @@ internal object ArenaWorldDefinition {
 
     fun campPositions(): List<ArenaPoint> = snapshot().camps
     fun objectivePositions(): List<ArenaPoint> = snapshot().objectives
+    fun objectiveWallPositions(): List<ArenaPoint> = snapshot().objectiveWalls
+    fun riverCrossingPositions(): List<ArenaPoint> = snapshot().riverCrossings
     fun forestTreePositions(): List<ArenaPoint> = snapshot().trees
     fun jungleGrovePositions(): List<ArenaPoint> = snapshot().groves
     fun undergrowthPositions(): List<ArenaPoint> = snapshot().undergrowth
