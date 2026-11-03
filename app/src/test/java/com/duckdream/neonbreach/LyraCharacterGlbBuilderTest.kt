@@ -6,6 +6,7 @@ import org.junit.Test
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import org.json.JSONObject
+import kotlin.math.sin
 
 class LyraCharacterGlbBuilderTest {
     @Test
@@ -76,4 +77,17 @@ class LyraCharacterGlbBuilderTest {
         assertTrue("No vertices use secondary joint influences",blendedVertices>0)
         assertTrue("No skinned vertices were inspected",checkedVertices>500)
     }
+    @Test
+    fun lyraAerialArmBindAnglesFlexTowardTheTorso() {
+        val leftSign = HumanoidRigPose.lateralSign("upperarm_l") * -1f
+        val rightSign = HumanoidRigPose.lateralSign("upperarm_r") * -1f
+        val leftAngle = HumanoidRigPose.localFlexion(0.52f, leftSign)
+        val rightAngle = HumanoidRigPose.localFlexion(0.52f, rightSign)
+
+        assertEquals(0.52f, leftAngle, 0.0001f)
+        assertEquals(-0.52f, rightAngle, 0.0001f)
+        assertTrue("Left upper arm must flex downward", -0.13f * sin(leftAngle) < 0f)
+        assertTrue("Right upper arm must flex downward", 0.13f * sin(rightAngle) < 0f)
+    }
+
 }
