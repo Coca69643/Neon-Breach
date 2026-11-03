@@ -145,12 +145,8 @@ internal object WorldGlbBuilder {
     private lateinit var earth: Part
     private lateinit var rock: Part
 
-    private fun insideIsland(x: Float, z: Float): Boolean {
-        val angle = atan2(z / 31f, x / 35f)
-        val edge = 1f + 0.035f * sin(angle * 5f) + 0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
-        val radius = sqrt((x / 35f).pow(2) + (z / 31f).pow(2))
-        return radius <= edge
-    }
+    private fun insideIsland(x: Float, z: Float): Boolean =
+        ArenaWorldDefinition.insideIsland(x, z)
 
     private fun riverCenterZ(x: Float): Float = ArenaWorldDefinition.riverCenterZ(x)
 
@@ -473,15 +469,14 @@ internal object WorldGlbBuilder {
             flowerClump(flowerStems,flowerPetals,point.first+0.25f,point.second+0.85f,0.72f,index*0.43f)
         }
 
-        // Dense low-profile undergrowth fills forest gaps without transparent foliage cards.
-        for(i in 0 until 56) {
-            val x=when(i%4){0->-10.1f;1->-6.1f;2->6.1f;else->10.1f} + sin(i*1.71f)*0.82f
-            val z= -22f + (i/4)*3.15f
-            if (abs(z)>24f) continue
-            if (i%8<4 && z>0f) continue
-            val radius=0.30f+(i%3)*0.07f
-            boulder(undergrowth,x,z,radius*1.45f,radius*0.68f,radius, i*0.31f)
-            if (i % 3 == 0) fern(fernLeaves,x+0.45f,z+0.35f,0.68f,i*0.23f)
+        // Low-profile undergrowth uses the same sampled positions as native collision.
+        ArenaWorldDefinition.undergrowthPositions().forEachIndexed { i, point ->
+            val x = point.x
+            val z = point.z
+            if (abs(z) > 24f || (i % 8 < 4 && z > 0f)) return@forEachIndexed
+            val radius = 0.30f + (i % 3) * 0.07f
+            boulder(undergrowth, x, z, radius * 1.45f, radius * 0.68f, radius, i * 0.31f)
+            if (i % 3 == 0) fern(fernLeaves, x + 0.45f, z + 0.35f, 0.68f, i * 0.23f)
         }
 
         // Wind-bent reeds line selected river bends; low-poly blades are batched by material.
