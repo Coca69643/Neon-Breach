@@ -433,24 +433,12 @@ internal object WorldGlbBuilder {
         ringMesh(shield,0.98f,1.15f)
 
         // Three asymmetric but readable lanes; each bends independently through the battlefield.
-        val west=listOf(
-            floatArrayOf(-14.2f,-31f),floatArrayOf(-15.2f,-23f),floatArrayOf(-14.6f,-15f),
-            floatArrayOf(-13.4f,-7f),floatArrayOf(-13.0f,0f),floatArrayOf(-13.7f,8f),
-            floatArrayOf(-14.8f,16f),floatArrayOf(-14.2f,24f),floatArrayOf(-14.2f,31f)
-        )
-        val center=listOf(
-            floatArrayOf(0.5f,-31f),floatArrayOf(0.1f,-23f),floatArrayOf(-0.1f,-15f),
-            floatArrayOf(-0.25f,-7f),floatArrayOf(0.5f,0f),floatArrayOf(0.3f,8f),
-            floatArrayOf(-0.2f,16f),floatArrayOf(0.4f,24f),floatArrayOf(0.5f,31f)
-        )
-        val east=listOf(
-            floatArrayOf(14.2f,-31f),floatArrayOf(15.2f,-23f),floatArrayOf(14.6f,-15f),
-            floatArrayOf(13.4f,-7f),floatArrayOf(13.0f,0f),floatArrayOf(13.7f,8f),
-            floatArrayOf(14.8f,16f),floatArrayOf(14.2f,24f),floatArrayOf(14.2f,31f)
-        )
-        ribbon(routeEdge,west,3.18f,0.025f);ribbon(trail,west,2.42f,0.075f)
-        ribbon(routeEdge,center,3.12f,0.025f);ribbon(trail,center,2.36f,0.075f)
-        ribbon(routeEdge,east,3.18f,0.025f);ribbon(trail,east,2.42f,0.075f)
+        ArenaMapDefinition.validate()
+        ArenaMapDefinition.lanes.forEach { lane ->
+            val points = lane.points.map { floatArrayOf(it.x, it.z) }
+            ribbon(routeEdge, points, lane.width + 0.76f, 0.025f)
+            ribbon(trail, points, lane.width, 0.075f)
+        }
 
         // Cross-lane jungle paths link the neutral camps to lane entrances.
         ribbon(earth,listOf(floatArrayOf(-8.2f,-27f),floatArrayOf(-8.8f,-20f),floatArrayOf(-8.2f,-14.5f),floatArrayOf(-9.1f,-8f),floatArrayOf(-7f,-2f)),0.62f,0.095f)
@@ -468,14 +456,9 @@ internal object WorldGlbBuilder {
         ribbon(earth,river,2.18f,0.035f)
 
         // Forest clearings, camps and river sanctuaries are modeled as world geometry.
-        val camps = listOf(
-            -8.2f to -14.5f, 8.2f to -14.5f,
-            -20.2f to -10f, 20.2f to -10f,
-            -8.2f to 14.5f, 8.2f to 14.5f,
-            -20.2f to 10f, 20.2f to 10f
-        )
-        camps.forEachIndexed { index, point ->
-            val x=point.first; val z=point.second
+        ArenaMapDefinition.camps.forEachIndexed { index, camp ->
+            val x = camp.position.x
+            val z = camp.position.z
             groundDisc(forestFloor,x,z,3.2f,2.65f,0.035f)
             groundDisc(earth,x,z,2.35f,1.85f,0.075f)
             for(i in 0 until 7) {
@@ -489,37 +472,37 @@ internal object WorldGlbBuilder {
             if (index % 2 == 0) fallenLog(fallenTimber, x + 1.9f, z - 1.9f, 1.45f, 0.6f + index * 0.13f, 0.18f)
         }
         // Subtle stone edging keeps the camp footprint readable without flag markers.
-        camps.forEach { point -> ringMeshAt(campMarks,point.first,point.second,2.05f,2.22f) }
+        ArenaMapDefinition.camps.forEach { camp ->
+            ringMeshAt(campMarks,camp.position.x,camp.position.z,2.05f,2.22f)
+        }
 
         // Distinct objective arenas: raised stone dais, broken arches and exposed rock.
-        groundDisc(forestFloor,-7f,0.2f,5.15f,4.25f,0.045f)
-        groundDisc(forestFloor,7f,0.2f,5.15f,4.25f,0.045f)
-        ringMeshAt(objectiveMarks,-7f,0.2f,4.12f,4.32f)
-        ringMeshAt(objectiveMarks,7f,0.2f,4.12f,4.32f)
-        shrine(shrineStone,-7f,0.2f,0.92f,true)
-        shrine(shrineStone,7f,0.2f,0.92f,false)
+        ArenaMapDefinition.objectives.forEachIndexed { index, objective ->
+            val x = objective.position.x
+            val z = objective.position.z
+            groundDisc(forestFloor,x,z,5.15f,4.25f,0.045f)
+            ringMeshAt(objectiveMarks,x,z,4.12f,4.32f)
+            shrine(shrineStone,x,z,0.92f,index == 0)
+        }
         for(i in 0 until 12) {
             val a=2f*PI.toFloat()*i/12f
-            boulder(boulderField,-7f+cos(a)*4.55f,0.2f+sin(a)*3.75f,0.48f,0.5f,0.42f,a)
-            boulder(boulderField,7f+cos(a)*4.55f,0.2f+sin(a)*3.75f,0.48f,0.5f,0.42f,a+1f)
+            ArenaMapDefinition.objectives.forEachIndexed { index, objective ->
+                boulder(boulderField,objective.position.x+cos(a)*objective.radius,
+                    objective.position.z+sin(a)*3.75f,0.48f,0.5f,0.42f,a+index)
+            }
         }
 
         // Additional elevation and rubble make the outer jungle and base approaches readable.
-        val groves=listOf(
-            -25f to -19f,-27f to -8f,-23f to 8f,-26f to 19f,
-            25f to -19f,27f to -8f,23f to 8f,26f to 19f,
-            -8.5f to -21f,8.5f to -21f,-8.5f to 21f,8.5f to 21f
-        )
-        groves.forEachIndexed { index, point ->
-            groundDisc(forestFloor,point.first,point.second,2.8f,2.1f,0.02f)
+        ArenaMapDefinition.groveCenters.forEachIndexed { index, point ->
+            groundDisc(forestFloor,point.x,point.z,2.8f,2.1f,0.02f)
             for(j in 0 until 4) {
                 val a=2f*PI.toFloat()*j/4f+index*0.43f
                 val rx=0.42f+(j%2)*0.22f
-                boulder(boulderField,point.first+cos(a)*1.8f,point.second+sin(a)*1.4f,rx,rx*0.82f,rx,a)
+                boulder(boulderField,point.x+cos(a)*1.8f,point.z+sin(a)*1.4f,rx,rx*0.82f,rx,a)
             }
-            fern(fernLeaves,point.first-0.65f,point.second+0.2f,1.15f,index*0.31f)
-            fern(fernLeaves,point.first+0.85f,point.second-0.45f,0.92f,index*0.57f+1f)
-            flowerClump(flowerStems,flowerPetals,point.first+0.25f,point.second+0.85f,0.72f,index*0.43f)
+            fern(fernLeaves,point.x-0.65f,point.z+0.2f,1.15f,index*0.31f)
+            fern(fernLeaves,point.x+0.85f,point.z-0.45f,0.92f,index*0.57f+1f)
+            flowerClump(flowerStems,flowerPetals,point.x+0.25f,point.z+0.85f,0.72f,index*0.43f)
         }
 
         // Dense low-profile undergrowth fills forest gaps without transparent foliage cards.
