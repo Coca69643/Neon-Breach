@@ -209,6 +209,9 @@ checks = [
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
     ("private fun laneCenterX(lane: Int, worldZ: Float)" in renderer and "ArenaMapDefinition.treeBlockers" in renderer and "ArenaMapDefinition.lanes" in world and "ArenaMapDefinition.camps" in world and "ArenaMapDefinition.objectives" in world and "ArenaMapDefinition.h" in native and "ArenaMapDefinition.h" in physics and "arena_map::kTreeBlockers" in physics and "arena_map::kCampPositions" in native and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, canonical forest and objective geometry missing"),
+    ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
+     "moveActorOnMap" in native and "testArenaNavigationGraph" in read("tests/arena_physics_tests.cpp"),
+     "MOBA bots are not using the lane/jungle navigation graph"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
