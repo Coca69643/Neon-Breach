@@ -479,8 +479,8 @@ internal class FilamentGameRenderer(
                 val clipNames = (0 until animationCount).map { animator.getAnimationName(it).lowercase() }
                 fun findClip(tokens: List<String>): Int =
                     clipNames.indexOfFirst { name -> tokens.any { token -> name.contains(token) } }
-                // Only use harmless idle/locomotion clips. If a source model has
-                // no matching clip, the deterministic root motion remains active.
+                // Resolve semantic idle, locomotion and optional guardian-attack clips.
+                // Missing source clips fall back to deterministic root motion.
                 val idleClip = findClip(profile.idleTokens)
                 val moveClip = findClip(profile.moveTokens).let { if (it >= 0) it else idleClip }
                 val attackClip = findClip(profile.attackTokens)
