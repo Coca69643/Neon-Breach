@@ -11,7 +11,7 @@ Estabelecer uma fonte nativa única para os dados geométricos que precisam coin
 - `ArenaWorldDefinition.h` centraliza a função de altura do terreno, eixo do rio, centro das três rotas, profundidade das torres, fortalezas, estruturas de base, paredes, pátios, acampamentos, objetivos, árvores, clareiras e vegetação rasteira.
 - `ArenaPhysics.cpp` consome os mesmos pontos canônicos para terreno, árvores, acampamentos, clareiras, objetivos e torres.
 - `ArenaSimulation.cpp` consome as mesmas definições para rotas, torres, bases, objetivos, acampamentos e spawns do caçador da selva.
-- A ponte JNI exporta uma grade de altura, uma máscara de limite da ilha e os conjuntos de pontos para Kotlin em lotes, evitando chamadas por célula do terreno.
+- A ponte JNI exporta uma grade de altura, máscara de limite da ilha, curva amostrada das três rotas e conjuntos de pontos em lotes. O Kotlin interpola terreno/rotas localmente, evitando chamadas JNI por célula ou por frame.
 - `ArenaWorldDefinition.kt` armazena a grade uma única vez e fornece interpolação bilinear ao renderer, evitando milhares de chamadas JNI por frame.
 - `WorldGlbBuilder.kt` deriva terreno, trilhas, rio, clareiras, objetivos, vegetação, paredes e pátios de base de posições compartilhadas.
 - `FilamentGameRenderer.kt` e o minimapa consomem o mesmo traçado de rotas e as mesmas posições de estruturas.
