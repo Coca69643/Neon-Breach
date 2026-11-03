@@ -46,9 +46,13 @@ def parse_glb(data: bytes, name: str) -> dict:
         raise RuntimeError(f"{name}: missing mesh/node geometry")
     # Keep the APK self-contained; every buffer/image must live inside the GLB.
     for buffer in doc.get("buffers", []):
+        if buffer.get("uri", "").startswith("data:"):
+            continue
         if "uri" in buffer:
             raise RuntimeError(f"{name}: external buffer URI would break offline packaging")
     for image in doc.get("images", []):
+        if image.get("uri", "").startswith("data:"):
+            continue
         if "uri" in image:
             raise RuntimeError(f"{name}: external image URI would break offline packaging")
     animations = [a.get("name", f"animation_{i}") for i, a in enumerate(doc.get("animations", []))]
