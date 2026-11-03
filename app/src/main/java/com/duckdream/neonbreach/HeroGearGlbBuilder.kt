@@ -206,10 +206,13 @@ internal object HeroGearGlbBuilder {
         box(bootR,0f,0.005f,0.045f,0.12f,0.075f,0.17f)
 
         val teamColor=if(red) listOf(0.55f,0.16f,0.14f,1f) else listOf(0.14f,0.36f,0.56f,1f)
+        // Five unmistakable role accents; teamColor remains the primary team read.
         val trimColor=when(style) {
-            0 -> listOf(0.76f,0.68f,0.42f,1f)
-            1 -> listOf(0.56f,0.49f,0.36f,1f)
-            else -> listOf(0.57f,0.47f,0.30f,1f)
+            0 -> listOf(0.91f,0.70f,0.28f,1f)  // Support: warm gold
+            1 -> listOf(0.60f,0.52f,0.35f,1f)  // Solo: aged bronze
+            2 -> listOf(0.18f,0.73f,0.70f,1f)  // Jungle: turquoise
+            3 -> listOf(0.63f,0.45f,0.82f,1f)  // Mid: violet
+            else -> listOf(0.47f,0.66f,0.28f,1f) // Carry: moss green
         }
         val materials=listOf(teamColor,trimColor).mapIndexed { index,color ->
             val rough=if(index==0) 0.74f else 0.38f
