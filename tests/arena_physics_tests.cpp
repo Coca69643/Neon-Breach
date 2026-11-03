@@ -30,6 +30,12 @@ void testCanonicalWorldDefinition() {
     assert(arena_world::kObjectivePositions.size() == 2);
     assert(arena_world::kForestTreePositions.size() == 32);
     assert(arena_world::kJungleGrovePositions.size() == 12);
+    assert(arena_world::insideIsland(0.0f, 0.0f));
+    assert(!arena_world::insideIsland(60.0f, 0.0f));
+    for (int i = 0; i < 56; ++i) {
+        const auto point = arena_world::undergrowthPosition(i);
+        assert(std::isfinite(point.x) && std::isfinite(point.z));
+    }
 
     for (float z = -30.0f; z <= 30.0f; z += 5.0f) {
         const float left = arena_world::laneCenterX(0, z);
