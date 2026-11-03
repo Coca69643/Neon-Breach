@@ -1,9 +1,9 @@
-name: Build NEON BREACH APK
+name: Build Project Arena APK
 
 on:
   workflow_dispatch:
   pull_request:
-    branches: [main]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-visual-overhaul]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -12,7 +12,7 @@ on:
       - 'tests/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-visual-overhaul, project-arena/rebuild-from-0.15.0]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -26,13 +26,13 @@ permissions:
 
 jobs:
   build:
-    name: Validate and compile Android APK
+    name: Verify and compile Android APK
     runs-on: ubuntu-24.04
-    timeout-minutes: 35
+    timeout-minutes: 45
     steps:
-      - name: Checkout repository
+      - name: Checkout
         uses: actions/checkout@v7
-      - name: Set up JDK 17
+      - name: Set up JDK
         uses: actions/setup-java@v6
         with:
           distribution: temurin
@@ -40,13 +40,13 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
         with:
-          gradle-version: '8.9'
+          gradle-version: '9.6.0'
       - name: Set up Android SDK
         uses: android-actions/setup-android@v4
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
-      - name: Prepare persistent APK signing key when configured
+      - name: Prepare persistent APK signing key
         if: github.event_name != 'pull_request'
         env:
           NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
@@ -54,75 +54,74 @@ jobs:
           NEON_BREACH_KEY_ALIAS: ${{ secrets.NEON_BREACH_KEY_ALIAS }}
           NEON_BREACH_KEY_PASSWORD: ${{ secrets.NEON_BREACH_KEY_PASSWORD }}
         run: |
-          if [ -n "${NEON_BREACH_KEYSTORE_BASE64:-}" ]; then
-            KEYSTORE_PATH="$RUNNER_TEMP/neon-breach-signing.jks"
-            printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-            test -s "$KEYSTORE_PATH"
-            {
-              echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
-              echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
-              echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
-              echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
-            } >> "$GITHUB_ENV"
-            echo "Persistent signing key configured."
-          else
-            echo "::warning::Persistent signing is not configured. This APK uses the runner's temporary debug key and will not be suitable for in-place updates across separate CI runs."
-          fi
+          set -euo pipefail
+          test -n "${NEON_BREACH_KEYSTORE_BASE64:-}" || { echo "::error::Persistent signing secret is missing; refusing to publish an update APK."; exit 1; }
+          test -n "${NEON_BREACH_KEYSTORE_PASSWORD:-}"
+          test -n "${NEON_BREACH_KEY_ALIAS:-}"
+          test -n "${NEON_BREACH_KEY_PASSWORD:-}"
+          KEYSTORE_PATH="$RUNNER_TEMP/project-arena-signing.jks"
+          printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          {
+            echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
+            echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
+            echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Persistent signing key loaded."
       - name: Install Android SDK, NDK and CMake
-        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;27.2.12479018" "cmake;3.22.1"
-      - name: Install GLSL validator
         run: |
-          sudo apt-get update
-          sudo apt-get install --yes glslang-tools
-      - name: Run native world layout tests
+          sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT}}"
+          test -d "$SDK_ROOT/platforms/android-37.0"
+          ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
+          test -d "$SDK_ROOT/platforms/android-37"
+      - name: Fetch and verify pinned CC0 life assets
+        run: python3 tools/fetch_cc0_life_assets.py
+      - name: Compile and run native physics tests
         run: |
-          c++ -std=c++17 -Wall -Wextra -Werror -Iapp/src/main/cpp tests/world_layout_tests.cpp -o "$RUNNER_TEMP/world_layout_tests"
-          "$RUNNER_TEMP/world_layout_tests"
-      - name: Run native progression tests
-        run: |
-          c++ -std=c++17 -Wall -Wextra -Werror -Iapp/src/main/cpp tests/progression_manager_tests.cpp app/src/main/cpp/ProgressionManager.cpp -o "$RUNNER_TEMP/progression_manager_tests"
-          "$RUNNER_TEMP/progression_manager_tests"
-      - name: Validate required source files
+          g++ -std=c++20 -O2 -Wall -Wextra -Werror \
+            app/src/main/cpp/ArenaPhysics.cpp tests/arena_physics_tests.cpp \
+            -o "$RUNNER_TEMP/arena_physics_tests"
+          "$RUNNER_TEMP/arena_physics_tests"
+      - name: Verify project structure
         run: python3 tools/verify_project.py
-      - name: Compile embedded OpenGL ES shaders
-        run: python3 tools/validate_shaders.py
-      - name: Compile debug APK
+      - name: Test generated hero gear GLB variants
+        run: gradle testDebugUnitTest --no-daemon --stacktrace
+      - name: Compile Android APK
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
         run: test -s app/build/outputs/apk/debug/app-debug.apk
-      - name: Upload APK artifact
+      - name: Verify package, version and APK signature
+        run: |
+          APK="app/build/outputs/apk/debug/app-debug.apk"
+          BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.neonbreach' versionCode='56' versionName='0.15.10'"
+          "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
+      - name: Upload signed update APK
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: neon-breach-debug-apk
+          name: project-arena-0.15.10-update
           path: app/build/outputs/apk/debug/app-debug.apk
           if-no-files-found: error
           retention-days: 14
-      - name: Publish public GitHub Release
-        if: github.event_name != 'pull_request'
-        env:
-          GH_TOKEN: ${{ github.token }}
+      - name: Publish tester release
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.15.0-visual-overhaul'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: project-arena-0.15.0
+          name: Project Arena 0.15.0 — identidade visual e relevo
+          body: |
+            Build 0.15.0: cinco silhuetas de função para bots, correção do eixo anatômico dos braços, locomoção procedural por função, vale/cristas de maior amplitude sincronizados com a física e HUB com arte ilustrada própria e navegação compacta.
+            Preserva HUB 0.10.0, animação do herói 0.11.0 e stack nativa Kotlin + C++20 + Filament.
+            Pré-lançamento: validar fluxo de partida, leitura do mapa, desempenho e estabilidade em aparelho Android.
+          draft: false
+          prerelease: true
+          overwrite_files: true
+          files: app/build/outputs/apk/debug/app-debug.apk
+      - name: Align release tag with verified source commit
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.15.0-visual-overhaul'
         run: |
-          set -euo pipefail
-          cp app/build/outputs/apk/debug/app-debug.apk ORION-9.apk
-          sha256sum ORION-9.apk > ORION-9.apk.sha256
-
-          release_tag="orion-9-build-${GITHUB_RUN_NUMBER}"
-          version_name="$(grep 'versionName' app/build.gradle | awk -F"'" '{print $2}' | head -n 1)"
-          test -n "$version_name"
-          release_title="ORION-9 v${version_name} - build #${GITHUB_RUN_NUMBER}"
-          release_notes="Automated Android APK build.
-
-          Source commit: ${GITHUB_SHA}
-          Workflow run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}
-
-          Download ORION-9.apk. The SHA-256 checksum is included alongside it."
-
-          if gh release view "$release_tag" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
-            gh release upload "$release_tag" ORION-9.apk ORION-9.apk.sha256 --repo "$GITHUB_REPOSITORY" --clobber
-            gh release edit "$release_tag" --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes" --latest
-          else
-            gh release create "$release_tag" ORION-9.apk ORION-9.apk.sha256 --repo "$GITHUB_REPOSITORY" --title "$release_title" --notes "$release_notes" --latest
-          fi
-
-          echo "## APK publicado" >> "$GITHUB_STEP_SUMMARY"
-          echo "https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/ORION-9.apk" >> "$GITHUB_STEP_SUMMARY"
+          git tag --force project-arena-0.15.0 "$GITHUB_SHA"
+          git push --force origin refs/tags/project-arena-0.15.0

@@ -1,943 +1,1059 @@
 package com.duckdream.neonbreach
 
 import android.app.Activity
-import android.content.res.ColorStateList
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
-import android.graphics.RectF
-import android.graphics.Typeface
-import android.content.Context
-import android.graphics.drawable.GradientDrawable
 import android.os.Bundle
-import android.os.Handler
-import android.os.Looper
-import android.media.AudioManager
-import android.media.ToneGenerator
+import android.util.Log
+import android.view.Choreographer
 import android.view.Gravity
-import android.view.HapticFeedbackConstants
 import android.view.MotionEvent
+import android.view.SurfaceView
 import android.view.View
-import android.view.ViewGroup
-import android.opengl.GLSurfaceView
+import android.view.WindowManager
 import android.widget.FrameLayout
 import android.widget.LinearLayout
-import android.widget.SeekBar
+import android.widget.ProgressBar
 import android.widget.TextView
+import kotlin.math.hypot
 
 class MainActivity : Activity() {
-    private lateinit var root: FrameLayout
-    private lateinit var gameView: GameSurface
-    private var currentLayer: View? = null
-    private var currentScreen = Screen.MENU
-    private var hasSession = false
-    private var backgroundedDuringGame = false
-    private var hapticsEnabled = true
-    private var selectedOperative = 0
-    private var soundEnabled = true
-    private var touchSensitivity = 1.0f
-    private var toneGenerator: ToneGenerator? = null
-
-    private lateinit var objectiveText: TextView
-    private lateinit var relayStatus: TextView
-    private lateinit var threatStatus: TextView
-    private lateinit var progressText: TextView
-    private lateinit var interactButton: TextView
-    private lateinit var dodgeButton: DodgeControlButton
-    private lateinit var fireButton: FireControlButton
-
-    private val uiHandler = Handler(Looper.getMainLooper())
-    private val pollState = object : Runnable {
-        override fun run() {
-            if (isFinishing || isDestroyed) return
-            if (currentScreen == Screen.PLAYING) {
-                updateHud(gameView.snapshot())
-            }
-            uiHandler.postDelayed(this, 180L)
-        }
+    private enum class AppState {
+        BOOT, DEVICE_PROBE, VULKAN_INIT, GLES_FALLBACK, ASSET_LOADING,
+        MENU, RUNNING, PAUSED, RESULT, RECOVERY
     }
 
-    private enum class Screen { MENU, OPERATIVES, SETTINGS, PLAYING, PAUSED, RESULT }
+    companion object {
+        private const val TAG = "ProjectArena"
+        private val HERO_NAMES = arrayOf("LYRA", "BASTION", "KAIRO")
+        private val HERO_ROLES = arrayOf("SUPORTE", "DEFENSOR", "MOBILIDADE")
+        private val HERO_SUMMARIES = arrayOf(
+            "Mantém a equipe de pé e ajuda a abrir espaço nas lutas.",
+            "Segura a linha de frente e aguenta mais tempo sob pressão.",
+            "Entra e sai dos confrontos com deslocamento mais rápido."
+        )
+        private val HERO_ABILITY_NAMES = arrayOf("AURA", "IMPACTO", "ONDA")
+        private val HERO_ABILITY_DETAILS = arrayOf(
+            "Recupera aliados próximos e enfraquece rivais dentro da área.",
+            "Causa dano em área maior e mantém o escudo ativo por mais tempo.",
+            "Pulso de recarga curta e impulso com maior velocidade."
+        )
+    }
 
-    private val cyan = Color.rgb(72, 220, 232)
-    private val amber = Color.rgb(255, 166, 75)
-    private val white = Color.rgb(246, 241, 222)
-    private val muted = Color.rgb(180, 174, 149)
-    private val panel = Color.argb(220, 18, 23, 14)
-    private val prefs by lazy { getSharedPreferences("neon_breach_settings", MODE_PRIVATE) }
+    init { System.loadLibrary("arena_sim") }
+
+    private lateinit var root: FrameLayout
+    private lateinit var surface: SurfaceView
+    private lateinit var renderer: FilamentGameRenderer
+    private lateinit var objectiveProgress: ProgressBar
+    private lateinit var objectiveLabel: TextView
+    private lateinit var stateLabel: TextView
+    private lateinit var matchLabel: TextView
+    private lateinit var tacticalMap: TacticalMapView
+    private lateinit var abilityHint: TextView
+    private lateinit var healthLabel: TextView
+    private lateinit var levelGoldLabel: TextView
+    private lateinit var dashActionButton: TextView
+    private lateinit var pulseActionButton: TextView
+    private lateinit var shieldActionButton: TextView
+    private lateinit var attackActionButton: TextView
+    private var abilityFeedbackUntilNanos = 0L
+    private var screenLayer: View? = null
+    private var state = AppState.BOOT
+    private var moveX = 0f
+    private var moveZ = 0f
+    private var lastFrameNanos = 0L
+    private var loopActive = false
+    private var selectedHero = 0
+    private var sensitivityIndex = 1
+    private val sensitivityLevels = floatArrayOf(0.78f, 1.0f, 1.22f)
+    private var lastSnapshot = FloatArray(320)
+
+    private external fun nativeReset()
+    private external fun nativeSelectHero(hero: Int)
+    private external fun nativeActivateDash(inputX: Float, inputZ: Float): Boolean
+    private external fun nativeCastPulse(): Boolean
+    private external fun nativeActivateShield(): Boolean
+    private external fun nativeBasicAttack(): Boolean
+    private external fun nativeBuyItem(item: Int): Boolean
+    private external fun nativeUpgradeSkill(): Boolean
+    private external fun nativeStep(inputX: Float, inputZ: Float, deltaTime: Float): FloatArray
+
+    private val frameCallback = object : Choreographer.FrameCallback {
+        override fun doFrame(frameTimeNanos: Long) {
+            if (!loopActive || isFinishing || isDestroyed) return
+            val dt = if (lastFrameNanos == 0L) 1f / 60f
+                else ((frameTimeNanos - lastFrameNanos) / 1_000_000_000.0).toFloat().coerceIn(0f, 0.05f)
+            lastFrameNanos = frameTimeNanos
+
+            if (state == AppState.RUNNING) {
+                val result = nativeStep(moveX, moveZ, dt)
+                if (result.size >= 320) {
+                    lastSnapshot = result
+                    renderer.updatePlayerSignals(result)
+                    renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
+                    renderer.updateBots(result, dt)
+                    renderer.updateCreeps(result, dt)
+                    renderer.updateEffects(result)
+                    renderer.updateStructures(result)
+                    tacticalMap.setSnapshot(result)
+                    healthLabel.text = if (result[95] > 0.01f) {
+                        "RETORNO  ${kotlin.math.ceil(result[95]).toInt()}s  •  QUEDAS ${result[94].toInt()}"
+                    } else {
+                        "VIDA  ${result[72].toInt().coerceIn(0, result[100].toInt())}/${result[100].toInt()}  •  QUEDAS ${result[94].toInt()}"
+                    }
+                    val xpNeed = result[99].toInt().coerceAtLeast(1)
+                    levelGoldLabel.text = "NV ${result[96].toInt()}  •  XP ${result[97].toInt()}/$xpNeed  •  OURO ${result[98].toInt()}"
+                    dashActionButton.text = abilityButtonText("IMPULSO", result[9])
+                    pulseActionButton.text = abilityButtonText(activeAbilityName(), result[8])
+                    shieldActionButton.text = abilityButtonText("ESCUDO", result[60])
+                    attackActionButton.text = abilityButtonText("GOLPE", result[81])
+                    dashActionButton.alpha = if (result[9] > 0.05f) 0.62f else 1f
+                    pulseActionButton.alpha = if (result[8] > 0.05f) 0.62f else 1f
+                    shieldActionButton.alpha = if (result[60] > 0.05f) 0.62f else 1f
+                    attackActionButton.alpha = if (result[81] > 0.05f) 0.62f else 1f
+                    if (System.nanoTime() > abilityFeedbackUntilNanos) {
+                        abilityHint.text = when {
+                            result[95] > 0.01f -> "RETORNO À BASE • aguarde antes de voltar ao combate"
+                            result[7] > 0.05f -> "ESCUDO ATIVO • reduz dano recebido"
+                            result[61] > 0.05f -> "${activeAbilityName()} • habilidade acionada"
+                            result[62] > 0.05f -> "IMPULSO • reposicionamento direcional"
+                            else -> activeAbilityHint()
+                        }
+                    }
+
+                    val time = result[4].toInt().coerceAtLeast(0)
+                    matchLabel.text = String.format("%02d:%02d   •   LOCAL 5v5", time / 60, time % 60)
+                    val blue = result[5].toInt()
+                    val red = result[6].toInt()
+                    stateLabel.text = "BAIXAS AZUIS " + blue + "  :  " + red + " VERMELHAS"
+                    val enemyTowersDown = (0 until 9).count { result[116 + it] <= 0.0f }
+                    val towerHealth = (0 until 9).sumOf { result[116 + it].toDouble() }.toFloat()
+                    val towerProgress = 1f - (towerHealth / (820f * 9f)).coerceIn(0f, 1f)
+                    val coreProgress = 1f - result[80] / 2200f
+                    val siegeProgress = if (enemyTowersDown < 9) towerProgress * 0.78f
+                        else 0.78f + coreProgress * 0.22f
+                    objectiveProgress.progress = (siegeProgress.coerceIn(0f, 1f) * 100f).toInt()
+                    val neutralObjective = when {
+                        result[104] > 0f -> "GUARDIÃO DO RIO ATIVO"
+                        result[106] > 0f -> "SENTINELA ANCESTRAL ATIVA"
+                        result[103] > 0f && result[105] > 0f ->
+                            "GUARDIÃO ${kotlin.math.ceil(result[103]).toInt()}s • SENTINELA ${kotlin.math.ceil(result[105]).toInt()}s"
+                        result[103] > 0f -> "GUARDIÃO DO RIO  •  ${kotlin.math.ceil(result[103]).toInt()}s"
+                        else -> "SENTINELA ANCESTRAL  •  ${kotlin.math.ceil(result[105]).toInt()}s"
+                    }
+                    objectiveLabel.text = if (enemyTowersDown < 9) {
+                        "TORRES VERMELHAS $enemyTowersDown/9  •  $neutralObjective"
+                    } else {
+                        "NÚCLEO VERMELHO  •  ${(result[80] / 22f).toInt().coerceIn(0, 100)}%  •  $neutralObjective"
+                    }
+                    if (result[15] > 0.5f) showResult(true)
+                    else if (result[15] < -0.5f) showResult(false)
+                }
+            } else if (state == AppState.MENU) {
+                renderer.updateMenuPresentation(dt)
+            }
+
+            try {
+                renderer.render(frameTimeNanos)
+            } catch (error: Throwable) {
+                Log.e(TAG, "Frame failed; simulation paused", error)
+                enterRecovery("O renderer encontrou uma falha recuperável.")
+                return
+            }
+            Choreographer.getInstance().postFrameCallback(this)
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        hapticsEnabled = prefs.getBoolean("haptics", true)
-        selectedOperative = prefs.getInt("operative", 0).coerceIn(0, 1)
-        soundEnabled = prefs.getBoolean("sound_enabled", true)
-        touchSensitivity = prefs.getFloat("touch_sensitivity", 1.0f).coerceIn(0.5f, 1.5f)
-        toneGenerator = try { ToneGenerator(AudioManager.STREAM_MUSIC, 55) } catch (_: RuntimeException) { null }
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         window.decorView.systemUiVisibility = (
             View.SYSTEM_UI_FLAG_FULLSCREEN or
-            View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
-            View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
-            View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
-            View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
-        )
+                View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or
+                View.SYSTEM_UI_FLAG_LAYOUT_STABLE or
+                View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or
+                View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+            )
+
         root = FrameLayout(this)
-        gameView = GameSurface(this)
-        root.addView(gameView, FrameLayout.LayoutParams(-1, -1))
+        surface = SurfaceView(this)
+        root.addView(surface, FrameLayout.LayoutParams(-1, -1))
         setContentView(root)
-        gameView.setOperative(selectedOperative)
-        gameView.setTouchSensitivity(touchSensitivity)
-        gameView.setGameSoundEnabled(soundEnabled)
-        showMainMenu(false)
-        uiHandler.postDelayed(pollState, 180L)
+        loadMenuSettings()
+
+        transition(AppState.DEVICE_PROBE)
+        try {
+            transition(AppState.VULKAN_INIT)
+            transition(AppState.ASSET_LOADING)
+            renderer = FilamentGameRenderer(this, surface)
+            if (renderer.backendName == "OPENGL_ES") transition(AppState.GLES_FALLBACK)
+            showMenu()
+            root.post { renderer.resize(surface.width, surface.height) }
+            startRenderLoop()
+        } catch (error: Throwable) {
+            Log.e(TAG, "Startup failed", error)
+            val rootCause = generateSequence(error as Throwable?) { it.cause }.lastOrNull() ?: error
+            val detail = (rootCause.message ?: rootCause.javaClass.simpleName).replace('\n', ' ').take(112)
+            enterRecovery("Não foi possível inicializar o renderer 3D. Diagnóstico: $detail")
+        }
+    }
+
+    private fun transition(next: AppState) {
+        Log.i(TAG, "State: $state -> $next")
+        state = next
+    }
+
+    private fun startRenderLoop() {
+        if (loopActive) return
+        loopActive = true
+        lastFrameNanos = 0L
+        Choreographer.getInstance().postFrameCallback(frameCallback)
+    }
+
+    private fun stopRenderLoop() {
+        loopActive = false
+        Choreographer.getInstance().removeFrameCallback(frameCallback)
+    }
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density + 0.5f).toInt()
+
+    private fun label(text: String, size: Float, color: Int = Color.WHITE, bold: Boolean = false): TextView =
+        TextView(this).apply {
+            this.text = text
+            textSize = size
+            setTextColor(color)
+            typeface = android.graphics.Typeface.create(
+                "sans-serif",
+                if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
+            )
+            setShadowLayer(5f, 0f, 2f, Color.argb(160, 0, 0, 0))
+        }
+
+    private fun actionButton(text: String, onClick: () -> Unit): TextView =
+        label(text, 13f, Color.rgb(238, 248, 230), true).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(14), dp(10), dp(14), dp(10))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.argb(220, 24, 48, 42))
+                cornerRadius = dp(8).toFloat()
+                setStroke(dp(1), Color.rgb(142, 207, 186))
+            }
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { onClick() }
+        }
+
+    private fun primaryActionButton(text: String, onClick: () -> Unit): TextView =
+        actionButton(text, onClick).apply {
+            textSize = 15f
+            setTextColor(Color.rgb(28, 38, 31))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.rgb(205, 165, 91))
+                cornerRadius = dp(8).toFloat()
+                setStroke(dp(1), Color.rgb(239, 213, 151))
+            }
+        }
+
+    private fun replaceLayer(view: View) {
+        screenLayer?.let { root.removeView(it) }
+        screenLayer = view
+        root.addView(view, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    private fun panel(): android.graphics.drawable.GradientDrawable =
+        android.graphics.drawable.GradientDrawable().apply {
+            setColor(Color.argb(218, 15, 29, 31))
+            cornerRadius = dp(10).toFloat()
+            setStroke(dp(1), Color.argb(170, 138, 180, 161))
+        }
+
+    private fun loadMenuSettings() {
+        sensitivityIndex = getSharedPreferences("arena_settings", MODE_PRIVATE)
+            .getInt("movement_sensitivity", 1).coerceIn(0, sensitivityLevels.lastIndex)
+    }
+
+    private fun sensitivityLabel(): String = when (sensitivityIndex) {
+        0 -> "BAIXA  •  78%"
+        2 -> "ALTA  •  122%"
+        else -> "NORMAL  •  100%"
+    }
+
+    private fun cycleSensitivity() {
+        sensitivityIndex = (sensitivityIndex + 1) % sensitivityLevels.size
+        getSharedPreferences("arena_settings", MODE_PRIVATE).edit()
+            .putInt("movement_sensitivity", sensitivityIndex).apply()
+    }
+
+    private fun activeAbilityName(): String = HERO_ABILITY_NAMES[selectedHero]
+    private fun activeAbilityHint(): String = HERO_ABILITY_DETAILS[selectedHero]
+
+    private fun showMenu() {
+        transition(AppState.MENU)
+        renderer.setMenuPresentation(selectedHero, ArenaMetaStore.isSkinEquipped(this, selectedHero))
+
+        val layer = FrameLayout(this)
+
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(24), dp(20), dp(12), dp(8))
+        }
+        header.addView(label("ARENA", 27f, Color.WHITE, true).apply { letterSpacing = 0.13f })
+        header.addView(label("A BATALHA PELAS TRÊS ROTAS", 10f, Color.rgb(229, 207, 164), true))
+        layer.addView(header, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.START))
+
+        val accountBar = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        accountBar.addView(label(
+            "MOEDAS ${ArenaMetaStore.coins(this@MainActivity)}   •   FRAGMENTOS ${ArenaMetaStore.shards(this@MainActivity)}",
+            9f, Color.rgb(247, 219, 160), true
+        ).apply { setPadding(0, 0, dp(8), 0) })
+        accountBar.addView(actionButton("?") { showGuide() },
+            LinearLayout.LayoutParams(dp(38), dp(36)).apply { marginEnd = dp(6) })
+        accountBar.addView(actionButton("⚙") { showSettings() },
+            LinearLayout.LayoutParams(dp(42), dp(36)))
+        layer.addView(accountBar, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(18)
+            marginEnd = dp(20)
+        })
+
+        val featured = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(22), dp(6), dp(8), dp(8))
+            isClickable = true
+            isFocusable = true
+            setOnClickListener { showHeroSelect() }
+        }
+        featured.addView(label("HERÓI EM DESTAQUE", 9f, Color.rgb(225, 204, 159), true))
+        featured.addView(label(HERO_NAMES[selectedHero], 28f, Color.WHITE, true).apply {
+            setPadding(0, dp(2), 0, 0)
+        })
+        featured.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(242, 197, 118), true))
+        featured.addView(label(HERO_SUMMARIES[selectedHero], 10f, Color.rgb(236, 234, 218)).apply {
+            maxWidth = dp(238)
+            setPadding(0, dp(5), 0, 0)
+        })
+        layer.addView(featured, FrameLayout.LayoutParams(dp(258), -2, Gravity.BOTTOM or Gravity.START).apply {
+            bottomMargin = dp(20)
+        })
+
+        val dock = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        dock.addView(actionButton("HERÓIS") { showHeroSelect() },
+            LinearLayout.LayoutParams(dp(82), dp(42)).apply { marginEnd = dp(6) })
+        dock.addView(actionButton("COLEÇÃO") { showSkins() },
+            LinearLayout.LayoutParams(dp(88), dp(42)).apply { marginEnd = dp(6) })
+        dock.addView(actionButton("PERFIL") { showMissionsProfile() },
+            LinearLayout.LayoutParams(dp(76), dp(42)).apply { marginEnd = dp(8) })
+        dock.addView(primaryActionButton("JOGAR") { startMatch() },
+            LinearLayout.LayoutParams(dp(126), dp(52)))
+        layer.addView(dock, FrameLayout.LayoutParams(-2, -2, Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(20)
+            bottomMargin = dp(20)
+        })
+        replaceLayer(layer)
+    }
+
+    private fun showHeroSelect() {
+        transition(AppState.MENU)
+        renderer.setHeroSelectionPresentation(selectedHero)
+
+        val layer = FrameLayout(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        content.addView(label("SELEÇÃO DE HERÓI", 18f, Color.WHITE, true))
+        content.addView(label("Escolha quem vai liderar a equipe azul.", 10f, Color.rgb(204, 221, 210)).apply {
+            setPadding(0, dp(3), 0, dp(13))
+        })
+        content.addView(label(HERO_NAMES[selectedHero], 25f, Color.WHITE, true))
+        content.addView(label(HERO_ROLES[selectedHero], 10f, Color.rgb(236, 194, 123), true))
+        content.addView(label(HERO_SUMMARIES[selectedHero], 11f, Color.rgb(221, 229, 216)).apply {
+            setPadding(0, dp(8), 0, dp(8))
+        })
+        content.addView(label("HABILIDADE  •  ${activeAbilityName()}", 10f, Color.rgb(173, 215, 197), true))
+        content.addView(label(activeAbilityHint(), 10f, Color.rgb(221, 229, 216)).apply {
+            setPadding(0, dp(3), 0, dp(12))
+        })
+        val controls = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL }
+        controls.addView(actionButton("‹") {
+            selectedHero = (selectedHero + HERO_NAMES.size - 1) % HERO_NAMES.size
+            showHeroSelect()
+        }, LinearLayout.LayoutParams(dp(52), dp(42)))
+        controls.addView(actionButton("›") {
+            selectedHero = (selectedHero + 1) % HERO_NAMES.size
+            showHeroSelect()
+        }, LinearLayout.LayoutParams(dp(52), dp(42)).apply { marginStart = dp(8) })
+        content.addView(controls)
+        content.addView(actionButton("CONFIRMAR HERÓI") { showMenu() },
+            LinearLayout.LayoutParams(dp(220), dp(42)).apply { topMargin = dp(12) })
+        layer.addView(content, FrameLayout.LayoutParams(dp(300), -2, Gravity.CENTER_VERTICAL or Gravity.START).apply {
+            marginStart = dp(22)
+        })
+        layer.addView(actionButton("VOLTAR") { showMenu() },
+            FrameLayout.LayoutParams(dp(112), dp(40), Gravity.TOP or Gravity.END).apply {
+                topMargin = dp(18)
+                marginEnd = dp(20)
+            })
+        replaceLayer(layer)
+    }
+
+    private fun showGuide() {
+        transition(AppState.MENU)
+        val layer = FrameLayout(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        content.addView(label("COMO JOGAR", 20f, Color.WHITE, true))
+        content.addView(label("A partida é vencida ao destruir o núcleo vermelho.", 11f, Color.rgb(235, 218, 170)).apply {
+            setPadding(0, dp(5), 0, dp(12))
+        })
+        val instructions = listOf(
+            "ROTAS  •  Jogue na sua rota e acompanhe o avanço das tropas.",
+            "SELVA  •  Derrote acampamentos neutros para ganhar ouro e XP.",
+            "OBJETIVOS  •  Dispute o Guardião do Rio e a Sentinela Ancestral.",
+            "GOLPE  •  Ataca heróis, tropas, acampamentos ou estruturas próximas.",
+            "PROGRESSÃO  •  Ganhe XP, suba de nível e melhore a habilidade.",
+            "LOJA  •  Gaste ouro em vida/defesa, poder ou redução de recarga.",
+            "CERCO  •  Use a tropa aliada para avançar pelas três torres de cada rota."
+        )
+        instructions.forEach { line ->
+            content.addView(label(line, 10f, Color.rgb(221, 229, 216)).apply {
+                setPadding(0, dp(4), 0, dp(4))
+            })
+        }
+        content.addView(actionButton("ENTENDI") { showMenu() },
+            LinearLayout.LayoutParams(dp(180), dp(42)).apply { topMargin = dp(14) })
+        layer.addView(content, FrameLayout.LayoutParams(dp(450), -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
+
+    private fun showSettings() {
+        transition(AppState.MENU)
+        val layer = FrameLayout(this)
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        content.addView(label("AJUSTES", 20f, Color.WHITE, true))
+        content.addView(label("CONTROLES", 10f, Color.rgb(236, 194, 123), true).apply {
+            setPadding(0, dp(12), 0, dp(5))
+        })
+        val sensitivity = label("Sensibilidade do direcional: ${sensitivityLabel()}", 11f, Color.rgb(221, 229, 216))
+        content.addView(sensitivity)
+        content.addView(actionButton("ALTERAR SENSIBILIDADE") {
+            cycleSensitivity()
+            sensitivity.text = "Sensibilidade do direcional: ${sensitivityLabel()}"
+        }, LinearLayout.LayoutParams(dp(250), dp(42)).apply { topMargin = dp(9) })
+        content.addView(label("RENDERIZAÇÃO", 10f, Color.rgb(236, 194, 123), true).apply {
+            setPadding(0, dp(14), 0, dp(5))
+        })
+        content.addView(label("Backend ativo: ${renderer.backendName}. O jogo ajusta a resolução dinamicamente.", 10f, Color.rgb(221, 229, 216)))
+        content.addView(actionButton("VOLTAR") { showMenu() },
+            LinearLayout.LayoutParams(dp(180), dp(42)).apply { topMargin = dp(16) })
+        layer.addView(content, FrameLayout.LayoutParams(dp(390), -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
+
+    private fun showSkins() {
+        val owned = ArenaMetaStore.hasSkin(this, selectedHero)
+        metaScreen("COLEÇÃO DE SKINS", "Personalização cosmética do herói", listOf(
+            HERO_NAMES[selectedHero] + " • visual clássico: desbloqueado",
+            "Visual alternativo: " + (if (owned) "desbloqueado" else "500 Moedas de Arena"),
+            "Moedas: " + ArenaMetaStore.coins(this) + " • Fragmentos: " + ArenaMetaStore.shards(this),
+            "Skins não alteram atributos de combate."
+        ), listOf((
+            if (owned) "EQUIPAR VISUAL ALTERNATIVO" else "COMPRAR POR 500 MOEDAS"
+        ) to {
+            if (owned) { ArenaMetaStore.equipSkin(this, selectedHero, true); showSkins() }
+            else if (ArenaMetaStore.buySkin(this, selectedHero, 500)) showSkins()
+            else showNotice("Moedas insuficientes.")
+        }, "USAR VISUAL CLÁSSICO" to { ArenaMetaStore.equipSkin(this, selectedHero, false); showSkins() },
+            "ABRIR LOJA" to { showShop() }))
+    }
+
+    private fun showShop() {
+        metaScreen("LOJA DA ARENA", "Economia local com preços fixos", listOf(
+            "Troca: 120 Fragmentos = 500 Moedas de Arena",
+            "Sem caixas aleatórias e sem compras com dinheiro real.",
+            "Saldo: " + ArenaMetaStore.coins(this) + " moedas • " + ArenaMetaStore.shards(this) + " fragmentos"
+        ), listOf("TROCAR FRAGMENTOS" to {
+            if (ArenaMetaStore.exchange(this, 120, 500)) showShop() else showNotice("Fragmentos insuficientes.")
+        }))
+    }
+
+    private fun showMissionsProfile() {
+        val p = ArenaMetaStore.stats(this)
+        metaScreen("MISSÕES E PERFIL", "Progresso salvo localmente", listOf(
+            "Nível " + p[0] + " • XP " + p[1] + "/500",
+            "Partidas: " + p[2] + " • Vitórias: " + p[3],
+            "Contrato: conclua 3 partidas para receber 250 moedas e 30 fragmentos.",
+            "Progresso do contrato: " + (p[2] % 3) + "/3",
+            "Saldo: " + ArenaMetaStore.coins(this) + " moedas • " + ArenaMetaStore.shards(this) + " fragmentos"
+        ), emptyList())
+    }
+
+    private fun metaScreen(title: String, subtitle: String, rows: List<String>, actions: List<Pair<String, () -> Unit>>) {
+        transition(AppState.MENU)
+        renderer.setOverviewCamera(true)
+        val layer = FrameLayout(this)
+        val box = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(20), dp(18), dp(20), dp(18)); background = panel() }
+        box.addView(label(title, 21f, Color.WHITE, true))
+        box.addView(label(subtitle, 10f, Color.rgb(236, 194, 123), true))
+        rows.forEach { row -> box.addView(label(row, 11f, Color.rgb(225, 232, 219)).apply { setPadding(0, dp(5), 0, dp(5)) }) }
+        actions.forEach { (caption, callback) -> box.addView(actionButton(caption, callback), LinearLayout.LayoutParams(dp(270), dp(40)).apply { topMargin = dp(7) }) }
+        box.addView(actionButton("VOLTAR AO HUB") { showMenu() }, LinearLayout.LayoutParams(dp(270), dp(40)).apply { topMargin = dp(12) })
+        layer.addView(box, FrameLayout.LayoutParams(dp(430), -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
+    private fun startMatch() {
+        nativeSelectHero(selectedHero)
+        nativeReset()
+        renderer.resetHeroAnimationState()
+        moveX = 0f
+        moveZ = 0f
+        lastSnapshot = FloatArray(320)
+        transition(AppState.RUNNING)
+        showHud()
+    }
+
+    private fun showHud() {
+        if (::renderer.isInitialized) {
+            renderer.setBotsVisible(true)
+            renderer.setMinionsVisible(true)
+            renderer.setOverviewCamera(false)
+        }
+        val layer = FrameLayout(this)
+        val top = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(9), dp(6), dp(9), dp(6))
+            background = android.graphics.drawable.GradientDrawable().apply {
+                setColor(Color.argb(170, 10, 22, 29))
+                cornerRadius = dp(7).toFloat()
+            }
+        }
+        matchLabel = label("00:00", 10f, Color.WHITE, true)
+        objectiveLabel = label("DERRUBE AS TORRES • DESTRUA O NÚCLEO", 10f, Color.rgb(192, 235, 221), true)
+        healthLabel = label("VIDA  100/100  •  QUEDAS 0", 8f, Color.rgb(173, 220, 194), true)
+        levelGoldLabel = label("NV 1  •  XP 0/220  •  OURO 500", 8f, Color.rgb(245, 213, 145), true)
+        abilityHint = label(activeAbilityHint(), 8f, Color.rgb(244, 217, 148), true)
+        top.addView(matchLabel)
+        top.addView(objectiveLabel)
+        top.addView(healthLabel)
+        top.addView(levelGoldLabel)
+        top.addView(abilityHint)
+        objectiveProgress = ProgressBar(this, null, android.R.attr.progressBarStyleHorizontal).apply {
+            max = 100
+            progress = 50
+            progressTintList = android.content.res.ColorStateList.valueOf(Color.rgb(82, 202, 174))
+            progressBackgroundTintList = android.content.res.ColorStateList.valueOf(Color.argb(100, 220, 230, 220))
+        }
+        top.addView(objectiveProgress, LinearLayout.LayoutParams(dp(220), dp(4)).apply {
+            topMargin = dp(4)
+        })
+        layer.addView(top, FrameLayout.LayoutParams(dp(250), -2, Gravity.TOP or Gravity.START).apply {
+            topMargin = dp(10)
+            marginStart = dp(10)
+        })
+
+        stateLabel = label("BAIXAS AZUIS 0  :  0 VERMELHAS", 9f, Color.WHITE, true)
+        layer.addView(stateLabel, FrameLayout.LayoutParams(-2, -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
+            topMargin = dp(12)
+        })
+
+        tacticalMap = TacticalMapView(this)
+        layer.addView(tacticalMap, FrameLayout.LayoutParams(dp(138), dp(102), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(10)
+            marginEnd = dp(58)
+        })
+
+        layer.addView(actionButton("LOJA") { showMatchShop() },
+            FrameLayout.LayoutParams(dp(72), dp(36), Gravity.TOP or Gravity.END).apply {
+                marginEnd = dp(58)
+                topMargin = dp(120)
+            })
+        layer.addView(actionButton("Ⅱ") { pauseMatch() },
+            FrameLayout.LayoutParams(dp(38), dp(38), Gravity.TOP or Gravity.END).apply {
+                marginEnd = dp(10)
+                topMargin = dp(10)
+            })
+
+        val stick = TouchStick(this) { x, z ->
+            val scale = sensitivityLevels[sensitivityIndex]
+            moveX = (x * scale).coerceIn(-1f, 1f)
+            // Touch coordinates grow downward; world +Z is toward the upper screen.
+            moveZ = (-z * scale).coerceIn(-1f, 1f)
+        }
+        layer.addView(stick, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.BOTTOM or Gravity.START).apply {
+            marginStart = dp(14)
+            bottomMargin = dp(14)
+        })
+
+        dashActionButton = actionButton("IMPULSO") {
+            val activated = nativeActivateDash(moveX, moveZ)
+            showAbilityFeedback(if (activated) "IMPULSO • avanço na direção do joystick" else "IMPULSO • aguarde a recarga")
+        }
+        layer.addView(dashActionButton, FrameLayout.LayoutParams(dp(108), dp(44), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(12)
+            bottomMargin = dp(16)
+        })
+
+        pulseActionButton = actionButton(activeAbilityName()) {
+            val activated = nativeCastPulse()
+            if (activated) renderer.triggerAbilityGesture()
+            val feedback = if (activated) activeAbilityHint() else when (selectedHero) {
+                0 -> "AURA • sem aliados feridos ou rivais próximos"
+                1 -> "IMPACTO • aguarde a recarga"
+                else -> "ONDA • aguarde a recarga"
+            }
+            showAbilityFeedback(feedback)
+        }
+        layer.addView(pulseActionButton, FrameLayout.LayoutParams(dp(104), dp(44), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(128)
+            bottomMargin = dp(16)
+        })
+
+        shieldActionButton = actionButton("ESCUDO") {
+            val activated = nativeActivateShield()
+            if (activated) renderer.triggerGuardGesture()
+            showAbilityFeedback(if (activated) "ESCUDO • reduz dano recebido por 3 segundos" else "ESCUDO • aguarde a recarga")
+        }
+        layer.addView(shieldActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(12)
+            bottomMargin = dp(68)
+        })
+
+        attackActionButton = actionButton("GOLPE") {
+            val hit = nativeBasicAttack()
+            if (hit) renderer.triggerActionPulse()
+            showAbilityFeedback(if (hit) "GOLPE • alvo atingido" else "GOLPE • aproxime-se de um rival ou estrutura")
+        }
+        layer.addView(attackActionButton, FrameLayout.LayoutParams(dp(108), dp(38), Gravity.BOTTOM or Gravity.END).apply {
+            marginEnd = dp(12)
+            bottomMargin = dp(114)
+        })
+        tacticalMap.setSnapshot(lastSnapshot)
+        replaceLayer(layer)
+    }
+
+
+    private fun showMatchShop() {
+        if (state != AppState.RUNNING) return
+        val layer = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(176, 7, 17, 23))
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            background = panel()
+        }
+        fun refreshShop() {
+            val data = nativeStep(0f, 0f, 0f)
+            if (data.size >= 320) lastSnapshot = data
+            val gold = lastSnapshot[98].toInt()
+            val level = lastSnapshot[96].toInt()
+            val skill = lastSnapshot[289].toInt()
+            box.removeAllViews()
+            box.addView(label("LOJA DA PARTIDA", 20f, Color.WHITE, true))
+            box.addView(label("OURO $gold  •  NÍVEL $level  •  ITENS ${lastSnapshot[286].toInt()}/${lastSnapshot[287].toInt()}/${lastSnapshot[288].toInt()}", 10f, Color.rgb(242, 209, 141), true))
+            box.addView(actionButton("VITALIDADE + DEFESA  •  250 OURO") {
+                if (nativeBuyItem(0)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(8) })
+            box.addView(actionButton("PODER DE COMBATE  •  300 OURO") {
+                if (nativeBuyItem(1)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(7) })
+            box.addView(actionButton("AGILIDADE / RECARGA  •  280 OURO") {
+                if (nativeBuyItem(2)) refreshShop() else showAbilityFeedback("OURO INSUFICIENTE OU LIMITE DE ITENS")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(7) })
+            val canUpgrade = level > skill && skill < 5
+            box.addView(actionButton(if (canUpgrade) "MELHORAR HABILIDADE  •  PONTO DISPONÍVEL" else "HABILIDADE  •  NV $skill / 5") {
+                if (nativeUpgradeSkill()) refreshShop() else showAbilityFeedback("GANHE UM NÍVEL PARA RECEBER UM PONTO")
+            }, LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(7) })
+            box.addView(actionButton("VOLTAR À PARTIDA") { showHud() },
+                LinearLayout.LayoutParams(dp(340), dp(42)).apply { topMargin = dp(12) })
+        }
+        refreshShop()
+        layer.addView(box, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
+
+    private fun abilityButtonText(name: String, cooldown: Float): String =
+        if (cooldown > 0.05f) "$name  ${kotlin.math.ceil(cooldown).toInt()}s" else name
+
+    private fun showAbilityFeedback(message: String) {
+        abilityHint.text = message
+        abilityFeedbackUntilNanos = System.nanoTime() + 1_600_000_000L
+    }
+
+    private fun signed(value: Int): String = when {
+        value > 0 -> "+$value%"
+        value < 0 -> "$value%"
+        else -> "0%"
+    }
+
+    private fun pauseMatch() {
+        if (state != AppState.RUNNING) return
+        moveX = 0f
+        moveZ = 0f
+        transition(AppState.PAUSED)
+        val layer = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(170, 7, 17, 23))
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setPadding(dp(22), dp(20), dp(22), dp(20))
+        }
+        box.addView(label("PARTIDA PAUSADA", 26f, Color.WHITE, true).apply {
+            gravity = Gravity.CENTER
+            textAlignment = View.TEXT_ALIGNMENT_CENTER
+        })
+        box.addView(actionButton("CONTINUAR") {
+            transition(AppState.RUNNING)
+            showHud()
+        }, LinearLayout.LayoutParams(dp(220), dp(48)).apply { topMargin = dp(18) })
+        box.addView(actionButton("VOLTAR AO MENU") { showMenu() },
+            LinearLayout.LayoutParams(dp(220), dp(48)).apply { topMargin = dp(10) })
+        layer.addView(box, FrameLayout.LayoutParams(dp(500), -2, Gravity.CENTER))
+        replaceLayer(layer)
+    }
+
+    private fun showResult(won: Boolean) {
+        if (state != AppState.RUNNING) return
+        moveX = 0f
+        moveZ = 0f
+        transition(AppState.RESULT)
+        ArenaMetaStore.recordMatch(this, won)
+        val layer = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(190, 7, 18, 24))
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        box.addView(label(if (won) "VITÓRIA AZUL" else "VITÓRIA VERMELHA", 28f, Color.WHITE, true))
+        box.addView(label(if (won) "RECOMPENSA  +120 MOEDAS  •  +12 FRAGMENTOS" else "RECOMPENSA  +70 MOEDAS  •  +6 FRAGMENTOS", 11f, Color.rgb(236, 194, 123), true))
+        box.addView(label("O núcleo de uma equipe foi destruído.", 13f, Color.rgb(211, 234, 230)).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(12), dp(10), dp(12), dp(16))
+        })
+        box.addView(actionButton("NOVA PARTIDA") { startMatch() },
+            LinearLayout.LayoutParams(dp(220), dp(48)))
+        box.addView(actionButton("MENU PRINCIPAL") { showMenu() },
+            LinearLayout.LayoutParams(dp(220), dp(48)).apply { topMargin = dp(10) })
+        layer.addView(box, FrameLayout.LayoutParams(-1, -1))
+        replaceLayer(layer)
+    }
+
+    private fun showNotice(message: String) {
+        val layer = FrameLayout(this).apply {
+            setBackgroundColor(Color.argb(192, 7, 18, 24))
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        box.addView(label(message, 14f, Color.WHITE).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(30), dp(10), dp(30), dp(18))
+        })
+        box.addView(actionButton("VOLTAR") { showMenu() },
+            LinearLayout.LayoutParams(dp(180), dp(46)))
+        layer.addView(box, FrameLayout.LayoutParams(-1, -1))
+        replaceLayer(layer)
+    }
+
+    private fun enterRecovery(message: String) {
+        stopRenderLoop()
+        transition(AppState.RECOVERY)
+        val layer = FrameLayout(this).apply {
+            setBackgroundColor(Color.rgb(14, 22, 29))
+        }
+        val box = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+        }
+        box.addView(label("RECUPERAÇÃO", 26f, Color.WHITE, true))
+        box.addView(label(message, 13f, Color.LTGRAY).apply {
+            gravity = Gravity.CENTER
+            setPadding(dp(28), dp(12), dp(28), dp(18))
+        })
+        box.addView(actionButton("REINICIAR TELA") { recreate() },
+            LinearLayout.LayoutParams(dp(220), dp(48)))
+        layer.addView(box, FrameLayout.LayoutParams(-1, -1))
+        replaceLayer(layer)
     }
 
     override fun onPause() {
-        if (::gameView.isInitialized) {
-            if (currentScreen == Screen.PLAYING) {
-                backgroundedDuringGame = true
-                gameView.setGameMode(2)
-            }
-            gameView.onPause()
-        }
+        if (state == AppState.RUNNING) pauseMatch()
+        stopRenderLoop()
         super.onPause()
     }
 
     override fun onResume() {
         super.onResume()
-        if (::gameView.isInitialized) gameView.onResume()
-        if (backgroundedDuringGame && currentScreen == Screen.PLAYING) {
-            backgroundedDuringGame = false
-            showPause()
-        }
+        if (::renderer.isInitialized && state != AppState.RECOVERY) startRenderLoop()
     }
 
     override fun onDestroy() {
-        uiHandler.removeCallbacks(pollState)
-        toneGenerator?.release()
-        toneGenerator = null
+        stopRenderLoop()
+        if (::renderer.isInitialized) renderer.destroy()
         super.onDestroy()
     }
 
-    @Deprecated("Deprecated in Android API; handled for in-game navigation")
+    @Deprecated("Legacy back navigation")
     override fun onBackPressed() {
-        when (currentScreen) {
-            Screen.PLAYING -> showPause()
-            Screen.PAUSED -> resumeMission()
-            Screen.OPERATIVES -> showMainMenu(hasSession)
-            Screen.SETTINGS -> showMainMenu(hasSession)
-            Screen.RESULT -> showMainMenu(false)
-            Screen.MENU -> super.onBackPressed()
-        }
-    }
-
-    private fun operativeName(): String = if (selectedOperative == 0) "NEON-VANGUARD" else "STELLAR-REAPER"
-
-    private fun playGameTone(tone: Int = ToneGenerator.TONE_PROP_BEEP, durationMs: Int = 55) {
-        if (soundEnabled) toneGenerator?.startTone(tone, durationMs)
-    }
-
-    private fun dp(value: Int): Int = (value * resources.displayMetrics.density + 0.5f).toInt()
-
-    private fun text(value: String, size: Float, color: Int = white, bold: Boolean = false): TextView {
-        return TextView(this).apply {
-            text = value
-            textSize = size
-            setTextColor(color)
-            typeface = Typeface.create("sans-serif-condensed", if (bold) Typeface.BOLD else Typeface.NORMAL)
-            setLineSpacing(0f, 1.06f)
-            includeFontPadding = true
-        }
-    }
-
-    private fun buttonBackground(accent: Boolean, enabled: Boolean = true): GradientDrawable {
-        val strokeColor = if (accent) cyan else Color.rgb(91, 102, 69)
-        val fill = if (accent) Color.argb(220, 48, 59, 30) else Color.argb(205, 27, 30, 20)
-        return GradientDrawable().apply {
-            shape = GradientDrawable.RECTANGLE
-            cornerRadius = dp(12).toFloat()
-            setColor(if (enabled) fill else Color.argb(90, 24, 26, 18))
-            setStroke(dp(1), if (enabled) strokeColor else Color.rgb(58, 61, 48))
-        }
-    }
-
-    private fun actionButton(label: String, accent: Boolean = false, onClick: () -> Unit): TextView {
-        return text(label, 15f, if (accent) cyan else white, true).apply {
-            gravity = Gravity.CENTER
-            setPadding(dp(12), dp(10), dp(12), dp(10))
-            background = buttonBackground(accent)
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                onClick()
+        when (state) {
+            AppState.RUNNING -> pauseMatch()
+            AppState.PAUSED -> {
+                transition(AppState.RUNNING)
+                showHud()
             }
+            AppState.MENU, AppState.RESULT -> super.onBackPressed()
+            else -> super.onBackPressed()
         }
     }
-
-    private fun menuCommandButton(label: String, accent: Boolean = false, onClick: () -> Unit): TextView {
-        return text(if (accent) "▸  $label" else "›  $label", 12f, if (accent) cyan else white, true).apply {
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(5), dp(8), dp(5))
-            background = GradientDrawable().apply {
-                shape = GradientDrawable.RECTANGLE
-                cornerRadius = dp(4).toFloat()
-                setColor(if (accent) Color.argb(112, 12, 50, 58) else Color.argb(28, 18, 31, 36))
-                setStroke(dp(1), if (accent) Color.argb(190, 42, 207, 221) else Color.argb(76, 132, 157, 164))
-            }
-            isClickable = true
-            isFocusable = true
-            setOnClickListener {
-                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                onClick()
-            }
-        }
-    }
-
-    private fun addVertical(parent: LinearLayout, child: View, bottom: Int = 0, width: Int = -1, height: Int = -2) {
-        parent.addView(child, LinearLayout.LayoutParams(width, height).apply {
-            if (bottom > 0) bottomMargin = dp(bottom)
-        })
-    }
-
-    private fun overlay(dim: Int, blockTouches: Boolean = true): FrameLayout {
-        return FrameLayout(this).apply {
-            setBackgroundColor(dim)
-            isClickable = blockTouches
-            isFocusable = blockTouches
-        }
-    }
-
-    private fun attachLayer(layer: View) {
-        currentLayer?.let { root.removeView(it) }
-        currentLayer = layer
-        root.addView(layer, FrameLayout.LayoutParams(-1, -1))
-    }
-
-    private fun showMainMenu(preserveMission: Boolean) {
-        currentScreen = Screen.MENU
-        gameView.setGameMode(if (preserveMission && hasSession) 6 else 0)
-        // Keep the environment visible; actions remain in a compact left-side column.
-        val layer = overlay(Color.argb(78, 8, 12, 16))
-        val left = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, dp(4), 0, dp(4))
-        }
-        addVertical(left, text("DUCK DREAM STUDIOS", 10f, cyan, true), 8)
-        addVertical(left, text("ORION-9", 32f, white, true), 1)
-        addVertical(left, View(this).apply { setBackgroundColor(cyan) }, 8, dp(176), dp(2))
-        addVertical(left, text("PROTOCOLO DE CONTENÇÃO", 11f, muted, true), 8)
-        addVertical(left, text("OPERADOR  ${operativeName()}", 12f, amber, true), 10)
-        addVertical(left, menuCommandButton("INICIAR OPERAÇÃO", true) { startNewMission() }, 6, dp(181), dp(35))
-        val continueBtn = menuCommandButton("CONTINUAR") { continueMission() }
-        continueBtn.isEnabled = hasSession
-        continueBtn.alpha = if (hasSession) 1f else 0.40f
-        addVertical(left, continueBtn, 6, dp(181), dp(33))
-        addVertical(left, menuCommandButton("ESCOLHER OPERADOR") { showOperativeSelect() }, 6, dp(181), dp(33))
-        addVertical(left, menuCommandButton("CONFIGURAÇÕES") { showSettings() }, 6, dp(181), dp(33))
-        addVertical(left, text("SITE ORION-9  •  0.9.4", 9f, muted, true), 10)
-        layer.addView(left, FrameLayout.LayoutParams(dp(225), -2, Gravity.START or Gravity.CENTER_VERTICAL).apply {
-            marginStart = dp(28)
-        })
-        attachLayer(layer)
-    }
-
-    private fun showOperativeSelect() {
-        currentScreen = Screen.OPERATIVES
-        gameView.setGameMode(if (hasSession) 6 else 0)
-        val layer = overlay(Color.argb(112, 4, 10, 15))
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-        }
-        addVertical(content, text("SELECIONE SEU OPERADOR", 25f, white, true), 5)
-        addVertical(content, text("Duas identidades de combate com padrões de disparo diferentes.", 12f, muted), 14)
-        val names = arrayOf("NEON-VANGUARD", "STELLAR-REAPER")
-        val roles = arrayOf("TIRO DUPLO", "DISPARO EM CONE")
-        val descriptions = arrayOf(
-            "Armadura azul-neon. Velocidade padrão e dois projéteis paralelos por rajada.",
-            "Armadura dourada. Movimento 20% mais rápido e três projéteis em leque."
-        )
-        val stats = arrayOf("AZUL #00E5FF\nVELOCIDADE 100%", "DOURADO #FFD600\nVELOCIDADE 120%")
-        val row = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER }
-        for (index in names.indices) {
-            val selected = index == selectedOperative
-            val card = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(10), dp(10), dp(10), dp(10))
-                background = GradientDrawable().apply {
-                    cornerRadius = dp(12).toFloat()
-                    setColor(Color.argb(if (selected) 202 else 142, 13, 24, 31))
-                    setStroke(dp(if (selected) 2 else 1), if (selected) cyan else Color.argb(100, 147, 166, 169))
-                }
-            }
-            addVertical(card, actionButton(if (selected) "✓  ${names[index]}" else names[index], selected) {
-                selectedOperative = index
-                prefs.edit().putInt("operative", selectedOperative).apply()
-                gameView.setOperative(selectedOperative)
-                playGameTone(ToneGenerator.TONE_PROP_ACK, 60)
-                showOperativeSelect()
-            }, 7, dp(225), dp(45))
-            addVertical(card, text(roles[index], 12f, amber, true), 8)
-            addVertical(card, text(descriptions[index], 12f, white), 8)
-            addVertical(card, text(stats[index], 10f, muted, true), 0)
-            row.addView(card, LinearLayout.LayoutParams(0, -2, 1f).apply { setMargins(dp(6), 0, dp(6), 0) })
-        }
-        addVertical(content, row, 14)
-        addVertical(content, actionButton("VOLTAR", true) { showMainMenu(hasSession) }, 4, dp(250), dp(42))
-        layer.addView(content, FrameLayout.LayoutParams(dp(540), -2, Gravity.CENTER))
-        attachLayer(layer)
-    }
-
-    private fun showSettings() {
-        currentScreen = Screen.SETTINGS
-        gameView.setGameMode(3)
-        val layer = overlay(Color.argb(190, 8, 13, 18))
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(8), dp(6), dp(8), dp(6))
-        }
-        addVertical(content, text("CONFIGURAÇÕES", 28f, white, true), 4)
-        addVertical(content, text("ÁUDIO E CONTROLES", 13f, cyan, true), 8)
-        addVertical(content, text("ESQUERDA — MOVIMENTO\nARRASTE O LADO DIREITO — MIRA\nMANTENHA ATIRAR PRESSIONADO — DISPARO CONTÍNUO", 11f, muted), 10)
-
-        val soundLabel = if (soundEnabled) "SOM DE JOGO: LIGADO" else "SOM DE JOGO: DESLIGADO"
-        addVertical(content, actionButton(soundLabel, soundEnabled) {
-            soundEnabled = !soundEnabled
-            prefs.edit().putBoolean("sound_enabled", soundEnabled).apply()
-            gameView.setGameSoundEnabled(soundEnabled)
-            if (soundEnabled) playGameTone(ToneGenerator.TONE_PROP_ACK, 70)
-            showSettings()
-        }, 8, dp(330), dp(46))
-
-        val sensitivityLabel = text("SENSIBILIDADE DO TOQUE: ${(touchSensitivity * 100f).toInt()}%", 13f, white, true)
-        addVertical(content, sensitivityLabel, 12)
-        val sensitivity = SeekBar(this).apply {
-            max = 100
-            progress = ((touchSensitivity - 0.5f) * 100f).toInt().coerceIn(0, 100)
-            progressTintList = ColorStateList.valueOf(cyan)
-            thumbTintList = ColorStateList.valueOf(cyan)
-            setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-                override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                    touchSensitivity = 0.5f + progress / 100f
-                    sensitivityLabel.text = "SENSIBILIDADE DO TOQUE: ${(touchSensitivity * 100f).toInt()}%"
-                    gameView.setTouchSensitivity(touchSensitivity)
-                }
-                override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-                override fun onStopTrackingTouch(seekBar: SeekBar?) {
-                    prefs.edit().putFloat("touch_sensitivity", touchSensitivity).apply()
-                }
-            })
-        }
-        addVertical(content, sensitivity, 4, dp(330), dp(42))
-        addVertical(content, text("Faixa ajustável de 50% a 150%. A escolha fica salva entre sessões.", 11f, muted), 8)
-
-        val hapticLabel = if (hapticsEnabled) "VIBRAÇÃO DE INTERFACE: LIGADA" else "VIBRAÇÃO DE INTERFACE: DESLIGADA"
-        addVertical(content, actionButton(hapticLabel, hapticsEnabled) {
-            hapticsEnabled = !hapticsEnabled
-            prefs.edit().putBoolean("haptics", hapticsEnabled).apply()
-            showSettings()
-        }, 12, dp(330), dp(44))
-        addVertical(content, actionButton("VOLTAR") { showMainMenu(hasSession) }, 8, dp(330), dp(44))
-        layer.addView(content, FrameLayout.LayoutParams(dp(360), -2, Gravity.CENTER))
-        attachLayer(layer)
-    }
-
-    private fun startNewMission() {
-        hasSession = true
-        gameView.startNewMission()
-        showGame()
-    }
-
-    private fun continueMission() {
-        if (!hasSession) return
-        showGame()
-    }
-
-    private fun showGame() {
-        currentScreen = Screen.PLAYING
-        gameView.setGameMode(1)
-        attachLayer(createHudLayer())
-        updateHud(gameView.snapshot())
-    }
-
-    private fun showPause() {
-        if (currentScreen != Screen.PLAYING) return
-        currentScreen = Screen.PAUSED
-        hasSession = true
-        gameView.setGameMode(2)
-        val layer = overlay(Color.argb(168, 12, 16, 8))
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-        }
-        addVertical(content, text("PAUSA", 27f, white, true), 6)
-        addVertical(content, text("A expedição continua daqui quando voltar.", 13f, muted), 18)
-        addVertical(content, actionButton("RETOMAR", true) { resumeMission() }, 8, dp(270), dp(46))
-        addVertical(content, actionButton("REINICIAR OPERAÇÃO") { startNewMission() }, 8, dp(270), dp(46))
-        addVertical(content, actionButton("VOLTAR AO MENU") {
-            gameView.setGameMode(6)
-            showMainMenu(true)
-        }, 8, dp(270), dp(46))
-        layer.addView(content, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
-        attachLayer(layer)
-    }
-
-    private fun resumeMission() {
-        if (!hasSession) return
-        showGame()
-    }
-
-    private fun createHudLayer(): View {
-        val layer = overlay(Color.TRANSPARENT, false)
-        val hudColor = Color.argb(198, 236, 239, 225)
-        val hudMuted = Color.argb(164, 188, 195, 185)
-        val left = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(0, 0, 0, 0)
-            isClickable = false
-        }
-        addVertical(left, text("ORION-9  /  SITE", 10f, Color.argb(210, 72, 220, 232), true), 3)
-        addVertical(left, text("OPERADOR  ${operativeName()}", 9f, Color.argb(190, 255, 183, 112), true), 5)
-        relayStatus = text("RELÉS  0 / 3", 10f, hudColor, true)
-        addVertical(left, relayStatus, 2)
-        threatStatus = text("AMEAÇAS  4", 9f, hudMuted, true)
-        addVertical(left, threatStatus, 2)
-        progressText = text("SETOR 1  •  0 / 24", 9f, Color.argb(190, 255, 183, 112), true)
-        addVertical(left, progressText, 0)
-        layer.addView(left, FrameLayout.LayoutParams(dp(235), -2, Gravity.START or Gravity.TOP).apply {
-            marginStart = dp(18); topMargin = dp(13)
-        })
-
-        objectiveText = text("RESTAURE OS RELÉS DE CONTENÇÃO", 10f, hudColor, true).apply {
-            gravity = Gravity.CENTER
-            alpha = 0.88f
-            setPadding(dp(5), dp(4), dp(5), dp(4))
-            isClickable = false
-        }
-        layer.addView(objectiveText, FrameLayout.LayoutParams(dp(300), -2, Gravity.TOP or Gravity.CENTER_HORIZONTAL).apply {
-            topMargin = dp(14)
-        })
-
-        val pause = text("Ⅱ", 16f, hudColor, true).apply {
-            gravity = Gravity.CENTER
-            alpha = 0.86f
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Pausar"
-            setOnClickListener { showPause() }
-        }
-        layer.addView(pause, FrameLayout.LayoutParams(dp(38), dp(38), Gravity.END or Gravity.TOP).apply {
-            marginEnd = dp(16); topMargin = dp(10)
-        })
-
-        val joystick = VirtualJoystick(this)
-        layer.addView(joystick, FrameLayout.LayoutParams(dp(150), dp(150), Gravity.START or Gravity.BOTTOM).apply {
-            marginStart = dp(20); bottomMargin = dp(16)
-        })
-
-        // Open outline glyphs preserve the hit area without opaque circles or button plates.
-        fireButton = FireControlButton(this)
-        layer.addView(fireButton, FrameLayout.LayoutParams(dp(76), dp(76), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(18); bottomMargin = dp(12)
-        })
-        dodgeButton = DodgeControlButton(this).apply {
-            setOnClickListener {
-                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                gameView.dodge()
-            }
-        }
-        layer.addView(dodgeButton, FrameLayout.LayoutParams(dp(76), dp(76), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(108); bottomMargin = dp(12)
-        })
-
-        interactButton = text("INTERAGIR", 10f, Color.argb(190, 72, 220, 232), true).apply {
-            gravity = Gravity.CENTER
-            alpha = 0.82f
-            setPadding(dp(7), dp(4), dp(7), dp(4))
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Interagir. Segure por 2 segundos para restaurar um relé ou por 1 segundo para abrir o baú."
-            setOnClickListener {
-                if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                gameView.interact() // Single-tap pickup remains reserved for medical supplies.
-                updateHud(gameView.snapshot())
-            }
-            setOnTouchListener { view, event ->
-                when (event.actionMasked) {
-                    MotionEvent.ACTION_DOWN -> {
-                        gameView.beginInteraction()
-                        true
-                    }
-                    MotionEvent.ACTION_UP -> {
-                        gameView.endInteraction()
-                        view.performClick()
-                        true
-                    }
-                    MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
-                        gameView.endInteraction()
-                        true
-                    }
-                    else -> true
-                }
-            }
-        }
-        layer.addView(interactButton, FrameLayout.LayoutParams(dp(174), dp(28), Gravity.END or Gravity.BOTTOM).apply {
-            marginEnd = dp(23); bottomMargin = dp(100)
-        })
-        return layer
-    }
-
-    private inner class FireControlButton(context: Context) : View(context) {
-        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(2).toFloat()
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-        private val detailPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(1).toFloat()
-            strokeCap = Paint.Cap.ROUND
-        }
-        private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textAlign = Paint.Align.CENTER
-            textSize = dp(9).toFloat()
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-        }
-        private var activePointerId = -1
-        private var trackingPointer = false
-        private var firingVisual = false
-
-        init {
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Atirar. Mantenha pressionado para disparo contínuo."
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val cx = width * 0.5f
-            val cy = height * 0.40f
-            val accent = if (firingVisual) Color.rgb(255, 214, 0) else Color.rgb(0, 229, 255)
-            iconPaint.color = if (isEnabled) accent else Color.argb(75, 190, 200, 200)
-            detailPaint.color = Color.argb(if (firingVisual) 230 else 175, 232, 241, 236)
-            labelPaint.color = Color.argb(if (firingVisual) 245 else 185, 246, 249, 235)
-
-            canvas.save()
-            canvas.rotate(-38f, cx, cy)
-            val barrel = RectF(cx - dp(5).toFloat(), cy - dp(13).toFloat(),
-                cx + dp(5).toFloat(), cy + dp(6).toFloat())
-            canvas.drawRoundRect(barrel, dp(2).toFloat(), dp(2).toFloat(), iconPaint)
-            canvas.drawLine(cx, cy + dp(6).toFloat(), cx, cy + dp(13).toFloat(), iconPaint)
-            canvas.drawLine(cx - dp(5).toFloat(), cy + dp(1).toFloat(),
-                cx - dp(10).toFloat(), cy + dp(1).toFloat(), detailPaint)
-            canvas.drawLine(cx + dp(5).toFloat(), cy - dp(8).toFloat(),
-                cx + dp(9).toFloat(), cy - dp(8).toFloat(), detailPaint)
-            canvas.drawLine(cx - dp(2).toFloat(), cy - dp(17).toFloat(),
-                cx + dp(2).toFloat(), cy - dp(17).toFloat(), detailPaint)
-            canvas.restore()
-
-            canvas.drawText("ATIRAR", cx, height - dp(8).toFloat(), labelPaint)
-        }
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            if (event.pointerCount == 0) {
-                endHold()
-                return true
-            }
-            val index = event.actionIndex.coerceIn(0, event.pointerCount - 1)
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    activePointerId = event.getPointerId(index)
-                    trackingPointer = true
-                    if (hapticsEnabled) performHapticFeedback(HapticFeedbackConstants.KEYBOARD_TAP)
-                    updateHold(event.getX(index), event.getY(index))
-                    return true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    if (trackingPointer) {
-                        val pointerIndex = event.findPointerIndex(activePointerId)
-                        if (pointerIndex >= 0) updateHold(event.getX(pointerIndex), event.getY(pointerIndex))
-                    }
-                    return true
-                }
-                MotionEvent.ACTION_POINTER_UP -> {
-                    if (event.getPointerId(index) == activePointerId) endHold()
-                    return true
-                }
-                MotionEvent.ACTION_UP -> {
-                    val ownsPointer = trackingPointer && event.getPointerId(index) == activePointerId
-                    val inside = ownsPointer && isInside(event.getX(index), event.getY(index))
-                    endHold()
-                    if (inside) performClick()
-                    return true
-                }
-                MotionEvent.ACTION_CANCEL, MotionEvent.ACTION_OUTSIDE -> {
-                    endHold()
-                    return true
-                }
-            }
-            return true
-        }
-
-        private fun isInside(x: Float, y: Float): Boolean =
-            x >= 0f && y >= 0f && x <= width.toFloat() && y <= height.toFloat()
-
-        private fun updateHold(x: Float, y: Float) {
-            val shouldFire = isInside(x, y)
-            if (firingVisual != shouldFire) {
-                firingVisual = shouldFire
-                if (shouldFire) playGameTone(ToneGenerator.TONE_PROP_BEEP, 55)
-                gameView.setFiring(shouldFire)
-            }
-            isPressed = shouldFire
-            invalidate()
-        }
-
-        private fun endHold() {
-            trackingPointer = false
-            activePointerId = -1
-            if (firingVisual) gameView.setFiring(false)
-            firingVisual = false
-            isPressed = false
-            invalidate()
-        }
-
-        override fun performClick(): Boolean {
-            super.performClick()
-            return true
-        }
-    }
-
-    private inner class DodgeControlButton(context: Context) : View(context) {
-        private val iconPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            style = Paint.Style.STROKE
-            strokeWidth = dp(2).toFloat()
-            strokeCap = Paint.Cap.ROUND
-            strokeJoin = Paint.Join.ROUND
-        }
-        private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textAlign = Paint.Align.CENTER
-            textSize = dp(9).toFloat()
-            typeface = Typeface.create("sans-serif-condensed", Typeface.BOLD)
-        }
-
-        init {
-            isClickable = true
-            isFocusable = true
-            contentDescription = "Esquiva"
-        }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val cx = width * 0.5f
-            val cy = height * 0.40f
-            iconPaint.color = if (isEnabled) Color.rgb(0, 229, 255) else Color.argb(78, 190, 200, 200)
-            labelPaint.color = Color.argb(if (isEnabled) 205 else 95, 232, 241, 236)
-
-            val dash = Path().apply {
-                moveTo(cx - dp(15).toFloat(), cy + dp(8).toFloat())
-                lineTo(cx - dp(5).toFloat(), cy - dp(8).toFloat())
-                lineTo(cx + dp(4).toFloat(), cy - dp(1).toFloat())
-                lineTo(cx + dp(14).toFloat(), cy - dp(16).toFloat())
-            }
-            canvas.drawPath(dash, iconPaint)
-            canvas.drawLine(cx - dp(17).toFloat(), cy + dp(2).toFloat(),
-                cx - dp(11).toFloat(), cy - dp(7).toFloat(), iconPaint)
-            canvas.drawLine(cx + dp(7).toFloat(), cy - dp(16).toFloat(),
-                cx + dp(14).toFloat(), cy - dp(16).toFloat(), iconPaint)
-            canvas.drawLine(cx + dp(14).toFloat(), cy - dp(16).toFloat(),
-                cx + dp(14).toFloat(), cy - dp(9).toFloat(), iconPaint)
-            canvas.drawText("ESQUIVA", cx, height - dp(8).toFloat(), labelPaint)
-        }
-
-        override fun performClick(): Boolean {
-            super.performClick()
-            return true
-        }
-    }
-
-    private inner class VirtualJoystick(context: Context) : View(context) {
-        private val baseFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(145, 4, 16, 28) }
-        private val baseStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(220, 190, 217, 134); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
-        }
-        private val innerStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.argb(110, 135, 194, 210); style = Paint.Style.STROKE; strokeWidth = dp(1).toFloat()
-        }
-        private val knobFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(220, 82, 106, 53) }
-        private val knobStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            color = Color.rgb(160, 241, 250); style = Paint.Style.STROKE; strokeWidth = dp(2).toFloat()
-        }
-        private var pointerId = -1
-        private var knobX = 0f
-        private var knobY = 0f
-        init { isClickable = true; contentDescription = "Joystick de movimento" }
-
-        override fun onDraw(canvas: Canvas) {
-            super.onDraw(canvas)
-            val cx = width * 0.5f; val cy = height * 0.5f; val radius = minOf(width, height) * 0.43f
-            canvas.drawCircle(cx, cy, radius, baseFill)
-            canvas.drawCircle(cx, cy, radius, baseStroke)
-            canvas.drawCircle(cx, cy, radius * 0.58f, innerStroke)
-            canvas.drawCircle(cx + knobX, cy + knobY, radius * 0.34f, knobFill)
-            canvas.drawCircle(cx + knobX, cy + knobY, radius * 0.34f, knobStroke)
-        }
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            val cx = width * 0.5f; val cy = height * 0.5f; val radius = minOf(width, height) * 0.43f * 0.70f
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN -> {
-                    pointerId = event.getPointerId(event.actionIndex)
-                    gameView.controlTouch(0, cx, cy)
-                    updateStick(event.getX(event.actionIndex), event.getY(event.actionIndex), cx, cy, radius)
-                    return true
-                }
-                MotionEvent.ACTION_MOVE -> {
-                    val index = event.findPointerIndex(pointerId)
-                    if (index >= 0) updateStick(event.getX(index), event.getY(index), cx, cy, radius)
-                    return true
-                }
-                MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
-                    gameView.controlTouch(2, cx + knobX, cy + knobY)
-                    pointerId = -1; knobX = 0f; knobY = 0f; invalidate(); performClick()
-                    return true
-                }
-                MotionEvent.ACTION_POINTER_UP -> {
-                    if (event.getPointerId(event.actionIndex) == pointerId) {
-                        gameView.controlTouch(2, cx + knobX, cy + knobY)
-                        pointerId = -1; knobX = 0f; knobY = 0f; invalidate()
-                    }
-                    return true
-                }
-            }
-            return true
-        }
-
-        private fun updateStick(x: Float, y: Float, cx: Float, cy: Float, radius: Float) {
-            var dx = x - cx; var dy = y - cy
-            val distance = kotlin.math.sqrt(dx * dx + dy * dy)
-            if (distance > radius && distance > 0f) { dx = dx / distance * radius; dy = dy / distance * radius }
-            knobX = dx; knobY = dy
-            gameView.controlTouch(1, cx + knobX, cy + knobY)
-            invalidate()
-        }
-        override fun performClick(): Boolean { super.performClick(); return true }
-    }
-
-    private fun updateHud(snapshot: Int) {
-        if (currentScreen != Screen.PLAYING || !::relayStatus.isInitialized) return
-        val mode = snapshot and 7
-        val relayMask = (snapshot ushr 10) and 7
-        val enemiesLeft = (snapshot ushr 13) and 7
-        val eliminations = (snapshot ushr 20) and 31
-        val room = (snapshot ushr 25) and 3
-        val nextDoorOpen = (snapshot and (1 shl 27)) != 0
-        val nearRelay = (snapshot and (1 shl 16)) != 0
-        val nearPod = (snapshot and (1 shl 18)) != 0
-        val nearHazard = (snapshot and (1 shl 19)) != 0
-        val chestSpawned = (snapshot and (1 shl 30)) != 0
-        val chestOpened = (snapshot and (1 shl 31)) != 0
-        val chestAvailable = room == 3 && chestSpawned && !chestOpened
-        val lootModifier = (snapshot ushr 28) and 3
-        val lootName = when (lootModifier) {
-            1 -> "OVERCLOCK"
-            2 -> "NANO-SHIELD"
-            3 -> "PIERCING"
-            else -> ""
-        }
-        val dodgeReady = (snapshot and (1 shl 17)) != 0
-        val relaysDone = Integer.bitCount(relayMask)
-        relayStatus.text = "RELÉS  $relaysDone/3  +${relaysDone * 15}% DANO"
-        threatStatus.text = "AMEAÇAS  $enemiesLeft"
-        progressText.text = if (lootName.isNotEmpty()) "SALA ${room + 1}/4  •  $eliminations/24  •  $lootName" else "SALA ${room + 1}/4  •  $eliminations/24"
-        objectiveText.text = when {
-            nearHazard -> "ALERTA  /  EVITE A ÁREA"
-            nearRelay -> "SEGURE INTERAGIR POR 2S  /  +15% DANO"
-            enemiesLeft > 0 -> "CONTENHA AS AMEAÇAS"
-            chestAvailable -> "BAÚ DISPONÍVEL  /  SEGURE PARA ABRIR"
-            room == 3 && chestOpened && relaysDone < 3 -> "LOOT GARANTIDO  /  RETORNE AOS RELÉS"
-            room < 3 && nextDoorOpen -> "PORTA ABERTA  /  SIGA A SETA"
-            room < 3 -> "PORTA DE ENERGIA  /  ELIMINE AS AMEAÇAS"
-            relaysDone < 3 -> "RETORNE  /  RESTAURE OS RELÉS"
-            else -> "EXTRAÇÃO  /  ALCANCE O PAD"
-        }
-        interactButton.text = when {
-            nearPod -> "KIT MÉDICO  /  TOQUE"
-            nearRelay -> "SEGURE 2S  /  RELÉ"
-            chestAvailable -> "SEGURE 1S  /  BAÚ"
-            else -> "SEM ALVO DE INTERAÇÃO"
-        }
-        val interactionAvailable = nearRelay || nearPod || chestAvailable
-        interactButton.isEnabled = interactionAvailable
-        interactButton.alpha = if (interactionAvailable) 0.95f else 0.38f
-        interactButton.setTextColor(if (interactionAvailable) Color.argb(230, 0, 229, 255) else Color.argb(105, 210, 220, 215))
-        dodgeButton.isEnabled = dodgeReady
-        dodgeButton.alpha = if (dodgeReady) 1f else 0.52f
-        dodgeButton.invalidate()
-        if (mode == 4 || mode == 5) showResult(mode == 4)
-    }
-
-    private fun showResult(victory: Boolean) {
-        if (currentScreen != Screen.PLAYING) return
-        currentScreen = Screen.RESULT
-        hasSession = false
-        val layer = overlay(Color.argb(190, 12, 16, 8))
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            setPadding(dp(8), dp(4), dp(8), dp(4))
-        }
-        addVertical(content, text(if (victory) "EXTRAÇÃO CONCLUÍDA" else "OPERAÇÃO INTERROMPIDA", 29f,
-            if (victory) Color.rgb(72, 220, 232) else Color.rgb(255, 81, 97), true), 8)
-        addVertical(content, text(if (victory) "Os relés foram restaurados e a zona está segura." else "A equipe perdeu capacidade operacional. Reavalie a rota.", 14f, muted), 20)
-        addVertical(content, actionButton(if (victory) "NOVA OPERAÇÃO" else "TENTAR NOVAMENTE", true) { startNewMission() }, 8, dp(280), dp(48))
-        addVertical(content, actionButton("MENU PRINCIPAL") { showMainMenu(false) }, 8, dp(280), dp(46))
-        layer.addView(content, FrameLayout.LayoutParams(-2, -2, Gravity.CENTER))
-        attachLayer(layer)
-    }
-
-    private class GameSurface(context: android.content.Context) : GLSurfaceView(context) {
-        private val renderer = NativeRenderer()
-        private var movePointerId = INVALID_POINTER
-        private var aimPointerId = INVALID_POINTER
-
-        init {
-            setEGLContextClientVersion(3)
-            renderer.setAssetManager(context.assets)
-            preserveEGLContextOnPause = false
-            setRenderer(renderer)
-            renderMode = GLSurfaceView.RENDERMODE_CONTINUOUSLY
-            isFocusable = true
-            isFocusableInTouchMode = true
-        }
-
-        fun setGameMode(mode: Int) {
-            queueEvent { renderer.setGameModeOnGlThread(mode) }
-        }
-
-        fun startNewMission() {
-            queueEvent { renderer.startNewMissionOnGlThread() }
-        }
-        fun setOperative(index: Int) { queueEvent { nativeSetOperative(index.coerceIn(0, 1)) } }
-        fun setTouchSensitivity(value: Float) { queueEvent { nativeSetTouchSensitivity(value.coerceIn(0.5f, 1.5f)) } }
-        fun setGameSoundEnabled(enabled: Boolean) { queueEvent { nativeSetSoundEnabled(enabled) } }
-
-        fun interact() {
-            queueEvent { nativeTouch(7, 0f, 0f, width.toFloat(), height.toFloat()) }
-        }
-        fun beginInteraction() = sendTouch(11, 0f, 0f)
-        fun endInteraction() = sendTouch(12, 0f, 0f)
-        fun controlTouch(action: Int, x: Float, y: Float) = sendTouch(action, x, y)
-        fun setFiring(active: Boolean) = sendTouch(if (active) 8 else 9, 0f, 0f)
-        fun dodge() = sendTouch(10, 0f, 0f)
-
-        fun snapshot(): Int = renderer.readSnapshot()
-
-        override fun onTouchEvent(event: MotionEvent): Boolean {
-            when (event.actionMasked) {
-                MotionEvent.ACTION_DOWN, MotionEvent.ACTION_POINTER_DOWN -> startPointer(event, event.actionIndex)
-                MotionEvent.ACTION_MOVE -> {
-                    for (i in 0 until event.pointerCount) {
-                        val id = event.getPointerId(i)
-                        when (id) {
-                            movePointerId -> sendTouch(1, event.getX(i), event.getY(i))
-                            aimPointerId -> sendTouch(4, event.getX(i), event.getY(i))
-                        }
-                    }
-                }
-                MotionEvent.ACTION_POINTER_UP, MotionEvent.ACTION_UP -> {
-                    finishPointer(event, event.actionIndex)
-                    if (event.actionMasked == MotionEvent.ACTION_UP) {
-                        movePointerId = INVALID_POINTER
-                        aimPointerId = INVALID_POINTER
-                    }
-                }
-                MotionEvent.ACTION_CANCEL -> {
-                    movePointerId = INVALID_POINTER
-                    aimPointerId = INVALID_POINTER
-                    sendTouch(6, 0f, 0f)
-                }
-            }
-            return true
-        }
-
-        private fun startPointer(event: MotionEvent, index: Int) {
-            val id = event.getPointerId(index)
-            val x = event.getX(index)
-            val y = event.getY(index)
-            if (x < width * 0.50f && movePointerId == INVALID_POINTER) {
-                movePointerId = id
-                sendTouch(0, x, y)
-            } else if (aimPointerId == INVALID_POINTER) {
-                aimPointerId = id
-                sendTouch(3, x, y)
-            } else if (movePointerId == INVALID_POINTER) {
-                movePointerId = id
-                sendTouch(0, x, y)
-            }
-        }
-
-        private fun finishPointer(event: MotionEvent, index: Int) {
-            val id = event.getPointerId(index)
-            when (id) {
-                movePointerId -> { sendTouch(2, event.getX(index), event.getY(index)); movePointerId = INVALID_POINTER }
-                aimPointerId -> { sendTouch(5, event.getX(index), event.getY(index)); aimPointerId = INVALID_POINTER }
-            }
-        }
-
-        private fun sendTouch(action: Int, x: Float, y: Float) {
-            val w = width.toFloat()
-            val h = height.toFloat()
-            queueEvent { nativeTouch(action, x, y, w, h) }
-        }
-
-        private external fun nativeTouch(action: Int, x: Float, y: Float, w: Float, h: Float)
-        private external fun nativeSetOperative(index: Int)
-        private external fun nativeSetTouchSensitivity(sensitivity: Float)
-        private external fun nativeSetSoundEnabled(enabled: Boolean)
-
-        companion object {
-            private const val INVALID_POINTER = -1
-            init { System.loadLibrary("neonbreach") }
-        }
-    }
-
 }
 
-private class NativeRenderer : GLSurfaceView.Renderer {
-        fun setAssetManager(manager: android.content.res.AssetManager) = nativeSetAssetManager(manager)
-        override fun onSurfaceCreated(
-            gl: javax.microedition.khronos.opengles.GL10?,
-            config: javax.microedition.khronos.egl.EGLConfig?
-        ) = nativeSurfaceCreated()
+private class TacticalMapView(context: android.content.Context) : View(context) {
+    private val backgroundPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(224, 10, 27, 31)
+        style = Paint.Style.FILL
+    }
+    private val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(175, 153, 190, 174)
+        style = Paint.Style.STROKE
+        strokeWidth = 1.4f
+    }
+    private val lanePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(180, 185, 179, 143)
+        style = Paint.Style.STROKE
+        strokeWidth = 3.2f
+    }
+    private val riverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(205, 55, 122, 147)
+        style = Paint.Style.STROKE
+        strokeWidth = 5.5f
+    }
+    private val blueTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(104, 183, 226)
+        style = Paint.Style.FILL
+    }
+    private val redTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(224, 113, 88)
+        style = Paint.Style.FILL
+    }
+    private val destroyedTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(74, 82, 79)
+        style = Paint.Style.FILL
+    }
+    private val blueMinionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(90, 205, 195)
+        style = Paint.Style.FILL
+    }
+    private val redMinionPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(236, 144, 104)
+        style = Paint.Style.FILL
+    }
+    private val blueBotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(74, 162, 220)
+        style = Paint.Style.FILL
+    }
+    private val redBotPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(214, 92, 77)
+        style = Paint.Style.FILL
+    }
+    private val campPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(216, 183, 101)
+        style = Paint.Style.FILL
+    }
+    private val objectivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(247, 215, 120)
+        style = Paint.Style.STROKE
+        strokeWidth = 2.4f
+    }
+    private val playerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.WHITE
+        style = Paint.Style.FILL
+    }
+    private var snapshot = FloatArray(320)
 
-        override fun onSurfaceChanged(
-            gl: javax.microedition.khronos.opengles.GL10?,
-            width: Int,
-            height: Int
-        ) = nativeSurfaceChanged(width, height)
+    fun setSnapshot(values: FloatArray) {
+        snapshot = values.copyOf()
+        invalidate()
+    }
 
-        override fun onDrawFrame(gl: javax.microedition.khronos.opengles.GL10?) = nativeDrawFrame()
-
-        fun setGameModeOnGlThread(mode: Int) = nativeSetMode(mode)
-        fun startNewMissionOnGlThread() = nativeStartNewMission()
-        fun readSnapshot(): Int = nativeGetSnapshot()
-
-        private external fun nativeSetAssetManager(manager: android.content.res.AssetManager)
-        private external fun nativeSurfaceCreated()
-        private external fun nativeSurfaceChanged(width: Int, height: Int)
-        private external fun nativeDrawFrame()
-        private external fun nativeSetMode(mode: Int)
-        private external fun nativeStartNewMission()
-        private external fun nativeGetSnapshot(): Int
-
-        companion object {
-            init { System.loadLibrary("neonbreach") }
+    private fun laneX(lane: Int, z: Float): Float {
+        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
+        return when (lane) {
+            0 -> -14.2f + bend
+            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
+            else -> 14.2f - bend * 0.82f
         }
+    }
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val left = 4f
+        val top = 4f
+        val right = width - 4f
+        val bottom = height - 4f
+        canvas.drawRoundRect(left, top, right, bottom, 10f, 10f, backgroundPaint)
+
+        fun px(x: Float): Float = left + 8f + (x + 34f) / 68f * (right - left - 16f)
+        fun py(z: Float): Float = top + 8f + (30f - z) / 60f * (bottom - top - 16f)
+
+        // Three distinct, curved lanes.
+        for (lane in 0..2) {
+            val line = Path()
+            for (step in 0..30) {
+                val z = -30f + step * 2f
+                val x = px(laneX(lane, z))
+                val y = py(z)
+                if (step == 0) line.moveTo(x, y) else line.lineTo(x, y)
+            }
+            canvas.drawPath(line, lanePaint)
+        }
+
+        // The river links both jungles and the three lane crossings.
+        val river = Path()
+        val riverPoints = arrayOf(
+            floatArrayOf(-34f, 1.1f), floatArrayOf(-28f, 0.55f), floatArrayOf(-21f, 0.05f),
+            floatArrayOf(-15f, -0.45f), floatArrayOf(-9f, -0.22f), floatArrayOf(-3f, 0.25f),
+            floatArrayOf(4f, 0.38f), floatArrayOf(10f, 0.02f), floatArrayOf(16f, -0.38f),
+            floatArrayOf(23f, -0.18f), floatArrayOf(29f, 0.22f), floatArrayOf(34f, 0.8f)
+        )
+        riverPoints.forEachIndexed { index, point ->
+            if (index == 0) river.moveTo(px(point[0]), py(point[1]))
+            else river.lineTo(px(point[0]), py(point[1]))
+        }
+        canvas.drawPath(river, riverPaint)
+
+        if (snapshot.size >= 320) {
+            // All 18 defensive towers: three tiers per lane, mirrored by team.
+            for (team in 0..1) {
+                for (lane in 0..2) {
+                    for (tier in 0..2) {
+                        val index = team * 9 + lane * 3 + tier
+                        val z = (if (team == 0) -1f else 1f) * when (tier) {
+                            0 -> 8f
+                            1 -> 15f
+                            else -> 22f
+                        }
+                        val x = laneX(lane, z)
+                        val alive = snapshot[107 + index] > 0f
+                        val paint = if (!alive) destroyedTowerPaint else if (team == 0) blueTowerPaint else redTowerPaint
+                        canvas.drawCircle(px(x), py(z), 2.5f, paint)
+                    }
+                }
+            }
+
+            // Neutral camps appear only while their creatures are alive.
+            val campPositions = arrayOf(
+                floatArrayOf(-8.2f, -14.5f), floatArrayOf(8.2f, -14.5f),
+                floatArrayOf(-20.2f, -10f), floatArrayOf(20.2f, -10f),
+                floatArrayOf(-8.2f, 14.5f), floatArrayOf(8.2f, 14.5f),
+                floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
+            )
+            campPositions.forEachIndexed { index, point ->
+                if (snapshot[270 + index] > 0f) canvas.drawCircle(px(point[0]), py(point[1]), 2.4f, campPaint)
+            }
+
+            // River objective pits have a distinct marker when active.
+            if (snapshot[104] > 0f) canvas.drawCircle(px(-7f), py(0.2f), 5f, objectivePaint)
+            if (snapshot[106] > 0f) canvas.drawCircle(px(7f), py(0.2f), 5f, objectivePaint)
+
+            // Minion waves and team units.
+            for (index in 0 until 48) {
+                if (snapshot[222 + index] <= 0f) continue
+                val x = snapshot[126 + index * 2]
+                val z = snapshot[127 + index * 2]
+                canvas.drawCircle(px(x), py(z), 1.55f, if (index < 24) blueMinionPaint else redMinionPaint)
+            }
+            // Player and five-v-five AI heroes.
+            for (index in 0 until 9) {
+                val x = snapshot[16 + index * 2]
+                val z = snapshot[17 + index * 2]
+                canvas.drawCircle(px(x), py(z), 2.6f, if (index < 4) blueBotPaint else redBotPaint)
+            }
+            canvas.drawCircle(px(snapshot[0]), py(snapshot[2]), 3.3f, playerPaint)
+        }
+        canvas.drawRoundRect(left, top, right, bottom, 10f, 10f, borderPaint)
+    }
+}
+
+private class TouchStick(
+    context: android.content.Context,
+    private val onMove: (Float, Float) -> Unit
+) : View(context) {
+    private val basePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(105, 20, 39, 45)
+        style = Paint.Style.FILL
+    }
+    private val ringPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(205, 203, 231, 226)
+        style = Paint.Style.STROKE
+        strokeWidth = 3.2f
+    }
+    private val knobPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(220, 124, 210, 195)
+        style = Paint.Style.FILL
+    }
+    private var dx = 0f
+    private var dy = 0f
+
+    override fun onDraw(canvas: Canvas) {
+        super.onDraw(canvas)
+        val cx = width * 0.5f
+        val cy = height * 0.5f
+        val radius = minOf(width, height) * 0.43f
+        canvas.drawCircle(cx, cy, radius, basePaint)
+        canvas.drawCircle(cx, cy, radius, ringPaint)
+        canvas.drawCircle(cx + dx * radius * 0.72f, cy + dy * radius * 0.72f, radius * 0.34f, knobPaint)
+    }
+
+    override fun onTouchEvent(event: MotionEvent): Boolean {
+        val cx = width * 0.5f
+        val cy = height * 0.5f
+        val radius = minOf(width, height) * 0.43f
+        when (event.actionMasked) {
+            MotionEvent.ACTION_DOWN, MotionEvent.ACTION_MOVE -> {
+                val x = (event.x - cx) / (radius * 0.72f)
+                val y = (event.y - cy) / (radius * 0.72f)
+                val length = hypot(x, y).coerceAtLeast(1f)
+                dx = x / length
+                dy = y / length
+                onMove(dx, dy)
+                invalidate()
+                return true
+            }
+            MotionEvent.ACTION_UP, MotionEvent.ACTION_CANCEL -> {
+                dx = 0f
+                dy = 0f
+                onMove(0f, 0f)
+                invalidate()
+                performClick()
+                return true
+            }
+        }
+        return true
+    }
+
+    override fun performClick(): Boolean {
+        super.performClick()
+        return true
+    }
 }

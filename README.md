@@ -1,151 +1,141 @@
-# ORION-9 0.9.2
+# Projeto Arena 0.15.10
 
-**Nova linha de desenvolvimento:** a numeração recomeça em 0.1. O Passo 1 estabelece a direção visual Stylized Game Art com iluminação toon de três bandas e pós-processamento de lente. As versões anteriores permanecem abaixo somente como histórico técnico da base existente.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.10 corrige o posicionamento e a visibilidade dos animais próximos à câmera inicial. A 0.15.9 introduz três corpos jogáveis CC0 independentes; a 0.15.8 acrescenta fauna, guardiões e vegetação agrupada.
 
-**ORION-9** é um shooter tático 3D top-down nativo para Android. A operação começa no **Site ORION-9**, uma instalação de pesquisa bioexperimental atingida por uma falha de contenção. A contenção evolui por setores: após 20 eliminações, a passagem leste se abre e revela uma nova ala com identidade cromática própria.
+## Fauna visível — 0.15.10
 
-O ciclo da missão evolui por seis ondas: restaurar três relés, conter 24 ameaças e alcançar a zona de extração através das portas de energia das salas. O projeto continua em desenvolvimento e requer validação em dispositivos reais.
+- Os animais agora ocupam clareiras de selva junto às rotas, em vez de ficarem concentrados nas bordas externas do mapa.
+- Um veado fica dentro do alcance inicial da câmera do lado azul; os demais animais estão distribuídos simetricamente pelos flancos e clareiras centrais.
+- O culling usa a posição atual do percurso do animal, não apenas a âncora original de spawn.
+- A fauna continua visual: não altera colisão, combate, economia ou objetivos. A confirmação visual e de desempenho ainda depende do Realme C53.
 
-A missão agora ocupa um complexo industrial 2×2: átrio central, ala de pesquisa, ala de energia e ala de contenção, conectados por corredores e portas. Os quatro módulos são exploráveis em circuito; combate, relés, saque e extração permanecem ativos.
+## Playable heroes — 0.15.9
 
-## Sobre o jogo
-Kotlin gerencia a camada Android, o ciclo de vida e os controles; C++17 com OpenGL ES 3.0 executa a simulação e a renderização. O renderer importa modelos GLB com cgltf e texturas PNG com stb_image, usando módulos ambientais CC0 do Kenney. Não há engine tradicional.
+- Lyra, Bastion and Kairo use three separate Quaternius CC0 full-body GLBs: Woman Casual, Man in Long Sleeves and Woman in Tank Top.
+- The shared generic player body and procedural Lyra GLB are no longer used by the playable roster. Bots and lane units retain their separate shared rig.
+- Each hero loads through its own FilamentAsset/instance with its own rig, clothing, hair, bounds and authored material palette.
+- Runtime locomotion selects only the source Idle, Walk and Run clips. The native simulation remains authoritative for movement, collision, health, skills and progression.
+- All three GLBs are bundled offline. CI validates SHA-256, GLB 2.0, skinned mesh, embedded resources and locomotion clips.
+- Source Y-up/-Z facing and height are normalized to the existing gameplay presentation.
 
-## Log de atualizações
+The 0.15.9 character update does not claim to resolve the separate map/fauna visibility feedback. That remains pending on-device validation.
 
-### 0.9.2 — Identidade ORION-9 e inicialização física
-- Atualiza nome Android, título da interface e ícone do launcher para ORION-9.
-- Adia a construção do mundo Jolt até o início da missão, evitando reconstrução imediata do mundo físico que já era criado na tela inicial.
-- Adiciona marcadores de diagnóstico nas etapas de inicialização da arena, reconstrução da física e primeiro passo da simulação.
-- Atualiza o Android para 0.9.2 / versionCode 26.
+## Living world — 0.15.8
 
-### 0.9.1 — Integridade física e estabilidade
-- Corrige a sincronização do personagem com Jolt ao atravessar portas e ao receber recuo.
-- Aplica recuo como velocidade física amortecida, sem teletransportar a posição fora do CharacterVirtual.
-- Centraliza a topologia 2×2 de salas e a folga das portas em WorldLayout.h, compartilhada pelo runtime e pelos testes nativos.
-- Atualiza as portas físicas no mesmo passo em que o estado da sala é alterado.
-- Atualiza o Android para 0.9.1 / versionCode 25.
+- Six ambient wildlife actors: two deer, two wolves and two birds. They follow bounded paths, turn with movement and retreat when the player approaches.
+- Eight neutral camp guardians use three separate CC0 silhouettes: mushroom, walking tree and ghost. Their visibility follows the existing native camp-health/respawn snapshot; the actors are visual only and do not alter collision, damage, gold, XP or simulation.
+- Quaternius CC0 GLB assets are fetched at build time from a pinned source commit, verified by expected size and Git blob SHA-1, then bundled in the APK. Runtime has no network dependency.
+- Each species is loaded once and shared across its instances. Animation clips are discovered by name through Filament's Animator API; distance-based visibility/update keeps distant actors out of the active render set.
+- WorldGlbBuilder adds batched ferns, flowers, mushroom clusters, river reeds and fallen logs using shared material groups.
+- Five bot roles now have separate accent palettes; four lane-unit slots receive more distinct body proportions.
 
-### 0.8 — Reconstrução visual e espacial do mundo
-- Integra um pipeline nativo glTF 2.0/GLB baseado em cgltf e carregamento de atlas PNG por stb_image, com buffers indexados e UVs no OpenGL ES 3.0.
-- Importa o Kenney Modular Space Kit CC0: módulos de sala grande/larga, cantos, corredores, portas de energia, cabos e escadas; as licenças CC0 e MIT estão incluídas no repositório.
-- Substitui a sequência linear por um mapa 2×2 contínuo de 40×40 unidades: átrio central, pesquisa a leste, energia ao norte e contenção a oeste, ligados por quatro corredores orientados.
-- Distribui relés, kits e ameaças pelas alas sem alterar os sistemas de combate e loot desta etapa.
-- Amplia a câmera top-down, adiciona culling aproximado por enquadramento e LOD de módulos distantes; salas não visitadas continuam ocultas pelo fog de exploração.
-- Atualiza a versão Android para 0.8 e versionCode 23.
+This update does not resolve the separate Lyra GLB loading problem observed on the test phone. The diagnostic/fallback remains; no claim is made that Lyra's authored body now loads.
 
-### 0.7 — Relés por interação, baú de suprimentos e modificadores (Passo 3)
-- Substitui a restauração instantânea dos relés por uma interação mantida por 2 segundos; o temporizador e a validação de alcance são executados no C++17 e são cancelados ao soltar ou sair do alcance.
-- Cada relé restaurado concede +15% de dano aos disparos do jogador, acumulando até +45% quando os três relés estão ativos na missão.
-- Quando a quarta sala é limpa, surge um baú de suprimentos estilizado no centro. O jogador o abre mantendo Interagir por 1 segundo.
-- O baú concede um modificador aleatório usando std::uniform_int_distribution: Overclock (25% maior cadência), Nano-Shield (absorve um impacto e recarrega em 10 segundos) ou Piercing Rounds (atravessa o primeiro inimigo atingido).
-- O modificador permanece ativo até o fim da partida e é removido ao iniciar uma nova missão. A extração final exige abrir o baú.
-- Atualiza a versão Android para 0.7 e versionCode 22.
+## Recuperação de inicialização 3D — 0.15.6
 
-### 0.6 — Dungeon-crawler com quatro salas conectadas (Passo 2)
-- Substitui a arena única por quatro módulos retangulares armazenados em `std::array<Room, 4>`, com limites, coberturas e estado de exploração próprios.
-- Gera paredes sólidas e texturizadas proceduralmente; três passagens internas recebem portas de energia com blocos de colisão que desaparecem ao concluir as ondas locais.
-- Distribui seis ondas por sala (2, 1, 1 e 2), totalizando 24 inimigos. Cada sala só ativa seus inimigos ao ser visitada; as portas de entrada e saída ficam trancadas durante o combate e abrem após a ameaça local ser eliminada.
-- Desenha setas de direção no piso depois da abertura das portas e atualiza o HUD para indicar SALA 1/4 a 4/4.
-- Adiciona névoa escura de exploração no Fragment Shader OpenGL ES; os fragmentos das salas seguintes permanecem ocultos até o jogador atravessar a porta e atualizar a sala ativa.
-- Atualiza a versão Android para 0.6 e versionCode 21.
+- Binding do rig autoral da Lyra agora usa a ordem explícita dos 19 joints declarados em `skins[0].joints`, sem depender da resolução de nomes pelo asset loader.
+- Falha ao carregar o GLB de Lyra não aborta mais toda a criação do renderer: o jogo usa temporariamente a instância Quaternius de compatibilidade, registra a exceção em Logcat e mostra um aviso no hub/seleção.
+- Erros de inicialização que ainda impeçam o renderer agora exibem a mensagem da causa raiz na tela de recuperação.
+- Bots, tropas e os rigs antigos continuam no fluxo original.
 
-### 0.5 — UI/UX minimalista e HUD diegético (Passo 1)
-- Remove o painel lateral explicativo de falha de contenção do menu principal; mantém os comandos em uma coluna à esquerda e reduz os botões em 20%.
-- Remove a placa opaca do HUD e os valores de vitalidade no canto da tela; informações de relés, ameaças e setor passam a usar tipografia menor e sem fundo.
-- Move a indicação de vitalidade para uma barra fina renderizada em OpenGL ES acima do operador, com cor vinculada ao personagem selecionado.
-- Substitui os controles visuais de Atirar e Esquiva por ícones vazados, sem círculos ou fundos opacos, mantendo as mesmas áreas de toque e a lógica de disparo contínuo/esquiva.
-- Atualiza a versão Android para 0.5 e versionCode 20.
+## Lyra — primeira personagem autoral 0.15.5
 
-### 0.4 — Setores interconectados, novos operadores e identidade visual
-- Adiciona `ProgressionManager.cpp`: cada eliminação atualiza a progressão e 20 eliminações expandem os limites jogáveis, abrem a passagem leste e liberam o Setor 2 com paleta enviada por uniform ao shader.
-- Organiza 24 inimigos em seis ondas de quatro; as primeiras cinco ondas levam ao desbloqueio do novo setor e a sexta ocorre na nova ala antes da extração.
-- Troca a seleção anterior por Neon-Vanguard (azul, velocidade padrão, tiro duplo) e Stellar-Reaper (dourado, velocidade +20%, disparo em cone).
-- Acrescenta deslocamento de vértices com ruído multiescala à malha orgânica procedural.
-- Implementa configuração persistente de som e sensibilidade de toque via SharedPreferences; a sensibilidade chega ao C++ por JNI e os efeitos de feedback usam ToneGenerator do Android.
-- Define jogador azul/dourado, inimigos carmesim e projéteis aliados verde-limão; compila o renderer com `-O3`.
-- Atualiza a versão Android para 0.4 e versionCode 19.
+- Substitui a base humanoide compartilhada por um corpo original com cabeça ampliada, silhueta curta/compacta, túnica índigo, capa ameixa, cabelo castanho, botas e detalhes turquesa/dourados.
+- GLB gerado por `LyraCharacterGlbBuilder.kt`, com malha própria, 7 materiais e rig com 19 nós/juntas semanticamente nomeadas.
+- O mesh usa `JOINTS_0`, `WEIGHTS_0` e `inverseBindMatrices`; vértices de ombros, braços, mãos, quadris, pernas e botas recebem influências secundárias para suavizar transições.
+- O renderer mantém uma instância e um mapa de juntas próprios para Lyra. Bastion/Kairo ainda usam Quaternius como corpo-base com os equipamentos existentes; bots e tropas continuam compartilhando o asset CC0.
+- Testes JVM inspecionam o contêiner GLB, nomes do rig, índices de juntas, soma dos pesos binários e direção de flexão dos braços de Lyra.
 
-### 0.3 — Variabilidade de IA e renderização instanciada (Passo 3)
-- Introduz slalom nos inimigos, com força lateral senoidal e fase, frequência e amplitude sorteadas por unidade via C++17 `<random>`.
-- Dessincroniza as decisões táticas com atrasos iniciais aleatórios e intervalos de 75–145 ms; movimento e colisões continuam integrados a cada tick fixo.
-- Agrupa projéteis aliados e hostis em um único draw indexado instanciado, usando buffer dinâmico e `glDrawElementsInstanced`.
-- Acrescenta validação GLSL dos shaders de projéteis instanciados ao GitHub Actions.
-- Atualiza a versão Android para 0.3 e versionCode 18.
+## Composição 3D e leitura de combate 0.15.4
 
-### 0.2 — Game Feel mecânico (Passo 2)
-- Troca o acompanhamento exponencial da câmera por uma mola linear amortecida com velocidade própria, integração em subpassos e resposta suavemente elástica.
-- Aplica squash & stretch procedural ao corpo completo do operador: expansão lateral no eixo local X e compressão de profundidade no eixo local Z, com atenuação exponencial e janela de 150 ms após cada disparo.
-- Adiciona um gerenciador nativo de camera shake por ruído suave interpolado; disparos geram impulsos pequenos e impactos recebidos geram impulsos mais fortes. O deslocamento é aplicado à matriz de visão antes de formar cada uMVP.
-- Atualiza o rótulo Android para 0.2 e incrementa versionCode para 17.
+- O preview de Lyra, Bastion e Kairo sai da rota central e usa uma clareira reservada, longe da torre azul que antes ocultava o modelo.
+- A câmera da seleção enquadra o herói à direita da ficha de informações; o teste JVM verifica a distância de torres, acampamentos e santuários.
+- A câmera da partida aproxima o personagem em cerca de 1,4×, mantendo a câmera isométrica e o minimapa como referência tática.
+- Materiais do terreno, céu e iluminação usam tons mais neutros e olive, reduzindo a dominante verde-ciano capturada nas telas anteriores.
 
-### 0.1 — Stylized Game Art (Passo 1)
-- Substitui a resposta difusa contínua por três bandas discretas de iluminação toon: sombra, meio-tom e luz.
-- Adiciona um passe de pós-processamento OpenGL ES com vinheta de borda e aberração cromática sutil, por deslocamento dos canais vermelho e azul.
-- Renderiza a cena em framebuffer limitado a 1600 × 900 para conter o custo de memória, com fallback para renderização direta se o framebuffer não puder ser criado.
-- Atualiza o rótulo Android para 0.1. O versionCode passa para 16, mantendo a progressão monotônica exigida para atualizações Android.
+## Rework visual 0.15.0
 
-### Histórico da linha anterior
+- Cinco conjuntos de silhueta para os papéis de IA: defensor de rota, jungler, conjurador de meio, carry e suporte. O herói jogável mantém os três estilos selecionáveis.
+- Corrigido o T-pose: os ombros orientam os braços para fora no espaço do mundo; a flexão usa rotação local Z com sinais espelhados entre os lados.
+- Jogador, bots e tropas compartilham essa convenção de rig; um teste JVM verifica a direção dos dois braços usando as rotações bind do GLB.
+- A seleção centraliza o modelo 3D, aproxima a câmera e mantém uma rotação de repouso suave no preview.
+- Bots recebem cadência, ângulo de prontidão e flexão de cotovelo por função; tropas corpo a corpo e de distância têm postura de braço distinta.
+- Relevo ampliado com cristas laterais, planaltos de selva, colinas nas aproximações e vale fluvial mais profundo. Malha do terreno refinada para 136 × 136 células.
+- A mesma função de altura foi sincronizada entre WorldGlbBuilder.kt e ArenaPhysics.cpp. O teste nativo mede amplitude do relevo e restringe gradientes a menos de 43° na região amostrada.
+- Câmera da partida aproximada e iluminação/material ajustados para reduzir a dominante azul-esverdeada.
+- HUB recebe arte panorâmica original desenhada em Canvas, sem bitmap externo, sem imagem genérica de placeholder e sem depender da câmera de partida.
+- Navegação do HUB reorganizada em uma dock horizontal: Jogar, Heróis, Coleção e Perfil. Guia e Ajustes ficam em ícones compactos; a Loja foi movida para dentro de Coleção.
+- Testes JVM adicionais verificam o GLB dos cinco estilos e a topografia; os testes C++ verificam o relevo usado pela física.
 
-### 0.13.0 — Instalação industrial e câmera dinâmica
-- Remove as árvores, plantas e manchas de musgo da área jogável; o cenário passa a ser uma instalação com painéis metálicos, divisões de piso, anteparo de descontaminação, tubulações de serviço, painéis de diagnóstico, lâmpadas industriais e marcações de segurança.
-- Adiciona acompanhamento suave da câmera durante a operação, mantendo a leitura do mapa; menu e configurações recuperam o enquadramento neutro.
-- Ajusta a névoa atmosférica para uma paleta fria e industrial.
-- Atualiza o rótulo visível e os metadados Android para 0.13.0 / versionCode 15.
-- A compilação confirma que o APK foi empacotado; aparência, conforto da câmera e desempenho continuam dependendo do teste em dispositivo físico.
+## Modelagem, humanização e física 0.14.0
 
-### 0.12.0 — Equipe ORION-9
-- Adicionada seleção persistente de três operadores com papéis funcionais: Kestrel (mobilidade/esquiva), Bastion (resistência e dano) e Patch (cadência, alcance de interação e recuperação médica).
-- Os atributos alteram velocidade, intervalo de disparo, dano, mitigação recebida, recarga da esquiva, cura e alcance de restauração de relés.
-- Materiais e proporções corporais diferenciados por operador.
-- Arena oval substituída por base modular retangular; coberturas de equipamento, relés, kits médicos e pad de extração agora têm leitura industrial.
-- Menu e HUD passam a comunicar falha de contenção e extração.
-- Versão Android atualizada para 0.12.0.
+- Três conjuntos de equipamento modelados proceduralmente para Lyra, Bastion e Kairo: peitoral, ombreiras, antebraços, coxas, botas, cabeça e manto.
+- As peças são instâncias GLB leves parentadas aos ossos correspondentes; o corpo humanoide-base continua compartilhado para limitar memória e draw calls.
+- Bots recebem conjuntos compatíveis com a equipe; a movimentação usa proporções e animação corporal conforme a função.
+- Rig animado expandido para jogadores, bots e minions, com passada, apoio de pés, movimento de mãos, contrapeso do tronco, cabeça e suavização de curvas/frenagem.
+- Herói, bots e minions usam uma transformação alinhada à normal da superfície para acompanhar encostas do terreno 0.13.0.
+- Física cinemática nativa em C++ com passo fixo de 60 Hz, aceleração/frenagem limitadas, subpassos, deslizamento em colisões, limite de inclinação e contenção na ilha.
+- Colisores estáticos correspondem a árvores, pedras, clareiras, muralhas, torres e santuários. Separação física evita sobreposição entre jogador, bots e tropas.
+- Bots e tropas usam desvio local preventivo de obstáculos; o joystick do jogador mantém controle direto.
+- A simulação C++ é a autoridade para posição/velocidade; o renderer apenas apresenta as transformações e animações.
+- Testes nativos no CI cobrem superfície, colisão com árvores/estruturas, limites, frenagem e separação entre corpos.
 
-### 0.11.0 — Mira e disparo sem confusão
+## MOBA 0.12.0 — estrutura de gameplay
 
-- Substituído o botão retangular de disparo por um controle circular com ícone de munição, rótulo **ATIRAR** e feedback visual ao manter pressionado.
-- Separação explícita entre as ações: arrastar o lado direito controla a mira; manter **ATIRAR** pressionado dispara continuamente; soltar ou cancelar o toque interrompe o fogo.
-- Redimensionados e reposicionados os controles de tiro e esquiva, preservando alvos de toque confortáveis e o espaço do botão de interação.
-- Atualizadas as instruções de controle e o identificador da versão dentro do jogo.
-- Reforçada a verificação do projeto para validar o novo controle e a versão 0.11.0.
+- 5v5 local: jogador + quatro aliados controlados pela IA contra cinco adversários.
+- Papéis de IA: solo, jungler, mid, carry e suporte. O herói escolhido define o papel inicial do jogador; os bots completam os quatro papéis restantes.
+- Três rotas com curvas próprias, conectadas por rio e passagens para as duas selvas.
+- Oito acampamentos neutros em posições espelhadas; derrotá-los concede ouro e XP e eles reaparecem após um intervalo.
+- Ondas com três unidades corpo a corpo e uma unidade de distância por rota/equipe. Dois grupos alternados permitem até 48 tropas ativas sem crescimento ilimitado; grupos sobreviventes não são teleportados.
+- Cada rota tem três torres por equipe. As torres priorizam tropas inimigas em alcance; o jogador precisa de uma onda aliada para pressionar estruturas.
+- O núcleo só fica vulnerável depois que uma rota inteira perde suas três torres defensivas.
+- Guardião do Rio e Sentinela Ancestral aparecem em tempos distintos. Derrotá-los concede ouro, XP e bônus temporário de cerco.
+- IA de rota acompanha a frente das tropas, entra em confrontos próximos e pressiona estruturas com cobertura. Junglers limpam acampamentos e podem rotacionar para objetivos; carries preferem distância; suportes recuperam aliados.
+- Economia de partida separada da economia do HUB: ouro, XP, níveis, melhorias de habilidade e três famílias de itens compráveis.
+- Minimap mostra rotas, rio, torres em três níveis, tropas, heróis, acampamentos e objetivos ativos.
 
-### 0.10.0 — Fronteira selvagem
+## Personagens e animação 0.11.0
 
-- Cenário refeito como uma clareira orgânica com solo terroso, vegetação, árvores e pedras irregulares geradas por código.
-- Personagem principal redesenhado com volumes mais suaves; as quatro criaturas agora têm silhuetas e anatomias diferentes.
-- Corrigida a conversão vertical do joystick e o eixo vertical da mira.
-- Adicionados brotos restauradores opcionais que recuperam parte da vitalidade e focos de esporos que avisam antes de causar dano.
-- Menu, HUD e botões atualizados para combinar com o novo ambiente, com menos azul, menos painéis pesados e cantos mais suaves.
+- Controlador de estados para repouso, caminhada, corrida, impulso, habilidade, proteção, reação a dano, queda e retorno.
+- Passadas derivadas do deslocamento, transições suaves por junta e inclinação em curvas, aceleração e frenagem.
+- Rig ampliado apenas no herói jogável; bots e tropas mantêm rig reduzido para controlar custo de CPU.
+- Snapshot nativo conecta movimento, combate e eventos de gameplay ao renderer.
+- Lyra, Bastion e Kairo ocupam papéis iniciais distintos. A malha humanoide-base permanece compartilhada.
 
-### 0.9.0 — Controles e combate
+## HUB e progressão offline 0.10.0
 
-- Adicionado joystick virtual para movimentação.
-- Separado o botão de disparo, com mira por arrasto no lado direito da tela.
-- Melhorada a orientação do personagem e adicionada uma esquiva com recarga.
-- Incluídos inimigos com comportamentos diferentes: perseguição, ataque pesado anunciado e disparos à distância.
-- Adicionadas três variações de arena, obstáculos que bloqueiam projéteis e ajustes no HUD.
+- Menu com telas de heróis, guia, ajustes, skins, loja, missões e perfil.
+- Carteira local com Moedas de Arena e Fragmentos; partidas concedem recompensas fixas e contrato a cada três partidas.
+- Skins de preço fixo e loja de troca de fragmentos, sem compras reais, servidor ou caixas aleatórias.
+- XP, nível, partidas, vitórias, carteira e cosméticos persistidos com SharedPreferences.
 
-### 0.8.0 — Personagens 3D
+## Mapa e apresentação 0.13.0 (preservado)
 
-- Introduzidos personagens humanoides construídos a partir de malhas geradas pelo próprio jogo.
-- Adicionados armadura, capacete com visor, mochila e arma.
-- Criadas animações procedurais para braços, pernas e movimento corporal.
-- Melhoradas a iluminação e a leitura dos volumes 3D.
+- Terreno esculpido com cristas laterais, colinas nas aproximações das bases, pequenas elevações na selva e vale fluvial.
+- Três rotas pavimentadas curvas com acostamentos, conectores de terra e três pontes no rio.
+- Quatro quadrantes de selva com 32 instâncias de árvores, manchas de solo, vegetação rasteira e formações rochosas low-poly.
+- Oito acampamentos com clareiras físicas, piso de terra e anéis de rocha; os marcadores de bandeira foram removidos da representação do objetivo.
+- Dois santuários de pedra modelados na geometria do mapa, um intacto e outro em ruínas.
+- Aproximações das bases com muralhas baixas e pátios, além dos castelos, casas e igrejas KayKit.
+- A função de altura do terreno é compartilhada pelo gerador da malha e pelo renderer para manter heróis, bots, torres e vegetação apoiados no relevo.
+- Câmera isométrica com direção fixa; a rotação do herói não gira a câmera. O herói se desloca na tela dentro de uma zona morta de 1,85 m antes do acompanhamento.
+- O eixo vertical do joystick foi alinhado com a direção superior/inferior da tela.
+- Geometria de ambiente procedural permanece integrada no GLB de runtime; edifícios, pontes e árvores usam modelos KayKit CC0 1.0. Humanoide Quaternius CC0 1.0.
 
-### 0.7.1 — Identidade do aplicativo
+## Stack e distribuição
 
-- Definido um ícone próprio para o aplicativo Android.
-- Preservados o menu, o HUD, a pausa, as configurações e as telas de resultado introduzidas na versão anterior.
+- Android nativo: Kotlin + C++20/NDK.
+- Filament 1.77.3, Vulkan preferencial e fallback OpenGL ES.
+- Orientação landscape fixa; funcionamento offline; sem WebView.
+- applicationId: com.duckdream.neonbreach.
+- versionCode 45 / versionName 0.14.0.
+- APK de atualização usa a chave persistente NEON_BREACH_*.
 
-## Como baixar e instalar
+## Limitações conhecidas
 
-1. Abra a página [GitHub Actions](https://github.com/Coca69643/Neon-Breach/actions).
-2. Entre na execução mais recente que terminou com sucesso (marca verde).
-3. Na seção **Artifacts**, baixe o arquivo `neon-breach-debug-apk`.
-4. Abra o ZIP baixado e extraia o APK para o celular.
-5. Toque no arquivo APK para instalar. Se o Android pedir autorização para instalar aplicativos dessa origem, permita apenas para o aplicativo que você usou para abrir o arquivo e continue se confiar no APK.
-
----
-
-*NEON BREACH está em desenvolvimento. As mudanças descritas registram o estado do projeto; a compilação de uma versão, por si só, não significa que todos os recursos tenham sido validados em um dispositivo físico.*
+- A partida é offline contra IA; não há matchmaking, servidores ou cinco jogadores humanos por equipe.
+- O corpo humanoide-base continua compartilhado; as silhuetas são diferenciadas por equipamento articulado preso aos ossos, não por três malhas completas independentes.
+- Os santuários dos objetivos agora têm geometria própria, mas ainda não incluem criaturas-chefes com malhas e animações exclusivas.
+- Esta é uma base MOBA jogável, ainda sem Fog of War, seleção manual de alvo, draft, inventário de múltiplos espaços ou estratégia de equipe avançada.
+- O CI executa testes determinísticos de física e compila/assina o APK, mas não substitui teste visual e de desempenho no Realme C53: FPS sustentado, temperatura, câmera, colisões percebidas, leitura do mapa e controles touch ainda precisam ser medidos no aparelho.
+- A física 0.14.0 usa colisores cinemáticos aproximados de cenário; ainda não há navegação inteligente completa em torno de todos os obstáculos nem física rígida dinâmica para cada prop.
