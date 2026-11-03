@@ -1,6 +1,14 @@
-# Projeto Arena 0.15.4
+# Projeto Arena 0.15.5
 
-MOBA 3D nativo para Android, landscape e offline. A 0.15.4 corrige a posição do preview de herói, aproxima a câmera de combate e reduz a dominante verde-ciano do terreno. Preserva sistemas 5v5, progressão local, física cinemática e stack Kotlin + C++20 + Filament.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.5 introduz a primeira personagem jogável com corpo autoral completo: Lyra, em GLB próprio com 19 juntas, JOINTS_0/WEIGHTS_0 e pesos secundários nas principais articulações. Bastion, Kairo, bots e tropas mantêm o pipeline legado nesta etapa.
+
+## Lyra — primeira personagem autoral 0.15.5
+
+- Substitui a base humanoide compartilhada por um corpo original com cabeça ampliada, silhueta curta/compacta, túnica índigo, capa ameixa, cabelo castanho, botas e detalhes turquesa/dourados.
+- GLB gerado por `LyraCharacterGlbBuilder.kt`, com malha própria, 7 materiais e rig com 19 nós/juntas semanticamente nomeadas.
+- O mesh usa `JOINTS_0`, `WEIGHTS_0` e `inverseBindMatrices`; vértices de ombros, braços, mãos, quadris, pernas e botas recebem influências secundárias para suavizar transições.
+- O renderer mantém uma instância e um mapa de juntas próprios para Lyra. Bastion/Kairo ainda usam Quaternius como corpo-base com os equipamentos existentes; bots e tropas continuam compartilhando o asset CC0.
+- Testes JVM inspecionam o contêiner GLB, nomes do rig, índices de juntas, soma dos pesos binários e direção de flexão dos braços de Lyra.
 
 ## Composição 3D e leitura de combate 0.15.4
 
