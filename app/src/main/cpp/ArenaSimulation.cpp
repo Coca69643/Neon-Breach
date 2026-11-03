@@ -852,6 +852,79 @@ float playerBasicDamage() {
 }
 } // namespace
 
+namespace {
+template <std::size_t N>
+jfloatArray worldPointsToJava(JNIEnv *env, const std::array<arena_world::Point, N> &points) {
+    std::array<jfloat, N * 2> values{};
+    for (std::size_t i = 0; i < N; ++i) {
+        values[i * 2] = points[i].x;
+        values[i * 2 + 1] = points[i].z;
+    }
+    jfloatArray result = env->NewFloatArray(static_cast<jsize>(values.size()));
+    if (result != nullptr) {
+        env->SetFloatArrayRegion(result, 0, static_cast<jsize>(values.size()), values.data());
+    }
+    return result;
+}
+} // namespace
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeTerrainGrid(
+    JNIEnv *env, jobject, jint steps, jfloat size) {
+    if (steps < 2 || steps > 512 || size <= 0.0f) return nullptr;
+    const int stride = steps + 1;
+    const jsize count = static_cast<jsize>(stride * stride);
+    std::vector<jfloat> values(static_cast<std::size_t>(count));
+    const float start = -size * 0.5f;
+    const float cell = size / static_cast<float>(steps);
+    for (int z = 0; z <= steps; ++z) {
+        for (int x = 0; x <= steps; ++x) {
+            values[static_cast<std::size_t>(z * stride + x)] =
+                arena_world::terrainHeight(start + static_cast<float>(x) * cell,
+                                           start + static_cast<float>(z) * cell);
+        }
+    }
+    jfloatArray result = env->NewFloatArray(count);
+    if (result != nullptr) env->SetFloatArrayRegion(result, 0, count, values.data());
+    return result;
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeLaneCenterX(
+    JNIEnv *, jobject, jint lane, jfloat z) {
+    return arena_world::laneCenterX(std::clamp(static_cast<int>(lane), 0, 2), z);
+}
+
+extern "C" JNIEXPORT jfloat JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeRiverCenterZ(
+    JNIEnv *, jobject, jfloat x) {
+    return arena_world::riverCenterZ(x);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeCampPositions(
+    JNIEnv *env, jobject) {
+    return worldPointsToJava(env, arena_world::kCampPositions);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeObjectivePositions(
+    JNIEnv *env, jobject) {
+    return worldPointsToJava(env, arena_world::kObjectivePositions);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeForestTreePositions(
+    JNIEnv *env, jobject) {
+    return worldPointsToJava(env, arena_world::kForestTreePositions);
+}
+
+extern "C" JNIEXPORT jfloatArray JNICALL
+Java_com_duckdream_neonbreach_ArenaWorldNative_nativeJungleGrovePositions(
+    JNIEnv *env, jobject) {
+    return worldPointsToJava(env, arena_world::kJungleGrovePositions);
+}
+
 extern "C" JNIEXPORT void JNICALL
 Java_com_duckdream_neonbreach_MainActivity_nativeReset(JNIEnv *, jobject) {
     std::scoped_lock lock(gMutex);
