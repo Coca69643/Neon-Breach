@@ -17,12 +17,13 @@ class ArenaMapDefinitionTest {
     }
 
     @Test
-    fun towerCoordinatesRemainMirroredAcrossBothBases() {
+    fun towerCoordinatesFollowTheirOwnLaneCurvesOnBothSides() {
         for (lane in 0..2) {
             for (tier in 0..2) {
                 val blue = ArenaMapDefinition.towerPosition(0, lane, tier)
                 val red = ArenaMapDefinition.towerPosition(1, lane, tier)
-                assertEquals(blue.x, red.x, 0.0001f)
+                assertEquals(ArenaMapDefinition.laneCenterX(lane, blue.z), blue.x, 0.0001f)
+                assertEquals(ArenaMapDefinition.laneCenterX(lane, red.z), red.x, 0.0001f)
                 assertEquals(blue.z, -red.z, 0.0001f)
             }
         }
