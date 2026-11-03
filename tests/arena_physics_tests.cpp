@@ -46,9 +46,9 @@ void testCanonicalWorldDefinition() {
         for (int side = 0; side < 2; ++side) {
             const auto home = arena_world::homePosition(team, side);
             const auto wall = arena_world::baseWallPosition(team, side);
-            assert(std::abs(home.x + arena_world::homePosition(1 - team, side).x) < 0.001f);
+            assert(std::abs(home.x - arena_world::homePosition(1 - team, side).x) < 0.001f);
             assert(std::abs(home.z + arena_world::homePosition(1 - team, side).z) < 0.001f);
-            assert(std::abs(wall.x + arena_world::baseWallPosition(1 - team, side).x) < 0.001f);
+            assert(std::abs(wall.x - arena_world::baseWallPosition(1 - team, side).x) < 0.001f);
             assert(std::abs(wall.z + arena_world::baseWallPosition(1 - team, side).z) < 0.001f);
         }
     }
