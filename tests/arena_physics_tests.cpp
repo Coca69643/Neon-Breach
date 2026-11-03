@@ -88,7 +88,8 @@ void testBraking() {
     assert(std::sqrt(body.vx*body.vx+body.vz*body.vz)<0.15f);
 }
 void testObstacleSteering() {
-    arena_physics::Body body{-12.2f,-23.0f,0.0f,0.0f,0.43f};
+    const float scale=arena_map::kWorldScale;
+    arena_physics::Body body{-12.2f*scale,-23.0f*scale,0.0f,0.0f,0.43f};
     float desiredX=3.0f,desiredZ=0.0f;
     arena_physics::avoidObstacles(body,desiredX,desiredZ);
     assert(desiredX>0.0f);
