@@ -3,6 +3,8 @@ package com.duckdream.neonbreach
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlin.math.sqrt
+import kotlin.math.tan
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 
