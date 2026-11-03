@@ -14,7 +14,12 @@ internal object WorldGlbBuilder {
         val ix:MutableList<Int> = ArrayList()) {
         fun vertex(x:Float,y:Float,z:Float,nx:Float,ny:Float,nz:Float):Int {
             val id=p.size/3
-            p.add(x);p.add(y);p.add(z);n.add(nx);n.add(ny);n.add(nz)
+            val scale = ArenaMapDefinition.WORLD_SCALE
+            val scaledNx = nx / scale
+            val scaledNz = nz / scale
+            val normalLength = sqrt(scaledNx * scaledNx + ny * ny + scaledNz * scaledNz).coerceAtLeast(0.00001f)
+            p.add(x * scale);p.add(y);p.add(z * scale)
+            n.add(scaledNx / normalLength);n.add(ny / normalLength);n.add(scaledNz / normalLength)
             return id
         }
         fun tri(a:Int,b:Int,c:Int){ix.add(a);ix.add(b);ix.add(c)}
@@ -40,11 +45,17 @@ internal object WorldGlbBuilder {
             jungleKnolls + riverBed + riverBank + shelf
     }
 
-    internal fun heightAt(x: Float, z: Float): Float = h(x, z)
+    internal fun heightAt(x: Float, z: Float): Float {
+        val scale = ArenaMapDefinition.WORLD_SCALE
+        return h(x / scale, z / scale)
+    }
     internal fun normalAt(x: Float, z: Float): FloatArray {
+        val scale = ArenaMapDefinition.WORLD_SCALE
+        val rawX = x / scale
+        val rawZ = z / scale
         val e = 0.08f
-        val dx = (h(x + e, z) - h(x - e, z)) / (2f * e)
-        val dz = (h(x, z + e) - h(x, z - e)) / (2f * e)
+        val dx = (h(rawX + e, rawZ) - h(rawX - e, rawZ)) / (2f * e * scale)
+        val dz = (h(rawX, rawZ + e) - h(rawX, rawZ - e)) / (2f * e * scale)
         val length = sqrt(dx * dx + 1f + dz * dz)
         return floatArrayOf(-dx / length, 1f / length, -dz / length)
     }
