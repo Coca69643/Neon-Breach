@@ -1,6 +1,6 @@
-# Projeto Arena 0.15.0
+# Projeto Arena 0.15.3
 
-MOBA 3D nativo para Android, landscape e offline. A 0.15.0 revisa a identidade visual dos personagens, a locomoção por função, a topografia e a apresentação do HUB. Preserva sistemas 5v5, progressão local, física cinemática e stack Kotlin + C++20 + Filament.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.3 corrige a flexão do rig humanoide, o enquadramento do preview 3D e a animação de repouso dos personagens. Preserva sistemas 5v5, progressão local, física cinemática e stack Kotlin + C++20 + Filament.
 
 ## Rework visual 0.15.0
 
