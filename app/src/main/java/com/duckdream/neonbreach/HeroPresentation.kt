@@ -53,7 +53,7 @@ internal object HeroMaterialPalette {
         HeroSrgbColor(0.12f, 0.13f, 0.11f), // Shoes: dark leather
         HeroSrgbColor(0.12f, 0.09f, 0.11f), // Hair base
         HeroSrgbColor(0.23f, 0.15f, 0.22f), // Hair: plum
-        HeroSrgbColor(0.06f, 0.05f, 0.06)  // Eyes
+        HeroSrgbColor(0.06f, 0.05f, 0.06f) // Eyes
     )
 
     fun forHero(index: Int): List<HeroSrgbColor> = when (index.coerceIn(0, 2)) {
