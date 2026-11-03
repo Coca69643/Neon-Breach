@@ -497,8 +497,8 @@ internal class FilamentGameRenderer(
                     idleClip, moveClip, idleDuration, moveDuration
                 )
                 lifeActors.add(actor)
-                viewer.scene.addEntities(instance.entities)
-                actor.visible = true
+                // Actors enter the scene only when the current view/player range needs them.
+                actor.visible = false
                 val sample = ArenaLifeCatalog.sample(spawn, spawn.phase, spawn.x + 30f, spawn.z + 30f)
                 val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - minY * scale
                 transforms.setTransform(root, terrainAlignedTransform(
