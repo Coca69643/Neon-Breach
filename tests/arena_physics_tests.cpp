@@ -1,4 +1,5 @@
 #include "../app/src/main/cpp/ArenaPhysics.h"
+#include "../app/src/main/cpp/ArenaMapDefinition.h"
 
 #include <cassert>
 #include <cmath>
@@ -10,6 +11,35 @@ float distance(float ax,float az,float bx,float bz) {
     const float x=bx-ax,z=bz-az;
     return std::sqrt(x*x+z*z);
 }
+void testSharedArenaMapCatalog() {
+    assert(arena_map::kLanes.size()==3);
+    assert(arena_map::kCampPositions.size()==8);
+    assert(arena_map::kObjectivePositions.size()==2);
+    assert(arena_map::kGroveCenters.size()==12);
+    assert(arena_map::kTreeBlockers.size()==32);
+    for(std::size_t lane=0;lane<arena_map::kLanes.size();++lane) {
+        const auto &points=arena_map::kLanes[lane].points;
+        for(std::size_t i=0;i<points.size();++i) {
+            assert(std::abs(arena_map::laneCenterX(static_cast<int>(lane),points[i].z)-points[i].x)<0.0001f);
+            if(i>0) assert(points[i].z>points[i-1].z);
+        }
+    }
+    for(const auto &camp:arena_map::kCampPositions) {
+        assert(std::abs(camp.x)<arena_map::kHalfExtentX);
+        assert(std::abs(camp.z)<arena_map::kHalfExtentZ);
+    }
+    for(const auto &tree:arena_map::kTreeBlockers) {
+        assert(std::abs(tree.x)<arena_map::kHalfExtentX);
+        assert(std::abs(tree.z)<arena_map::kHalfExtentZ);
+    }
+    for(int lane=0;lane<3;++lane) for(int tier=0;tier<3;++tier) {
+        const auto blue=arena_map::towerPosition(0,lane,tier);
+        const auto red=arena_map::towerPosition(1,lane,tier);
+        assert(std::abs(blue.x-red.x)<0.0001f);
+        assert(std::abs(blue.z+red.z)<0.0001f);
+    }
+}
+
 void testTerrainSurface() {
     float low=100.0f,high=-100.0f,maxSlope=0.0f;
     for(float x=-30.0f;x<=30.0f;x+=1.0f) {
@@ -66,6 +96,7 @@ void testCharacterSeparation() {
 }
 }
 int main() {
+    testSharedArenaMapCatalog();
     testTerrainSurface();
     testTreeCollisionAndSliding();
     testStructureCollision();
