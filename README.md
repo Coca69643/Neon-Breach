@@ -1,6 +1,13 @@
-# Projeto Arena 0.15.3
+# Projeto Arena 0.15.4
 
-MOBA 3D nativo para Android, landscape e offline. A 0.15.3 corrige a flexão do rig humanoide, o enquadramento do preview 3D e a animação de repouso dos personagens. Preserva sistemas 5v5, progressão local, física cinemática e stack Kotlin + C++20 + Filament.
+MOBA 3D nativo para Android, landscape e offline. A 0.15.4 corrige a posição do preview de herói, aproxima a câmera de combate e reduz a dominante verde-ciano do terreno. Preserva sistemas 5v5, progressão local, física cinemática e stack Kotlin + C++20 + Filament.
+
+## Composição 3D e leitura de combate 0.15.4
+
+- O preview de Lyra, Bastion e Kairo sai da rota central e usa uma clareira reservada, longe da torre azul que antes ocultava o modelo.
+- A câmera da seleção enquadra o herói à direita da ficha de informações; o teste JVM verifica a distância de torres, acampamentos e santuários.
+- A câmera da partida aproxima o personagem em cerca de 1,4×, mantendo a câmera isométrica e o minimapa como referência tática.
+- Materiais do terreno, céu e iluminação usam tons mais neutros e olive, reduzindo a dominante verde-ciano capturada nas telas anteriores.
 
 ## Rework visual 0.15.0
 
