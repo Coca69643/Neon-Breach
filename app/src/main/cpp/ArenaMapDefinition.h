@@ -13,6 +13,7 @@ struct Lane {
     std::array<Point, 9> points;
 };
 
+inline constexpr float kWorldScale = 1.15f;
 inline constexpr float kHalfExtentX = 35.0f;
 inline constexpr float kHalfExtentZ = 33.0f;
 inline constexpr float kRiverWidth = 1.72f;
