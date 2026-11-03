@@ -790,11 +790,15 @@ void updateBots(float dt) {
             }
             // The jungler rotates toward a contested neutral objective before returning to camps.
             if ((gObjectiveOneHealth > 0.0f || gObjectiveTwoHealth > 0.0f) && bot.thinkCooldown <= 0.0f) {
-                const Vec2 objective = gObjectiveTwoHealth > 0.0f ? objectivePosition(1) : objectivePosition(0);
+                const int preferredObjective = bot.team == 0 ? 0 : 1;
+                const int fallbackObjective = 1 - preferredObjective;
+                const bool preferredAlive = preferredObjective == 0
+                    ? gObjectiveOneHealth > 0.0f : gObjectiveTwoHealth > 0.0f;
+                const int objectiveIndex = preferredAlive ? preferredObjective : fallbackObjective;
+                const Vec2 objective = objectivePosition(objectiveIndex);
                 if (distance(bot.position, objective) > 2.7f) moveActorOnMap(bot.position, bot.velocity, objective, kBotSpeed, dt);
                 else if (bot.attackCooldown <= 0.0f) {
-                    if (gObjectiveTwoHealth > 0.0f) damageObjective(1, bot.team, 27.0f);
-                    else damageObjective(0, bot.team, 22.0f);
+                    damageObjective(objectiveIndex, bot.team, objectiveIndex == 0 ? 22.0f : 27.0f);
                     bot.attackCooldown = 1.0f;
                 }
             } else {
