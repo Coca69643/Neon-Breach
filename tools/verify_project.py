@@ -117,7 +117,7 @@ checks = [
     ("style=hero.coerceIn(0,4)" in gear and "Arcanist" in gear and "Ranger" in gear and "gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "five role-specific costume silhouettes missing"),
     ("generatedGearGlbHasValidContainerAndBoneParts" in gear_tests and "for (hero in 0..4)" in gear_tests and "remasteredTerrainHasReadableReliefAndWalkableGradients" in world_tests and "testDebugUnitTest" in workflow and "junit:junit:4.13.2" in gradle, "role GLB or terrain regression tests are not connected to CI"),
     ("terrainAlignedTransform" in renderer and "WorldGlbBuilder.normalAt" in renderer and "internal fun normalAt" in world, "character orientation is not aligned to terrain normals"),
-    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer and "Humanoid arm bones run along local +Y" in renderer and "animatePose(bone, angle, 0)" in renderer and "readyPose" in renderer, "NPC role gait or anatomical arm swing missing"),
+    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer and "HumanoidRigPose.FLEXION_AXIS" in renderer and "localFlexion(angle, bone.lateralSign)" in renderer and "readyPose" in renderer, "NPC role gait or mirrored anatomical arm flexion missing"),
     ("PhysicsWorld.cpp" not in cmake, "unused second physics implementation must remain disabled"),
 
     ("firstTowerInLane" not in native, "unused tower helper should not remain under -Werror"),
