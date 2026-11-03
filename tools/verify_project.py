@@ -241,8 +241,9 @@ checks = [
      "animator.getAnimationCount()" in renderer,
      "Filament wildlife and camp guardian instances/animation are not integrated"),
     ("snapshot?.getOrNull(270 + spawn.campIndex)" in renderer and
-     "maxDistance = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f" in renderer and "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
-     "neutral guardians and ambient wildlife must be visibility- and distance-managed"),
+     "maxDistance = (if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f) * mapScale" in renderer and
+     "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
+     "neutral guardians and ambient wildlife must be visibility- and distance-managed in world scale"),
     ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
      "deer" in life_catalog and "wolf" in life_catalog and "bird" in life_catalog and
      "mushroom" in life_catalog and "walking-tree" in life_catalog and "ghost" in life_catalog,
