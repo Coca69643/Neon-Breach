@@ -86,12 +86,18 @@ internal object ArenaWorldTestFixture : ArenaWorldDataSource {
         return river.last()[1]
     }
 
-    override fun insideIsland(x: Float, z: Float): Boolean {
-        val angle = atan2(z / 31f, x / 35f)
-        val edge = 1f + 0.035f * sin(angle * 5f) +
-            0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
-        val radius = sqrt((x / 35f).pow(2) + (z / 31f).pow(2))
-        return radius <= edge
+    override fun islandMask(steps: Int, size: Float): BooleanArray {
+        val start = -size * 0.5f
+        val cell = size / steps
+        return BooleanArray(steps * steps) { index ->
+            val x = start + ((index % steps) + 0.5f) * cell
+            val z = start + ((index / steps) + 0.5f) * cell
+            val angle = atan2(z / 31f, x / 35f)
+            val edge = 1f + 0.035f * sin(angle * 5f) +
+                0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
+            val radius = sqrt((x / 35f).pow(2) + (z / 31f).pow(2))
+            radius <= edge
+        }
     }
 
     override fun campPositions() = camps.copyOf()
