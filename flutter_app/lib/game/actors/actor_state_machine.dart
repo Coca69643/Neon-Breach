@@ -108,14 +108,6 @@ StateMachine<ActorState, ActorEvent> createActorStateMachine() {
     );
   }
 
-  transitions.add(
-    const StateTransition(
-      from: ActorState.hitstun,
-      event: ActorEvent.killed,
-      to: ActorState.dead,
-    ),
-  );
-
   return StateMachine<ActorState, ActorEvent>(
     initialState: ActorState.spawning,
     transitions: transitions,
