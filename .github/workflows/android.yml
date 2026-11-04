@@ -105,6 +105,37 @@ jobs:
         run: gradle assembleDebug --no-daemon --stacktrace
       - name: Verify APK exists
         run: test -s app/build/outputs/apk/debug/app-debug.apk
+      - name: Verify bundled KayKit resources in APK
+        run: |
+          python3 - <<'PY'
+          import json
+          import zipfile
+
+          apk = "app/build/outputs/apk/debug/app-debug.apk"
+          models = (
+              "castle_blue", "castle_red", "tower_blue", "tower_red",
+              "home_blue", "home_red", "church_blue", "church_red",
+              "bridge_a", "fence_wood", "flag_blue", "flag_red",
+          )
+          with zipfile.ZipFile(apk) as package:
+              names = set(package.namelist())
+              for model in models:
+                  gltf_path = f"assets/world/kaykit/{model}.gltf"
+                  if gltf_path not in names:
+                      raise SystemExit(f"APK missing KayKit model: {gltf_path}")
+                  gltf = json.loads(package.read(gltf_path))
+                  for resource in gltf.get("buffers", []) + gltf.get("images", []):
+                      uri = resource.get("uri")
+                      if uri:
+                          resource_path = f"assets/world/kaykit/{uri}"
+                          if resource_path not in names:
+                              raise SystemExit(
+                                  f"APK missing {resource_path}, required by {gltf_path}"
+                              )
+                          if len(package.read(resource_path)) == 0:
+                              raise SystemExit(f"APK contains empty asset: {resource_path}")
+          print("All 12 KayKit GLTFs and their referenced buffers/textures are present in the APK.")
+          PY
       - name: Verify package, version and APK signature
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
