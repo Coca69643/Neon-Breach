@@ -31,7 +31,7 @@ final class FixedStepClock {
   double _droppedTimeSeconds = 0;
 
   double get interpolationAlpha =>
-      (_accumulator / stepSeconds).clamp(0.0, 1.0);
+      (_accumulator / stepSeconds).clamp(0.0, 1.0).toDouble();
 
   double get droppedTimeSeconds => _droppedTimeSeconds;
 
@@ -49,7 +49,7 @@ final class FixedStepClock {
       throw ArgumentError.value(frameDeltaSeconds, 'frameDeltaSeconds');
     }
 
-    final admitted = math.min(frameDeltaSeconds, maxFrameSeconds);
+    final admitted = math.min(frameDeltaSeconds, maxFrameSeconds).toDouble();
     _droppedTimeSeconds += frameDeltaSeconds - admitted;
     _accumulator += admitted;
 
