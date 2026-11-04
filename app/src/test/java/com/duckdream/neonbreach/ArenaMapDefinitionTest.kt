@@ -30,14 +30,19 @@ class ArenaMapDefinitionTest {
     }
 
     @Test
-    fun riverCenterlineHasTwelveBoundedPointsForBothRenderers() {
+    fun riverCenterlineHasVariableWidthAndTaperedMouths() {
         assertEquals(12, ArenaMapDefinition.riverCenterline.size)
         assertTrue(ArenaMapDefinition.riverCenterline.all {
             kotlin.math.abs(it.x) < ArenaMapDefinition.HALF_EXTENT_X &&
-                kotlin.math.abs(it.z) < ArenaMapDefinition.HALF_EXTENT_Z
+                kotlin.math.abs(it.z) < ArenaMapDefinition.HALF_EXTENT_Z &&
+                it.halfWidth in 0.65f..2.0f
         })
-        assertTrue(ArenaMapDefinition.riverCenterline.first().x < 0f)
-        assertTrue(ArenaMapDefinition.riverCenterline.last().x > 0f)
+        val widths = ArenaMapDefinition.riverCenterline.map { it.halfWidth }
+        assertTrue(widths.maxOrNull()!! - widths.minOrNull()!! > 1.0f)
+        assertTrue(ArenaMapDefinition.riverCenterline.first().halfWidth < widths.maxOrNull()!!)
+        assertTrue(ArenaMapDefinition.riverCenterline.last().halfWidth < widths.maxOrNull()!!)
+        assertEquals(-0.45f, ArenaMapDefinition.riverCenterZ(-15f), 0.0001f)
+        assertEquals(1.68f, ArenaMapDefinition.riverHalfWidth(-15f), 0.0001f)
     }
 
     @Test
