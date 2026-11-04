@@ -121,8 +121,8 @@ jobs:
         with:
           name: project-arena-1.7.0-update
           path: |
-            Project-Arena-0.16.0.apk
-            Project-Arena-0.16.0.apk.sha256
+            Project-Arena-1.7.0.apk
+            Project-Arena-1.7.0.apk.sha256
           if-no-files-found: error
           retention-days: 14
       - name: Publish Project Arena 1.7.0 tester release
