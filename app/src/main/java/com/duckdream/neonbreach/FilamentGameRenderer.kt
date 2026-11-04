@@ -63,7 +63,27 @@ internal class FilamentGameRenderer(
         val idleDuration: Float, val walkDuration: Float, val runDuration: Float,
         val scale: Float, val minY: Float
     )
+    private data class NpcCharacterRuntime(
+        val instance: FilamentInstance,
+        val root: Int,
+        val animator: Animator,
+        val modelIndex: Int,
+        val idleClip: Int,
+        val walkClip: Int,
+        val runClip: Int,
+        val idleDuration: Float,
+        val walkDuration: Float,
+        val runDuration: Float,
+        val scale: Float,
+        val minY: Float,
+        val materialInstances: List<MaterialInstance>,
+        val animationRate: Float,
+        var animationClock: Float = 0f,
+        var activeClip: Int = -1
+    )
     private val playableHeroes = arrayOfNulls<PlayableHeroRuntime>(3)
+    private val botVisuals = ArrayList<NpcCharacterRuntime>(9)
+    private val minionVisuals = ArrayList<NpcCharacterRuntime>(48)
     private val heroGearAssets = ArrayList<FilamentAsset>(10)
     private val heroGearInstances = ArrayList<FilamentInstance>(20)
     private val botGearInstances = arrayOfNulls<FilamentInstance>(9)
@@ -79,6 +99,7 @@ internal class FilamentGameRenderer(
     private val minionBones = ArrayList<Map<String, BonePose>>(48)
     private val minionLastPositions = Array(48) { floatArrayOf(Float.NaN, Float.NaN) }
     private val minionAlive = BooleanArray(48) { false }
+    private val minionRendered = BooleanArray(48) { false }
     private var minionAnimationPhase = 0f
     private val minionScale = 0.78f
     private data class LifeActorRuntime(
@@ -90,8 +111,10 @@ internal class FilamentGameRenderer(
         val minY: Float,
         val idleClip: Int,
         val moveClip: Int,
+        val attackClip: Int,
         val idleDuration: Float,
         val moveDuration: Float,
+        val attackDuration: Float,
         var visible: Boolean = false
     )
     private val lifeAssets = LinkedHashMap<String, FilamentAsset>()
@@ -225,8 +248,8 @@ internal class FilamentGameRenderer(
     private var previousHeroSpeed = 0f
 
     private var cameraAspect = 16f / 9f
-    private var cameraX = -12f
-    private var cameraZ = -8.5f
+    private var cameraX = -12f * ArenaMapDefinition.WORLD_SCALE
+    private var cameraZ = -8.5f * ArenaMapDefinition.WORLD_SCALE
     private var cameraY = 0f
     private var phase = 0f
     private var playerYaw = 0f
@@ -261,21 +284,60 @@ internal class FilamentGameRenderer(
         viewer = created.second
         backendName = created.third
 
+        // Neutral outdoor palette: cool sky fill and a soft, slightly warm sun.
         skybox = Skybox.Builder()
-            .color(floatArrayOf(0.27f, 0.29f, 0.25f, 1f))
+            .color(floatArrayOf(0.36f, 0.47f, 0.54f, 1f))
             .build(engine)
         viewer.scene.skybox = skybox
         indirectLight = IndirectLight.Builder()
-            .irradiance(1, floatArrayOf(0.20f, 0.21f, 0.18f))
+            .irradiance(1, floatArrayOf(0.18f, 0.21f, 0.24f))
             .intensity(9_500.0f)
             .build(engine)
         viewer.scene.indirectLight = indirectLight
 
-        // ModelViewer supplies a sun, but its default direction is straight down.
-        // Angle it across the map so foliage, towers and lane walls gain readable form.
-        engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
-        engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
-        engine.lightManager.setIntensity(viewer.light, 46_000.0f)
+        // ModelViewer already creates a shadow-capable SUN. Tune that single light
+        // instead of adding another directional source to the mobile render path.
+        val lightManager = engine.lightManager
+        lightManager.setDirection(viewer.light, -0.36f, -0.86f, -0.36f)
+        lightManager.setColor(viewer.light, 1.0f, 0.97f, 0.92f)
+        lightManager.setIntensity(viewer.light, 62_000.0f)
+        val sunInstance = lightManager.getInstance(viewer.light)
+        if (sunInstance != 0) {
+            val shadowOptions = lightManager.getShadowOptions(sunInstance)
+            shadowOptions.mapSize = 1024
+            shadowOptions.shadowCascades = 1
+            shadowOptions.stable = true
+            shadowOptions.maxShadowDistance = 56.0f
+            lightManager.setShadowOptions(sunInstance, shadowOptions)
+            lightManager.setShadowCaster(sunInstance, true)
+        }
+        viewer.view.setShadowingEnabled(true)
+        viewer.view.setShadowType(View.ShadowType.PCF)
+
+        // Half-resolution SAO adds contact depth at a bounded mobile cost.
+        viewer.view.setAmbientOcclusionOptions(View.AmbientOcclusionOptions().apply {
+            enabled = true
+            aoType = View.AmbientOcclusionOptions.AmbientOcclusionType.SAO
+            radius = 0.42f
+            power = 1.08f
+            bias = 0.001f
+            resolution = 0.5f
+            intensity = 0.62f
+            quality = View.QualityLevel.LOW
+            lowPassFilter = View.QualityLevel.LOW
+            upsampling = View.QualityLevel.LOW
+        })
+        // A restrained distance haze separates the far tree line without obscuring lanes.
+        viewer.view.setFogOptions(View.FogOptions().apply {
+            distance = 25.0f
+            cutOffDistance = 94.0f
+            maximumOpacity = 0.16f
+            height = 0.0f
+            heightFalloff = 0.045f
+            color = floatArrayOf(0.55f, 0.63f, 0.67f)
+            density = 0.0026f
+            enabled = true
+        })
         viewer.camera.setExposure(15.5f, 1.0f / 100.0f, 80.0f)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
@@ -291,6 +353,8 @@ internal class FilamentGameRenderer(
         loadWorld()
         Log.i(TAG, "Startup stage: KayKit environment")
         loadKayKitEnvironment()
+        Log.i(TAG, "Startup stage: baked CC0 groundcover and rock environment")
+        loadBakedNatureEnvironment()
         Log.i(TAG, "Startup stage: characters and rigs")
         loadCharacter()
         Log.i(TAG, "Startup stage: wildlife and camp guardians")
@@ -320,10 +384,44 @@ internal class FilamentGameRenderer(
         }
     }
 
+    private fun configureAssetShadowing(
+        entities: IntArray,
+        castsShadows: Boolean,
+        receivesShadows: Boolean
+    ) {
+        val renderables = engine.renderableManager
+        for (entity in entities) {
+            val instance = renderables.getInstance(entity)
+            if (instance != 0) {
+                renderables.setCastShadows(instance, castsShadows)
+                renderables.setReceiveShadows(instance, receivesShadows)
+            }
+        }
+    }
+
     private fun loadWorld() {
-        val world = WorldGlbBuilder.build()
+        val terrainDirectory = "world/terrain/"
+        fun readTerrainMap(name: String): ByteArray =
+            context.assets.open(terrainDirectory + name).use { it.readBytes() }
+        val terrainTextures = TerrainTextureSet(
+            albedo = listOf(
+                readTerrainMap("grass_albedo.png"),
+                readTerrainMap("moss_albedo.png"),
+                readTerrainMap("soil_albedo.png"),
+                readTerrainMap("rock_albedo.png")
+            ),
+            normal = listOf(
+                readTerrainMap("grass_normal.png"),
+                readTerrainMap("moss_normal.png"),
+                readTerrainMap("soil_normal.png"),
+                readTerrainMap("rock_normal.png")
+            )
+        )
+        val world = WorldGlbBuilder.build(terrainTextures)
         viewer.loadModelGlb(ByteBuffer.wrap(world))
         val asset = viewer.asset ?: error("MOBA world GLB failed to load")
+        // The terrain is a receiver, not a shadow caster; static props cast onto it.
+        configureAssetShadowing(asset.entities, castsShadows = false, receivesShadows = true)
         val transforms = engine.transformManager
         asset.entities.forEach { entity ->
             when (asset.getName(entity)) {
@@ -342,7 +440,7 @@ internal class FilamentGameRenderer(
             "tower_blue", "tower_red",
             "home_blue", "home_red",
             "church_blue", "church_red",
-            "bridge_a", "trees_a"
+            "bridge_a"
         )
         worldProvider = UbershaderProvider(engine)
         worldAssetLoader = AssetLoader(engine, worldProvider!!, EntityManager.get())
@@ -363,41 +461,57 @@ internal class FilamentGameRenderer(
             worldResourceLoader!!.loadResources(asset)
         }
 
-        val placements = buildList {
-            add(WorldPlacement("castle_blue", 0f, -27.3f, 1.0f))
-            add(WorldPlacement("castle_red", 0f, 27.3f, 1.0f, Math.PI.toFloat()))
-            add(WorldPlacement("home_blue", -4.5f, -24.0f, 2.05f))
-            add(WorldPlacement("home_blue", 4.5f, -24.0f, 2.05f))
-            add(WorldPlacement("home_red", -4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("home_red", 4.5f, 24.0f, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("church_blue", -8.0f, -25.3f, 1.55f))
-            add(WorldPlacement("church_red", 8.0f, 25.3f, 1.55f, Math.PI.toFloat()))
-
-            // Three defensive structures per lane; the renderer maps each to its native health slot.
-            for (lane in 0..2) {
-                val crossingX = laneCenterX(lane, 0f)
-                for (tier in 0..2) {
-                    val z = when (tier) { 0 -> 22f; 1 -> 15f; else -> 8f }
-                    add(WorldPlacement("tower_blue", laneCenterX(lane, -z), -z, 1.48f))
-                    add(WorldPlacement("tower_red", laneCenterX(lane, z), z, 1.48f, Math.PI.toFloat()))
-                }
-                add(WorldPlacement("bridge_a", crossingX, 0f, 1.42f))
+        val natureModels = listOf(
+            "nature_tree_oak" to "world/nature/tree_oak.glb.b64",
+            "nature_tree_pine" to "world/nature/tree_pine.glb.b64",
+            "nature_tree_broadleaf" to "world/nature/tree_broadleaf.glb.b64",
+            "nature_bush" to "world/nature/bush_common.glb.b64"
+        )
+        for ((name, path) in natureModels) {
+            val encoded = context.assets.open(path).bufferedReader().use { it.readText() }
+            val bytes = Base64.decode(encoded, Base64.DEFAULT)
+            val asset = worldAssetLoader!!.createAsset(ByteBuffer.wrap(bytes))
+                ?: throw IllegalStateException("Quaternius CC0 nature GLB failed to parse: $name")
+            check(asset.resourceUris.isEmpty()) {
+                "Nature model must be self-contained for offline packaging: $name"
             }
+            worldResourceLoader!!.loadResources(asset)
+            worldAssets[name] = asset
+        }
 
-            // Dense, deliberately clustered tree lines define four jungle quadrants.
-            val forestTrees = listOf(
-                -10.5f to -23f, -6.2f to -22f, -11.5f to -17.5f, -5.5f to -17f,
-                -10.2f to -10f, -6.4f to -8f, 10.5f to -23f, 6.2f to -22f,
-                11.5f to -17.5f, 5.5f to -17f, 10.2f to -10f, 6.4f to -8f,
-                -22.8f to -18f, -26f to -13f, -22.4f to -6f, -18.5f to -20f,
-                22.8f to -18f, 26f to -13f, 22.4f to -6f, 18.5f to -20f,
-                -10.5f to 23f, -6.2f to 22f, -11.5f to 17.5f, -5.5f to 17f,
-                -10.2f to 10f, -6.4f to 8f, 10.5f to 23f, 6.2f to 22f,
-                11.5f to 17.5f, 5.5f to 17f, 10.2f to 10f, 6.4f to 8f
-            )
-            forestTrees.forEachIndexed { index, point ->
-                val scale = 1.48f + (index % 4) * 0.12f
-                add(WorldPlacement("trees_a", point.first, point.second, scale, (index * 0.73f) % 6.28f))
+        val placements = buildList {
+            val mapScale = ArenaMapDefinition.WORLD_SCALE
+            add(WorldPlacement("castle_blue", 0f, -27.3f * mapScale, 1.0f))
+            add(WorldPlacement("castle_red", 0f, 27.3f * mapScale, 1.0f, Math.PI.toFloat()))
+            add(WorldPlacement("home_blue", -4.5f * mapScale, -24.0f * mapScale, 2.05f))
+            add(WorldPlacement("home_blue", 4.5f * mapScale, -24.0f * mapScale, 2.05f))
+            add(WorldPlacement("home_red", -4.5f * mapScale, 24.0f * mapScale, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("home_red", 4.5f * mapScale, 24.0f * mapScale, 2.05f, Math.PI.toFloat()))
+            add(WorldPlacement("church_blue", -8.0f * mapScale, -25.3f * mapScale, 1.55f))
+            add(WorldPlacement("church_red", 8.0f * mapScale, 25.3f * mapScale, 1.55f, Math.PI.toFloat()))
+
+            // Tower transforms are generated from the canonical battlefield catalog.
+            for (team in 0..1) {
+                for (lane in 0..2) {
+                    for (tier in 0..2) {
+                        val point = ArenaMapDefinition.towerPosition(team, lane, tier)
+                        val model = if (team == 0) "tower_blue" else "tower_red"
+                        val yaw = if (team == 0) 0f else Math.PI.toFloat()
+                        add(WorldPlacement(model, point.x * mapScale, point.z * mapScale, 1.48f, yaw))
+                    }
+                }
+            }
+            for (lane in ArenaMapDefinition.lanes) {
+                val crossing = lane.points.minByOrNull { kotlin.math.abs(it.z) } ?: continue
+                add(WorldPlacement("bridge_a", crossing.x * mapScale, crossing.z * mapScale, 1.42f))
+            }
+            ArenaNatureCatalog.trees.forEach { tree ->
+                add(WorldPlacement(tree.model, tree.x * mapScale, tree.z * mapScale,
+                    tree.scale, tree.yaw))
+            }
+            ArenaNatureCatalog.bushes.forEach { bush ->
+                add(WorldPlacement("nature_bush", bush.x * mapScale, bush.z * mapScale,
+                    bush.scale, bush.yaw))
             }
         }
 
@@ -408,6 +522,11 @@ internal class FilamentGameRenderer(
             val instance = worldAssetLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance KayKit model: ${placement.model}")
             worldInstances.add(instance)
+            configureAssetShadowing(
+                instance.entities,
+                castsShadows = placement.model != "nature_bush",
+                receivesShadows = true
+            )
             viewer.scene.addEntities(instance.entities)
             val root = transforms.getInstance(instance.root)
             check(root != 0) { "KayKit transform root missing: ${placement.model}" }
@@ -424,9 +543,10 @@ internal class FilamentGameRenderer(
             if (placement.model == "tower_blue" || placement.model == "tower_red") {
                 val team = if (placement.model == "tower_blue") 0 else 1
                 val lane = (0..2).minByOrNull { kotlin.math.abs(laneCenterX(it, placement.z) - placement.x) } ?: 1
+                val mapScale = ArenaMapDefinition.WORLD_SCALE
                 val tier = when {
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 8f) < 1f -> 0
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 15f) < 1f -> 1
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 8f * mapScale) < 1f -> 0
+                    kotlin.math.abs(kotlin.math.abs(placement.z) - 15f * mapScale) < 1f -> 1
                     else -> 2
                 }
                 val towerIndex = team * 9 + lane * 3 + tier
@@ -438,6 +558,33 @@ internal class FilamentGameRenderer(
 
         worldAssets.values.forEach { it.releaseSourceData() }
         Log.i(TAG, "KayKit CC0 environment loaded: ${worldAssets.size} models, ${worldInstances.size} placements")
+    }
+
+    /** Loads two pre-baked static meshes; each packs all placements by texture/material. */
+    private fun loadBakedNatureEnvironment() {
+        val loader = worldAssetLoader ?: error("World AssetLoader is unavailable for baked nature")
+        val resources = worldResourceLoader ?: error("World ResourceLoader is unavailable for baked nature")
+        for (name in listOf("forest_groundcover", "forest_rocks")) {
+            val bytes = context.assets.open("world/nature/$name.glb").use { it.readBytes() }
+            val asset = loader.createAsset(ByteBuffer.wrap(bytes))
+                ?: throw IllegalStateException("Filament rejected baked nature GLB: $name")
+            check(asset.resourceUris.isEmpty()) {
+                "Baked nature GLB must embed all textures for offline loading: $name"
+            }
+            resources.loadResources(asset)
+            val instance = loader.createInstance(asset)
+                ?: throw IllegalStateException("Could not instance baked nature GLB: $name")
+            worldAssets[name] = asset
+            worldInstances.add(instance)
+            configureAssetShadowing(
+                instance.entities,
+                castsShadows = name == "forest_rocks",
+                receivesShadows = true
+            )
+            viewer.scene.addEntities(instance.entities)
+            asset.releaseSourceData()
+            Log.i(TAG, "Baked nature loaded: " + name + ", bytes=" + bytes.size + ", entities=" + instance.entities.size)
+        }
     }
 
     private fun loadLivingWorld() {
@@ -482,23 +629,27 @@ internal class FilamentGameRenderer(
                 val clipNames = (0 until animationCount).map { animator.getAnimationName(it).lowercase() }
                 fun findClip(tokens: List<String>): Int =
                     clipNames.indexOfFirst { name -> tokens.any { token -> name.contains(token) } }
-                // Only use harmless idle/locomotion clips. If a source model has
-                // no matching clip, the deterministic root motion remains active.
+                // Resolve semantic idle, locomotion and optional guardian-attack clips.
+                // Missing source clips fall back to deterministic root motion.
                 val idleClip = findClip(profile.idleTokens)
                 val moveClip = findClip(profile.moveTokens).let { if (it >= 0) it else idleClip }
+                val attackClip = findClip(profile.attackTokens)
                 val idleDuration = if (idleClip >= 0) animator.getAnimationDuration(idleClip).coerceAtLeast(0.1f) else 1f
                 val moveDuration = if (moveClip >= 0) animator.getAnimationDuration(moveClip).coerceAtLeast(0.1f) else 1f
+                val attackDuration = if (attackClip >= 0) animator.getAnimationDuration(attackClip).coerceAtLeast(0.1f) else 0.5f
                 val actor = LifeActorRuntime(
                     spawn, instance, root, animator, scale, minY,
-                    idleClip, moveClip, idleDuration, moveDuration
+                    idleClip, moveClip, attackClip, idleDuration, moveDuration, attackDuration
                 )
                 lifeActors.add(actor)
                 // Actors enter the scene only when the current view/player range needs them.
                 actor.visible = false
                 val sample = ArenaLifeCatalog.sample(spawn, spawn.phase, spawn.x + 30f, spawn.z + 30f)
-                val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - minY * scale
+                val worldX = sample.x * ArenaMapDefinition.WORLD_SCALE
+                val worldZ = sample.z * ArenaMapDefinition.WORLD_SCALE
+                val y = terrainHeight(worldX, worldZ) + profile.airHeight + sample.heightOffset - minY * scale
                 transforms.setTransform(root, terrainAlignedTransform(
-                    sample.x, sample.z, sample.yaw + profile.yawOffset, scale, scale, y
+                    worldX, worldZ, sample.yaw + profile.yawOffset, scale, scale, y
                 ))
                 if (idleClip >= 0) animator.applyAnimation(idleClip, 0f)
                 animator.updateBoneMatrices()
@@ -523,10 +674,13 @@ internal class FilamentGameRenderer(
             } else true
             // Cull against the actor's current path position, not its original anchor.
             // A moving animal may have wandered several metres from its spawn point.
-            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX, playerZ)
-            val dx = sample.x - playerX
-            val dz = sample.z - playerZ
-            val maxDistance = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f
+            val mapScale = ArenaMapDefinition.WORLD_SCALE
+            val sample = ArenaLifeCatalog.sample(spawn, lifeClock, playerX / mapScale, playerZ / mapScale)
+            val worldX = sample.x * mapScale
+            val worldZ = sample.z * mapScale
+            val dx = worldX - playerX
+            val dz = worldZ - playerZ
+            val maxDistance = (if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f) * mapScale
             val inRange = dx * dx + dz * dz <= maxDistance * maxDistance
             val shouldShow = campAlive && inRange
             if (actor.visible != shouldShow) {
@@ -537,15 +691,35 @@ internal class FilamentGameRenderer(
             if (!shouldShow) continue
 
             val profile = ArenaLifeCatalog.species.getValue(spawn.species)
-            val clip = if (sample.moving) actor.moveClip else actor.idleClip
+            val attacking = spawn.kind == LifeActorKind.CAMP_GUARDIAN &&
+                snapshot?.getOrNull(312 + spawn.campIndex)?.let { it > 0f } == true
+            val usingAttackClip = attacking && actor.attackClip >= 0
+            val usingMoveClip = !usingAttackClip && sample.moving
+            val clip = when {
+                usingAttackClip -> actor.attackClip
+                usingMoveClip -> actor.moveClip
+                else -> actor.idleClip
+            }
             if (clip >= 0) {
-                val duration = if (clip == actor.moveClip) actor.moveDuration else actor.idleDuration
-                val offset = if (clip == actor.moveClip) spawn.phase * 0.37f else spawn.phase
+                val duration = when {
+                    usingAttackClip -> actor.attackDuration
+                    usingMoveClip -> actor.moveDuration
+                    else -> actor.idleDuration
+                }
+                val offset = when {
+                    usingAttackClip -> spawn.phase * 0.19f
+                    usingMoveClip -> spawn.phase * 0.37f
+                    else -> spawn.phase
+                }
                 actor.animator.applyAnimation(clip, (lifeClock + offset) % duration)
             }
-            val y = terrainHeight(sample.x, sample.z) + profile.airHeight + sample.heightOffset - actor.minY * actor.scale
+            val proceduralAttack = attacking && actor.attackClip < 0
+            val attackSway = if (proceduralAttack) kotlin.math.sin(lifeClock * 15f + spawn.phase) * 0.20f else 0f
+            val attackLift = if (proceduralAttack) kotlin.math.abs(kotlin.math.sin(lifeClock * 17f + spawn.phase)) * 0.11f else 0f
+            val y = terrainHeight(worldX, worldZ) + profile.airHeight + sample.heightOffset +
+                attackLift - actor.minY * actor.scale
             transforms.setTransform(actor.root, terrainAlignedTransform(
-                sample.x, sample.z, sample.yaw + profile.yawOffset,
+                worldX, worldZ, sample.yaw + profile.yawOffset + attackSway,
                 actor.scale, actor.scale, y
             ))
             if (clip >= 0) actor.animator.updateBoneMatrices()
@@ -553,70 +727,78 @@ internal class FilamentGameRenderer(
     }
 
     private fun loadCharacter() {
-        val encoded = context.assets.open("characters/quaternius-character.glb.b64").bufferedReader().use { it.readText() }
-        val modelBytes = Base64.decode(encoded, Base64.DEFAULT)
         characterProvider = UbershaderProvider(engine)
         characterLoader = AssetLoader(engine, characterProvider!!, EntityManager.get())
         characterResources = ResourceLoader(engine)
 
-        val asset = characterLoader!!.createAsset(ByteBuffer.wrap(modelBytes))
-            ?: throw IllegalStateException("CC0 humanoid GLB could not be parsed")
-        character = asset
+        // Playable heroes, bots and minions now share three genuine CC0 human
+        // character assets with their own materials and authored locomotion clips.
+        loadPlayableHeroModels()
+        createNpcVisualsFromPlayableHeroes()
+        activatePlayerModel(0)
+        playableHeroes.filterNotNull().forEach { it.asset.releaseSourceData() }
+        Log.i(TAG, "Three CC0 hero bodies drive player, 9 AI heroes and 48 animated lane units")
+    }
 
-        for (uri in asset.resourceUris) {
-            val data = context.assets.open("characters/$uri").use { it.readBytes() }
-            characterResources!!.addResourceData(uri, ByteBuffer.wrap(data))
-        }
-        characterResources!!.loadResources(asset)
-
-        // Reuse the CC0 rigged humanoid as the actual bot character model.
-        // Filament instances share mesh buffers and textures instead of duplicating GPU geometry.
+    private fun createNpcVisualsFromPlayableHeroes() {
+        val loader = characterLoader ?: error("NPC asset loader is unavailable")
         val transforms = engine.transformManager
+
+        fun createNpc(modelIndex: Int, owner: String, animationRate: Float): NpcCharacterRuntime {
+            val hero = playableHeroes.getOrNull(modelIndex)
+                ?: error("$owner requires unavailable hero model $modelIndex")
+            val instance = loader.createInstance(hero.asset)
+                ?: throw IllegalStateException("Could not instance $owner from ${hero.definition.id}")
+            configureAssetShadowing(instance.entities, castsShadows = false, receivesShadows = true)
+            val root = transforms.getInstance(instance.root)
+            check(root != 0) { "$owner has no root transform" }
+            return NpcCharacterRuntime(
+                instance = instance,
+                root = root,
+                animator = instance.animator,
+                modelIndex = modelIndex,
+                idleClip = hero.idleClip,
+                walkClip = hero.walkClip,
+                runClip = hero.runClip,
+                idleDuration = hero.idleDuration,
+                walkDuration = hero.walkDuration,
+                runDuration = hero.runDuration,
+                scale = hero.scale,
+                minY = hero.minY,
+                materialInstances = instance.materialInstances.toList(),
+                animationRate = animationRate
+            )
+        }
+
         for (index in 0 until 9) {
-            val instance = characterLoader!!.createInstance(asset)
-                ?: throw IllegalStateException("Could not instance bot humanoid $index")
-            botInstances.add(instance)
-            botAnimators.add(instance.animator)
-            botMaterialSets.add(instance.materialInstances.toList())
-            viewer.scene.addEntities(instance.entities)
-            val rootInstance = transforms.getInstance(instance.root)
-            require(rootInstance != 0) { "Bot humanoid root transform is missing: $index" }
-            botRootInstances[index] = rootInstance
-            val rig = captureHumanoidRig(instance, "bot-$index")
-            botBones.add(rig)
-            applyRestPose(rig)
-            instance.animator.updateBoneMatrices()
-            applyBotTint(index, disabled = false)
+            val modelIndex = NpcVisualCatalog.botModel(index)
+            val team = if (index < 4) 0 else 1
+            val actor = createNpc(modelIndex, "bot-$index", 0.94f + (index % 4) * 0.045f)
+            botVisuals.add(actor)
+            botInstances.add(actor.instance)
+            botAnimators.add(actor.animator)
+            botMaterialSets.add(actor.materialInstances)
+            botRootInstances[index] = actor.root
+            applyNpcMaterialPalette(actor, team, index % 4, disabled = false)
+            viewer.scene.addEntities(actor.instance.entities)
+            animateNpc(actor, speed = 0f, deltaTime = 0f, phaseOffset = index * 0.13f)
         }
 
-        // Forty-eight bounded lane units: two four-unit waves per lane/team.
-        // Their meshes and material atlas are shared with the hero instances.
         for (index in 0 until 48) {
-            val instance = characterLoader!!.createInstance(asset)
-                ?: throw IllegalStateException("Could not instance lane unit $index")
-            minionInstances.add(instance)
-            minionAnimators.add(instance.animator)
-            val rootInstance = transforms.getInstance(instance.root)
-            require(rootInstance != 0) { "Lane unit root transform is missing: $index" }
-            minionRootInstances[index] = rootInstance
-            val rig = captureHumanoidRig(instance, "minion-$index")
-            minionBones.add(rig)
-            applyRestPose(rig)
-            instance.animator.updateBoneMatrices()
-            val tint = if (index < 24) {
-                floatArrayOf(0.42f, 0.72f, 0.88f, 1f)
-            } else {
-                floatArrayOf(0.88f, 0.52f, 0.43f, 1f)
-            }
-            instance.materialInstances.forEach { material ->
-                runCatching {
-                    material.setParameter("baseColorFactor", Colors.RgbaType.SRGB, tint[0], tint[1], tint[2], tint[3])
-                }.onFailure { error ->
-                    Log.w(TAG, "Lane unit material tint fallback for instance $index", error)
-                }
-            }
+            val modelIndex = NpcVisualCatalog.minionModel(index)
+            val team = if (index < 24) 0 else 1
+            val variation = NpcVisualCatalog.minionSlot(index)
+            val actor = createNpc(modelIndex, "minion-$index", 0.92f + variation * 0.055f)
+            minionVisuals.add(actor)
+            minionInstances.add(actor.instance)
+            minionAnimators.add(actor.animator)
+            minionRootInstances[index] = actor.root
+            applyNpcMaterialPalette(actor, team, variation, disabled = false)
+            animateNpc(actor, speed = 0f, deltaTime = 0f, phaseOffset = index * 0.071f)
         }
 
+        // Keep the original lane/team spawn layout; only the visual bodies and
+        // animation sources change in this pass.
         for (index in minionRootInstances.indices) {
             val team = if (index < 24) 0 else 1
             val local = index % 24
@@ -624,16 +806,54 @@ internal class FilamentGameRenderer(
             val localInLane = local % 8
             val slot = localInLane % 4
             val group = localInLane / 4
-            val z = if (team == 0) -28f - group * 1.25f else 28f + group * 1.25f
-            val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f }
+            val mapScale = ArenaMapDefinition.WORLD_SCALE
+            val z = (if (team == 0) -28f - group * 1.25f else 28f + group * 1.25f) * mapScale
+            val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f } * mapScale
             setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
+        Log.i(TAG, "NPC visual roster ready: bots=${botVisuals.size}/9, minions=${minionVisuals.size}/48, CC0 bodies=3")
+    }
 
-        loadPlayableHeroModels()
-        createHeroGear()
-        activatePlayerModel(0)
-        asset.releaseSourceData()
-        Log.i(TAG, "Three separate CC0 hero assets loaded; legacy shared rig remains isolated to bots and lane units")
+    private fun applyNpcMaterialPalette(
+        actor: NpcCharacterRuntime,
+        team: Int,
+        variation: Int,
+        disabled: Boolean
+    ) {
+        val palette = HeroMaterialPalette.forNpc(actor.modelIndex, team, variation, disabled)
+        actor.materialInstances.forEach { material ->
+            val color = HeroMaterialPalette.colorForMaterial(material.name, palette) ?: return@forEach
+            runCatching {
+                material.setParameter(
+                    "baseColorFactor", Colors.RgbaType.SRGB,
+                    color.r, color.g, color.b, color.a
+                )
+            }.onFailure { error ->
+                Log.w(TAG, "NPC material update failed: ${material.name}", error)
+            }
+        }
+    }
+
+    private fun animateNpc(
+        actor: NpcCharacterRuntime,
+        speed: Float,
+        deltaTime: Float,
+        phaseOffset: Float
+    ) {
+        val selected = when (NpcVisualCatalog.locomotion(speed)) {
+            NpcLocomotion.IDLE -> actor.idleClip to actor.idleDuration
+            NpcLocomotion.WALK -> actor.walkClip to actor.walkDuration
+            NpcLocomotion.RUN -> actor.runClip to actor.runDuration
+        }
+        val clip = selected.first
+        val duration = selected.second.coerceAtLeast(0.01f)
+        if (actor.activeClip != clip) {
+            actor.activeClip = clip
+            actor.animationClock = phaseOffset % duration
+        }
+        actor.animationClock = (actor.animationClock + deltaTime.coerceIn(0f, 0.05f) * actor.animationRate) % duration
+        actor.animator.applyAnimation(clip, actor.animationClock)
+        actor.animator.updateBoneMatrices()
     }
 
     private fun loadPlayableHeroModels() {
@@ -659,6 +879,7 @@ internal class FilamentGameRenderer(
                 resources.loadResources(asset)
                 instance = loader.createInstance(asset)
                     ?: error("Filament could not instance ${definition.id}")
+                configureAssetShadowing(instance.entities, castsShadows = true, receivesShadows = true)
                 check(instance.skinCount > 0) { "${definition.id} GLB has no skinned body" }
                 val joints = instance.getJointsAt(0)
                 check(joints.size >= 25) { "${definition.id} humanoid rig is incomplete: ${joints.size} joints" }
@@ -684,7 +905,6 @@ internal class FilamentGameRenderer(
                     definition, asset, instance, root, animator, idle, walk, run,
                     idleDuration, walkDuration, runDuration, 2.12f / height, center[1] - half[1]
                 )
-                asset.releaseSourceData()
                 Log.i(TAG, "Playable CC0 hero ready: ${definition.id}; safe clips loaded; joints=${joints.size}")
             } catch (error: Throwable) {
                 instance?.let { failed -> runCatching { viewer.scene.removeEntities(failed.entities) } }
@@ -732,19 +952,23 @@ internal class FilamentGameRenderer(
 
     private fun applyHeroPalette(hero: Int) {
         val palette = HeroMaterialPalette.forHero(hero)
-        if (palette.size != playerMaterials.size) {
-            Log.w(TAG, "Hero palette/material mismatch: hero=$hero palette=${palette.size} materials=${playerMaterials.size}")
-        }
-        playerMaterials.forEachIndexed { index, material ->
-            val color = palette.getOrNull(index) ?: return@forEachIndexed
+        val applied = HashSet<String>()
+        playerMaterials.forEach { material ->
+            val key = HeroMaterialPalette.normalizeMaterialName(material.name)
+            val color = HeroMaterialPalette.colorForMaterial(material.name, palette) ?: return@forEach
             runCatching {
                 material.setParameter(
                     "baseColorFactor", Colors.RgbaType.SRGB,
                     color.r, color.g, color.b, color.a
                 )
+                applied.add(key)
             }.onFailure { error ->
-                Log.w(TAG, "Could not apply hero palette: hero=$hero material=$index", error)
+                Log.w(TAG, "Could not apply hero palette: hero=$hero material=${material.name}", error)
             }
+        }
+        val missing = palette.keys - applied
+        if (missing.isNotEmpty()) {
+            Log.w(TAG, "Hero palette material-name mismatch: hero=$hero missing=$missing applied=$applied")
         }
     }
 
@@ -1123,39 +1347,18 @@ internal class FilamentGameRenderer(
     }
 
     private fun setMinionTransform(index: Int, x: Float, z: Float, yaw: Float) {
-        val root = minionRootInstances.getOrNull(index) ?: return
-        if (root == 0) return
-        val slot = (index % 8) % 4
-        // Four readable lane-unit silhouettes: compact guard, balanced scout,
-        // tall support and slender ranged class. Team tint remains independent.
-        val width = when (slot) { 0 -> 1.16f; 1 -> 0.98f; 2 -> 0.88f; else -> 0.78f }
-        val height = when (slot) { 0 -> 0.92f; 1 -> 1.02f; 2 -> 1.10f; else -> 1.18f }
-        val scaleX = characterScale * minionScale * width
-        val scaleY = characterScale * minionScale * height
-        val y = terrainHeight(x, z) - characterMinY * scaleY
-        engine.transformManager.setTransform(root,
+        val actor = minionVisuals.getOrNull(index) ?: return
+        val scaleX = actor.scale * minionScale * NpcVisualCatalog.minionWidthFactor(index)
+        val scaleY = actor.scale * minionScale * NpcVisualCatalog.minionHeightFactor(index)
+        val y = terrainHeight(x, z) - actor.minY * scaleY
+        engine.transformManager.setTransform(actor.root,
             terrainAlignedTransform(x, z, yaw, scaleX, scaleY, y))
     }
 
     private fun applyBotTint(index: Int, disabled: Boolean) {
+        val actor = botVisuals.getOrNull(index) ?: return
         val team = if (index < 4) 0 else 1
-        val variant = index % 4
-        val tint = when {
-            disabled -> floatArrayOf(0.36f, 0.39f, 0.40f, 1f)
-            team == 0 && variant == 0 -> floatArrayOf(0.18f, 0.42f, 0.72f, 1f)
-            team == 0 && variant == 1 -> floatArrayOf(0.20f, 0.58f, 0.76f, 1f)
-            team == 0 && variant == 2 -> floatArrayOf(0.24f, 0.52f, 0.62f, 1f)
-            team == 0 -> floatArrayOf(0.30f, 0.60f, 0.78f, 1f)
-            variant == 0 -> floatArrayOf(0.68f, 0.22f, 0.18f, 1f)
-            variant == 1 -> floatArrayOf(0.80f, 0.32f, 0.20f, 1f)
-            variant == 2 -> floatArrayOf(0.62f, 0.24f, 0.28f, 1f)
-            else -> floatArrayOf(0.80f, 0.38f, 0.25f, 1f)
-        }
-        botMaterialSets.getOrNull(index).orEmpty().forEach { material ->
-            runCatching {
-                material.setParameter("baseColorFactor", Colors.RgbaType.SRGB, tint[0], tint[1], tint[2], tint[3])
-            }.onFailure { error -> Log.w(TAG, "Bot tint update failed for $index", error) }
-        }
+        applyNpcMaterialPalette(actor, team, index % 4, disabled)
     }
 
     private fun setRingTransform(root: Int, x: Float, y: Float, z: Float, scale: Float) {
@@ -1204,12 +1407,13 @@ internal class FilamentGameRenderer(
 
     fun setMinionsVisible(visible: Boolean) {
         if (!sceneLoaded || minionsVisible == visible) return
-        if (visible) {
-            minionInstances.forEachIndexed { index, instance ->
-                if (minionAlive[index]) viewer.scene.addEntities(instance.entities)
+        minionInstances.forEachIndexed { index, instance ->
+            val shouldRender = visible && minionAlive[index]
+            if (minionRendered[index] != shouldRender) {
+                if (shouldRender) viewer.scene.addEntities(instance.entities)
+                else viewer.scene.removeEntities(instance.entities)
+                minionRendered[index] = shouldRender
             }
-        } else {
-            minionInstances.forEach { viewer.scene.removeEntities(it.entities) }
         }
         minionsVisible = visible
     }
@@ -1287,53 +1491,45 @@ internal class FilamentGameRenderer(
     fun updateCreeps(snapshot: FloatArray, deltaTime: Float) {
         if (!sceneLoaded || snapshot.size < 318) return
         updateLivingWorld(deltaTime, snapshot[0], snapshot[2], snapshot)
-        minionAnimationPhase += deltaTime * 7.2f
+        val dt = deltaTime.coerceIn(0f, 0.05f)
         for (index in minionInstances.indices) {
             val alive = snapshot[222 + index] > 0.0f
             if (minionAlive[index] != alive) {
-                if (alive) viewer.scene.addEntities(minionInstances[index].entities)
-                else viewer.scene.removeEntities(minionInstances[index].entities)
                 minionAlive[index] = alive
                 minionLastPositions[index][0] = Float.NaN
                 minionLastPositions[index][1] = Float.NaN
             }
-            if (!alive) continue
+            if (!alive) {
+                if (minionRendered[index]) {
+                    viewer.scene.removeEntities(minionInstances[index].entities)
+                    minionRendered[index] = false
+                }
+                continue
+            }
+            val actor = minionVisuals.getOrNull(index) ?: continue
             val x = snapshot[126 + index * 2]
             val z = snapshot[127 + index * 2]
             val previous = minionLastPositions[index]
             val dx = if (previous[0].isNaN()) 0f else x - previous[0]
             val dz = if (previous[1].isNaN()) 0f else z - previous[1]
-            val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
-            val moving = (speed / 2.55f).coerceIn(0f, 1f)
+            val speed = if (dt > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / dt else 0f
             val team = if (index < 24) 0 else 1
-            val yaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
+            val yaw = if (speed > 0.16f) kotlin.math.atan2(dx, dz)
                 else if (team == 0) 0f else Math.PI.toFloat()
-            setMinionTransform(index, x, z, yaw)
-            val rig = minionBones.getOrNull(index).orEmpty()
-            val stride = sin(minionAnimationPhase + index * 0.37f) * moving
-            val idle = sin(minionAnimationPhase * 0.58f + index * 0.6f)
-            val slot = (index % 8) % 4
-            val kneeLift = if (slot == 3) 0.38f else 0.46f
-            val rangedReady = if (slot == 3) 0.48f else 0.54f
-            animateArmPose(rig["upperarm_l"], rangedReady - stride * 0.28f + idle * 0.025f)
-            animateArmPose(rig["upperarm_r"], rangedReady + stride * 0.28f - idle * 0.025f)
-            animateArmPose(rig["lowerarm_l"], if (slot == 3) 0.34f else 0.30f + max(0f, stride) * 0.08f)
-            animateArmPose(rig["lowerarm_r"], if (slot == 3) 0.38f else 0.32f + max(0f, -stride) * 0.08f)
-            animateArmPose(rig["hand_l"], stride * 0.025f)
-            animateArmPose(rig["hand_r"], stride * 0.025f)
-            animatePose(rig["pelvis"], sin(minionAnimationPhase * 2f + index) * 0.022f * moving, 2)
-            animatePose(rig["thigh_l"], stride * 0.60f)
-            animatePose(rig["thigh_r"], -stride * 0.60f)
-            animatePose(rig["calf_l"], max(0f, -stride) * kneeLift)
-            animatePose(rig["calf_r"], max(0f, stride) * kneeLift)
-            animatePose(rig["foot_l"], -max(0f, -stride) * 0.20f)
-            animatePose(rig["foot_r"], -max(0f, stride) * 0.20f)
-            animatePose(rig["spine_01"], idle * 0.014f + moving * 0.025f)
-            animatePose(rig["spine_02"], -idle * 0.010f)
-            animatePose(rig["spine_03"], sin(minionAnimationPhase * 1.9f + index) * 0.012f * moving)
-            animatePose(rig["neck_01"], -idle * 0.012f)
-            animatePose(rig["Head"], -idle * 0.018f)
-            minionAnimators.getOrNull(index)?.updateBoneMatrices()
+            val playerDx = x - snapshot[0]
+            val playerDz = z - snapshot[2]
+            val radius = NpcVisualCatalog.MINION_RENDER_DISTANCE
+            val inRange = playerDx * playerDx + playerDz * playerDz <= radius * radius
+            val shouldRender = minionsVisible && inRange
+            if (minionRendered[index] != shouldRender) {
+                if (shouldRender) viewer.scene.addEntities(minionInstances[index].entities)
+                else viewer.scene.removeEntities(minionInstances[index].entities)
+                minionRendered[index] = shouldRender
+            }
+            if (shouldRender) {
+                setMinionTransform(index, x, z, yaw)
+                animateNpc(actor, speed, dt, index * 0.071f)
+            }
             previous[0] = x
             previous[1] = z
         }
@@ -1342,20 +1538,19 @@ internal class FilamentGameRenderer(
     fun updateBots(snapshot: FloatArray, deltaTime: Float) {
         if (!sceneLoaded || snapshot.size < 34) return
         val transforms = engine.transformManager
-        botAnimationPhase += deltaTime * 8.0f
-        for (index in botRootInstances.indices) {
-            val rootInstance = botRootInstances[index]
-            if (rootInstance == 0) continue
+        val dt = deltaTime.coerceIn(0f, 0.05f)
+        botAnimationPhase += dt * 8.0f
+        for (index in botVisuals.indices) {
+            val actor = botVisuals[index]
+            if (actor.root == 0) continue
             val x = snapshot[16 + index * 2]
             val z = snapshot[17 + index * 2]
             val previous = lastBotPositions[index]
             val dx = if (previous[0].isNaN()) 0f else x - previous[0]
             val dz = if (previous[1].isNaN()) 0f else z - previous[1]
-            val speed = if (deltaTime > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / deltaTime else 0f
-            val moving = (speed / 2.7f).coerceIn(0f, 1f)
-            val desiredYaw = if (moving > 0.08f) kotlin.math.atan2(dx, dz)
+            val speed = if (dt > 0f) kotlin.math.sqrt(dx * dx + dz * dz) / dt else 0f
+            val desiredYaw = if (speed > 0.16f) kotlin.math.atan2(dx, dz)
                 else if (index < 4) 0f else Math.PI.toFloat()
-            var turnLean = 0f
             if (!botYawInitialized[index]) {
                 botYawState[index] = desiredYaw
                 botYawInitialized[index] = true
@@ -1364,64 +1559,29 @@ internal class FilamentGameRenderer(
                     sin(desiredYaw - botYawState[index]),
                     cos(desiredYaw - botYawState[index])
                 )
-                turnLean = (error / (deltaTime.coerceAtLeast(0.001f)) / 5.5f).coerceIn(-1f, 1f)
-                botYawState[index] += error * (1f - kotlin.math.exp(-deltaTime * 11f))
+                botYawState[index] += error * (1f - kotlin.math.exp(-dt * 11f))
             }
-            val yaw = botYawState[index]
             val role = if (snapshot.size >= 308) snapshot[299 + index].toInt().coerceIn(0, 4) else index % 5
-            // Role-based body proportions: solo is grounded, jungle agile, carry lighter, support balanced.
-            val widthFactor = when (role) { 0 -> 1.16f; 1 -> 0.88f; 2 -> 1.0f; 3 -> 0.90f; else -> 0.97f }
-            val heightFactor = when (role) { 0 -> 0.96f; 1 -> 1.05f; 2 -> 1.0f; 3 -> 1.06f; else -> 1.01f }
-            val scaleX = characterScale * botScale * widthFactor
-            val scaleY = characterScale * botScale * heightFactor
-            val y = terrainHeight(x, z) - characterMinY * scaleY
-            val matrix = terrainAlignedTransform(x, z, yaw, scaleX, scaleY, y)
-            transforms.setTransform(rootInstance, matrix)
+            val scaleX = actor.scale * NpcVisualCatalog.botRoleWidth(role)
+            val scaleY = actor.scale * NpcVisualCatalog.botRoleHeight(role)
+            val y = terrainHeight(x, z) - actor.minY * scaleY
+            transforms.setTransform(actor.root,
+                terrainAlignedTransform(x, z, botYawState[index], scaleX, scaleY, y))
 
-            val rig = botBones.getOrNull(index).orEmpty()
-            val cadence = when (role) { 0 -> 0.82f; 1 -> 1.22f; 2 -> 1.04f; 3 -> 1.16f; else -> 0.90f }
-            val armDrive = when (role) { 0 -> 0.24f; 1 -> 0.38f; 2 -> 0.30f; 3 -> 0.42f; else -> 0.20f }
-            val stride = sin(botAnimationPhase * cadence + index * 0.41f) * moving
-            val idle = sin(botAnimationPhase * (0.48f + role * 0.07f) + index * 0.43f)
-            val braking = smoothStep01((2.0f - speed) / 2.0f) * moving
-            val readyPose = when (role) { 0 -> 0.56f; 1 -> 0.50f; 2 -> 0.54f; 3 -> 0.60f; else -> 0.52f }
-            animateArmPose(rig["upperarm_l"], readyPose - stride * armDrive - turnLean * 0.05f)
-            animateArmPose(rig["upperarm_r"], readyPose + stride * armDrive - turnLean * 0.05f)
-            val elbow = when (role) { 0 -> 0.36f; 1 -> 0.30f; 2 -> 0.34f; 3 -> 0.42f; else -> 0.32f }
-            animateArmPose(rig["lowerarm_l"], elbow + max(0f, stride) * 0.10f)
-            animateArmPose(rig["lowerarm_r"], elbow + max(0f, -stride) * 0.10f)
-            animateArmPose(rig["hand_l"], stride * 0.035f)
-            animateArmPose(rig["hand_r"], stride * 0.035f)
-            animatePose(rig["pelvis"], turnLean * 0.055f + sin(botAnimationPhase * 2f + index) * 0.018f * moving, 2)
-            animatePose(rig["thigh_l"], stride * 0.60f)
-            animatePose(rig["thigh_r"], -stride * 0.60f)
-            animatePose(rig["calf_l"], max(0f, -stride) * 0.48f + braking * 0.035f)
-            animatePose(rig["calf_r"], max(0f, stride) * 0.48f + braking * 0.035f)
-            animatePose(rig["foot_l"], -max(0f, -stride) * 0.20f)
-            animatePose(rig["foot_r"], -max(0f, stride) * 0.20f)
-            animatePose(rig["spine_01"], 0.012f + idle * 0.014f + moving * 0.025f + braking * 0.055f)
-            animatePose(rig["spine_02"], -idle * 0.010f - turnLean * 0.035f)
-            animatePose(rig["spine_03"], turnLean * 0.055f + sin(botAnimationPhase + index) * 0.012f * moving)
-            animatePose(rig["neck_01"], -idle * 0.013f - turnLean * 0.025f)
-            animatePose(rig["Head"], -idle * 0.015f - turnLean * 0.035f)
             val disabled = snapshot.size >= 72 && snapshot[63 + index] > 0.0f
             if (botDisabledState[index] != disabled) {
                 applyBotTint(index, disabled)
                 botDisabledState[index] = disabled
             }
-            botAnimators.getOrNull(index)?.updateBoneMatrices()
+            animateNpc(actor, speed, dt, index * 0.13f)
             previous[0] = x
             previous[1] = z
         }
     }
 
-    private fun laneCenterX(lane: Int, z: Float): Float {
-        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
-        return when (lane) {
-            0 -> -14.2f + bend
-            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
-            else -> 14.2f - bend * 0.82f
-        }
+    private fun laneCenterX(lane: Int, worldZ: Float): Float {
+        val scale = ArenaMapDefinition.WORLD_SCALE
+        return ArenaMapDefinition.laneCenterX(lane, worldZ / scale) * scale
     }
 
     private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)
@@ -1505,7 +1665,6 @@ internal class FilamentGameRenderer(
     fun setHeroAppearance(hero: Int, alternateSkin: Boolean = false) {
         activeHero = hero.coerceIn(0, 2)
         activatePlayerModel(activeHero)
-        rebuildBotGearForHero()
         // Retain each CC0 source mesh, clothing, hair and original material palette.
         if (alternateSkin) Log.i(TAG, "Alternate skin request does not flatten the authored CC0 material palette")
     }
@@ -1513,10 +1672,11 @@ internal class FilamentGameRenderer(
     fun setOverviewCamera(overview: Boolean) {
         showcaseMode = false
         overviewCamera = overview
+        val mapScale = ArenaMapDefinition.WORLD_SCALE
         val spawn = when (activeHero) {
-            1 -> laneCenterX(0, -25f) to -25f
-            2 -> -8.2f to -14.5f
-            else -> laneCenterX(2, -25f) + 1.8f to -25f
+            1 -> laneCenterX(0, -25f * mapScale) to -25f * mapScale
+            2 -> -8.2f * mapScale to -14.5f * mapScale
+            else -> laneCenterX(2, -25f * mapScale) + 1.8f * mapScale to -25f * mapScale
         }
         if (overview) {
             cameraX = spawn.first
@@ -1553,8 +1713,9 @@ internal class FilamentGameRenderer(
             return
         }
         // Fixed north-facing isometric framing: hero yaw never rotates the camera.
-        val distance = if (overviewCamera) 9.4f else 8.3f
-        val height = if (overviewCamera) 9.6f else 9.2f
+        val mapScale = ArenaMapDefinition.WORLD_SCALE
+        val distance = (if (overviewCamera) 9.4f else 8.3f) * mapScale
+        val height = (if (overviewCamera) 9.6f else 9.2f) * mapScale
         val fov = if (overviewCamera) 48.0 else 44.0
         viewer.camera.setProjection(
             fov, aspect.toDouble().coerceAtLeast(0.5), 0.1, 180.0,
@@ -1571,8 +1732,11 @@ internal class FilamentGameRenderer(
         try {
             botInstances.forEach { viewer.scene.removeEntities(it.entities) }
             botInstances.clear()
+            botVisuals.clear()
             minionInstances.forEach { viewer.scene.removeEntities(it.entities) }
             minionInstances.clear()
+            minionVisuals.clear()
+            minionRendered.fill(false)
             minionAnimators.clear()
             minionBones.clear()
             lifeActors.forEach { actor -> viewer.scene.removeEntities(actor.instance.entities) }

@@ -1,12 +1,14 @@
 package com.duckdream.neonbreach
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.sqrt
 import kotlin.math.tan
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Base64
 
 class WorldGlbBuilderTest {
     @Test
@@ -34,22 +36,65 @@ class WorldGlbBuilderTest {
     }
 
     @Test
-    fun worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover() {
+    fun terrainGlbEmbedsFourPbrSurfacePairsAndTerrainUvCoordinates() {
+        val pixel = Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/cZkAAAAASUVORK5CYII="
+        )
+        val textures = TerrainTextureSet(
+            albedo = List(4) { pixel },
+            normal = List(4) { pixel }
+        )
+        val bytes = WorldGlbBuilder.build(textures)
+        val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val jsonLength = glb.getInt(12)
+        val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
+        assertEquals(8, "\"mimeType\":\"image/png\"".toRegex().findAll(json).count())
+        assertTrue(json.contains("\"grass_albedo\""))
+        assertTrue(json.contains("\"rock_normal\""))
+        assertTrue(json.contains("\"TEXCOORD_0\""))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":0}"))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":1}"))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":2}"))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":3}"))
+        assertTrue(json.contains("\"normalTexture\":{\"index\":4,\"scale\":0.68}"))
+        assertTrue(json.contains("\"normalTexture\":{\"index\":7,\"scale\":0.68}"))
+    }
+
+    @Test
+    fun riverGlbContainsIndependentWaterShallowsSandbanksAndFlowHighlights() {
+        val bytes = WorldGlbBuilder.build()
+        val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val jsonLength = glb.getInt(12)
+        val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
+        listOf("crossing_river", "river_shallows", "river_sandbanks", "river_flow_glints")
+            .forEach { layer -> assertTrue("Missing river geometry layer: $layer", json.contains(layer)) }
+        assertTrue(json.contains("\"name\":\"River water\""))
+        assertTrue(json.contains("\"name\":\"River shallows\""))
+        assertTrue(json.contains("\"name\":\"River sandbanks\""))
+        assertTrue(json.contains("\"name\":\"Water shimmer\""))
+    }
+
+    @Test
+    fun terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters() {
         val bytes = WorldGlbBuilder.build()
         val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         assertEquals(0x46546c67, glb.getInt(0))
         assertEquals(2, glb.getInt(4))
         assertEquals(bytes.size, glb.getInt(8))
         val jsonLength = glb.getInt(12)
-        assertTrue(jsonLength > 0)
         val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
         listOf(
             "fern_leaves", "meadow_flower_stems", "meadow_flower_petals",
             "camp_mushroom_stems", "camp_mushroom_caps", "fallen_timber",
-            "Neutral camp markers", "Forest soil", "River water"
+            "field_boulders", "undergrowth"
         ).forEach { name ->
-            assertTrue("Missing world GLB part/material: $name", json.contains(name))
+            assertFalse("Procedural nature must be moved to baked textured GLBs: $name", json.contains(name))
         }
-        assertTrue("World GLB should have the expanded 25-material palette", json.contains("Fallen timber"))
+        listOf(
+            "Neutral camp markers", "Forest soil", "Objective shrine",
+            "River water", "River shallows", "River sandbanks", "Water shimmer"
+        ).forEach { name -> assertTrue("Missing gameplay/environment layer: $name", json.contains(name)) }
+        assertEquals("Terrain GLB must retain only its 20 terrain/gameplay materials", 20,
+            "\"pbrMetallicRoughness\"".toRegex().findAll(json).count())
     }
 }

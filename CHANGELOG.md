@@ -1,5 +1,41 @@
 # Changelog — Projeto Arena
 
+## [0.16.0 — build de teste]
+
+### Build Android
+- versionName 0.16.0 / versionCode 59; pacote `com.duckdream.projectarena` preservado.
+- Pré-lançamento assinado gerado pelo GitHub Actions para instalação e teste.
+- CI cobre testes nativos, verificações estruturais, testes Kotlin e compilação Android.
+- Captura visual, FPS sustentado e temperatura no Realme C53 continuam pendentes de validação física.
+
+### Personagens, bots e minions
+- Removido do runtime o humanoide monocromático "Matte jade" que era compartilhado por bots e minions.
+- Os três corpos humanos CC0 independentes (Lyra, Bastion e Kairo) agora alimentam o jogador, os 9 bots e os 48 minions por instâncias compartilhadas.
+- NPCs usam os clipes esqueléticos originais Idle/Walk/Run dos modelos; a T-pose procedural anterior foi substituída por animação autoral do pack CC0.
+- Minions recebem três silhuetas corporais, proporções de função e variação alternada do quarto papel por onda.
+- Materiais são associados pelo nome glTF (Shirt, Skin, Pants, Hair etc.); a cor de equipe afeta roupas, não pele/cabelo/rosto.
+- Paletas de Lyra, Bastion e Kairo ajustadas para tons de pele naturais e roupas com contraste legível.
+- Testes cobrem atribuição de materiais por nome, neutralidade da pele, variedade de corpos, proporções e seleção Idle/Walk/Run.
+
+### Iluminação e profundidade ambiental
+- Ajustada a única luz solar direcional do Filament, com direção natural e cor levemente quente; sem fontes de luz extras.
+- Sombras PCF estáveis com mapa de 1024 px e uma cascata; estruturas, pontes, árvores e rochas projetam sombras no terreno.
+- Oclusão ambiente SAO em meia resolução para contato entre objetos e solo; tropas numerosas e vegetação rasteira não geram mapas de sombra.
+- Névoa de distância discreta para separar o plano distante sem encobrir as rotas e objetivos.
+- Mantidos relevo, rio, geometria, colisões e a resolução dinâmica de renderização.
+
+### Superfície do terreno com materiais PBR
+- Introduz quatro superfícies tileable: grama, musgo, terra compactada e rocha exposta, cada uma com albedo e normal map.
+- Os oito PNGs de 256×256 são gerados deterministicamente no CI e embutidos no GLB do mundo; não há geração de textura em runtime nem dependência online.
+- UVs usam repetição em escala de mundo. A malha, o relevo, a escavação do rio, as rotas e as colisões nativas permanecem inalterados.
+- Quatro pares de textura são reutilizados pelos cinco materiais visuais do terreno; não são adicionadas malhas nem entidades decorativas.
+
+### Natureza e vegetação ambiental
+- Substitui a vegetação e as rochas procedurais por dois GLBs estáticos, texturizados e autocontidos.
+- As malhas ambientais ficam agrupadas em cinco lotes de material, com limite de 100 mil vértices e validação de integridade do pack CC0.
+- Aguardando validação visual e de desempenho sustentado no Realme C53.
+
+## [0.15.12] — 2026-11-03
 ## [0.15.12] — 2026-11-03
 
 ### Orientação e identidade visual dos heróis

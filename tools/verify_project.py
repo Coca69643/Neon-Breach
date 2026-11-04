@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Structural verification for Project Arena 0.15.12."""
+"""Structural verification for Project Arena."""
 from pathlib import Path
 import base64
 import hashlib
 import json
+import re
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -23,7 +24,10 @@ renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer
 presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
 presentation_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroPresentationTest.kt")
 world = read("app/src/main/java/com/duckdream/neonbreach/WorldGlbBuilder.kt")
+map_kotlin = read("app/src/main/java/com/duckdream/neonbreach/ArenaMapDefinition.kt")
+map_native = read("app/src/main/cpp/ArenaMapDefinition.h")
 native = read("app/src/main/cpp/ArenaSimulation.cpp")
+camp_behavior = read("app/src/main/cpp/ArenaCampCombat.h")
 cmake = read("app/src/main/cpp/CMakeLists.txt")
 physics_h = read("app/src/main/cpp/ArenaPhysics.h")
 physics = read("app/src/main/cpp/ArenaPhysics.cpp")
@@ -33,6 +37,7 @@ gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilder
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
 life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
+npc_catalog = read("app/src/main/java/com/duckdream/neonbreach/NpcVisualCatalog.kt")
 life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
 life_fetch = read("tools/fetch_cc0_life_assets.py")
 hero_catalog = read("app/src/main/java/com/duckdream/neonbreach/HeroModelCatalog.kt")
@@ -43,22 +48,109 @@ workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
 asset_register = read("ASSETS/README.md")
+nature_license = read("ASSETS/Quaternius-Stylized-Nature-License.txt")
+nature_fetch = read("tools/fetch_cc0_nature_assets.py")
+terrain_generator = read("tools/generate_terrain_materials.py")
 kaykit_license = read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
 quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
 
+def extract_pairs(source, start, end, pattern):
+    block = source.split(start, 1)[1].split(end, 1)[0]
+    return [(float(a), float(b)) for a, b in re.findall(pattern, block)]
+
+kotlin_lanes = extract_pairs(
+    map_kotlin, "val lanes = listOf(", "val camps = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_lanes = extract_pairs(
+    map_native, "kLanes{{", "kCampPositions",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+kotlin_camps = extract_pairs(
+    map_kotlin, "val camps = listOf(", "val objectives = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_camps = extract_pairs(
+    map_native, "kCampPositions{{", "kObjectivePositions",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_lanes != native_lanes:
+    raise SystemExit("Kotlin and C++ lane coordinates differ")
+if kotlin_camps != native_camps:
+    raise SystemExit("Kotlin and C++ camp coordinates differ")
+
+kotlin_objectives = extract_pairs(
+    map_kotlin, "val objectives = listOf(", "val groveCenters = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_objectives = extract_pairs(
+    map_native, "kObjectivePositions{{", "kObjectiveRadii",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_objectives != native_objectives:
+    raise SystemExit("Kotlin and C++ objective coordinates differ")
+
+kotlin_groves = extract_pairs(
+    map_kotlin, "val groveCenters = listOf(", "val treeBlockers = listOf(",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_groves = extract_pairs(
+    map_native, "kGroveCenters{{", "kTreeBlockers",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_groves != native_groves:
+    raise SystemExit("Kotlin and C++ grove coordinates differ")
+
+kotlin_trees = extract_pairs(
+    map_kotlin, "val treeBlockers = listOf(", "fun laneCenterX",
+    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+)
+native_trees = extract_pairs(
+    map_native, "kTreeBlockers{{", "inline float laneCenterX",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_trees != native_trees:
+    raise SystemExit("Kotlin and C++ tree blocker coordinates differ")
+
+def extract_river_points(source, start, end, pattern):
+    block = source.split(start, 1)[1].split(end, 1)[0]
+    return [tuple(float(value) for value in match) for match in re.findall(pattern, block)]
+
+kotlin_river = extract_river_points(
+    map_kotlin, "val riverCenterline = listOf(", "private fun riverSegment",
+    r"RiverPoint\(\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*,\s*(\d+(?:\.\d+)?)f\s*\)"
+)
+native_river = extract_river_points(
+    map_native, "kRiverCenterline{{", "inline int riverSegment",
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*,\s*(\d+(?:\.\d+)?)f\s*\}"
+)
+if kotlin_river != native_river:
+    raise SystemExit("Kotlin and C++ river centerline/width profile differ")
+if max(point[2] for point in kotlin_river) - min(point[2] for point in kotlin_river) < 1.0:
+    raise SystemExit("River channel must have a meaningful variable-width profile")
+
+kotlin_scale = float(map_kotlin.split("const val WORLD_SCALE = ", 1)[1].split("f", 1)[0])
+native_scale = float(map_native.split("kWorldScale = ", 1)[1].split("f", 1)[0])
+if abs(kotlin_scale - native_scale) > 0.000001:
+    raise SystemExit("Kotlin and C++ world scale values differ")
+if "p.add(x * scale)" not in world or "arena_map::kWorldScale" not in physics or "arena_map::kWorldScale" not in native:
+    raise SystemExit("Map scale is not applied across geometry and native gameplay")
+
 checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
      "renderer.updateMenuPresentation(dt)" in main and "renderer.render(frameTimeNanos)" in main and
      "if (state != AppState.MENU) renderer.render" not in main, "menu and hero selection must render the native 3D scene"),
-    ("captureHumanoidRig" in renderer and "getJointsAt(0)" in renderer and "fallbackJointIndices" in renderer,
-     "skinned humanoid joints must be resolved from the active skin"),
+    ("createNpcVisualsFromPlayableHeroes" in renderer and "loadPlayableHeroModels()" in renderer and
+     "quaternius-character.glb.b64" not in renderer and "NpcVisualCatalog.botModel" in renderer and
+     "NpcVisualCatalog.minionModel" in renderer,
+     "bots and minions must use the three rigged CC0 human bodies instead of the legacy jade mannequin"),
     ("HumanoidRigPose.lateralSign(name)" in renderer and
      "HumanoidRigPose.localFlexion(angle, bone.lateralSign)" in renderer and
      "HumanoidRigPose.FLEXION_AXIS" in renderer and
      "animateHeroArmBone(\"upperarm_l\"" in renderer and
-     "animateArmPose(rig[\"upperarm_r\"], readyPose + stride * armDrive" in renderer,
+     "animateHeroArmBone(\"upperarm_r\"" in renderer,
      "humanoid arm flexion must use the mirrored local-Z rig axis"),
     ("mirroredLocalZFlexionLowersBothArms" in pose_tests and
      "Left arm must angle downward" in pose_tests and
@@ -77,7 +169,7 @@ checks = [
     ("applyHeroPalette(hero)" in renderer and "HeroMaterialPalette.forHero(hero)" in renderer and
      "showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f" in renderer and
      "gameplayYawMatchesAllFourWorldDirections" in presentation_tests and
-     "eachHeroHasDistinctMultiPartPaletteMatchingItsGlb" in presentation_tests,
+     "eachHeroHasDistinctNamedPaletteMatchingItsGlbMaterials" in presentation_tests,
      "three playable heroes must keep individual readable palettes and verified facing"),
     ("loadPlayableHeroModels()" in renderer and "HeroModelCatalog.models" in renderer and
      "playableHeroes.all { it != null }" in renderer and "animatePlayableHero(speed)" in renderer and
@@ -92,24 +184,27 @@ checks = [
     ("HERO_X = -15.0f" in showcase and "HERO_Z = 4.0f" in showcase and
      "previewClearingDoesNotOverlapMajorBattlefieldProps" in showcase_tests,
      "hero showcase must remain clear of towers, camps and shrines"),
-    ("val distance = if (overviewCamera) 9.4f else 8.3f" in renderer and
-     "val height = if (overviewCamera) 9.6f else 9.2f" in renderer and
+    ("val mapScale = ArenaMapDefinition.WORLD_SCALE" in renderer and
+     "val distance = (if (overviewCamera) 9.4f else 8.3f) * mapScale" in renderer and
+     "val height = (if (overviewCamera) 9.6f else 9.2f) * mapScale" in renderer and
      "val fov = if (overviewCamera) 48.0 else 44.0" in renderer,
-     "combat camera must keep a closer readable character framing"),
-    ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
-     "terrain palette must use the lower-saturation olive values"),
+     "combat camera must keep a closer readable character framing and scale with the battlefield"),
+    ("textureSlot = when(i){0,1->0;2->1;9->2;10->3;else->-1}" in world and
+     "baseColorTexture" in world and "normalTexture" in world and
+     "0.96f,1.0f,0.88f,1f" in world,
+     "terrain surface must use embedded texture maps with pale material tints"),
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
     ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
-    ("versionCode 58" in gradle and "versionName '0.15.12'" in gradle, "app version must be 0.15.12 / code 58"),
+    ("versionCode 59" in gradle and "versionName '0.16.0'" in gradle, "app version must be 0.15.12 / code 58"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='58' versionName='0.15.12'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.15.12-update" in workflow, "0.15.12 artifact name missing"),
+    ("versionCode='59' versionName='0.16.0'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-0.16.0-update" in workflow, "0.15.12 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -139,7 +234,28 @@ checks = [
     ("renderer.updatePlayerSignals(result)" in main and "fun updatePlayerSignals(snapshot: FloatArray)" in renderer, "animation state bridge missing"),
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
-    ("fun laneCenterX(lane: Int, z: Float)" in renderer and "forestTrees" in renderer and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, forest and objective geometry missing"),
+    ("private fun laneCenterX(lane: Int, worldZ: Float)" in renderer and "ArenaNatureCatalog.trees" in renderer and "ArenaMapDefinition.lanes" in world and "ArenaMapDefinition.camps" in world and "ArenaMapDefinition.objectives" in world and "ArenaMapDefinition.h" in native and "ArenaMapDefinition.h" in physics and "arena_map::kTreeBlockers" in physics and "arena_map::kCampPositions" in native and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, canonical forest and objective geometry missing"),
+    ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
+     "moveActorOnMap" in native and "testArenaNavigationGraph" in read("tests/arena_physics_tests.cpp"),
+     "MOBA bots are not using the lane/jungle navigation graph"),
+    ("riverHalfWidth" in world and "riverHalfWidth" in physics and
+     "bankDistance" in world and "bankDistance" in physics and
+     "arena_map::riverHalfWidth" in physics and "arena_map::riverCenterZ" in physics and
+     "buildRiverChannel(water, riverShallows, riverSandbanks" in world,
+     "Kotlin and native terrain must share the sculpted variable-width riverbed"),
+    ("ArenaCampCombat.h" in native and "arena_camp::canAggro" in native and
+     "arena_camp::canStrike" in native and "values[static_cast<std::size_t>(312 + i)]" in native and
+     "attackTokens" in life_catalog and "snapshot?.getOrNull(312 + spawn.campIndex)" in renderer,
+     "neutral camp guardians lack native aggro, attacks or visual attack state"),
+    ("preferredObjective = bot.team == 0 ? 0 : 1" in native and
+     "fallbackObjective = 1 - preferredObjective" in native and
+     "moveActorOnMap(bot.position, bot.velocity, objective" in native,
+     "jungle AI must rotate to its side's neutral objective through map navigation"),
+    ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
+     "ArenaMapDefinition.objectives.forEachIndexed" in main and "riverOutline(0.86f)" in main and
+     "ArenaMapDefinition.riverCenterline" in world and "ArenaMapDefinition.laneCenterX" in main and
+     "riverShallowPaint" in main and "campAlertPaint" in main and "snapshot[312 + index]" in main,
+     "minimap is not aligned with the expanded battlefield, layered river or camp combat state"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
@@ -156,11 +272,24 @@ checks = [
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
     ("Compile and run native physics tests" in workflow and "tests/arena_physics_tests.cpp" in workflow, "CI does not compile/run native physics tests"),
-    ("createHeroGear()" in renderer and "setParent(child, parent)" in renderer and "playerGearInstances" in renderer and "rebuildBotGearForHero()" in renderer, "articulated role equipment is not attached to the skeleton"),
+    ("applyNpcMaterialPalette" in renderer and "material.name" in renderer and
+     "HeroMaterialPalette.forNpc" in renderer and "colorForMaterial" in renderer and
+     "actor.animator.applyAnimation(clip, actor.animationClock)" in renderer and
+     "NpcVisualCatalog.locomotion" in renderer,
+     "NPCs need material-name palettes and authored idle/walk/run animation clips"),
+     ("minionModel(index)" in npc_catalog and "minionWidthFactor" in npc_catalog and
+     "minionHeightFactor" in npc_catalog and "MINION_RENDER_DISTANCE" in npc_catalog and
+     "minionRendered" in renderer and "minionRenderDistanceIsBoundedForMobileSceneBudget" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt") and
+     "botModel(index)" in npc_catalog and
+     "npcLocomotionSwitchesBetweenIdleWalkAndRun" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt"),
+     "bot/minion visual roster and locomotion regression tests are missing"),
     ("style=hero.coerceIn(0,4)" in gear and "Arcanist" in gear and "Ranger" in gear and "gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "five role-specific costume silhouettes missing"),
     ("generatedGearGlbHasValidContainerAndBoneParts" in gear_tests and "for (hero in 0..4)" in gear_tests and "remasteredTerrainHasReadableReliefAndWalkableGradients" in world_tests and "testDebugUnitTest" in workflow and "junit:junit:4.13.2" in gradle, "role GLB or terrain regression tests are not connected to CI"),
     ("terrainAlignedTransform" in renderer and "WorldGlbBuilder.normalAt" in renderer and "internal fun normalAt" in world, "character orientation is not aligned to terrain normals"),
-    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer and "HumanoidRigPose.FLEXION_AXIS" in renderer and "localFlexion(angle, bone.lateralSign)" in renderer and "readyPose" in renderer, "NPC role gait or mirrored anatomical arm flexion missing"),
+    ("botYawState" in renderer and "animateNpc(actor, speed, dt" in renderer and
+     "NpcVisualCatalog.botRoleWidth" in renderer and "NpcVisualCatalog.minionWidthFactor" in renderer and
+     "actor.animator.updateBoneMatrices()" in renderer,
+     "AI hero and minion animation/role silhouettes are not driven by authored locomotion clips"),
     ("PhysicsWorld.cpp" not in cmake, "unused second physics implementation must remain disabled"),
 
     ("firstTowerInLane" not in native, "unused tower helper should not remain under -Werror"),
@@ -172,16 +301,22 @@ checks = [
      "animator.getAnimationCount()" in renderer,
      "Filament wildlife and camp guardian instances/animation are not integrated"),
     ("snapshot?.getOrNull(270 + spawn.campIndex)" in renderer and
-     "maxDistance = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f" in renderer and "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
-     "neutral guardians and ambient wildlife must be visibility- and distance-managed"),
-    ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
+     "maxDistance = (if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f) * mapScale" in renderer and
+     "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
+     "neutral guardians and ambient wildlife must be visibility- and distance-managed in world scale"),
+    ("ArenaNatureCatalog.trees" in renderer and "ArenaNatureCatalog.bushes" in renderer and
+     "nature_tree_oak" in renderer and "nature_tree_pine" in renderer and
+     "nature_tree_broadleaf" in renderer and "nature_bush" in renderer and
+     "forestUsesThreeTreeSilhouettesAndSharedBushAsset" in read("app/src/test/java/com/duckdream/neonbreach/ArenaNatureCatalogTest.kt"),
+     "CC0 tree and bush variation must replace the grouped procedural tree asset"),
+        ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
      "deer" in life_catalog and "wolf" in life_catalog and "bird" in life_catalog and
      "mushroom" in life_catalog and "walking-tree" in life_catalog and "ghost" in life_catalog,
      "ambient and neutral life roster is incomplete"),
     ("wildlifeMovesAndRetreatsFromNearbyPlayer" in life_tests and
      "campGuardiansStayAnchoredButHaveIdleMotion" in life_tests and
      "lifeCatalogContainsDistinctAmbientAndCampSpecies" in life_tests and
-     "worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover" in world_tests,
+     "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
      "life roster, movement and scenery regression tests are missing"),
     ("source_commit" in life_fetch and "git_blob_sha" in life_fetch and
      "CC0" in asset_register and "af7c09239feb1b675ae3ad469bbcacd7b56975f2" in life_fetch and
@@ -191,10 +326,29 @@ checks = [
     ("Fetch and verify pinned CC0 life assets" in workflow and
      "tools/fetch_cc0_life_assets.py" in workflow,
      "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
-    ("fern_leaves" in world and "meadow_flower_petals" in world and
-     "camp_mushroom_caps" in world and "fallen_timber" in world and
-     "River reeds" not in world and "riverCenterZ(x)" in world,
-     "batched flora, camp groundcover and river vegetation are missing"),
+    ("Bake pinned CC0 nature assets into static GLBs" in workflow and
+     "tools/fetch_cc0_nature_assets.py" in workflow and
+     "001ecddebd9a5ed64cfadcccde0daf9342397a1b" in nature_fetch and
+     "CC0 1.0 Universal" in nature_license and
+     "two self-contained GLBs" in asset_register,
+     "pinned CC0 groundcover/rock bake step and license record are missing"),
+    ("loadBakedNatureEnvironment" in renderer and "forest_groundcover" in renderer and
+     "forest_rocks" in renderer and "ArenaMapDefinition.riverCenterZ(x)" in world and
+     "private fun leafBlade(" not in world and "boulder_field" not in world and
+     "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
+     "textured nature must be baked into two static GLBs while retaining shared river terrain sampling"),
+    ("Generate tileable PBR terrain materials" in workflow and
+     "tools/generate_terrain_materials.py" in workflow and
+     "TerrainTextureSet" in world and "normalTexture" in world and
+     "baseColorTexture" in world and "TEXCOORD_0" in world and
+     "terrainGlbEmbedsFourPbrSurfacePairsAndTerrainUvCoordinates" in world_tests and
+     "grass_albedo.png" in renderer and "rock_normal.png" in renderer,
+     "terrain albedo/normal maps must be embedded and applied to the terrain mesh"),
+    ("setShadowingEnabled(true)" in renderer and "View.ShadowType.PCF" in renderer and
+     "setShadowOptions" in renderer and "shadowOptions.mapSize = 1024" in renderer and
+     "setAmbientOcclusionOptions" in renderer and "AmbientOcclusionType.SAO" in renderer and
+     "setFogOptions" in renderer and "configureAssetShadowing" in renderer,
+     "outdoor rendering must use bounded sun shadows, low-cost contact AO and subtle atmospheric depth"),
     ("Four readable lane-unit silhouettes" in renderer and
      "val width = when (slot) { 0 -> 1.16f" in renderer and
      "val height = when (slot) { 0 -> 0.92f" in renderer,
@@ -209,7 +363,7 @@ for ok, message in checks:
 
 model_names = [
     "castle_blue", "castle_red", "tower_blue", "tower_red", "home_blue", "home_red",
-    "church_blue", "church_red", "bridge_a", "trees_a", 
+    "church_blue", "church_red", "bridge_a",
 ]
 if not world_assets.is_dir():
     raise SystemExit("KayKit world asset directory missing")
@@ -225,13 +379,98 @@ for name in model_names:
         uri = resource.get("uri")
         if uri and not (world_assets / uri).is_file():
             raise SystemExit("Missing GLTF resource " + uri + " required by " + name)
+nature_assets = ROOT / "app/src/main/assets/world/nature"
+nature_expected = {
+    "tree_oak.glb.b64": "80bd662cc51f983986f4e201463dc3a729a6cd4a",
+    "tree_pine.glb.b64": "0197de65879eb650247c8d56ac52da34489938cb",
+    "tree_broadleaf.glb.b64": "828786b4bdb5224a8b3672f5e5d6cebe1c65bd93",
+    "bush_common.glb.b64": "84b4153c17e988a658e56d4093b0028d1b034c3f",
+}
+for filename, expected_blob in nature_expected.items():
+    path = nature_assets / filename
+    if not path.is_file():
+        raise SystemExit("Missing pinned CC0 nature model: " + filename)
+    encoded = path.read_text(encoding="ascii").strip()
+    model_bytes = base64.b64decode("".join(encoded.split()), validate=True)
+    git_blob = hashlib.sha1((b"blob " + str(len(model_bytes)).encode("ascii") + b"\0") + model_bytes).hexdigest()
+    if git_blob != expected_blob:
+        raise SystemExit("Pinned CC0 nature model Git blob SHA mismatch: " + filename)
+    if model_bytes[:4] != b"glTF" or int.from_bytes(model_bytes[4:8], "little") != 2:
+        raise SystemExit("Invalid self-contained GLB 2.0 nature model: " + filename)
+    json_length = int.from_bytes(model_bytes[12:16], "little")
+    model_data = json.loads(model_bytes[20:20 + json_length].decode("utf-8"))
+    if not model_data.get("meshes") or any(item.get("uri") for item in model_data.get("buffers", []) + model_data.get("images", [])):
+        raise SystemExit("Nature GLB must contain meshes and no external resources: " + filename)
+print("Four pinned CC0 tree/bush GLBs, Git blob hashes and offline packaging verified.")
+
+baked_nature = {
+    "forest_groundcover.glb": 4,
+    "forest_rocks.glb": 1,
+}
+baked_vertex_total = 0
+for filename, expected_primitives in baked_nature.items():
+    path = nature_assets / filename
+    if not path.is_file():
+        raise SystemExit("Missing build-baked CC0 environment mesh: " + filename)
+    model_bytes = path.read_bytes()
+    if model_bytes[:4] != b"glTF" or int.from_bytes(model_bytes[4:8], "little") != 2:
+        raise SystemExit("Invalid baked GLB 2.0 header: " + filename)
+    if int.from_bytes(model_bytes[8:12], "little") != len(model_bytes):
+        raise SystemExit("Baked GLB length header mismatch: " + filename)
+    json_length = int.from_bytes(model_bytes[12:16], "little")
+    model_data = json.loads(model_bytes[20:20 + json_length].decode("utf-8"))
+    if len(model_data.get("meshes", [])) != 1:
+        raise SystemExit("Baked nature GLB must contain a single merged mesh: " + filename)
+    primitives = model_data["meshes"][0].get("primitives", [])
+    if len(primitives) != expected_primitives:
+        raise SystemExit("Unexpected baked material/draw batch count: " + filename)
+    if any(item.get("uri") for item in model_data.get("buffers", []) + model_data.get("images", [])):
+        raise SystemExit("Baked nature GLB must embed textures and geometry: " + filename)
+    if any("bufferView" not in image for image in model_data.get("images", [])):
+        raise SystemExit("Baked nature texture is not embedded: " + filename)
+    baked_vertex_total += sum(
+        model_data["accessors"][primitive["attributes"]["POSITION"]]["count"]
+        for primitive in primitives
+    )
+    if len(model_bytes) > 6_000_000:
+        raise SystemExit("Baked nature GLB exceeds 6 MB: " + filename)
+if baked_vertex_total > 100_000:
+    raise SystemExit("Baked nature geometry exceeds 100k vertices")
+if "SOURCE_COMMIT = \"001ecddebd9a5ed64cfadcccde0daf9342397a1b\"" not in read("tools/fetch_cc0_nature_assets.py"):
+    raise SystemExit("CC0 nature source must remain pinned to a reviewed commit")
+print("Baked nature verified: two static GLBs, five material batches, textures embedded, vertex budget passed.")
+
+terrain_assets = ROOT / "app/src/main/assets/world/terrain"
+terrain_maps = (
+    "grass_albedo.png", "grass_normal.png",
+    "moss_albedo.png", "moss_normal.png",
+    "soil_albedo.png", "soil_normal.png",
+    "rock_albedo.png", "rock_normal.png",
+)
+for filename in terrain_maps:
+    path = terrain_assets / filename
+    if not path.is_file():
+        raise SystemExit("Missing generated terrain PBR map: " + filename)
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise SystemExit("Terrain PBR map is not a PNG: " + filename)
+    if len(data) > 600_000 or len(data) < 128:
+        raise SystemExit("Terrain PBR map violates the texture size budget: " + filename)
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    if width != 256 or height != 256:
+        raise SystemExit("Terrain PBR maps must be 256x256: " + filename)
+if "periodic(u, v" not in terrain_generator or "build_maps" not in terrain_generator:
+    raise SystemExit("Terrain generator must use deterministic seamless periodic patterns")
+print("Terrain PBR verified: eight seamless 256x256 maps, four material sets, albedo plus normal.")
+
 atlas = world_assets / "hexagons_medieval.png"
 if not atlas.is_file() or atlas.stat().st_size < 1000:
     raise SystemExit("Shared KayKit texture atlas missing")
 if "private fun sphere(" in world or "private fun cylinder(" in world:
     raise SystemExit("Legacy procedural sphere/cylinder geometry remains")
-if "applyRestPose" not in renderer or "runtime.animator.updateBoneMatrices()" not in renderer:
-    raise SystemExit("Player skeletal skinning update missing")
+if "runtime.animator.applyAnimation" not in renderer or "actor.animator.updateBoneMatrices()" not in renderer:
+    raise SystemExit("Playable/NPC authored skeletal animation update missing")
 hero_assets = ROOT / "app/src/main/assets/heroes"
 hero_expected = {
     "lyra.glb": ("99c4df0aaabd19022809facc68f5fb5f564d35df3a9893c273a31fdaacf68e96", ["Female_Idle", "Female_Walk", "Female_Run"]),
@@ -254,16 +493,27 @@ for filename, (expected_hash, clips) in hero_expected.items():
     animation_names = [animation.get("name", "").split("|")[-1] for animation in model_data.get("animations", [])]
     if any(clip not in animation_names for clip in clips):
         raise SystemExit("Missing Idle/Walk/Run clip in " + filename + ": " + repr(animation_names))
+    expected_materials = {
+        "lyra.glb": {"shirt", "skin", "pants", "shoes", "socks", "hairbase", "hair", "eyes"},
+        "bastion.glb": {"shirt", "pants", "eyes", "skin", "hair"},
+        "kairo.glb": {"shirt", "skin", "pants", "shoes", "hairbase", "hair", "eyes"},
+    }
+    material_names = {
+        re.sub(r"[^a-z0-9]", "", material.get("name", "").lower())
+        for material in model_data.get("materials", [])
+    }
+    if material_names != expected_materials[filename]:
+        raise SystemExit("Playable hero material names do not match the runtime palette: " + filename + ": " + repr(material_names))
     for resource in model_data.get("buffers", []) + model_data.get("images", []):
         if resource.get("uri"):
             raise SystemExit("Playable hero has an external resource URI: " + filename)
 hero_manifest = json.loads((hero_assets / "cc0-manifest.json").read_text(encoding="utf-8"))
 if hero_manifest.get("license") != "CC0-1.0" or len(hero_manifest.get("models", [])) != 3:
     raise SystemExit("Three-model CC0 hero manifest is missing or incomplete")
-print("Three independent CC0 hero GLBs, SHA-256, skin and locomotion clips verified.")
+print("Three independent CC0 hero GLBs, SHA-256, named materials, skin and locomotion clips verified.")
 
 if not avatar.is_file() or avatar.stat().st_size < 500_000:
-    raise SystemExit("Quaternius CC0 humanoid GLB missing")
+    raise SystemExit("Archived Quaternius CC0 humanoid GLB missing")
 raw_model = base64.b64decode(avatar.read_text(encoding="ascii"))
 if raw_model[:4] != b"glTF":
     raise SystemExit("Playable humanoid asset is not a GLB file")
@@ -280,7 +530,8 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.15.12 structural verification passed.")
+print("Project Arena 0.16.0 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
-print("Mirrored GLB arm flexion and character motion regression tests verified.")
+print("NPC roster regression tests verified: three CC0 bodies, material-name skin palettes and authored locomotion.")
+print("Archived jade mannequin retained for provenance only; it is excluded from runtime character loading.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")

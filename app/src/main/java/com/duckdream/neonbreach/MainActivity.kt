@@ -843,10 +843,18 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         style = Paint.Style.STROKE
         strokeWidth = 3.2f
     }
+    private val riverBankPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(225, 129, 111, 76)
+        style = Paint.Style.FILL
+    }
+    private val riverShallowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(242, 42, 143, 151)
+        style = Paint.Style.FILL
+    }
     private val riverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(205, 55, 122, 147)
+        color = Color.argb(235, 126, 214, 199)
         style = Paint.Style.STROKE
-        strokeWidth = 5.5f
+        strokeWidth = 1.6f
     }
     private val blueTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(104, 183, 226)
@@ -880,6 +888,10 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         color = Color.rgb(216, 183, 101)
         style = Paint.Style.FILL
     }
+    private val campAlertPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.rgb(238, 118, 76)
+        style = Paint.Style.FILL
+    }
     private val objectivePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(247, 215, 120)
         style = Paint.Style.STROKE
@@ -896,13 +908,9 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         invalidate()
     }
 
-    private fun laneX(lane: Int, z: Float): Float {
-        val bend = kotlin.math.sin((z + 4f) * 0.105f) * 1.15f
-        return when (lane) {
-            0 -> -14.2f + bend
-            1 -> 0.5f + kotlin.math.sin(z * 0.12f) * 0.72f
-            else -> 14.2f - bend * 0.82f
-        }
+    private fun laneX(lane: Int, worldZ: Float): Float {
+        val scale = ArenaMapDefinition.WORLD_SCALE
+        return ArenaMapDefinition.laneCenterX(lane, worldZ / scale) * scale
     }
 
     override fun onDraw(canvas: Canvas) {
@@ -913,32 +921,57 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         val bottom = height - 4f
         canvas.drawRoundRect(left, top, right, bottom, 10f, 10f, backgroundPaint)
 
-        fun px(x: Float): Float = left + 8f + (x + 34f) / 68f * (right - left - 16f)
-        fun py(z: Float): Float = top + 8f + (30f - z) / 60f * (bottom - top - 16f)
+        val mapScale = ArenaMapDefinition.WORLD_SCALE
+        val halfX = ArenaMapDefinition.HALF_EXTENT_X * mapScale
+        val halfZ = ArenaMapDefinition.HALF_EXTENT_Z * mapScale
+        fun px(x: Float): Float = left + 8f + (x + halfX) / (2f * halfX) * (right - left - 16f)
+        fun py(z: Float): Float = top + 8f + (halfZ - z) / (2f * halfZ) * (bottom - top - 16f)
 
-        // Three distinct, curved lanes.
+        // Three distinct lanes sampled from the same canonical map as gameplay.
         for (lane in 0..2) {
             val line = Path()
             for (step in 0..30) {
-                val z = -30f + step * 2f
-                val x = px(laneX(lane, z))
-                val y = py(z)
+                val rawZ = -31f + step * (62f / 30f)
+                val worldZ = rawZ * mapScale
+                val x = px(laneX(lane, worldZ))
+                val y = py(worldZ)
                 if (step == 0) line.moveTo(x, y) else line.lineTo(x, y)
             }
             canvas.drawPath(line, lanePaint)
         }
 
-        // The river links both jungles and the three lane crossings.
+        // Winding channel silhouette: warm banks, shallow turquoise shelf and a bright current line.
+        fun riverOutline(extraWidth: Float): Path {
+            val leftBank = ArrayList<Pair<Float, Float>>(ArenaMapDefinition.riverCenterline.size)
+            val rightBank = ArrayList<Pair<Float, Float>>(ArenaMapDefinition.riverCenterline.size)
+            val points = ArenaMapDefinition.riverCenterline
+            points.forEachIndexed { index, point ->
+                val before = points[(index - 1).coerceAtLeast(0)]
+                val after = points[(index + 1).coerceAtMost(points.lastIndex)]
+                val dx = after.x - before.x
+                val dz = after.z - before.z
+                val length = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.0001f)
+                val sideX = -dz / length
+                val sideZ = dx / length
+                val halfWidth = (point.halfWidth + extraWidth) * mapScale
+                leftBank += px(point.x + sideX * halfWidth) to py(point.z + sideZ * halfWidth)
+                rightBank += px(point.x - sideX * halfWidth) to py(point.z - sideZ * halfWidth)
+            }
+            return Path().apply {
+                leftBank.forEachIndexed { index, point ->
+                    if (index == 0) moveTo(point.first, point.second) else lineTo(point.first, point.second)
+                }
+                rightBank.asReversed().forEach { point -> lineTo(point.first, point.second) }
+                close()
+            }
+        }
+        canvas.drawPath(riverOutline(0.86f), riverBankPaint)
+        canvas.drawPath(riverOutline(0f), riverShallowPaint)
         val river = Path()
-        val riverPoints = arrayOf(
-            floatArrayOf(-34f, 1.1f), floatArrayOf(-28f, 0.55f), floatArrayOf(-21f, 0.05f),
-            floatArrayOf(-15f, -0.45f), floatArrayOf(-9f, -0.22f), floatArrayOf(-3f, 0.25f),
-            floatArrayOf(4f, 0.38f), floatArrayOf(10f, 0.02f), floatArrayOf(16f, -0.38f),
-            floatArrayOf(23f, -0.18f), floatArrayOf(29f, 0.22f), floatArrayOf(34f, 0.8f)
-        )
-        riverPoints.forEachIndexed { index, point ->
-            if (index == 0) river.moveTo(px(point[0]), py(point[1]))
-            else river.lineTo(px(point[0]), py(point[1]))
+        ArenaMapDefinition.riverCenterline.forEachIndexed { index, point ->
+            val x = px(point.x * mapScale)
+            val z = py(point.z * mapScale)
+            if (index == 0) river.moveTo(x, z) else river.lineTo(x, z)
         }
         canvas.drawPath(river, riverPaint)
 
@@ -952,7 +985,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
                             0 -> 8f
                             1 -> 15f
                             else -> 22f
-                        }
+                        } * mapScale
                         val x = laneX(lane, z)
                         val alive = snapshot[107 + index] > 0f
                         val paint = if (!alive) destroyedTowerPaint else if (team == 0) blueTowerPaint else redTowerPaint
@@ -962,19 +995,26 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
             }
 
             // Neutral camps appear only while their creatures are alive.
-            val campPositions = arrayOf(
-                floatArrayOf(-8.2f, -14.5f), floatArrayOf(8.2f, -14.5f),
-                floatArrayOf(-20.2f, -10f), floatArrayOf(20.2f, -10f),
-                floatArrayOf(-8.2f, 14.5f), floatArrayOf(8.2f, 14.5f),
-                floatArrayOf(-20.2f, 10f), floatArrayOf(20.2f, 10f)
-            )
-            campPositions.forEachIndexed { index, point ->
-                if (snapshot[270 + index] > 0f) canvas.drawCircle(px(point[0]), py(point[1]), 2.4f, campPaint)
+            ArenaMapDefinition.camps.forEachIndexed { index, camp ->
+                if (snapshot[270 + index] > 0f) {
+                    val paint = if (snapshot[312 + index] > 0f) campAlertPaint else campPaint
+                    canvas.drawCircle(
+                        px(camp.position.x * mapScale), py(camp.position.z * mapScale),
+                        2.4f, paint
+                    )
+                }
             }
 
             // River objective pits have a distinct marker when active.
-            if (snapshot[104] > 0f) canvas.drawCircle(px(-7f), py(0.2f), 5f, objectivePaint)
-            if (snapshot[106] > 0f) canvas.drawCircle(px(7f), py(0.2f), 5f, objectivePaint)
+            ArenaMapDefinition.objectives.forEachIndexed { index, objective ->
+                val healthIndex = if (index == 0) 104 else 106
+                if (snapshot[healthIndex] > 0f) {
+                    canvas.drawCircle(
+                        px(objective.position.x * mapScale), py(objective.position.z * mapScale),
+                        5f, objectivePaint
+                    )
+                }
+            }
 
             // Minion waves and team units.
             for (index in 0 until 48) {

@@ -5,6 +5,9 @@
 #include <cstddef>
 #include <mutex>
 #include "ArenaPhysics.h"
+#include "ArenaMapDefinition.h"
+#include "ArenaNavigation.h"
+#include "ArenaCampCombat.h"
 
 namespace {
 struct Vec2 { float x; float z; };
@@ -36,6 +39,9 @@ struct NeutralCamp {
     Vec2 position{};
     float health = 180.0f;
     float respawnTime = 0.0f;
+    float attackCooldown = 0.0f;
+    float attackPulse = 0.0f;
+    float aggroTime = 0.0f;
     int kind = 0;
 };
 constexpr int kBotCount = 9;
@@ -66,7 +72,7 @@ std::array<float, 2> gTeamKills{{0.0f, 0.0f}};
 std::array<float, 2> gTeamGold{{500.0f, 500.0f}};
 std::array<float, 2> gTeamXp{{0.0f, 0.0f}};
 std::array<float, 2> gTeamSiegeBuff{};
-Vec2 gPlayerPosition{-14.0f, -25.0f};
+Vec2 gPlayerPosition{-14.0f * arena_map::kWorldScale, -25.0f * arena_map::kWorldScale};
 Vec2 gPlayerVelocity{};
 Vec2 gLastMove{0.0f, 1.0f};
 Vec2 gDashDirection{0.0f, 1.0f};
@@ -114,14 +120,11 @@ Vec2 normalized(Vec2 v) {
     return {v.x / d, v.z / d};
 }
 float terrainHeight(float x, float z) { return arena_physics::terrainHeight(x, z); }
-float laneCenterX(int lane, float z) {
-    const float bend = std::sin((z + 4.0f) * 0.105f) * 1.15f;
-    if (lane == 0) return -14.2f + bend;
-    if (lane == 1) return 0.5f + std::sin(z * 0.12f) * 0.72f;
-    return 14.2f - bend * 0.82f;
+float laneCenterX(int lane, float worldZ) {
+    return arena_map::laneCenterX(lane, worldZ / arena_map::kWorldScale) * arena_map::kWorldScale;
 }
-Vec2 lanePoint(int lane, float z, float offset = 0.0f) {
-    return {laneCenterX(lane, z) + offset, z};
+Vec2 lanePoint(int lane, float worldZ, float offset = 0.0f) {
+    return {laneCenterX(lane, worldZ) + offset * arena_map::kWorldScale, worldZ};
 }
 int laneForPosition(Vec2 p) {
     int best = 0;
@@ -134,11 +137,6 @@ int laneForPosition(Vec2 p) {
 }
 int towerIndex(int team, int lane, int tier) {
     return team * 9 + lane * 3 + tier;
-}
-float towerZ(int team, int tier) {
-    // Tier 0 is the outer tower closest to the river; tier 2 protects the core.
-    const float z = tier == 0 ? 8.0f : (tier == 1 ? 15.0f : 22.0f);
-    return team == 0 ? -z : z;
 }
 int activeTowerTier(int defendingTeam, int lane) {
     for (int tier = 0; tier < 3; ++tier) {
@@ -154,18 +152,23 @@ bool anyLaneOpen(int defendingTeam) {
     return false;
 }
 Vec2 towerPosition(int team, int lane, int tier) {
-    return lanePoint(lane, towerZ(team, tier));
+    const arena_map::Point point = arena_map::towerPosition(team, lane, tier);
+    return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
 }
-Vec2 corePosition(int team) { return {0.0f, team == 0 ? -27.2f : 27.2f}; }
+Vec2 corePosition(int team) { return {0.0f, (team == 0 ? -27.2f : 27.2f) * arena_map::kWorldScale}; }
 Vec2 campPosition(int index) {
-    static constexpr std::array<Vec2, kCampCount> positions{{
-        {-8.2f, -14.5f}, {8.2f, -14.5f}, {-20.2f, -10.0f}, {20.2f, -10.0f},
-        {-8.2f, 14.5f}, {8.2f, 14.5f}, {-20.2f, 10.0f}, {20.2f, 10.0f}
-    }};
-    return positions[static_cast<std::size_t>(index)];
+    const arena_map::Point point = arena_map::kCampPositions[static_cast<std::size_t>(index)];
+    return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
+}
+Vec2 campEntryPosition(int index, float side) {
+    Vec2 position = campPosition(index);
+    // Spawn outside the guardian's body collider and the camp's inner ring.
+    position.x += side * 3.6f * arena_map::kWorldScale;
+    return position;
 }
 Vec2 objectivePosition(int objective) {
-    return objective == 0 ? Vec2{-7.0f, 0.2f} : Vec2{7.0f, 0.2f};
+    const arena_map::Point point = arena_map::kObjectivePositions[static_cast<std::size_t>(objective)];
+    return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
 }
 int playerRole() {
     if (gPlayerSelectedHero == 1) return 0; // Bastion: solo lane
@@ -194,12 +197,12 @@ void awardTeam(int team, float gold, float xp) {
     }
 }
 void resetBot(Bot &bot, int index) {
-    const float homeZ = bot.team == 0 ? -25.0f : 25.0f;
+    const float homeZ = (bot.team == 0 ? -25.0f : 25.0f) * arena_map::kWorldScale;
     if (bot.role == 1) {
-        bot.position = bot.team == 0 ? Vec2{-8.2f, -14.5f} : Vec2{8.2f, 14.5f};
+        bot.position = campEntryPosition(bot.team == 0 ? 0 : 5, bot.team == 0 ? -1.0f : 1.0f);
     } else {
         const int lane = bot.lane;
-        const float z = homeZ + (bot.team == 0 ? 2.0f : -2.0f);
+        const float z = homeZ + (bot.team == 0 ? 2.0f : -2.0f) * arena_map::kWorldScale;
         const float lateral = bot.role == 4 ? 1.5f : -0.8f;
         bot.position = lanePoint(lane, z, lateral);
     }
@@ -215,7 +218,7 @@ void spawnLaneUnit(LaneUnit &unit, int team, int lane, int slot, int waveGroup) 
     unit.lane = lane;
     unit.slot = slot;
     unit.waveGroup = waveGroup;
-    const float z = team == 0 ? -28.0f - waveGroup * 1.35f : 28.0f + waveGroup * 1.35f;
+    const float z = (team == 0 ? -28.0f - waveGroup * 1.35f : 28.0f + waveGroup * 1.35f) * arena_map::kWorldScale;
     const float side = slot == 0 ? -0.86f : (slot == 1 ? 0.0f : (slot == 2 ? 0.86f : 1.45f));
     unit.position = lanePoint(lane, z, side);
     unit.velocity = {0.0f, 0.0f};
@@ -230,6 +233,9 @@ void initializeCamps() {
         camp.position = campPosition(i);
         camp.health = 180.0f + (i % 2) * 45.0f;
         camp.respawnTime = 0.0f;
+        camp.attackCooldown = 0.0f;
+        camp.attackPulse = 0.0f;
+        camp.aggroTime = 0.0f;
         camp.kind = i % 2;
     }
 }
@@ -284,8 +290,8 @@ void resetSimulation() {
     gElapsed = 0.0f;
     gSimulationAccumulator = 0.0f;
     gPlayerSelectedHero = std::clamp(gPlayerSelectedHero, 0, 2);
-    gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f) :
-                      (playerRole() == 1 ? Vec2{-8.2f, -14.5f} : lanePoint(2, -25.0f, 1.8f));
+    gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f * arena_map::kWorldScale) :
+                      (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
     gPlayerVelocity = {0.0f, 0.0f};
     gLastMove = {0.0f, 1.0f};
     gDashDirection = {0.0f, 1.0f};
@@ -356,6 +362,13 @@ void moveActor(Vec2 &position, Vec2 &velocity, Vec2 target, float speed,
     arena_physics::move(body, desired.x, desired.z, dt, 18.0f, 25.0f, 41.0f);
     position = {body.x, body.z};
     velocity = {body.vx, body.vz};
+}
+
+void moveActorOnMap(Vec2 &position, Vec2 &velocity, Vec2 target, float speed, float dt,
+                    float radius = 0.38f) {
+    const arena_navigation::Vec2 waypoint = arena_navigation::nextWaypoint(
+        {position.x, position.z}, {target.x, target.z});
+    moveActor(position, velocity, {waypoint.x, waypoint.z}, speed, dt, radius);
 }
 int nearestEnemyBot(Vec2 position, int team, float range) {
     int target = -1;
@@ -429,6 +442,8 @@ void damageCamp(int campIndex, int sourceTeam, float damage) {
     camp.health = std::max(0.0f, camp.health - damage);
     if (camp.health <= 0.0f) {
         camp.respawnTime = camp.kind == 0 ? 54.0f : 72.0f;
+        camp.attackPulse = 0.0f;
+        camp.aggroTime = 0.0f;
         awardTeam(sourceTeam, camp.kind == 0 ? 90.0f : 130.0f,
                   camp.kind == 0 ? 70.0f : 95.0f);
     }
@@ -474,10 +489,70 @@ void updateObjectives(float dt) {
     for (float &buff : gTeamSiegeBuff) buff = std::max(0.0f, buff - dt);
 }
 void updateCamps(float dt) {
+    const float scale = arena_map::kWorldScale;
     for (NeutralCamp &camp : gCamps) {
-        if (camp.health > 0.0f) continue;
-        camp.respawnTime = std::max(0.0f, camp.respawnTime - dt);
-        if (camp.respawnTime <= 0.0f) camp.health = camp.kind == 0 ? 180.0f : 225.0f;
+        camp.attackPulse = std::max(0.0f, camp.attackPulse - dt);
+        camp.aggroTime = std::max(0.0f, camp.aggroTime - dt);
+        if (camp.health <= 0.0f) {
+            camp.respawnTime = std::max(0.0f, camp.respawnTime - dt);
+            if (camp.respawnTime <= 0.0f) {
+                camp.health = camp.kind == 0 ? 180.0f : 225.0f;
+                camp.attackCooldown = 0.0f;
+                camp.attackPulse = 0.0f;
+                camp.aggroTime = 0.0f;
+            }
+            continue;
+        }
+
+        camp.attackCooldown = std::max(0.0f, camp.attackCooldown - dt);
+        const float aggroRadius = 12.0f * scale;
+        const float leashRadius = 10.0f * scale;
+        const float attackRange = (camp.kind == 0 ? 2.45f : 2.85f) * scale;
+        float nearestDistance = aggroRadius;
+        bool targetPlayer = false;
+        int targetBot = -1;
+
+        if (gPlayerHealth > 0.0f && gPlayerRespawnTime <= 0.0f) {
+            const float d = distance(camp.position, gPlayerPosition);
+            if (d < nearestDistance && arena_camp::canAggro(
+                    camp.health, d, aggroRadius, leashRadius)) {
+                nearestDistance = d;
+                targetPlayer = true;
+                targetBot = -1;
+            }
+        }
+
+        for (int index = 0; index < kBotCount; ++index) {
+            const Bot &bot = gBots[static_cast<std::size_t>(index)];
+            if (bot.health <= 0.0f || bot.disabled > 0.0f) continue;
+            const float d = distance(camp.position, bot.position);
+            if (d < nearestDistance && arena_camp::canAggro(
+                    camp.health, d, aggroRadius, leashRadius)) {
+                nearestDistance = d;
+                targetPlayer = false;
+                targetBot = index;
+            }
+        }
+
+        if (nearestDistance < aggroRadius) {
+            camp.aggroTime = 0.8f;
+            if (arena_camp::canStrike(camp.health, camp.attackCooldown,
+                    nearestDistance, attackRange, leashRadius)) {
+                const float damage = camp.kind == 0 ? 8.0f : 11.5f;
+                if (targetPlayer) {
+                    gPlayerHealth = std::max(0.0f, gPlayerHealth - playerDamageTaken(damage));
+                } else if (targetBot >= 0) {
+                    Bot &target = gBots[static_cast<std::size_t>(targetBot)];
+                    target.health = std::max(0.0f, target.health - damage);
+                    if (target.health <= 0.0f) {
+                        target.disabled = 5.0f;
+                        target.velocity = {0.0f, 0.0f};
+                    }
+                }
+                camp.attackCooldown = camp.kind == 0 ? 1.35f : 1.55f;
+                camp.attackPulse = 0.52f;
+            }
+        }
     }
 }
 void updatePlayerTimers(float dt) {
@@ -500,14 +575,15 @@ void updatePlayerTimers(float dt) {
         gPlayerVelocity = {0.0f, 0.0f};
         if (gPlayerRespawnTime <= 0.0f) {
             gPlayerHealth = gPlayerMaxHealth;
-            gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f) :
-                              (playerRole() == 1 ? Vec2{-8.2f, -14.5f} : lanePoint(2, -25.0f, 1.8f));
+            gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f * arena_map::kWorldScale) :
+                              (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
             gPlayerDisrupted = 0.9f;
         }
     }
     if (!wasRespawning && gPlayerDisrupted <= 0.0f) {
         // Home fountain restores health while the hero is inside the protected base.
-        if (gPlayerPosition.z < -25.0f && gPlayerPosition.x > -6.0f && gPlayerPosition.x < 6.0f) {
+        if (gPlayerPosition.z < -25.0f * arena_map::kWorldScale &&
+            gPlayerPosition.x > -6.0f * arena_map::kWorldScale && gPlayerPosition.x < 6.0f * arena_map::kWorldScale) {
             gPlayerHealth = std::min(gPlayerMaxHealth, gPlayerHealth + 18.0f * dt);
         }
     }
@@ -705,7 +781,7 @@ void updateBots(float dt) {
             int camp = nearestCamp(bot.position, bot.team, 18.0f);
             if (camp >= 0) {
                 NeutralCamp &target = gCamps[static_cast<std::size_t>(camp)];
-                if (distance(bot.position, target.position) > 2.5f) moveActor(bot.position, bot.velocity, target.position, kBotSpeed * 1.05f, dt);
+                if (distance(bot.position, target.position) > 2.5f) moveActorOnMap(bot.position, bot.velocity, target.position, kBotSpeed * 1.05f, dt);
                 else if (bot.attackCooldown <= 0.0f) {
                     damageCamp(camp, bot.team, 32.0f);
                     bot.attackCooldown = 0.95f;
@@ -714,38 +790,42 @@ void updateBots(float dt) {
             }
             // The jungler rotates toward a contested neutral objective before returning to camps.
             if ((gObjectiveOneHealth > 0.0f || gObjectiveTwoHealth > 0.0f) && bot.thinkCooldown <= 0.0f) {
-                const Vec2 objective = gObjectiveTwoHealth > 0.0f ? objectivePosition(1) : objectivePosition(0);
-                if (distance(bot.position, objective) > 2.7f) moveActor(bot.position, bot.velocity, objective, kBotSpeed, dt);
+                const int preferredObjective = bot.team == 0 ? 0 : 1;
+                const int fallbackObjective = 1 - preferredObjective;
+                const bool preferredAlive = preferredObjective == 0
+                    ? gObjectiveOneHealth > 0.0f : gObjectiveTwoHealth > 0.0f;
+                const int objectiveIndex = preferredAlive ? preferredObjective : fallbackObjective;
+                const Vec2 objective = objectivePosition(objectiveIndex);
+                if (distance(bot.position, objective) > 2.7f) moveActorOnMap(bot.position, bot.velocity, objective, kBotSpeed, dt);
                 else if (bot.attackCooldown <= 0.0f) {
-                    if (gObjectiveTwoHealth > 0.0f) damageObjective(1, bot.team, 27.0f);
-                    else damageObjective(0, bot.team, 22.0f);
+                    damageObjective(objectiveIndex, bot.team, objectiveIndex == 0 ? 22.0f : 27.0f);
                     bot.attackCooldown = 1.0f;
                 }
             } else {
                 bot.thinkCooldown = 1.2f;
                 const int desiredLane = (laneForPosition(bot.position) + 1) % 3;
                 const int tier = activeTowerTier(1 - bot.team, desiredLane);
-                const Vec2 target = tier >= 0 ? lanePoint(desiredLane, bot.team == 0 ? 2.0f : -2.0f)
+                const Vec2 target = tier >= 0 ? lanePoint(desiredLane, (bot.team == 0 ? 2.0f : -2.0f) * arena_map::kWorldScale)
                                                 : corePosition(1 - bot.team);
-                moveActor(bot.position, bot.velocity, target, kBotSpeed, dt);
+                moveActorOnMap(bot.position, bot.velocity, target, kBotSpeed, dt);
             }
             continue;
         }
         const int lane = bot.lane;
         // Lane roles follow their own wave front and rotate only to nearby contests.
-        float frontZ = bot.team == 0 ? -24.0f : 24.0f;
+        float frontZ = (bot.team == 0 ? -24.0f : 24.0f) * arena_map::kWorldScale;
         for (const LaneUnit &unit : gLaneUnits) {
             if (unit.team == bot.team && unit.lane == lane && unit.health > 0.0f) {
                 if (bot.team == 0) frontZ = std::max(frontZ, unit.position.z);
                 else frontZ = std::min(frontZ, unit.position.z);
             }
         }
-        frontZ += bot.team == 0 ? 2.5f : -2.5f;
+        frontZ += (bot.team == 0 ? 2.5f : -2.5f) * arena_map::kWorldScale;
         const int defendingTeam = 1 - bot.team;
         const int tier = activeTowerTier(defendingTeam, lane);
         const Vec2 laneGoal = tier >= 0 ? lanePoint(lane, frontZ, bot.role == 4 ? 1.7f : -0.6f)
                                         : corePosition(defendingTeam);
-        moveActor(bot.position, bot.velocity, laneGoal, kBotSpeed * (bot.role == 3 ? 1.02f : 0.92f), dt);
+        moveActorOnMap(bot.position, bot.velocity, laneGoal, kBotSpeed * (bot.role == 3 ? 1.02f : 0.92f), dt);
         if (tier >= 0 && distance(bot.position, towerPosition(defendingTeam, lane, tier)) <= 4.4f &&
             friendlyMinionSupports(bot.team, lane, towerPosition(defendingTeam, lane, tier), 7.2f) &&
             bot.attackCooldown <= 0.0f) {
@@ -1121,6 +1201,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
     for (int i = 0; i < kCampCount; ++i) {
         values[static_cast<std::size_t>(270 + i)] = gCamps[static_cast<std::size_t>(i)].health;
         values[static_cast<std::size_t>(278 + i)] = gCamps[static_cast<std::size_t>(i)].respawnTime;
+        values[static_cast<std::size_t>(312 + i)] = gCamps[static_cast<std::size_t>(i)].attackPulse;
     }
     values[286] = static_cast<float>(gItemCounts[0]);
     values[287] = static_cast<float>(gItemCounts[1]);
