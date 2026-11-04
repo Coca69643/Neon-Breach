@@ -537,21 +537,21 @@ internal object WorldGlbBuilder {
                 align(bin);uo=bin.size();ub=floatBytes(p.uv);bin.write(ub)
             }
             if(views.isNotEmpty())views.append(',')
-            views.append("{\"buffer\":0,\"byteOffset\":$po,\"byteLength\":\${pb.size},\"target\":34962}")
-            views.append(",{\"buffer\":0,\"byteOffset\":$no,\"byteLength\":\${nb.size},\"target\":34962}")
-            views.append(",{\"buffer\":0,\"byteOffset\":$io,\"byteLength\":\${ib.size},\"target\":34963}")
-            if (hasUv) views.append(",{\"buffer\":0,\"byteOffset\":$uo,\"byteLength\":\${ub.size},\"target\":34962}")
+            views.append("{\"buffer\":0,\"byteOffset\":$po,\"byteLength\":${pb.size},\"target\":34962}")
+            views.append(",{\"buffer\":0,\"byteOffset\":$no,\"byteLength\":${nb.size},\"target\":34962}")
+            views.append(",{\"buffer\":0,\"byteOffset\":$io,\"byteLength\":${ib.size},\"target\":34963}")
+            if (hasUv) views.append(",{\"buffer\":0,\"byteOffset\":$uo,\"byteLength\":${ub.size},\"target\":34962}")
             val xs=p.p.filterIndexed{i,_->i%3==0};val ys=p.p.filterIndexed{i,_->i%3==1};val zs=p.p.filterIndexed{i,_->i%3==2}
             val mn=listOf(xs.minOrNull()?:0f,ys.minOrNull()?:0f,zs.minOrNull()?:0f)
             val mx=listOf(xs.maxOrNull()?:0f,ys.maxOrNull()?:0f,zs.maxOrNull()?:0f)
             if(accessors.isNotEmpty())accessors.append(',')
-            accessors.append("{\"bufferView\":$vi,\"componentType\":5126,\"count\":\${p.p.size/3},\"type\":\"VEC3\",\"min\":[\${mn.joinToString()}],\"max\":[\${mx.joinToString()}]}")
-            accessors.append(",{\"bufferView\":\${vi+1},\"componentType\":5126,\"count\":\${p.n.size/3},\"type\":\"VEC3\"}")
-            accessors.append(",{\"bufferView\":\${vi+2},\"componentType\":5125,\"count\":\${p.ix.size},\"type\":\"SCALAR\"}")
-            if (hasUv) accessors.append(",{\"bufferView\":\${vi+3},\"componentType\":5126,\"count\":\${p.uv.size/2},\"type\":\"VEC2\"}")
+            accessors.append("{\"bufferView\":$vi,\"componentType\":5126,\"count\":${p.p.size/3},\"type\":\"VEC3\",\"min\":[${mn.joinToString()}],\"max\":[${mx.joinToString()}]}")
+            accessors.append(",{\"bufferView\":${vi+1},\"componentType\":5126,\"count\":${p.n.size/3},\"type\":\"VEC3\"}")
+            accessors.append(",{\"bufferView\":${vi+2},\"componentType\":5125,\"count\":${p.ix.size},\"type\":\"SCALAR\"}")
+            if (hasUv) accessors.append(",{\"bufferView\":${vi+3},\"componentType\":5126,\"count\":${p.uv.size/2},\"type\":\"VEC2\"}")
             if(meshes.isNotEmpty())meshes.append(',')
-            val uvAttribute = if (hasUv) ",\"TEXCOORD_0\":\${ai+3}" else ""
-            meshes.append("{\"name\":\"" + p.name + "\",\"primitives\":[{\"attributes\":{\"POSITION\":$ai,\"NORMAL\":\${ai+1}$uvAttribute},\"indices\":\${ai+2},\"material\":\${p.material}}]}")
+            val uvAttribute = if (hasUv) ",\"TEXCOORD_0\":${ai+3}" else ""
+            meshes.append("{\"name\":\"" + p.name + "\",\"primitives\":[{\"attributes\":{\"POSITION\":$ai,\"NORMAL\":${ai+1}$uvAttribute},\"indices\":${ai+2},\"material\":${p.material}}]}")
             if(nodes.isNotEmpty())nodes.append(',')
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi += if (hasUv) 4 else 3
@@ -565,23 +565,23 @@ internal object WorldGlbBuilder {
                 val offset = bin.size()
                 bin.write(image)
                 if (views.isNotEmpty()) views.append(',')
-                views.append("{\"buffer\":0,\"byteOffset\":$offset,\"byteLength\":\${image.size}}")
+                views.append("{\"buffer\":0,\"byteOffset\":$offset,\"byteLength\":${image.size}}")
                 imageViews.add(vi++)
             }
         }
         val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Ruined masonry","Objective shrine","Surrounding water","River shallows","River sandbanks","Water shimmer")
         val colors=listOf(
-            listOf(0.13f,0.17f,0.075f,1f),
-            listOf(0.19f,0.24f,0.10f,1f),
-            listOf(0.06f,0.095f,0.045f,1f),
+            listOf(0.96f,1.0f,0.88f,1f),
+            listOf(1.0f,1.0f,0.90f,1f),
+            listOf(0.88f,0.96f,0.78f,1f),
             listOf(0.30f,0.245f,0.17f,1f),
             listOf(0.13f,0.11f,0.075f,1f),
             listOf(0.035f,0.22f,0.27f,1f),
             listOf(0.105f,0.10f,0.085f,1f),
             listOf(0.07f,0.39f,0.72f,1f),
             listOf(0.72f,0.50f,0.12f,1f),
-            listOf(0.26f,0.16f,0.085f,1f),
-            listOf(0.24f,0.245f,0.22f,1f),
+            listOf(1.0f,0.98f,0.92f,1f),
+            listOf(1.0f,1.0f,1.0f,1f),
             listOf(0.18f,0.15f,0.10f,1f),
             listOf(0.26f,0.22f,0.15f,1f),
             listOf(0.07f,0.11f,0.05f,1f),
@@ -597,9 +597,9 @@ internal object WorldGlbBuilder {
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.22f;17->0.30f;19->0.18f;7,8->0.42f;else->0.88f}
             val textureSlot = when(i){0,1->0;2->1;9->2;10->3;else->-1}
-            val pbr = "{\"baseColorFactor\":[\${colors[i].joinToString()}],\"metallicFactor\":0.0,\"roughnessFactor\":$roughness" +
+            val pbr = "{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.0,\"roughnessFactor\":$roughness" +
                 (if (terrainTextures != null && textureSlot >= 0) ",\"baseColorTexture\":{\"index\":$textureSlot}" else "") + "}"
-            val normal = if (terrainTextures != null && textureSlot >= 0) ",\"normalTexture\":{\"index\":\${textureSlot + 4},\"scale\":0.68}" else ""
+            val normal = if (terrainTextures != null && textureSlot >= 0) ",\"normalTexture\":{\"index\":${textureSlot + 4},\"scale\":0.68}" else ""
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":$pbr$normal}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
@@ -608,14 +608,14 @@ internal object WorldGlbBuilder {
             val names = listOf("grass_albedo","moss_albedo","soil_albedo","rock_albedo",
                 "grass_normal","moss_normal","soil_normal","rock_normal")
             "\"images\":[" + names.mapIndexed { index, imageName ->
-                "{\"name\":\"$imageName\",\"bufferView\":\${imageViews[index]},\"mimeType\":\"image/png\"}"
+                "{\"name\":\"$imageName\",\"bufferView\":${imageViews[index]},\"mimeType\":\"image/png\"}"
             }.joinToString(",") + "],"
         }
         val texturesJson = if (terrainTextures == null) "" else {
             "\"textures\":[" + (0..7).joinToString(",") { index -> "{\"sampler\":0,\"source\":$index}" } + "]," +
                 "\"samplers\":[{\"magFilter\":9729,\"minFilter\":9987,\"wrapS\":10497,\"wrapT\":10497}],"
         }
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.16"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],$imagesJson$texturesJson"buffers":[{"byteLength":\${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.16"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],$imagesJson$texturesJson"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
