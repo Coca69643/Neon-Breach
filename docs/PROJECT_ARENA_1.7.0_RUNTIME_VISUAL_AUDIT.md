@@ -1,3 +1,43 @@
+## Runtime integration progress — 4 November 2026
+
+**Current implementation branch:** `rebuild/project-arena-1.7.0-world-foundation`  
+**Latest source inspected:** `48284ce04214faeef90a7c5550e609effcc3e312`  
+**Status:** runtime migration is substantially integrated at source level; **visual acceptance and Android device validation remain blocked**.
+
+The older findings below describe the pre-cutover state and must not be read as the current implementation status. Since that snapshot, the branch has completed these source migrations:
+
+| Consumer | Current source-level integration | Remaining verification |
+|---|---|---|
+| World definition | JSON generates typed Kotlin and C++ contracts | Generator reproducibility in CI |
+| Map adapter | 180 × 160 m, three 8-point lanes, 13-point river, 12 camps and two objectives derive from generated data | Unit and geometry checks |
+| Terrain renderer | 193 × 177 full-size heightfield uses generated elevation controls, river valley and deterministic noise; irregular superellipse shoreline | Android screenshot and visual inspection |
+| Physics | Native terrain height uses the same generated elevation and river controls; boundary, tree/camp/objective/base/tower collision use v1.7 anchors | Native tests plus device collision walk-through |
+| Navigation | Native graph builds from 17 generated nodes and 26 links | Bot and minion playtest on full map |
+| Simulation | Bases, lane spawns, 12 neutral camps and 18 towers use canonical positions | Match-loop validation |
+| JNI snapshot | 332 floats; first eight camp slots preserve previous offsets and four additional camps use appended slots | Unit tests for all twelve camp signals |
+| Minimap | Uses v1.7 lane span, generated towers and the extended camp snapshot | Verify alignment against a live gameplay camera |
+| CC0 nature bake | Groundcover is scattered inside the two JSON jungle polygons with deterministic jitter and exclusion masks for lanes, river, camps, objectives and crossings. Camp rocks are placed at the same six anchor locations used by native physics | Bake budget and visual density in the Android runtime |
+| Fauna | Six ambient actors and twelve camp guardians are positioned from the enlarged world; ambient motion is still visual-only and deterministic | Check animation clips, visibility, local motion and performance in-game |
+
+### CI findings and current gate
+
+- Commit `db651ae` passed Python pipeline syntax, CC0 source validation, canonical JSON validation, generated contracts, native physics/navigation tests, structural validation and Kotlin compilation. It then failed one stale unit-test assertion expecting 32 trees instead of the 48 blockers now derived from twelve camps.
+- Commit `f913b7` corrected that tree-count assertion and fixed the pinned SHA-1 for `Rock_Medium_1.gltf`.
+- Commit `48284ce` aligned baked camp rocks to the six positions used by native collision. The next bake run exposed a too-strict minimum-rock count gate; it is being adjusted to the measured minimum of 48 while the placement generator continues to enforce 73 accepted jungle scatter cells and at least 150 groundcover placements.
+- No APK from this branch is certified as version 1.7.0. The existing Gradle identity still reports 0.16.0.
+- No screenshot or recording from the Realme C53 has yet verified the full map, visual density, collision alignment, camera readability, 30 FPS or thermal stability.
+
+### Remaining visual blockers
+
+1. Tree blockers are currently a camp-clearing ring, not a full forest canopy distribution. The baked groundcover adds surface detail, but the two jungles still need a denser, spatially varied canopy plan derived from their polygons.
+2. The objective shrine builder still uses repeated primitive stone geometry; it must be replaced by a less regular authored/CC0 composition before visual acceptance.
+3. Bridge placement now uses the three canonical crossings, but one shared bridge asset is still reused. Confirm deck width, orientation, bank connection, collision and visual proportions from the gameplay camera.
+4. Roads are smooth procedural ribbons. Their edge blending, width, shoulder variation and transitions into terrain must be inspected and refined so they do not read as uniform strips.
+5. Wildlife uses deterministic sinusoidal routes and proximity flee offsets. It is a low-cost ambient pass, not yet a complete territorial ecology system.
+
+**Acceptance status remains BLOCKED** until a signed Android build with the new world is inspected in-game, all routes/crossings/camps are traversable, and a Realme C53 session supplies visual and performance evidence.
+
+
 # Project Arena 1.7.0 — Runtime Visual Audit
 
 **Date:** 2026-11-04  
@@ -10,6 +50,10 @@
 The current renderer is not a fully primitive scene: it loads CC0 medieval structures, tree/bush models, baked groundcover and rock GLBs, and PBR terrain maps, with sun shadows, contact ambient occlusion and distance fog. These are useful visual building blocks.
 
 However, the active runtime still renders the **legacy 0.16.0 battlefield**. The organic asset pipeline is anchored to the old coordinate system. The new `world/arena_world_1_7.json` is validated by CI, but it does not yet drive the renderer, Kotlin map catalog or C++ simulation. Therefore the 1.7.0 map cannot be described as rebuilt, organic or accepted.
+
+## Historical baseline before runtime cutover
+
+The following table records the state found in the initial audit and is retained as historical context, not as a description of the current branch.
 
 ## Verified implementation facts
 

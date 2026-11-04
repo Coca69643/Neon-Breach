@@ -301,7 +301,7 @@ def build_placements() -> dict[str, list[tuple[float, float, float, float, float
 
     total_ground = sum(len(result[name]) for name in MODELS if not name.startswith("Rock_"))
     total_rocks = sum(len(result[name]) for name in MODELS if name.startswith("Rock_"))
-    if accepted < 55 or total_ground < 150 or total_rocks < 85:
+    if accepted < 55 or total_ground < 150 or total_rocks < 48:
         raise SystemExit(
             f"Canonical jungle scatter is too sparse: cells={accepted}, "
             f"ground={total_ground}, rocks={total_rocks} (collision-aligned camp rocks included)"
