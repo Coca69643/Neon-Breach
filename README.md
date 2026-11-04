@@ -4,6 +4,7 @@ MOBA 3D nativo para Android, com partidas 5v5 offline contra IA. Inclui três ro
 
 ## Log de atualizações
 
+- **1.7.0 (reconstrução do campo + hotfix de assets)** — Corrigido URI do buffer do modelo KayKit `fence_wood`; CI agora verifica os 12 modelos carregados e todos os seus recursos externos. Build de manutenção versionCode 171.
 - **1.7.0 (reconstrução do campo)** — Campo aberto com bolsões de selva localizados; pontos ambientais CC0 posicionados por geração procedural offline; paleta própria da Lyra e equipamentos visuais por função nos minions; referências do GLB do mundo corrigidas e cobertas por teste estrutural; pacote Android alinhado à versão 1.7.0.
 - **0.16.0 (base anterior)** — Personagens CC0, NPCs com três corpos, animações Idle/Walk/Run, terreno PBR, vegetação e iluminação ambiental.
 - **0.15.12** — Corrigida a orientação dos três heróis e aplicadas paletas de materiais individuais.
