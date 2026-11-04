@@ -583,7 +583,8 @@ internal object WorldGlbBuilder {
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
-        parts.forEachIndexed { index,p ->
+        var emittedMeshCount = 0
+        parts.forEachIndexed { _, p ->
             if(p.ix.isEmpty()) return@forEachIndexed
             align(bin);val po=bin.size();val pb=floatBytes(p.p);bin.write(pb)
             align(bin);val no=bin.size();val nb=floatBytes(p.n);bin.write(nb)
@@ -611,9 +612,10 @@ internal object WorldGlbBuilder {
             val uvAttribute = if (hasUv) ",\"TEXCOORD_0\":${ai+3}" else ""
             meshes.append("{\"name\":\"" + p.name + "\",\"primitives\":[{\"attributes\":{\"POSITION\":$ai,\"NORMAL\":${ai+1}$uvAttribute},\"indices\":${ai+2},\"material\":${p.material}}]}")
             if(nodes.isNotEmpty())nodes.append(',')
-            nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
+            nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + emittedMeshCount + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi += if (hasUv) 4 else 3
             ai += if (hasUv) 4 else 3
+            emittedMeshCount += 1
         }
         val imageViews = ArrayList<Int>()
         if (terrainTextures != null) {
@@ -661,7 +663,7 @@ internal object WorldGlbBuilder {
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":$pbr$normal}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
-        val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
+        val nodeIds=(0 until emittedMeshCount).joinToString(",")
         val imagesJson = if (terrainTextures == null) "" else {
             val names = listOf("grass_albedo","moss_albedo","soil_albedo","rock_albedo",
                 "grass_normal","moss_normal","soil_normal","rock_normal")
@@ -673,7 +675,7 @@ internal object WorldGlbBuilder {
             "\"textures\":[" + (0..7).joinToString(",") { index -> "{\"sampler\":0,\"source\":$index}" } + "]," +
                 "\"samplers\":[{\"magFilter\":9729,\"minFilter\":9987,\"wrapS\":10497,\"wrapT\":10497}],"
         }
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.16"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],$imagesJson$texturesJson"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-1.7.0"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],$imagesJson$texturesJson"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
