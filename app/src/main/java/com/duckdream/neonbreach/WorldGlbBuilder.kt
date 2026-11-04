@@ -36,9 +36,11 @@ internal object WorldGlbBuilder {
         val southHighland = 1.55f * exp(-((z + 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
         val northHighland = 1.55f * exp(-((z - 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
         val jungleKnolls = 0.78f * exp(-((abs(x) - 8.5f).pow(2)) / 8.5f) * exp(-((abs(z) - 14f).pow(2)) / 42f)
-        val riverDistance = abs(z - riverCenterZ(x))
-        val riverBed = -0.58f * exp(-(riverDistance * riverDistance) / 8.5f)
-        val riverBank = 0.72f * exp(-((riverDistance - 2.55f).pow(2)) / 1.9f)
+        val riverDistance = abs(z - ArenaMapDefinition.riverCenterZ(x))
+        val riverHalfWidth = ArenaMapDefinition.riverHalfWidth(x)
+        val riverBed = -0.76f * exp(-(riverDistance * riverDistance) / (riverHalfWidth * riverHalfWidth * 0.82f))
+        val bankDistance = riverDistance - (riverHalfWidth + 0.66f)
+        val riverBank = 0.48f * exp(-(bankDistance * bankDistance) / 2.4f)
         val rolling = 0.26f*sin(x*0.18f)*cos(z*0.14f)+0.16f*sin((x+z)*0.29f)
         val shelf = 0.52f * exp(-((abs(x) - 18.5f).pow(2)) / 5.5f) * exp(-((abs(z) - 13f).pow(2)) / 110f)
         return rolling + westRidge + eastRidge + southHighland + northHighland +
@@ -176,24 +178,6 @@ internal object WorldGlbBuilder {
         return radius <= edge
     }
 
-    private val riverProfile = arrayOf(
-        floatArrayOf(-34f,1.1f), floatArrayOf(-28f,0.55f), floatArrayOf(-21f,0.05f),
-        floatArrayOf(-15f,-0.45f), floatArrayOf(-9f,-0.22f), floatArrayOf(-3f,0.25f),
-        floatArrayOf(4f,0.38f), floatArrayOf(10f,0.02f), floatArrayOf(16f,-0.38f),
-        floatArrayOf(23f,-0.18f), floatArrayOf(29f,0.22f), floatArrayOf(34f,0.8f)
-    )
-
-    private fun riverCenterZ(x: Float): Float {
-        val points = riverProfile
-        for (i in 0 until points.lastIndex) {
-            if (x <= points[i + 1][0]) {
-                val t = ((x - points[i][0]) / (points[i + 1][0] - points[i][0])).coerceIn(0f, 1f)
-                return points[i][1] + (points[i + 1][1] - points[i][1]) * t
-            }
-        }
-        return points.last()[1]
-    }
-
     private fun terrainMesh() {
         val steps = 136
         val size = 76f
@@ -208,8 +192,9 @@ internal object WorldGlbBuilder {
                 val cx = (x0 + x1) * 0.5f
                 val cz = (z0 + z1) * 0.5f
                 if (!insideIsland(cx, cz)) continue
-                // Carve a river bed into the terrain; water is no longer hidden below the meadow mesh.
-                if (abs(cz - riverCenterZ(cx)) < 2.05f && abs(cx) < 33.5f) continue
+                // Reserve a continuous channel plus its sloped banks for layered river geometry.
+                if (abs(cz - ArenaMapDefinition.riverCenterZ(cx)) <
+                    ArenaMapDefinition.riverHalfWidth(cx) + 0.82f && abs(cx) < 34.2f) continue
                 val noise = sin(cx * 0.43f + cz * 0.17f) + cos(cz * 0.31f - cx * 0.12f)
                 val part = when {
                     abs(cx) > 17f && abs(cz) < 23f && noise > -0.25f -> rock
@@ -278,7 +263,7 @@ internal object WorldGlbBuilder {
         }
     }
 
-    private fun ribbon(p: Part, points: List<FloatArray>, width: Float, lift: Float) {
+    private fun ribbon(p: Part, points: List<FloatArray>, width: Float, lift: Float, segments: Int = 180) {
         fun sample(t: Float): FloatArray {
             val f = t.coerceIn(0f, 0.99999f) * (points.size - 1)
             val i = floor(f).toInt()
@@ -298,8 +283,8 @@ internal object WorldGlbBuilder {
         }
         var previousLeft: FloatArray? = null
         var previousRight: FloatArray? = null
-        for (i in 0..180) {
-            val t = i / 180f
+        for (i in 0..segments) {
+            val t = i / segments.toFloat()
             val center = sample(t)
             val before = sample((t - 0.003f).coerceAtLeast(0f))
             val after = sample((t + 0.003f).coerceAtMost(1f))
@@ -316,6 +301,108 @@ internal object WorldGlbBuilder {
             }
             previousLeft = left
             previousRight = right
+        }
+    }
+
+    private fun buildRiverChannel(
+        water: Part,
+        shallows: Part,
+        sandbanks: Part,
+        centerline: List<ArenaMapDefinition.RiverPoint>
+    ) {
+        fun sample(t: Float): FloatArray {
+            val f = t.coerceIn(0f, 0.99999f) * (centerline.size - 1)
+            val index = floor(f).toInt()
+            val u = f - index
+            val p0 = centerline[(index - 1).coerceAtLeast(0)]
+            val p1 = centerline[index]
+            val p2 = centerline[(index + 1).coerceAtMost(centerline.lastIndex)]
+            val p3 = centerline[(index + 2).coerceAtMost(centerline.lastIndex)]
+            fun cat(a: Float, b: Float, c: Float, d: Float): Float =
+                0.5f * ((2f * b) + (-a + c) * u +
+                    (2f * a - 5f * b + 4f * c - d) * u * u +
+                    (-a + 3f * b - 3f * c + d) * u * u * u)
+            return floatArrayOf(
+                cat(p0.x, p1.x, p2.x, p3.x),
+                cat(p0.z, p1.z, p2.z, p3.z),
+                cat(p0.halfWidth, p1.halfWidth, p2.halfWidth, p3.halfWidth).coerceIn(0.68f, 2.0f)
+            )
+        }
+
+        var previousWaterLeft: FloatArray? = null
+        var previousWaterRight: FloatArray? = null
+        var previousShallowLeftInner: FloatArray? = null
+        var previousShallowLeftOuter: FloatArray? = null
+        var previousShallowRightInner: FloatArray? = null
+        var previousShallowRightOuter: FloatArray? = null
+        var previousBankLeftInner: FloatArray? = null
+        var previousBankLeftOuter: FloatArray? = null
+        var previousBankRightInner: FloatArray? = null
+        var previousBankRightOuter: FloatArray? = null
+
+        fun addBand(part: Part, previousInner: FloatArray, inner: FloatArray,
+                    previousOuter: FloatArray, outer: FloatArray) {
+            triUp(part, previousInner, inner, outer)
+            triUp(part, previousInner, outer, previousOuter)
+        }
+
+        for (index in 0..180) {
+            val t = index / 180f
+            val center = sample(t)
+            val before = sample((t - 0.003f).coerceAtLeast(0f))
+            val after = sample((t + 0.003f).coerceAtMost(1f))
+            val dx = after[0] - before[0]
+            val dz = after[1] - before[1]
+            val tangentLength = sqrt(dx * dx + dz * dz).coerceAtLeast(0.0001f)
+            val sideX = -dz / tangentLength
+            val sideZ = dx / tangentLength
+            val x = center[0]
+            val z = center[1]
+            val width = center[2]
+            val surfaceY = h(x, z) + 0.54f +
+                0.014f * sin(x * 0.53f + z * 1.7f) +
+                0.009f * cos(x * 0.81f - z * 2.2f)
+
+            fun waterEdge(offset: Float, ripple: Float): FloatArray =
+                floatArrayOf(x + sideX * offset, surfaceY + ripple, z + sideZ * offset)
+            fun bankEdge(offset: Float): FloatArray {
+                val px = x + sideX * offset
+                val pz = z + sideZ * offset
+                return floatArrayOf(px, h(px, pz) + 0.025f, pz)
+            }
+
+            val waterLeft = waterEdge(width, 0f)
+            val waterRight = waterEdge(-width, 0f)
+            val shallowInnerLeft = waterEdge(width * 0.68f, 0.012f)
+            val shallowOuterLeft = waterEdge(width, 0.012f)
+            val shallowInnerRight = waterEdge(-width * 0.68f, 0.012f)
+            val shallowOuterRight = waterEdge(-width, 0.012f)
+            val bankInnerLeft = bankEdge(width + 0.025f)
+            val bankOuterLeft = bankEdge(width + 0.82f)
+            val bankInnerRight = bankEdge(-width - 0.025f)
+            val bankOuterRight = bankEdge(-width - 0.82f)
+
+            if (previousWaterLeft != null && previousWaterRight != null) {
+                quad(water, previousWaterLeft!!, waterLeft, previousWaterRight!!, waterRight)
+                addBand(shallows, previousShallowInnerLeft!!, shallowInnerLeft,
+                    previousShallowOuterLeft!!, shallowOuterLeft)
+                addBand(shallows, previousShallowInnerRight!!, shallowInnerRight,
+                    previousShallowOuterRight!!, shallowOuterRight)
+                addBand(sandbanks, previousBankInnerLeft!!, bankInnerLeft,
+                    previousBankOuterLeft!!, bankOuterLeft)
+                addBand(sandbanks, previousBankInnerRight!!, bankInnerRight,
+                    previousBankOuterRight!!, bankOuterRight)
+            }
+            previousWaterLeft = waterLeft
+            previousWaterRight = waterRight
+            previousShallowInnerLeft = shallowInnerLeft
+            previousShallowOuterLeft = shallowOuterLeft
+            previousShallowInnerRight = shallowInnerRight
+            previousShallowOuterRight = shallowOuterRight
+            previousBankInnerLeft = bankInnerLeft
+            previousBankOuterLeft = bankOuterLeft
+            previousBankInnerRight = bankInnerRight
+            previousBankOuterRight = bankOuterRight
         }
     }
 
@@ -439,6 +526,9 @@ internal object WorldGlbBuilder {
         val mushroomStems=part("camp_mushroom_stems",22)
         val mushroomCaps=part("camp_mushroom_caps",23)
         val fallenTimber=part("fallen_timber",24)
+        val riverShallows=part("river_shallows",25)
+        val riverSandbanks=part("river_sandbanks",26)
+        val riverGlints=part("river_flow_glints",27)
         terrainMesh()
         ringMesh(pulse,0.88f,1.08f)
         ringMesh(shield,0.98f,1.15f)
@@ -457,11 +547,36 @@ internal object WorldGlbBuilder {
         ribbon(earth,listOf(floatArrayOf(-7f,2f),floatArrayOf(-9.1f,8f),floatArrayOf(-8.2f,14.5f),floatArrayOf(-8.8f,20f),floatArrayOf(-8.2f,27f)),0.62f,0.095f)
         ribbon(earth,listOf(floatArrayOf(7f,2f),floatArrayOf(9.1f,8f),floatArrayOf(8.2f,14.5f),floatArrayOf(8.8f,20f),floatArrayOf(8.2f,27f)),0.62f,0.095f)
 
-        val river = ArenaMapDefinition.riverCenterline.map { point ->
+        buildRiverChannel(water, riverShallows, riverSandbanks, ArenaMapDefinition.riverCenterline)
+
+        // Short broken glints communicate flow without making another uniform stripe.
+        val riverGlintPath = ArenaMapDefinition.riverCenterline.map { point ->
             floatArrayOf(point.x, point.z)
         }
-        ribbon(water,river,1.72f,0.10f)
-        ribbon(earth,river,2.18f,0.035f)
+        ribbon(riverGlints, riverGlintPath.subList(1, 4), 0.034f, 0.60f, 42)
+        ribbon(riverGlints, riverGlintPath.subList(5, 8), 0.028f, 0.59f, 42)
+        ribbon(riverGlints, riverGlintPath.subList(8, 11), 0.038f, 0.60f, 42)
+
+        // Three low shoals break the silhouette and add scale to the shallow channel.
+        groundDisc(riverSandbanks, -21.0f, 0.10f, 0.78f, 0.34f, 0.70f)
+        groundDisc(riverSandbanks, 4.1f, 0.18f, 0.68f, 0.31f, 0.70f)
+        groundDisc(riverSandbanks, 23.0f, -0.15f, 0.72f, 0.33f, 0.70f)
+
+        // A few water-worn stones and reed clumps are batched into existing parts.
+        val riverStoneAnchors = listOf(
+            -29.2f to -1.35f, -25.4f to 1.65f, -20.2f to -1.95f,
+            -10.5f to 2.1f, -7.2f to -2.35f, -1.0f to 2.28f,
+            5.5f to -2.30f, 11.9f to 2.05f, 17.7f to -2.1f,
+            22.0f to 2.18f, 28.5f to -1.45f
+        )
+        riverStoneAnchors.forEachIndexed { index, anchor ->
+            boulder(boulderField, anchor.first, ArenaMapDefinition.riverCenterZ(anchor.first) + anchor.second,
+                0.28f + (index % 3) * 0.045f, 0.18f, 0.24f, index * 0.71f)
+        }
+        listOf(-26f to -2.0f, -8f to 2.5f, 6f to -2.5f, 25f to 2.1f).forEachIndexed { index, anchor ->
+            fern(fernLeaves, anchor.first, ArenaMapDefinition.riverCenterZ(anchor.first) + anchor.second,
+                0.68f, index * 0.9f)
+        }
 
         // Forest clearings, camps and river sanctuaries are modeled as world geometry.
         ArenaMapDefinition.camps.forEachIndexed { index, camp ->
@@ -575,7 +690,7 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water","Fern foliage","Flower stems","Wildflower petals","Mushroom stems","Mushroom caps","Fallen timber")
+        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water","Fern foliage","Flower stems","Wildflower petals","Mushroom stems","Mushroom caps","Fallen timber","River shallows","River sandbanks","Water shimmer")
         val colors=listOf(
             listOf(0.13f,0.17f,0.075f,1f),
             listOf(0.19f,0.24f,0.10f,1f),
@@ -601,12 +716,15 @@ internal object WorldGlbBuilder {
             listOf(0.92f,0.62f,0.17f,1f),
             listOf(0.78f,0.68f,0.52f,1f),
             listOf(0.68f,0.21f,0.15f,1f),
-            listOf(0.30f,0.19f,0.10f,1f))
-        check(names.size == colors.size && parts.size == names.size) {
+            listOf(0.30f,0.19f,0.10f,1f),
+            listOf(0.075f,0.36f,0.39f,1f),
+            listOf(0.48f,0.36f,0.22f,1f),
+            listOf(0.40f,0.78f,0.72f,1f))
+        check(names.size == colors.size && parts.size == names.size && parts.size == 28) {
             "World GLB palette mismatch: parts=${parts.size}, names=${names.size}, colors=${colors.size}"
         }
         val materials=names.mapIndexed{i,name->
-            val roughness=when(i){5->0.34f;7,8->0.42f;else->0.88f}
+            val roughness=when(i){5->0.22f;25->0.30f;27->0.18f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
