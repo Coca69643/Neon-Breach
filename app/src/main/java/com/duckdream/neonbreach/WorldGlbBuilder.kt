@@ -555,7 +555,7 @@ internal object WorldGlbBuilder {
             "World GLB terrain palette mismatch: parts=" + parts.size + ", names=" + names.size + ", colors=" + colors.size
         }
         val materials=names.mapIndexed{i,name->
-            val roughness=when(i){5->0.22f;25->0.30f;27->0.18f;7,8->0.42f;else->0.88f}
+            val roughness=when(i){5->0.22f;17->0.30f;19->0.18f;7,8->0.42f;else->0.88f}
             "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
