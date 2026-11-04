@@ -37,7 +37,7 @@
 - Source pack: https://quaternius.com/packs/universalbasecharacters.html
 - Source file: programasweights/avatar/public/assets/character.glb
 - License: CC0 1.0 Universal; archived at ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt.
-- The asset is a rigged humanoid base. The project applies original unarmed idle/locomotion poses through TransformManager and updates the skinned bone matrices with Filament's Animator.
+- Legacy archived asset only. Its single jade material and mannequin-like silhouette are no longer used by the runtime player, bots or minions. It remains checked for source integrity and license provenance.
 
 ### Quaternius — Ultimate Animated Animal Pack (CC0)
 - Official pack: https://quaternius.com/packs/ultimateanimatedanimals.html
@@ -84,4 +84,6 @@
 
 - Quaternius models: Woman Casual (Lyra), Man in Long Sleeves (Bastion), Woman in Tank Top (Kairo).
 - Provenance, exact hashes, CC0 links and locomotion clips are listed in `app/src/main/assets/heroes/README.md` and `cc0-manifest.json`.
-- These meshes are separate from the legacy shared rig for bots and lane units.
+- Runtime roster: Lyra, Bastion and Kairo provide the player bodies, 9 AI hero instances and 48 lane-minion instances. Instances share the three static CC0 mesh/animation assets; each receives its own material instances and selected Idle/Walk/Run clip.
+- NPC team palette changes only named clothing materials (Shirt/Pants); Skin, Hair, HairBase and Eyes remain natural per model. Lane minions cycle three distinct bodies with role-based proportions.
+- The older jade humanoid asset is retained only as an archived source reference and is not loaded by the renderer.

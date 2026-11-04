@@ -37,6 +37,7 @@ gear_tests = read("app/src/test/java/com/duckdream/neonbreach/HeroGearGlbBuilder
 world_tests = read("app/src/test/java/com/duckdream/neonbreach/WorldGlbBuilderTest.kt")
 pose_tests = read("app/src/test/java/com/duckdream/neonbreach/HumanoidRigPoseTest.kt")
 life_catalog = read("app/src/main/java/com/duckdream/neonbreach/ArenaLifeCatalog.kt")
+npc_catalog = read("app/src/main/java/com/duckdream/neonbreach/NpcVisualCatalog.kt")
 life_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaLifeCatalogTest.kt")
 life_fetch = read("tools/fetch_cc0_life_assets.py")
 hero_catalog = read("app/src/main/java/com/duckdream/neonbreach/HeroModelCatalog.kt")
@@ -141,8 +142,10 @@ checks = [
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
      "renderer.updateMenuPresentation(dt)" in main and "renderer.render(frameTimeNanos)" in main and
      "if (state != AppState.MENU) renderer.render" not in main, "menu and hero selection must render the native 3D scene"),
-    ("captureHumanoidRig" in renderer and "getJointsAt(0)" in renderer and "fallbackJointIndices" in renderer,
-     "skinned humanoid joints must be resolved from the active skin"),
+    ("createNpcVisualsFromPlayableHeroes" in renderer and "loadPlayableHeroModels()" in renderer and
+     "quaternius-character.glb.b64" not in renderer and "NpcVisualCatalog.botModel" in renderer and
+     "NpcVisualCatalog.minionModel" in renderer,
+     "bots and minions must use the three rigged CC0 human bodies instead of the legacy jade mannequin"),
     ("HumanoidRigPose.lateralSign(name)" in renderer and
      "HumanoidRigPose.localFlexion(angle, bone.lateralSign)" in renderer and
      "HumanoidRigPose.FLEXION_AXIS" in renderer and
@@ -269,11 +272,24 @@ checks = [
     ("testTreeCollisionAndSliding" in physics_tests and "testStructureCollision" in physics_tests and "testCharacterSeparation" in physics_tests and "testBraking" in physics_tests, "physics regression tests missing"),
     ("testObstacleSteering" in physics_tests, "AI obstacle avoidance regression test missing"),
     ("Compile and run native physics tests" in workflow and "tests/arena_physics_tests.cpp" in workflow, "CI does not compile/run native physics tests"),
-    ("createHeroGear()" in renderer and "setParent(child, parent)" in renderer and "playerGearInstances" in renderer and "rebuildBotGearForHero()" in renderer, "articulated role equipment is not attached to the skeleton"),
+    ("applyNpcMaterialPalette" in renderer and "material.name" in renderer and
+     "HeroMaterialPalette.forNpc" in renderer and "colorForMaterial" in renderer and
+     "actor.animator.applyAnimation(clip, actor.animationClock)" in renderer and
+     "NpcVisualCatalog.locomotion" in renderer,
+     "NPCs need material-name palettes and authored idle/walk/run animation clips"),
+     ("minionModel(index)" in npc_catalog and "minionWidthFactor" in npc_catalog and
+     "minionHeightFactor" in npc_catalog and "MINION_RENDER_DISTANCE" in npc_catalog and
+     "minionRendered" in renderer and "minionRenderDistanceIsBoundedForMobileSceneBudget" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt") and
+     "botModel(index)" in npc_catalog and
+     "npcLocomotionSwitchesBetweenIdleWalkAndRun" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt"),
+     "bot/minion visual roster and locomotion regression tests are missing"),
     ("style=hero.coerceIn(0,4)" in gear and "Arcanist" in gear and "Ranger" in gear and "gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "five role-specific costume silhouettes missing"),
     ("generatedGearGlbHasValidContainerAndBoneParts" in gear_tests and "for (hero in 0..4)" in gear_tests and "remasteredTerrainHasReadableReliefAndWalkableGradients" in world_tests and "testDebugUnitTest" in workflow and "junit:junit:4.13.2" in gradle, "role GLB or terrain regression tests are not connected to CI"),
     ("terrainAlignedTransform" in renderer and "WorldGlbBuilder.normalAt" in renderer and "internal fun normalAt" in world, "character orientation is not aligned to terrain normals"),
-    ("botYawState" in renderer and "animatePose(rig[\"foot_l\"]" in renderer and "animatePose(rig[\"Head\"]" in renderer and "HumanoidRigPose.FLEXION_AXIS" in renderer and "localFlexion(angle, bone.lateralSign)" in renderer and "readyPose" in renderer, "NPC role gait or mirrored anatomical arm flexion missing"),
+    ("botYawState" in renderer and "animateNpc(actor, speed, dt" in renderer and
+     "NpcVisualCatalog.botRoleWidth" in renderer and "NpcVisualCatalog.minionWidthFactor" in renderer and
+     "actor.animator.updateBoneMatrices()" in renderer,
+     "AI hero and minion animation/role silhouettes are not driven by authored locomotion clips"),
     ("PhysicsWorld.cpp" not in cmake, "unused second physics implementation must remain disabled"),
 
     ("firstTowerInLane" not in native, "unused tower helper should not remain under -Werror"),
@@ -453,8 +469,8 @@ if not atlas.is_file() or atlas.stat().st_size < 1000:
     raise SystemExit("Shared KayKit texture atlas missing")
 if "private fun sphere(" in world or "private fun cylinder(" in world:
     raise SystemExit("Legacy procedural sphere/cylinder geometry remains")
-if "applyRestPose" not in renderer or "runtime.animator.updateBoneMatrices()" not in renderer:
-    raise SystemExit("Player skeletal skinning update missing")
+if "runtime.animator.applyAnimation" not in renderer or "actor.animator.updateBoneMatrices()" not in renderer:
+    raise SystemExit("Playable/NPC authored skeletal animation update missing")
 hero_assets = ROOT / "app/src/main/assets/heroes"
 hero_expected = {
     "lyra.glb": ("99c4df0aaabd19022809facc68f5fb5f564d35df3a9893c273a31fdaacf68e96", ["Female_Idle", "Female_Walk", "Female_Run"]),
@@ -477,16 +493,27 @@ for filename, (expected_hash, clips) in hero_expected.items():
     animation_names = [animation.get("name", "").split("|")[-1] for animation in model_data.get("animations", [])]
     if any(clip not in animation_names for clip in clips):
         raise SystemExit("Missing Idle/Walk/Run clip in " + filename + ": " + repr(animation_names))
+    expected_materials = {
+        "lyra.glb": {"shirt", "skin", "pants", "shoes", "socks", "hairbase", "hair", "eyes"},
+        "bastion.glb": {"shirt", "pants", "eyes", "skin", "hair"},
+        "kairo.glb": {"shirt", "skin", "pants", "shoes", "hairbase", "hair", "eyes"},
+    }
+    material_names = {
+        re.sub(r"[^a-z0-9]", "", material.get("name", "").lower())
+        for material in model_data.get("materials", [])
+    }
+    if material_names != expected_materials[filename]:
+        raise SystemExit("Playable hero material names do not match the runtime palette: " + filename + ": " + repr(material_names))
     for resource in model_data.get("buffers", []) + model_data.get("images", []):
         if resource.get("uri"):
             raise SystemExit("Playable hero has an external resource URI: " + filename)
 hero_manifest = json.loads((hero_assets / "cc0-manifest.json").read_text(encoding="utf-8"))
 if hero_manifest.get("license") != "CC0-1.0" or len(hero_manifest.get("models", [])) != 3:
     raise SystemExit("Three-model CC0 hero manifest is missing or incomplete")
-print("Three independent CC0 hero GLBs, SHA-256, skin and locomotion clips verified.")
+print("Three independent CC0 hero GLBs, SHA-256, named materials, skin and locomotion clips verified.")
 
 if not avatar.is_file() or avatar.stat().st_size < 500_000:
-    raise SystemExit("Quaternius CC0 humanoid GLB missing")
+    raise SystemExit("Archived Quaternius CC0 humanoid GLB missing")
 raw_model = base64.b64decode(avatar.read_text(encoding="ascii"))
 if raw_model[:4] != b"glTF":
     raise SystemExit("Playable humanoid asset is not a GLB file")
@@ -505,5 +532,6 @@ if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in mo
     raise SystemExit("Playable humanoid must retain its full skinned rig")
 print("Project Arena 0.15.12 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
-print("Mirrored GLB arm flexion and character motion regression tests verified.")
+print("NPC roster regression tests verified: three CC0 bodies, material-name skin palettes and authored locomotion.")
+print("Archived jade mannequin retained for provenance only; it is excluded from runtime character loading.")
 print("MOBA systems, illustrated HUB, role silhouettes, anatomical motion, sculpted terrain, synchronized physics and regression tests verified.")

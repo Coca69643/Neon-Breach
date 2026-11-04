@@ -2,6 +2,15 @@
 
 ## [0.16.0 — em desenvolvimento]
 
+### Personagens, bots e minions
+- Removido do runtime o humanoide monocromático "Matte jade" que era compartilhado por bots e minions.
+- Os três corpos humanos CC0 independentes (Lyra, Bastion e Kairo) agora alimentam o jogador, os 9 bots e os 48 minions por instâncias compartilhadas.
+- NPCs usam os clipes esqueléticos originais Idle/Walk/Run dos modelos; a T-pose procedural anterior foi substituída por animação autoral do pack CC0.
+- Minions recebem três silhuetas corporais, proporções de função e variação alternada do quarto papel por onda.
+- Materiais são associados pelo nome glTF (Shirt, Skin, Pants, Hair etc.); a cor de equipe afeta roupas, não pele/cabelo/rosto.
+- Paletas de Lyra, Bastion e Kairo ajustadas para tons de pele naturais e roupas com contraste legível.
+- Testes cobrem atribuição de materiais por nome, neutralidade da pele, variedade de corpos, proporções e seleção Idle/Walk/Run.
+
 ### Iluminação e profundidade ambiental
 - Ajustada a única luz solar direcional do Filament, com direção natural e cor levemente quente; sem fontes de luz extras.
 - Sombras PCF estáveis com mapa de 1024 px e uma cascata; estruturas, pontes, árvores e rochas projetam sombras no terreno.
