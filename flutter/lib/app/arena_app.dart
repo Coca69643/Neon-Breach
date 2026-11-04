@@ -259,7 +259,7 @@ class _ArenaScreen extends StatelessWidget {
                   ),
                   backgroundColor: selected
                       ? const Color(0x2679D6BD)
-                      : const Color(0x141FFFFFF),
+                      : const Color(0x1479D6BD),
                 ),
                 onPressed: () => onEvent(SelectHero(hero.$1)),
                 child: Column(
@@ -351,8 +351,6 @@ class _ArenaScreen extends StatelessWidget {
       description: snapshot.errorMessage ?? 'Erro não identificado.',
       actionLabel: 'TENTAR NOVAMENTE',
       onAction: onRetry,
-      secondaryLabel: 'MENU PRINCIPAL',
-      onSecondary: () => onEvent(const ReturnToMenu()),
     );
   }
 }
