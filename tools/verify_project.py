@@ -286,7 +286,7 @@ checks = [
     ("ArenaNatureCatalog.trees" in renderer and "ArenaNatureCatalog.bushes" in renderer and
      "nature_tree_oak" in renderer and "nature_tree_pine" in renderer and
      "nature_tree_broadleaf" in renderer and "nature_bush" in renderer and
-     "natureUsesThreeTreeSilhouettesAndSharedBushAsset" in read("app/src/test/java/com/duckdream/neonbreach/ArenaNatureCatalogTest.kt"),
+     "forestUsesThreeTreeSilhouettesAndSharedBushAsset" in read("app/src/test/java/com/duckdream/neonbreach/ArenaNatureCatalogTest.kt"),
      "CC0 tree and bush variation must replace the grouped procedural tree asset"),
         ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
      "deer" in life_catalog and "wolf" in life_catalog and "bird" in life_catalog and
