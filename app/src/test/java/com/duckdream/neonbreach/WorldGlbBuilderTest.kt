@@ -1,6 +1,7 @@
 package com.duckdream.neonbreach
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 import kotlin.math.sqrt
@@ -48,24 +49,26 @@ class WorldGlbBuilderTest {
     }
 
     @Test
-    fun worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover() {
+    fun terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters() {
         val bytes = WorldGlbBuilder.build()
         val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         assertEquals(0x46546c67, glb.getInt(0))
         assertEquals(2, glb.getInt(4))
         assertEquals(bytes.size, glb.getInt(8))
         val jsonLength = glb.getInt(12)
-        assertTrue(jsonLength > 0)
         val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
         listOf(
             "fern_leaves", "meadow_flower_stems", "meadow_flower_petals",
             "camp_mushroom_stems", "camp_mushroom_caps", "fallen_timber",
-            "Neutral camp markers", "Forest soil", "River water",
-            "river_shallows", "river_sandbanks", "river_flow_glints",
-            "River shallows", "River sandbanks", "Water shimmer"
+            "field_boulders", "undergrowth"
         ).forEach { name ->
-            assertTrue("Missing world GLB part/material: $name", json.contains(name))
+            assertFalse("Procedural nature must be moved to baked textured GLBs: $name", json.contains(name))
         }
-        assertTrue("World GLB should have the expanded 28-material palette", json.contains("Water shimmer"))
+        listOf(
+            "Neutral camp markers", "Forest soil", "Objective shrine",
+            "River water", "River shallows", "River sandbanks", "Water shimmer"
+        ).forEach { name -> assertTrue("Missing gameplay/environment layer: $name", json.contains(name)) }
+        assertEquals("Terrain GLB must retain only its 20 terrain/gameplay materials", 20,
+            "\"pbrMetallicRoughness\"".toRegex().findAll(json).count())
     }
 }
