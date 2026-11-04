@@ -271,12 +271,20 @@ def build_placements() -> dict[str, list[tuple[float, float, float, float, float
 
     # Objective debris remains asymmetric and readable from the lane entrances.
     rocks: list[tuple[str, float, float, float, float, float]] = []
+    # The six visible camp rocks share the exact positions used by native collision.
+    # This prevents the familiar "looks solid but can be walked through" mismatch.
     for index, (x, z) in enumerate(CAMPS):
-        for slot in range(3):
-            angle = index * 0.31 + slot * (2.0 * math.pi / 3.0)
+        for slot in range(6):
+            angle = index * 0.27 + slot * (2.0 * math.pi / 6.0)
             model = "Rock_Medium_1" if (index + slot) % 2 == 0 else "Rock_Medium_2"
-            rocks.append((model, x + math.cos(angle) * 3.7, z + math.sin(angle) * 3.0,
-                          0.30 + (slot % 2) * 0.045, angle, 0.045))
+            rocks.append((
+                model,
+                x + math.cos(angle) * 2.7,
+                z + math.sin(angle) * 2.15,
+                0.29 + (slot % 2) * 0.025,
+                angle,
+                0.045
+            ))
     for index, (x, z, radius) in enumerate(OBJECTIVES):
         for slot in range(6):
             angle = index * 0.19 + slot * (2.0 * math.pi / 6.0)
@@ -293,10 +301,10 @@ def build_placements() -> dict[str, list[tuple[float, float, float, float, float
 
     total_ground = sum(len(result[name]) for name in MODELS if not name.startswith("Rock_"))
     total_rocks = sum(len(result[name]) for name in MODELS if name.startswith("Rock_"))
-    if accepted < 55 or total_ground < 150 or total_rocks < 55:
+    if accepted < 55 or total_ground < 150 or total_rocks < 85:
         raise SystemExit(
             f"Canonical jungle scatter is too sparse: cells={accepted}, "
-            f"ground={total_ground}, rocks={total_rocks}"
+            f"ground={total_ground}, rocks={total_rocks} (collision-aligned camp rocks included)"
         )
     return result
 
