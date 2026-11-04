@@ -352,7 +352,7 @@ for filename, expected_blob in nature_expected.items():
         raise SystemExit("Missing pinned CC0 nature model: " + filename)
     encoded = path.read_text(encoding="ascii").strip()
     model_bytes = base64.b64decode("".join(encoded.split()), validate=True)
-    git_blob = hashlib.sha1((b"blob " + str(len(model_bytes)).encode("ascii") + b"\\0") + model_bytes).hexdigest()
+    git_blob = hashlib.sha1((b"blob " + str(len(model_bytes)).encode("ascii") + b"\0") + model_bytes).hexdigest()
     if git_blob != expected_blob:
         raise SystemExit("Pinned CC0 nature model Git blob SHA mismatch: " + filename)
     if model_bytes[:4] != b"glTF" or int.from_bytes(model_bytes[4:8], "little") != 2:
