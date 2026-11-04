@@ -1,3 +1,29 @@
+## Visual redesign and procedural points of interest — 4 November 2026
+
+**Active branch:** `rebuild/project-arena-1.7.0-world-foundation`
+
+### Source changes in this pass
+
+- Terrain bounds now fill the mainland rectangle. The old superellipse coastline, cliff rim and ocean moat geometry are removed.
+- Height envelope is reduced to `-1.6..7.5 m`; broad relief is `0.42 m`, detail relief `0.10 m`, and river valley depth `1.25 m`, specifically reducing the previous rolling-wave appearance.
+- Terrain classification uses packed earth and stone as the open-field baseline. Green surfaces are restricted to camp-adjacent jungle polygons; bright lane ribbons and river-glint ribbons are removed.
+- Localized vegetation now uses 24 trees around 12 neutral camps, plus baked CC0 groundcover inside the two jungle corridors. This replaces the prior 110-tree continuous canopy.
+- Lyra's shirt/pants palette is vermilion red and charcoal teal, with updated leather/hair accents and regression assertions.
+- Bots and all 48 minions now have humanoid rigs captured before source-asset release. Five existing bone-attached gear profiles are instantiated, with four role styles assigned to minions; gear follows minion visibility/culling/death.
+- Four seeded offline POIs use CC0 KayKit home/church, team flags and fence segments. Each site is placed with deterministic jitter and exclusion masks for lane routes, river, camp clearings, objectives, bases and map edges.
+
+### Acceptance gates still open
+
+- The latest CI run must pass after the current renderer, generator, verifier and unit-test commits.
+- The environment generator uses deterministic procedural rules authored during development. No neural inference or network connection runs inside the APK.
+- Three base humanoid models are still reused for minion bodies; distinct role gear overlays are a first visual pass, not a completely original minion species roster.
+- No current screenshot/recording proves that the new terrain, character palette, role gear and POIs are perceptually successful from the actual landscape camera.
+- The Gradle package identity remains 0.16.0. No 1.7.0 release or merge into `main` is included here.
+- Realme C53 frame-time, memory and thermal behavior are not yet measured.
+
+**Visual acceptance remains BLOCKED** until the latest CI is green and a gameplay capture confirms the open field, localized jungle routes, Lyra palette, four minion roles and four POIs are visible and readable.
+
+
 ## Runtime integration progress — 4 November 2026
 
 **Current implementation branch:** `rebuild/project-arena-1.7.0-world-foundation`  
