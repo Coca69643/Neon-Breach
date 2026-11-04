@@ -23,13 +23,13 @@ The older findings below describe the pre-cutover state and must not be read as 
 
 - Commit `db651ae` passed Python pipeline syntax, CC0 source validation, canonical JSON validation, generated contracts, native physics/navigation tests, structural validation and Kotlin compilation. It then failed one stale unit-test assertion expecting 32 trees instead of the 48 blockers now derived from twelve camps.
 - Commit `f913b7` corrected that tree-count assertion and fixed the pinned SHA-1 for `Rock_Medium_1.gltf`.
-- Commit `48284ce` aligned baked camp rocks to the six positions used by native collision. The next bake run exposed a too-strict minimum-rock count gate; it is being adjusted to the measured minimum of 48 while the placement generator continues to enforce 73 accepted jungle scatter cells and at least 150 groundcover placements.
+- Commit `48284ce` aligned baked camp rocks to the six positions used by native collision. The bake gate now accepts the measured minimum of 48 rock placements; camp rocks use the same six anchors as native physics. The generator continues to enforce at least 55 canopy anchors, 73 accepted groundcover scatter cells and 150 groundcover placements.
 - No APK from this branch is certified as version 1.7.0. The existing Gradle identity still reports 0.16.0.
 - No screenshot or recording from the Realme C53 has yet verified the full map, visual density, collision alignment, camera readability, 30 FPS or thermal stability.
 
 ### Remaining visual blockers
 
-1. Tree blockers are currently a camp-clearing ring, not a full forest canopy distribution. The baked groundcover adds surface detail, but the two jungles still need a denser, spatially varied canopy plan derived from their polygons.
+1. Canopy distribution now derives 62 deterministic anchors from both canonical jungle polygons, while 48 camp-approach trunks remain around neutral clearings. The same generated 110 positions feed tree rendering and native collision. Visual density, silhouettes and traversal comfort still require Android inspection.
 2. The objective shrine builder still uses repeated primitive stone geometry; it must be replaced by a less regular authored/CC0 composition before visual acceptance.
 3. Bridge placement now uses the three canonical crossings, but one shared bridge asset is still reused. Confirm deck width, orientation, bank connection, collision and visual proportions from the gameplay camera.
 4. Roads are smooth procedural ribbons. Their edge blending, width, shoulder variation and transitions into terrain must be inspected and refined so they do not read as uniform strips.

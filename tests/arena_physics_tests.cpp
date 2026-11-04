@@ -63,7 +63,8 @@ void testSharedArenaMapCatalog(){
  assert(arena_map::kWorldScale==1.0f&&arena_map::kHalfExtentX==90.0f&&arena_map::kHalfExtentZ==80.0f);
  assert(arena_map::kLanes.size()==3&&arena_map::kCampPositions.size()==12);
  assert(arena_map::kObjectivePositions.size()==2&&arena_map::kRiverCenterline.size()==13);
- assert(arena_map::kGroveCenters.size()==12&&arena_map::kTreeBlockers.size()==48);
+ assert(arena_map::kGroveCenters.size()==12&&arena_map::kTreeBlockers.size()==110);
+ assert(arena_world_17::kForestTreeAnchors.size()==62);
  float minimumRiverWidth=100.0f,maximumRiverWidth=0.0f;
  for(const auto &point:arena_map::kRiverCenterline){
   assert(std::abs(point.x)<arena_map::kHalfExtentX&&std::abs(point.z)<arena_map::kHalfExtentZ);
@@ -81,6 +82,7 @@ void testSharedArenaMapCatalog(){
  }
  for(const auto &camp:arena_map::kCampPositions)assert(std::abs(camp.x)<90.0f&&std::abs(camp.z)<80.0f);
  for(const auto &tree:arena_map::kTreeBlockers)assert(std::abs(tree.x)<90.0f&&std::abs(tree.z)<80.0f);
+ for(const auto &tree:arena_world_17::kForestTreeAnchors)assert(std::abs(tree.x)<90.0f&&std::abs(tree.z)<80.0f);
  for(int lane=0;lane<3;++lane)for(int tier=0;tier<3;++tier){
   const auto blue=arena_map::towerPosition(0,lane,tier),red=arena_map::towerPosition(1,lane,tier);
   assert(std::abs(arena_map::laneCenterX(lane,blue.z)-blue.x)<0.001f);

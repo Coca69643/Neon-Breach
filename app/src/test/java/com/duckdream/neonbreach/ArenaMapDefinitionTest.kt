@@ -15,7 +15,10 @@ class ArenaMapDefinitionTest {
         assertTrue(ArenaMapDefinition.lanes.all { it.points.size == 8 && it.width in 9.5f..10f })
         assertEquals(12, ArenaMapDefinition.camps.size)
         assertEquals(2, ArenaMapDefinition.objectives.size)
-        assertEquals(48, ArenaMapDefinition.treeBlockers.size)
+        assertEquals(110, ArenaMapDefinition.treeBlockers.size)
+        assertEquals(62, ArenaWorld17Generated.forestTreeAnchors.size)
+        assertTrue(ArenaWorld17Generated.forestTreeAnchors.count { it.x < 0f } >= 25)
+        assertTrue(ArenaWorld17Generated.forestTreeAnchors.count { it.x > 0f } >= 25)
         assertEquals(12, ArenaMapDefinition.groveCenters.size)
     }
 

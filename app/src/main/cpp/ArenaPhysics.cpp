@@ -17,7 +17,7 @@ struct Colliders {
     std::vector<Box> boxes;
     Colliders() {
         const float scale = arena_map::kWorldScale;
-        circles.reserve(180);
+        circles.reserve(256);
         for (const auto &tree : arena_map::kTreeBlockers) {
             circles.push_back({tree.x * scale, tree.z * scale, 0.78f});
         }

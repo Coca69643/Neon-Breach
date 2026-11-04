@@ -7,9 +7,10 @@ import org.junit.Test
 class ArenaNatureCatalogTest {
     @Test
     fun forestUsesThreeTreeSilhouettesAndSharedBushAsset() {
-        assertEquals(48, ArenaNatureCatalog.trees.size)
+        assertEquals(110, ArenaNatureCatalog.trees.size)
         assertEquals(12, ArenaNatureCatalog.bushes.size)
-        assertEquals(ArenaMapDefinition.camps.size * 4, ArenaNatureCatalog.trees.size)
+        assertEquals(62, ArenaWorld17Generated.forestTreeAnchors.size)
+        assertEquals(ArenaMapDefinition.treeBlockers.size, ArenaNatureCatalog.trees.size)
         assertEquals(setOf("nature_tree_oak", "nature_tree_pine", "nature_tree_broadleaf"),
             ArenaNatureCatalog.trees.map { it.model }.toSet())
         assertTrue(ArenaNatureCatalog.bushes.all { it.model == "nature_bush" })
