@@ -69,11 +69,13 @@ internal object ArenaMapDefinition {
         Point(-4.8f, -3.8f), Point(4.8f, -3.8f),
         Point(-4.8f, 3.8f), Point(4.8f, 3.8f)
     )
-    val treeBlockers = camps.flatMap { camp ->
+    private val campTreeBlockers = camps.flatMap { camp ->
         treeOffsets.map { offset ->
             Point(camp.position.x + offset.x, camp.position.z + offset.z)
         }
     }
+    val treeBlockers = campTreeBlockers +
+        ArenaWorld17Generated.forestTreeAnchors.map { Point(it.x, it.z) }
     val groveCenters = camps.map { it.position }
 
     fun laneCenterX(lane: Int, z: Float): Float {
@@ -128,7 +130,8 @@ internal object ArenaMapDefinition {
         require(riverCenterline.all { it.halfWidth in 4.5f..8.5f })
         require(camps.size == 12 && camps.map { it.id }.toSet().size == camps.size)
         require(objectives.size == 2)
-        require(treeBlockers.size == 48)
+        require(campTreeBlockers.size == 48 && ArenaWorld17Generated.forestTreeAnchors.size == 62)
+        require(treeBlockers.size == 110)
         require(WORLD_SCALE == 1f)
     }
 }

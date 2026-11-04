@@ -90,6 +90,70 @@ inline constexpr std::array<Camp, 12> kCamps{{
     {"east_camp_05", "east_jungle", Point{35.0f, 32.0f}, 2},
     {"east_camp_06", "east_jungle", Point{29.0f, 40.0f}, 1}
 }};
+inline constexpr std::array<Point, 62> kForestTreeAnchors{{
+    Point{44.319f, -20.989f},
+    Point{-27.794f, 26.761f},
+    Point{-33.263f, 9.536f},
+    Point{45.81f, 27.675f},
+    Point{39.349f, -32.452f},
+    Point{-45.033f, -44.196f},
+    Point{27.019f, -15.097f},
+    Point{20.552f, -38.902f},
+    Point{15.589f, -33.729f},
+    Point{-33.309f, 20.92f},
+    Point{-14.672f, -21.672f},
+    Point{26.333f, 27.688f},
+    Point{44.824f, 39.719f},
+    Point{20.945f, -21.282f},
+    Point{45.147f, 33.924f},
+    Point{15.114f, -26.21f},
+    Point{-21.064f, 33.6f},
+    Point{32.691f, -21.08f},
+    Point{-20.384f, -44.175f},
+    Point{-21.747f, -50.703f},
+    Point{38.082f, 39.438f},
+    Point{-21.055f, 20.718f},
+    Point{44.665f, -38.603f},
+    Point{-44.19f, -26.325f},
+    Point{-32.471f, -21.592f},
+    Point{-26.547f, -39.09f},
+    Point{-15.88f, -32.16f},
+    Point{-38.742f, 8.398f},
+    Point{20.964f, -15.15f},
+    Point{-38.606f, -27.434f},
+    Point{39.199f, 45.342f},
+    Point{38.2f, 14.128f},
+    Point{45.25f, 14.945f},
+    Point{27.672f, -50.315f},
+    Point{50.842f, 8.164f},
+    Point{-38.639f, 15.886f},
+    Point{21.386f, 33.829f},
+    Point{-14.241f, 15.685f},
+    Point{-38.801f, -44.658f},
+    Point{27.245f, -39.839f},
+    Point{33.722f, -14.402f},
+    Point{39.461f, -44.79f},
+    Point{-21.584f, 26.971f},
+    Point{-45.335f, 39.397f},
+    Point{-32.886f, -26.928f},
+    Point{21.839f, -44.723f},
+    Point{-45.624f, 15.596f},
+    Point{21.071f, 26.568f},
+    Point{-44.908f, 9.859f},
+    Point{-45.176f, -38.281f},
+    Point{-32.278f, 15.598f},
+    Point{33.044f, -27.335f},
+    Point{44.353f, 8.291f},
+    Point{-38.539f, 45.21f},
+    Point{-39.558f, 39.174f},
+    Point{-45.681f, 21.011f},
+    Point{33.529f, 20.408f},
+    Point{-44.853f, -32.076f},
+    Point{45.031f, 21.677f},
+    Point{27.105f, -21.12f},
+    Point{-26.895f, 20.88f},
+    Point{39.394f, 26.566f}
+}};
 inline constexpr std::array<Objective, 2> kObjectives{{
     {"west_neutral_objective", Point{-22.0f, -13.0f}, 7.0f},
     {"east_neutral_objective", Point{22.0f, 13.0f}, 7.0f}
@@ -146,5 +210,6 @@ static_assert(kLanes.size() == 3);
 static_assert(kCrossings.size() == 3);
 static_assert(kJungles.size() == 2);
 static_assert(kCamps.size() == 12);
+static_assert(kForestTreeAnchors.size() == 62);
 static_assert(kObjectives.size() == 2);
 } // namespace arena_world_17
