@@ -344,7 +344,7 @@ internal class FilamentGameRenderer(
             "tower_blue", "tower_red",
             "home_blue", "home_red",
             "church_blue", "church_red",
-            "bridge_a", "trees_a"
+            "bridge_a"
         )
         worldProvider = UbershaderProvider(engine)
         worldAssetLoader = AssetLoader(engine, worldProvider!!, EntityManager.get())
@@ -363,6 +363,24 @@ internal class FilamentGameRenderer(
                 }
             }
             worldResourceLoader!!.loadResources(asset)
+        }
+
+        val natureModels = listOf(
+            "nature_tree_oak" to "world/nature/tree_oak.glb.b64",
+            "nature_tree_pine" to "world/nature/tree_pine.glb.b64",
+            "nature_tree_broadleaf" to "world/nature/tree_broadleaf.glb.b64",
+            "nature_bush" to "world/nature/bush_common.glb.b64"
+        )
+        for ((name, path) in natureModels) {
+            val encoded = context.assets.open(path).bufferedReader().use { it.readText() }
+            val bytes = Base64.decode(encoded, Base64.DEFAULT)
+            val asset = worldAssetLoader!!.createAsset(ByteBuffer.wrap(bytes))
+                ?: throw IllegalStateException("Quaternius CC0 nature GLB failed to parse: $name")
+            check(asset.resourceUris.isEmpty()) {
+                "Nature model must be self-contained for offline packaging: $name"
+            }
+            worldResourceLoader!!.loadResources(asset)
+            worldAssets[name] = asset
         }
 
         val placements = buildList {
@@ -391,9 +409,13 @@ internal class FilamentGameRenderer(
                 val crossing = lane.points.minByOrNull { kotlin.math.abs(it.z) } ?: continue
                 add(WorldPlacement("bridge_a", crossing.x * mapScale, crossing.z * mapScale, 1.42f))
             }
-            ArenaMapDefinition.treeBlockers.forEachIndexed { index, point ->
-                val scale = 1.48f + (index % 4) * 0.12f
-                add(WorldPlacement("trees_a", point.x * mapScale, point.z * mapScale, scale, (index * 0.73f) % 6.28f))
+            ArenaNatureCatalog.trees.forEach { tree ->
+                add(WorldPlacement(tree.model, tree.x * mapScale, tree.z * mapScale,
+                    tree.scale, tree.yaw))
+            }
+            ArenaNatureCatalog.bushes.forEach { bush ->
+                add(WorldPlacement("nature_bush", bush.x * mapScale, bush.z * mapScale,
+                    bush.scale, bush.yaw))
             }
         }
 
