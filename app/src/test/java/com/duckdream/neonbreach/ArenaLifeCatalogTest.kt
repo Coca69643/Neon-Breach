@@ -10,11 +10,11 @@ class ArenaLifeCatalogTest {
     @Test
     fun lifeCatalogContainsDistinctAmbientAndCampSpecies() {
         assertEquals(6, ArenaLifeCatalog.wildlife.size)
-        assertEquals(8, ArenaLifeCatalog.campGuardians().size)
+        assertEquals(12, ArenaLifeCatalog.campGuardians().size)
         assertEquals(setOf("deer", "wolf", "bird"), ArenaLifeCatalog.wildlife.map { it.species }.toSet())
         assertEquals(setOf("mushroom", "walking-tree", "ghost"),
             ArenaLifeCatalog.campGuardians().map { it.species }.toSet())
-        assertTrue(ArenaLifeCatalog.campGuardians().all { it.kind == LifeActorKind.CAMP_GUARDIAN && it.campIndex in 0..7 })
+        assertTrue(ArenaLifeCatalog.campGuardians().all { it.kind == LifeActorKind.CAMP_GUARDIAN && it.campIndex in 0..11 })
         assertTrue(ArenaLifeCatalog.wildlife.all { it.kind == LifeActorKind.WILDLIFE && it.campIndex == -1 })
     }
 
@@ -29,8 +29,8 @@ class ArenaLifeCatalogTest {
 
     @Test
     fun wildlifePlacesAnAnimalInsideTheOpeningBlueSideCameraReach() {
-        val initialPlayerX = -14f
-        val initialPlayerZ = -25f
+        val initialPlayerX = ArenaMapDefinition.laneCenterX(2, -67f)
+        val initialPlayerZ = -67f
         val nearestDistance = ArenaLifeCatalog.wildlife.minOf { actor ->
             val dx = actor.x - initialPlayerX
             val dz = actor.z - initialPlayerZ
@@ -38,18 +38,19 @@ class ArenaLifeCatalogTest {
         }
         assertTrue(
             "At least one ambient animal must be near the opening camera; nearest distance=$nearestDistance",
-            nearestDistance <= 8f
+            nearestDistance <= 36f
         )
     }
 
     @Test
     fun campGuardianLocationsMatchNativeCampSnapshotOrder() {
         val guardians = ArenaLifeCatalog.campGuardians()
-        assertEquals(-8.2f, guardians[0].x, 0.001f)
-        assertEquals(-14.5f, guardians[0].z, 0.001f)
-        assertEquals(8.2f, guardians[1].x, 0.001f)
-        assertEquals(14.5f, guardians[5].z, 0.001f)
-        assertEquals(20.2f, guardians[7].x, 0.001f)
+        assertEquals(12, guardians.size)
+        guardians.forEachIndexed { index, guardian ->
+            assertEquals(ArenaMapDefinition.camps[index].position.x, guardian.x, 0f)
+            assertEquals(ArenaMapDefinition.camps[index].position.z, guardian.z, 0f)
+            assertEquals(index, guardian.campIndex)
+        }
     }
 
     @Test

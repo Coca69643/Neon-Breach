@@ -207,8 +207,8 @@ checks = [
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
-    ("val steps = 136" in world and "val shelf = 0.52f" in world and "westRidge = 2.35f" in world, "sculpted terrain mesh and higher elevation missing"),
-    ("const float shelf=0.52f" in physics and "const float west=2.35f" in physics and "high-low>3.2f" in physics_tests, "native terrain surface is not synchronized with relief regression"),
+    ("ArenaWorld17Generated.TERRAIN_VERTICES_X" in world and "ArenaWorld17Generated.TERRAIN_VERTICES_Z" in world and "insideIsland" in world and "vertexCache" in world and "riverNearest" in world, "full-resolution canonical organic terrain mesh missing"),
+    ("kElevationControls" in physics and "kRiverValleyDepthM" in physics and "closestRiver" in physics and "testTerrainSurface" in physics_tests, "native terrain does not share the canonical heightfield"),
     ("versionCode 59" in gradle and "versionName '0.16.0'" in gradle, "app version must be 0.15.12 / code 58"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
@@ -226,10 +226,10 @@ checks = [
     ("android.permission.INTERNET" not in manifest, "offline app must not request internet"),
     ("kBotCount = 9" in native and "initializeBots()" in native and "playerRole()" in native, "5v5 role AI configuration missing"),
     ("kLaneUnitCount = 48" in native and "kLaneWaveInterval = 26.0f" in native and "gNextWaveGroup" in native, "bounded alternating waves missing"),
-    ("kSnapshotCount = 320" in native and "std::array<jfloat, kSnapshotCount>" in native, "native snapshot must contain 320 floats"),
-    ("FloatArray(320)" in main and "result.size >= 320" in main, "Kotlin snapshot size mismatch"),
+    ("kSnapshotCount = 332" in native and "std::array<jfloat, kSnapshotCount>" in native and "values[pulseIndex]" in native, "native snapshot must include all twelve camps"),
+    ("ArenaSnapshotLayout.SIZE" in main and "campHealth(index)" in main, "Kotlin snapshot size/camp layout mismatch"),
     ("kMeleeMinionHealth" in native and "kRangedMinionHealth" in native and "slot == 3" in native, "melee/ranged minion composition missing"),
-    ("kCampCount = 8" in native and "damageCamp" in native and "updateCamps" in native, "eight neutral jungle camps missing"),
+    ("kCampCount = static_cast<int>(arena_world_17::kCamps.size())" in native and "damageCamp" in native and "updateCamps" in native, "twelve canonical neutral camps missing"),
     ("gObjectiveOneHealth" in native and "gObjectiveTwoHealth" in native and "damageObjective" in native, "two neutral objectives missing"),
     ("gTeamSiegeBuff" in native and "awardTeam" in native, "objective rewards and siege buffs missing"),
     ("kTowerCount = 18" in native and "activeTowerTier" in native and "friendlyMinionSupports" in native, "three-tier tower chain and minion gate missing"),
@@ -249,14 +249,13 @@ checks = [
     ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
      "moveActorOnMap" in native and "testArenaNavigationGraph" in read("tests/arena_physics_tests.cpp"),
      "MOBA bots are not using the lane/jungle navigation graph"),
-    ("riverHalfWidth" in world and "riverHalfWidth" in physics and
-     "bankDistance" in world and "bankDistance" in physics and
-     "arena_map::riverHalfWidth" in physics and "arena_map::riverCenterZ" in physics and
+    ("riverNearest" in world and "closestRiver" in physics and
+     "ArenaWorld17Generated.river" in world and "arena_world_17::kRiver" in physics and
      "buildRiverChannel(water, riverShallows, riverSandbanks" in world,
-     "Kotlin and native terrain must share the sculpted variable-width riverbed"),
+     "Kotlin and native terrain must share the canonical curved riverbed"),
     ("ArenaCampCombat.h" in native and "arena_camp::canAggro" in native and
-     "arena_camp::canStrike" in native and "values[static_cast<std::size_t>(312 + i)]" in native and
-     "attackTokens" in life_catalog and "snapshot?.getOrNull(312 + spawn.campIndex)" in renderer,
+     "arena_camp::canStrike" in native and "values[pulseIndex]" in native and
+     "attackTokens" in life_catalog and "snapshot?.getOrNull(ArenaSnapshotLayout.campAttackPulse(spawn.campIndex))" in renderer,
      "neutral camp guardians lack native aggro, attacks or visual attack state"),
     ("preferredObjective = bot.team == 0 ? 0 : 1" in native and
      "fallbackObjective = 1 - preferredObjective" in native and
@@ -265,14 +264,14 @@ checks = [
     ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
      "ArenaMapDefinition.objectives.forEachIndexed" in main and "riverOutline(0.86f)" in main and
      "ArenaMapDefinition.riverCenterline" in world and "ArenaMapDefinition.laneCenterX" in main and
-     "riverShallowPaint" in main and "campAlertPaint" in main and "snapshot[312 + index]" in main,
+     "riverShallowPaint" in main and "campAlertPaint" in main and "ArenaSnapshotLayout.campAttackPulse(index)" in main,
      "minimap is not aligned with the expanded battlefield, layered river or camp combat state"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("ArenaMovementInput.fromScreenStick" in main and "moveZ = worldInput.z" in main, "joystick screen axes must be converted through the camera-space input contract"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
     ("WorldPlacement(\"flag_blue\"" not in renderer and "WorldPlacement(\"flag_red\"" not in renderer, "objective/camp flags still used as map geometry"),
     ("result[116 + it]" in main and "result[104]" in main and "result[106]" in main, "HUD objective and three-tier tower fields missing"),
-    ("snapshot[270 + index]" in main and "snapshot[222 + index]" in main, "minimap camps and minion snapshot fields missing"),
+    ("ArenaSnapshotLayout.campHealth(index)" in main and "snapshot[222 + index]" in main, "minimap camps and minion snapshot fields missing"),
     ("values[15] = static_cast<float>(gWinner)" in native, "legacy match-result field must remain populated"),
     ("movePlayer(inputX, inputZ, dt)" in native and native.count("movePlayer(0.0f, 0.0f, dt)") == 0, "player movement must be integrated only once per frame"),
     ("ArenaPhysics.cpp" in cmake and "void move(Body &body" in physics_h and "void separate(Body &a, Body &b)" in physics_h, "shared kinematic physics module is not compiled or exposed"),
@@ -311,7 +310,11 @@ checks = [
      "LifeActorRuntime" in renderer and "animator.applyAnimation" in renderer and
      "animator.getAnimationCount()" in renderer,
      "Filament wildlife and camp guardian instances/animation are not integrated"),
-    ("snapshot?.getOrNull(270 + spawn.campIndex)" in renderer and
+    ("ArenaSnapshotLayout.SIZE = 332" in read("app/src/main/java/com/duckdream/neonbreach/ArenaSnapshotLayout.kt") and
+     "ArenaSnapshotLayout.campHealth" in renderer and
+     "ArenaSnapshotLayout.campAttackPulse" in renderer,
+     "all twelve camp states must use the extended JNI layout"),
+    ("snapshot?.getOrNull(ArenaSnapshotLayout.campHealth(spawn.campIndex))" in renderer and
      "maxDistance = (if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f) * mapScale" in renderer and
      "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
      "neutral guardians and ambient wildlife must be visibility- and distance-managed in world scale"),
@@ -344,7 +347,7 @@ checks = [
      "two self-contained GLBs" in asset_register,
      "pinned CC0 groundcover/rock bake step and license record are missing"),
     ("loadBakedNatureEnvironment" in renderer and "forest_groundcover" in renderer and
-     "forest_rocks" in renderer and "ArenaMapDefinition.riverCenterZ(x)" in world and
+     "forest_rocks" in renderer and "riverNearest(x, z)" in world and
      "private fun leafBlade(" not in world and "boulder_field" not in world and
      "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
      "textured nature must be baked into two static GLBs while retaining shared river terrain sampling"),

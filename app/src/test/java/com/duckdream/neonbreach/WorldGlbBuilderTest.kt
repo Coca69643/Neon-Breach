@@ -16,8 +16,8 @@ class WorldGlbBuilderTest {
         var low = Float.POSITIVE_INFINITY
         var high = Float.NEGATIVE_INFINITY
         var steepest = 0f
-        for (x in -30..30 step 2) {
-            for (z in -28..28 step 2) {
+        for (x in -87..87 step 3) {
+            for (z in -78..78 step 3) {
                 val px = x.toFloat()
                 val pz = z.toFloat()
                 val height = WorldGlbBuilder.heightAt(px, pz)
@@ -32,7 +32,14 @@ class WorldGlbBuilderTest {
             }
         }
         assertTrue("Terrain relief must exceed 3.2 world units", high - low > 3.2f)
-        assertTrue("Playable terrain exceeds the 43-degree walkability cap", steepest < tan(Math.toRadians(43.0)).toFloat())
+        assertTrue("Terrain gradient must stay below the 55-degree cliff threshold", steepest < tan(Math.toRadians(55.0)).toFloat())
+        for (lane in ArenaMapDefinition.lanes) for (point in lane.points) {
+            val routeNormal = WorldGlbBuilder.normalAt(point.x, point.z)
+            val routeSlope = sqrt(routeNormal[0] * routeNormal[0] + routeNormal[2] * routeNormal[2]) /
+                routeNormal[1].coerceAtLeast(0.0001f)
+            assertTrue("Lane waypoint exceeds the walkable 43-degree cap",
+                routeSlope < tan(Math.toRadians(43.0)).toFloat())
+        }
     }
 
     @Test
