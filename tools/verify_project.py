@@ -172,6 +172,8 @@ checks = [
       "generated GLB must compact and test its scene/node/mesh references"),
     ("Project-Arena-1.7.0.apk" in workflow and "tag_name: project-arena-1.7.0" in workflow,
       "1.7.0 APK and release metadata must match the app version"),
+    ("path: |\n            Project-Arena-1.7.0.apk\n            Project-Arena-1.7.0.apk.sha256" in workflow,
+      "artifact upload paths must match the 1.7.0 APK filenames"),
     ("versionCode 170" in gradle and "versionName '1.7.0'" in gradle, "app version must be 1.7.0 / code 170"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
