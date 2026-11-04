@@ -62,7 +62,7 @@ kotlin_lanes = extract_pairs(
 )
 native_lanes = extract_pairs(
     map_native, "kLanes{{", "kCampPositions",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*,\s*(\d+(?:\.\d+)?)f\s*\}"
 )
 kotlin_camps = extract_pairs(
     map_kotlin, "val camps = listOf(", "val objectives = listOf(",
