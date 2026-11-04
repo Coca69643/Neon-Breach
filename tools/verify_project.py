@@ -277,10 +277,10 @@ checks = [
      "actor.animator.applyAnimation(clip, actor.animationClock)" in renderer and
      "NpcVisualCatalog.locomotion" in renderer,
      "NPCs need material-name palettes and authored idle/walk/run animation clips"),
-     ("minionModel(index)" in npc_catalog and "minionWidthFactor" in npc_catalog and
-     "minionHeightFactor" in npc_catalog and "MINION_RENDER_DISTANCE" in npc_catalog and
+     ("fun minionModel(index: Int)" in npc_catalog and "fun minionWidthFactor(index: Int)" in npc_catalog and
+     "fun minionHeightFactor(index: Int)" in npc_catalog and "MINION_RENDER_DISTANCE" in npc_catalog and
      "minionRendered" in renderer and "minionRenderDistanceIsBoundedForMobileSceneBudget" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt") and
-     "botModel(index)" in npc_catalog and
+     "fun botModel(index: Int)" in npc_catalog and
      "npcLocomotionSwitchesBetweenIdleWalkAndRun" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt"),
      "bot/minion visual roster and locomotion regression tests are missing"),
     ("style=hero.coerceIn(0,4)" in gear and "Arcanist" in gear and "Ranger" in gear and "gear_torso" in gear and "gear_head" in gear and "gear_back" in gear and "gear_shoulder_l" in gear and "gear_boot_r" in gear and "when(style)" in gear, "five role-specific costume silhouettes missing"),
