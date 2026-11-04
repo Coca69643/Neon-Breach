@@ -265,7 +265,7 @@ checks = [
      "LifeActorRuntime" in renderer and "animator.applyAnimation" in renderer and
      "animator.getAnimationCount()" in renderer,
      "Filament wildlife and camp guardian instances/animation are not integrated"),
-    ("ArenaSnapshotLayout.SIZE = 332" in read("app/src/main/java/com/duckdream/neonbreach/ArenaSnapshotLayout.kt") and
+    ("const val SIZE = 332" in read("app/src/main/java/com/duckdream/neonbreach/ArenaSnapshotLayout.kt") and
      "ArenaSnapshotLayout.campHealth" in renderer and
      "ArenaSnapshotLayout.campAttackPulse" in renderer,
      "all twelve camp states must use the extended JNI layout"),
