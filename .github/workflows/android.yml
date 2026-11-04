@@ -10,9 +10,10 @@ on:
       - 'gradle.properties'
       - 'tools/**'
       - 'tests/**'
+      - 'world/**'
       - '.github/workflows/android.yml'
   push:
-    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-visual-overhaul, project-arena/rebuild-from-0.15.0]
+    branches: [main, rebuild/team-objective-moba-v0.1, rebuild/project-arena-0.10.0-hub, rework/project-arena-0.8-camera-map-combat, rebuild/project-arena-0.9-siege-core, rebuild/project-arena-0.9.1-humanized, rebuild/project-arena-0.12.0-character-motion, rebuild/project-arena-0.12.0-full-moba, rebuild/project-arena-0.13.0-battleground, rebuild/project-arena-0.14.0-physical-heroes, rebuild/project-arena-0.15.0-visual-overhaul, project-arena/rebuild-from-0.15.0, rebuild/project-arena-1.7.0-world-foundation]
     paths:
       - 'app/**'
       - '*.gradle'
@@ -77,13 +78,15 @@ jobs:
           ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
           test -d "$SDK_ROOT/platforms/android-37"
       - name: Validate Python asset pipeline syntax
-        run: python3 -m py_compile tools/fetch_cc0_life_assets.py tools/fetch_cc0_nature_assets.py tools/generate_terrain_materials.py tools/verify_project.py
+        run: python3 -m py_compile tools/fetch_cc0_life_assets.py tools/fetch_cc0_nature_assets.py tools/generate_terrain_materials.py tools/verify_project.py tools/verify_arena_world.py
       - name: Fetch and verify pinned CC0 life assets
         run: python3 tools/fetch_cc0_life_assets.py
       - name: Bake pinned CC0 nature assets into static GLBs
         run: python3 tools/fetch_cc0_nature_assets.py
       - name: Generate tileable PBR terrain materials
         run: python3 tools/generate_terrain_materials.py
+      - name: Validate canonical Arena 1.7.0 world
+        run: python3 tools/verify_arena_world.py
       - name: Compile and run native physics tests
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
