@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "gameId": "project_arena",
+  "displayName": "Projeto Arena",
+  "orientation": "landscape",
+  "offline": true,
+  "runtime": {
+    "kind": "custom_native",
+    "status": "foundation_only",
+    "graphicsApiTarget": "OpenGL ES 3.0"
+  }
+}
