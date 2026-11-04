@@ -1,49 +1,75 @@
 #pragma once
 
+#include "ArenaWorld17Generated.h"
+
 #include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstddef>
+#include <string_view>
 
 namespace arena_map {
 
-struct Point { float x; float z; };
+using Point = arena_world_17::Point;
 struct RiverPoint { float x; float z; float halfWidth; };
-struct Lane {
-    float width;
-    std::array<Point, 9> points;
-};
+struct Lane { float width; std::array<Point, 8> points; };
 
-inline constexpr float kWorldScale = 1.15f;
-inline constexpr float kHalfExtentX = 35.0f;
-inline constexpr float kHalfExtentZ = 31.0f;
+inline constexpr float kWorldScale = 1.0f;
+inline constexpr float kHalfExtentX = arena_world_17::kHalfWidthM;
+inline constexpr float kHalfExtentZ = arena_world_17::kHalfDepthM;
 
-inline constexpr std::array<Lane, 3> kLanes{{
-    {2.42f, {{
-        {-14.2f,-31.0f}, {-15.2f,-23.0f}, {-14.6f,-15.0f},
-        {-13.4f,-7.0f}, {-13.0f,0.0f}, {-13.7f,8.0f},
-        {-14.8f,16.0f}, {-14.2f,24.0f}, {-14.2f,31.0f}
-    }}},
-    {2.36f, {{
-        {0.5f,-31.0f}, {0.1f,-23.0f}, {-0.1f,-15.0f},
-        {-0.25f,-7.0f}, {0.5f,0.0f}, {0.3f,8.0f},
-        {-0.2f,16.0f}, {0.4f,24.0f}, {0.5f,31.0f}
-    }}},
-    {2.42f, {{
-        {14.2f,-31.0f}, {15.2f,-23.0f}, {14.6f,-15.0f},
-        {13.4f,-7.0f}, {13.0f,0.0f}, {13.7f,8.0f},
-        {14.8f,16.0f}, {14.2f,24.0f}, {14.2f,31.0f}
-    }}}
-}};
+inline constexpr auto kLanes = [] {
+    std::array<Lane, 3> result{};
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        result[i].width = arena_world_17::kLanes[i].width;
+        result[i].points = arena_world_17::kLanes[i].waypoints;
+    }
+    return result;
+}();
 
-inline constexpr std::array<RiverPoint, 12> kRiverCenterline{{
-    {-34.0f,1.1f,0.78f}, {-28.0f,0.55f,1.15f},
-    {-21.0f,0.05f,1.48f}, {-15.0f,-0.45f,1.68f},
-    {-9.0f,-0.22f,1.92f}, {-3.0f,0.25f,1.58f},
-    {4.0f,0.38f,1.82f}, {10.0f,0.02f,1.95f},
-    {16.0f,-0.38f,1.62f}, {23.0f,-0.18f,1.62f},
-    {29.0f,0.22f,1.15f}, {34.0f,0.8f,0.78f}
-}};
+inline constexpr auto kRiverCenterline = [] {
+    std::array<RiverPoint, arena_world_17::kRiver.size()> result{};
+    for (std::size_t i = 0; i < result.size(); ++i) {
+        const auto &source = arena_world_17::kRiver[i];
+        result[i] = {source.position.x, source.position.z, source.halfWidth};
+    }
+    return result;
+}();
+
+inline constexpr auto kCampPositions = [] {
+    std::array<Point, arena_world_17::kCamps.size()> result{};
+    for (std::size_t i = 0; i < result.size(); ++i) result[i] = arena_world_17::kCamps[i].position;
+    return result;
+}();
+
+inline constexpr auto kObjectivePositions = [] {
+    std::array<Point, arena_world_17::kObjectives.size()> result{};
+    for (std::size_t i = 0; i < result.size(); ++i) result[i] = arena_world_17::kObjectives[i].position;
+    return result;
+}();
+
+inline constexpr auto kObjectiveRadii = [] {
+    std::array<float, arena_world_17::kObjectives.size()> result{};
+    for (std::size_t i = 0; i < result.size(); ++i) result[i] = arena_world_17::kObjectives[i].radius;
+    return result;
+}();
+
+inline constexpr auto kGroveCenters = kCampPositions;
+
+// Four collision trunks around each canonical camp. Their placement is derived, never separately authored.
+inline constexpr auto kTreeBlockers = [] {
+    constexpr std::array<Point, 4> offsets{{
+        {-4.8f, -3.8f}, {4.8f, -3.8f}, {-4.8f, 3.8f}, {4.8f, 3.8f}
+    }};
+    std::array<Point, arena_world_17::kCamps.size() * offsets.size()> result{};
+    for (std::size_t i = 0; i < arena_world_17::kCamps.size(); ++i) {
+        const auto center = arena_world_17::kCamps[i].position;
+        for (std::size_t j = 0; j < offsets.size(); ++j) {
+            result[i * offsets.size() + j] = {center.x + offsets[j].x, center.z + offsets[j].z};
+        }
+    }
+    return result;
+}();
 
 inline int riverSegment(float x) {
     if (x <= kRiverCenterline.front().x) return 0;
@@ -67,33 +93,6 @@ inline float riverHalfWidth(float x) {
     return a.halfWidth + (b.halfWidth - a.halfWidth) * t;
 }
 
-inline constexpr std::array<Point, 8> kCampPositions{{
-    {-8.2f,-14.5f}, {8.2f,-14.5f}, {-20.2f,-10.0f}, {20.2f,-10.0f},
-    {-8.2f,14.5f}, {8.2f,14.5f}, {-20.2f,10.0f}, {20.2f,10.0f}
-}};
-
-inline constexpr std::array<Point, 2> kObjectivePositions{{
-    {-7.0f,0.2f}, {7.0f,0.2f}
-}};
-inline constexpr std::array<float, 2> kObjectiveRadii{{4.55f, 4.55f}};
-
-inline constexpr std::array<Point, 12> kGroveCenters{{
-    {-25.0f,-19.0f}, {-27.0f,-8.0f}, {-23.0f,8.0f}, {-26.0f,19.0f},
-    {25.0f,-19.0f}, {27.0f,-8.0f}, {23.0f,8.0f}, {26.0f,19.0f},
-    {-8.5f,-21.0f}, {8.5f,-21.0f}, {-8.5f,21.0f}, {8.5f,21.0f}
-}};
-
-inline constexpr std::array<Point, 32> kTreeBlockers{{
-    {-10.5f,-23.0f}, {-6.2f,-22.0f}, {-11.5f,-17.5f}, {-5.5f,-17.0f},
-    {-10.2f,-10.0f}, {-6.4f,-8.0f}, {10.5f,-23.0f}, {6.2f,-22.0f},
-    {11.5f,-17.5f}, {5.5f,-17.0f}, {10.2f,-10.0f}, {6.4f,-8.0f},
-    {-22.8f,-18.0f}, {-26.0f,-13.0f}, {-22.4f,-6.0f}, {-18.5f,-20.0f},
-    {22.8f,-18.0f}, {26.0f,-13.0f}, {22.4f,-6.0f}, {18.5f,-20.0f},
-    {-10.5f,23.0f}, {-6.2f,22.0f}, {-11.5f,17.5f}, {-5.5f,17.0f},
-    {-10.2f,10.0f}, {-6.4f,8.0f}, {10.5f,23.0f}, {6.2f,22.0f},
-    {11.5f,17.5f}, {5.5f,17.0f}, {10.2f,10.0f}, {6.4f,8.0f}
-}};
-
 inline float laneCenterX(int lane, float z) {
     const auto &points = kLanes[static_cast<std::size_t>(std::clamp(lane, 0, 2))].points;
     const float sampleZ = std::clamp(z, points.front().z, points.back().z);
@@ -108,14 +107,31 @@ inline float laneCenterX(int lane, float z) {
     return points.back().x;
 }
 
-inline float towerZ(int team, int tier) {
-    const float z = tier == 0 ? 8.0f : (tier == 1 ? 15.0f : 22.0f);
-    return team == 0 ? -z : z;
-}
-
 inline Point towerPosition(int team, int lane, int tier) {
-    const float z = towerZ(team, tier);
-    return {laneCenterX(lane, z), z};
+    team = std::clamp(team, 0, 1);
+    lane = std::clamp(lane, 0, 2);
+    tier = std::clamp(tier, 0, 2);
+    const auto &base = arena_world_17::kBases[static_cast<std::size_t>(team)];
+    const Point gate = base.gates[static_cast<std::size_t>(lane)];
+    const auto &route = kLanes[static_cast<std::size_t>(lane)].points;
+    const float gateDx = gate.x - base.position.x;
+    const float gateDz = gate.z - base.position.z;
+    float remaining = arena_world_17::kTowerDepthsFromBase[static_cast<std::size_t>(tier)] -
+        std::sqrt(gateDx * gateDx + gateDz * gateDz);
+    Point previous = gate;
+    for (std::size_t step = 0; step < route.size(); ++step) {
+        const Point current = team == 0 ? route[step] : route[route.size() - 1 - step];
+        const float dx = current.x - previous.x;
+        const float dz = current.z - previous.z;
+        const float segment = std::sqrt(dx * dx + dz * dz);
+        if (segment > 0.0001f && remaining <= segment) {
+            const float t = std::clamp(remaining / segment, 0.0f, 1.0f);
+            return {previous.x + dx * t, previous.z + dz * t};
+        }
+        remaining -= segment;
+        previous = current;
+    }
+    return previous;
 }
 
 } // namespace arena_map

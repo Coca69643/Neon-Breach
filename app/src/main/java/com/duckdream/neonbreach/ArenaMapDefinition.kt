@@ -1,10 +1,10 @@
 package com.duckdream.neonbreach
 
+import kotlin.math.sqrt
+
 /**
- * Canonical Vale das Coroas battlefield coordinates.
- *
- * Keep render placements, minimap landmarks and native simulation coordinates
- * aligned with this catalog. Kotlin invariants are covered by ArenaMapDefinitionTest.
+ * Runtime compatibility adapter over the generated v1.7 world contract.
+ * Coordinates are metres; ArenaWorld17Generated remains the sole authored source.
  */
 internal object ArenaMapDefinition {
     data class Point(val x: Float, val z: Float)
@@ -15,33 +15,18 @@ internal object ArenaMapDefinition {
     data class Tower(val team: Int, val lane: Int, val tier: Int, val position: Point)
     data class Landmark(val id: String, val position: Point, val radius: Float)
 
-    const val WORLD_SCALE = 1.15f
-    const val HALF_EXTENT_X = 35f
-    const val HALF_EXTENT_Z = 31f
+    const val WORLD_SCALE = 1.0f
+    const val HALF_EXTENT_X = ArenaWorld17Generated.HALF_WIDTH_M
+    const val HALF_EXTENT_Z = ArenaWorld17Generated.HALF_DEPTH_M
 
-    val lanes = listOf(
-        Lane(0, 2.42f, listOf(
-            Point(-14.2f,-31f), Point(-15.2f,-23f), Point(-14.6f,-15f),
-            Point(-13.4f,-7f), Point(-13f,0f), Point(-13.7f,8f),
-            Point(-14.8f,16f), Point(-14.2f,24f), Point(-14.2f,31f))),
-        Lane(1, 2.36f, listOf(
-            Point(0.5f,-31f), Point(0.1f,-23f), Point(-0.1f,-15f),
-            Point(-0.25f,-7f), Point(0.5f,0f), Point(0.3f,8f),
-            Point(-0.2f,16f), Point(0.4f,24f), Point(0.5f,31f))),
-        Lane(2, 2.42f, listOf(
-            Point(14.2f,-31f), Point(15.2f,-23f), Point(14.6f,-15f),
-            Point(13.4f,-7f), Point(13f,0f), Point(13.7f,8f),
-            Point(14.8f,16f), Point(14.2f,24f), Point(14.2f,31f)))
-    )
+    private val sourceLanes = ArenaWorld17Generated.lanes
+    val lanes: List<Lane> = sourceLanes.mapIndexed { index, lane ->
+        Lane(index, lane.width, lane.waypoints.map { Point(it.x, it.z) })
+    }
 
-    val riverCenterline = listOf(
-        RiverPoint(-34f,1.1f,0.78f), RiverPoint(-28f,0.55f,1.15f),
-        RiverPoint(-21f,0.05f,1.48f), RiverPoint(-15f,-0.45f,1.68f),
-        RiverPoint(-9f,-0.22f,1.92f), RiverPoint(-3f,0.25f,1.58f),
-        RiverPoint(4f,0.38f,1.82f), RiverPoint(10f,0.02f,1.95f),
-        RiverPoint(16f,-0.38f,1.62f), RiverPoint(23f,-0.18f,1.62f),
-        RiverPoint(29f,0.22f,1.15f), RiverPoint(34f,0.8f,0.78f)
-    )
+    val riverCenterline = ArenaWorld17Generated.river.map {
+        RiverPoint(it.position.x, it.position.z, it.halfWidth)
+    }
 
     private fun riverSegment(x: Float): Int {
         if (x <= riverCenterline.first().x) return 0
@@ -67,38 +52,29 @@ internal object ArenaMapDefinition {
         return a.halfWidth + (b.halfWidth - a.halfWidth) * t
     }
 
-    val camps = listOf(
-        Camp("west_south", Point(-8.2f,-14.5f), CampKind.SMALL),
-        Camp("east_south", Point(8.2f,-14.5f), CampKind.SMALL),
-        Camp("deep_west_south", Point(-20.2f,-10f), CampKind.LARGE),
-        Camp("deep_east_south", Point(20.2f,-10f), CampKind.LARGE),
-        Camp("west_north", Point(-8.2f,14.5f), CampKind.SMALL),
-        Camp("east_north", Point(8.2f,14.5f), CampKind.SMALL),
-        Camp("deep_west_north", Point(-20.2f,10f), CampKind.LARGE),
-        Camp("deep_east_north", Point(20.2f,10f), CampKind.LARGE)
-    )
+    val camps = ArenaWorld17Generated.camps.map { camp ->
+        Camp(
+            camp.id,
+            Point(camp.position.x, camp.position.z),
+            if (camp.tier <= 1) CampKind.SMALL else CampKind.LARGE
+        )
+    }
 
-    val objectives = listOf(
-        Landmark("west_sanctuary", Point(-7f,0.2f), 4.55f),
-        Landmark("east_sanctuary", Point(7f,0.2f), 4.55f)
-    )
+    val objectives = ArenaWorld17Generated.objectives.map {
+        Landmark(it.id, Point(it.position.x, it.position.z), it.radius)
+    }
 
-    val groveCenters = listOf(
-        Point(-25f,-19f), Point(-27f,-8f), Point(-23f,8f), Point(-26f,19f),
-        Point(25f,-19f), Point(27f,-8f), Point(23f,8f), Point(26f,19f),
-        Point(-8.5f,-21f), Point(8.5f,-21f), Point(-8.5f,21f), Point(8.5f,21f)
+    // Four authored collision trunks around every camp clearing; deterministic and shared by physics.
+    private val treeOffsets = listOf(
+        Point(-4.8f, -3.8f), Point(4.8f, -3.8f),
+        Point(-4.8f, 3.8f), Point(4.8f, 3.8f)
     )
-
-    val treeBlockers = listOf(
-        Point(-10.5f,-23f), Point(-6.2f,-22f), Point(-11.5f,-17.5f), Point(-5.5f,-17f),
-        Point(-10.2f,-10f), Point(-6.4f,-8f), Point(10.5f,-23f), Point(6.2f,-22f),
-        Point(11.5f,-17.5f), Point(5.5f,-17f), Point(10.2f,-10f), Point(6.4f,-8f),
-        Point(-22.8f,-18f), Point(-26f,-13f), Point(-22.4f,-6f), Point(-18.5f,-20f),
-        Point(22.8f,-18f), Point(26f,-13f), Point(22.4f,-6f), Point(18.5f,-20f),
-        Point(-10.5f,23f), Point(-6.2f,22f), Point(-11.5f,17.5f), Point(-5.5f,17f),
-        Point(-10.2f,10f), Point(-6.4f,8f), Point(10.5f,23f), Point(6.2f,22f),
-        Point(11.5f,17.5f), Point(5.5f,17f), Point(10.2f,10f), Point(6.4f,8f)
-    )
+    val treeBlockers = camps.flatMap { camp ->
+        treeOffsets.map { offset ->
+            Point(camp.position.x + offset.x, camp.position.z + offset.z)
+        }
+    }
+    val groveCenters = camps.map { it.position }
 
     fun laneCenterX(lane: Int, z: Float): Float {
         val points = lanes[lane.coerceIn(0, lanes.lastIndex)].points
@@ -114,25 +90,45 @@ internal object ArenaMapDefinition {
         return points.last().x
     }
 
+    private fun distance(a: Point, b: Point): Float {
+        val dx = b.x - a.x
+        val dz = b.z - a.z
+        return sqrt(dx * dx + dz * dz)
+    }
+
     fun towerPosition(team: Int, lane: Int, tier: Int): Point {
-        val z = if (tier == 0) 8f else if (tier == 1) 15f else 22f
-        val signedZ = if (team == 0) -z else z
-        return Point(laneCenterX(lane, signedZ), signedZ)
+        require(team in 0..1 && lane in 0..2 && tier in ArenaWorld17Generated.towerDepthsFromBase.indices)
+        val route = lanes[lane].points.let { if (team == 0) it else it.asReversed() }
+        val base = ArenaWorld17Generated.bases.first { it.team == team }
+        val gate = base.gates.first { it.id == sourceLanes[lane].id }.position
+        var previous = Point(gate.x, gate.z)
+        var remaining = ArenaWorld17Generated.towerDepthsFromBase[tier] - distance(
+            Point(base.position.x, base.position.z), previous
+        )
+        for (point in route) {
+            val current = Point(point.x, point.z)
+            val segment = distance(previous, current)
+            if (segment > 0.0001f && remaining <= segment) {
+                val t = (remaining / segment).coerceIn(0f, 1f)
+                return Point(
+                    previous.x + (current.x - previous.x) * t,
+                    previous.z + (current.z - previous.z) * t
+                )
+            }
+            remaining -= segment
+            previous = current
+        }
+        return route.last()
     }
 
     fun validate() {
-        require(lanes.size == 3 && lanes.all { it.points.size >= 2 })
-        require(riverCenterline.size == 12)
-        require(riverCenterline.all {
-            kotlin.math.abs(it.x) < HALF_EXTENT_X && kotlin.math.abs(it.z) < HALF_EXTENT_Z &&
-                it.halfWidth in 0.65f..2.0f
-        })
-        require(riverCenterline.first().halfWidth < riverCenterline.maxOf { it.halfWidth })
-        require(riverCenterline.last().halfWidth < riverCenterline.maxOf { it.halfWidth })
-        require(camps.size == 8 && camps.map { it.id }.toSet().size == camps.size)
+        require(ArenaWorld17Generated.WORLD_ID == "project_arena_1_7")
+        require(lanes.size == 3 && lanes.all { it.points.size == 8 && it.width in 9.5f..10f })
+        require(riverCenterline.size == 13)
+        require(riverCenterline.all { it.halfWidth in 4.5f..8.5f })
+        require(camps.size == 12 && camps.map { it.id }.toSet().size == camps.size)
         require(objectives.size == 2)
-        require(WORLD_SCALE > 1f)
-        require(lanes.all { lane -> lane.points.all { kotlin.math.abs(it.x) <= HALF_EXTENT_X && kotlin.math.abs(it.z) <= HALF_EXTENT_Z } })
-        require(camps.all { kotlin.math.abs(it.position.x) < HALF_EXTENT_X && kotlin.math.abs(it.position.z) < HALF_EXTENT_Z })
+        require(treeBlockers.size == 48)
+        require(WORLD_SCALE == 1f)
     }
 }
