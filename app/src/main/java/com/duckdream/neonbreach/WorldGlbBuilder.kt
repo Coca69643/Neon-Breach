@@ -35,8 +35,8 @@ internal object WorldGlbBuilder {
                 val tileSize = 3.8f
                 val u = x / tileSize
                 val v = z / tileSize
-                uv.add(u - floor(u))
-                uv.add(v - floor(v))
+                uv.add(u)
+                uv.add(v)
             }
             return id
         }
