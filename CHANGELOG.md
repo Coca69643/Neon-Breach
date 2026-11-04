@@ -1,6 +1,12 @@
 # Changelog — Projeto Arena
 
-## [0.16.0 — em desenvolvimento]
+## [0.16.0 — build de teste]
+
+### Build Android
+- versionName 0.16.0 / versionCode 59; pacote `com.duckdream.projectarena` preservado.
+- Pré-lançamento assinado gerado pelo GitHub Actions para instalação e teste.
+- CI cobre testes nativos, verificações estruturais, testes Kotlin e compilação Android.
+- Captura visual, FPS sustentado e temperatura no Realme C53 continuam pendentes de validação física.
 
 ### Personagens, bots e minions
 - Removido do runtime o humanoide monocromático "Matte jade" que era compartilhado por bots e minions.
