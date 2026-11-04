@@ -843,10 +843,18 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         style = Paint.Style.STROKE
         strokeWidth = 3.2f
     }
+    private val riverBankPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(225, 129, 111, 76)
+        style = Paint.Style.FILL
+    }
+    private val riverShallowPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        color = Color.argb(242, 42, 143, 151)
+        style = Paint.Style.FILL
+    }
     private val riverPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-        color = Color.argb(205, 55, 122, 147)
+        color = Color.argb(235, 126, 214, 199)
         style = Paint.Style.STROKE
-        strokeWidth = 5.5f
+        strokeWidth = 1.6f
     }
     private val blueTowerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.rgb(104, 183, 226)
@@ -932,13 +940,38 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
             canvas.drawPath(line, lanePaint)
         }
 
-        // The river links both jungles and the three lane crossings.
+        // Winding channel silhouette: warm banks, shallow turquoise shelf and a bright current line.
+        fun riverOutline(extraWidth: Float): Path {
+            val leftBank = ArrayList<Pair<Float, Float>>(ArenaMapDefinition.riverCenterline.size)
+            val rightBank = ArrayList<Pair<Float, Float>>(ArenaMapDefinition.riverCenterline.size)
+            val points = ArenaMapDefinition.riverCenterline
+            points.forEachIndexed { index, point ->
+                val before = points[(index - 1).coerceAtLeast(0)]
+                val after = points[(index + 1).coerceAtMost(points.lastIndex)]
+                val dx = after.x - before.x
+                val dz = after.z - before.z
+                val length = kotlin.math.sqrt(dx * dx + dz * dz).coerceAtLeast(0.0001f)
+                val sideX = -dz / length
+                val sideZ = dx / length
+                val halfWidth = (point.halfWidth + extraWidth) * mapScale
+                leftBank += px(point.x + sideX * halfWidth) to py(point.z + sideZ * halfWidth)
+                rightBank += px(point.x - sideX * halfWidth) to py(point.z - sideZ * halfWidth)
+            }
+            return Path().apply {
+                leftBank.forEachIndexed { index, point ->
+                    if (index == 0) moveTo(point.first, point.second) else lineTo(point.first, point.second)
+                }
+                rightBank.asReversed().forEach { point -> lineTo(point.first, point.second) }
+                close()
+            }
+        }
+        canvas.drawPath(riverOutline(0.86f), riverBankPaint)
+        canvas.drawPath(riverOutline(0f), riverShallowPaint)
         val river = Path()
         ArenaMapDefinition.riverCenterline.forEachIndexed { index, point ->
-            val x = point.x * mapScale
-            val z = point.z * mapScale
-            if (index == 0) river.moveTo(px(x), py(z))
-            else river.lineTo(px(x), py(z))
+            val x = px(point.x * mapScale)
+            val z = py(point.z * mapScale)
+            if (index == 0) river.moveTo(x, z) else river.lineTo(x, z)
         }
         canvas.drawPath(river, riverPaint)
 
