@@ -1,0 +1,218 @@
+{
+  "schema_version": 1,
+  "world_id": "project_arena_1_7",
+  "units": "meters",
+  "coordinate_system": {
+    "origin": "arena_center",
+    "horizontal_axes": ["x", "z"],
+    "north": "+z",
+    "teams": ["blue", "red"]
+  },
+  "bounds": {
+    "width_m": 180.0,
+    "depth_m": 160.0,
+    "half_width_m": 90.0,
+    "half_depth_m": 80.0
+  },
+  "terrain": {
+    "heightfield_vertices": [193, 177],
+    "height_min_m": -4.0,
+    "height_max_m": 22.0,
+    "max_walkable_slope_degrees": 28.0,
+    "broad_noise_seed": 1701,
+    "broad_noise_amplitude_m": 2.8,
+    "detail_noise_seed": 1702,
+    "detail_noise_amplitude_m": 0.65,
+    "river_valley_depth_m": 5.5,
+    "elevation_controls": [
+      {"id": "southwest_ridge", "position": {"x": -74.0, "z": -38.0}, "height_m": 18.0, "radius_m": 25.0},
+      {"id": "northwest_ridge", "position": {"x": -72.0, "z": 42.0}, "height_m": 17.0, "radius_m": 26.0},
+      {"id": "southeast_ridge", "position": {"x": 74.0, "z": -36.0}, "height_m": 20.0, "radius_m": 26.0},
+      {"id": "northeast_ridge", "position": {"x": 73.0, "z": 42.0}, "height_m": 18.5, "radius_m": 25.0},
+      {"id": "west_jungle_highland", "position": {"x": -35.0, "z": 8.0}, "height_m": 9.0, "radius_m": 28.0},
+      {"id": "east_jungle_highland", "position": {"x": 35.0, "z": -8.0}, "height_m": 10.0, "radius_m": 28.0},
+      {"id": "central_river_valley", "position": {"x": 0.0, "z": 3.0}, "height_m": -3.0, "radius_m": 40.0}
+    ]
+  },
+  "bases": [
+    {
+      "id": "blue_base",
+      "team": 0,
+      "position": {"x": 0.0, "z": -73.0},
+      "lane_gates": {
+        "west": {"x": -57.0, "z": -72.0},
+        "center": {"x": 0.0, "z": -72.0},
+        "east": {"x": 57.0, "z": -72.0}
+      }
+    },
+    {
+      "id": "red_base",
+      "team": 1,
+      "position": {"x": 0.0, "z": 73.0},
+      "lane_gates": {
+        "west": {"x": -56.0, "z": 72.0},
+        "center": {"x": 0.0, "z": 72.0},
+        "east": {"x": 60.0, "z": 72.0}
+      }
+    }
+  ],
+  "lanes": [
+    {
+      "id": "west",
+      "width_m": 9.5,
+      "waypoints": [
+        {"x": -57.0, "z": -72.0},
+        {"x": -60.0, "z": -54.0},
+        {"x": -56.0, "z": -36.0},
+        {"x": -51.0, "z": -16.0},
+        {"x": -52.0, "z": 4.0},
+        {"x": -58.0, "z": 24.0},
+        {"x": -60.0, "z": 48.0},
+        {"x": -56.0, "z": 72.0}
+      ]
+    },
+    {
+      "id": "center",
+      "width_m": 10.0,
+      "waypoints": [
+        {"x": 0.0, "z": -72.0},
+        {"x": 3.0, "z": -54.0},
+        {"x": 5.0, "z": -36.0},
+        {"x": 1.0, "z": -16.0},
+        {"x": -3.0, "z": 4.0},
+        {"x": 1.0, "z": 24.0},
+        {"x": 4.0, "z": 48.0},
+        {"x": 0.0, "z": 72.0}
+      ]
+    },
+    {
+      "id": "east",
+      "width_m": 9.5,
+      "waypoints": [
+        {"x": 57.0, "z": -72.0},
+        {"x": 55.0, "z": -54.0},
+        {"x": 54.0, "z": -36.0},
+        {"x": 60.0, "z": -16.0},
+        {"x": 63.0, "z": 4.0},
+        {"x": 58.0, "z": 24.0},
+        {"x": 55.0, "z": 48.0},
+        {"x": 60.0, "z": 72.0}
+      ]
+    }
+  ],
+  "river": {
+    "centerline": [
+      {"x": -88.0, "z": -4.0, "half_width_m": 4.5},
+      {"x": -72.0, "z": -7.0, "half_width_m": 5.5},
+      {"x": -58.0, "z": -9.0, "half_width_m": 6.5},
+      {"x": -44.0, "z": -6.0, "half_width_m": 7.2},
+      {"x": -30.0, "z": -2.0, "half_width_m": 8.0},
+      {"x": -15.0, "z": 2.0, "half_width_m": 8.5},
+      {"x": 0.0, "z": 4.0, "half_width_m": 8.0},
+      {"x": 15.0, "z": 2.0, "half_width_m": 8.5},
+      {"x": 30.0, "z": -2.0, "half_width_m": 8.0},
+      {"x": 44.0, "z": -5.0, "half_width_m": 7.2},
+      {"x": 60.0, "z": -4.0, "half_width_m": 6.5},
+      {"x": 75.0, "z": 1.0, "half_width_m": 5.5},
+      {"x": 88.0, "z": 5.0, "half_width_m": 4.5}
+    ],
+    "crossings": [
+      {"id": "west_bridge", "lane_id": "west", "position": {"x": -52.0, "z": -8.0}, "deck_width_m": 9.5, "span_m": 20.0},
+      {"id": "center_bridge", "lane_id": "center", "position": {"x": -1.5, "z": 3.8}, "deck_width_m": 10.0, "span_m": 22.0},
+      {"id": "east_bridge", "lane_id": "east", "position": {"x": 61.0, "z": -3.7}, "deck_width_m": 9.5, "span_m": 18.0}
+    ]
+  },
+  "jungle_regions": [
+    {
+      "id": "west_jungle",
+      "boundary": [
+        {"x": -48.0, "z": -46.0},
+        {"x": -22.0, "z": -52.0},
+        {"x": -12.0, "z": -31.0},
+        {"x": -15.0, "z": -10.0},
+        {"x": -12.0, "z": 12.0},
+        {"x": -22.0, "z": 40.0},
+        {"x": -35.0, "z": 48.0},
+        {"x": -49.0, "z": 40.0},
+        {"x": -54.0, "z": 14.0},
+        {"x": -51.0, "z": -14.0}
+      ]
+    },
+    {
+      "id": "east_jungle",
+      "boundary": [
+        {"x": 48.0, "z": -46.0},
+        {"x": 22.0, "z": -52.0},
+        {"x": 12.0, "z": -31.0},
+        {"x": 15.0, "z": -10.0},
+        {"x": 12.0, "z": 12.0},
+        {"x": 22.0, "z": 40.0},
+        {"x": 35.0, "z": 48.0},
+        {"x": 49.0, "z": 40.0},
+        {"x": 54.0, "z": 14.0},
+        {"x": 51.0, "z": -14.0}
+      ]
+    }
+  ],
+  "camps": [
+    {"id": "west_camp_01", "region_id": "west_jungle", "position": {"x": -34.0, "z": -38.0}, "tier": 1},
+    {"id": "west_camp_02", "region_id": "west_jungle", "position": {"x": -26.0, "z": -28.0}, "tier": 1},
+    {"id": "west_camp_03", "region_id": "west_jungle", "position": {"x": -41.0, "z": -12.0}, "tier": 2},
+    {"id": "west_camp_04", "region_id": "west_jungle", "position": {"x": -25.0, "z": 12.0}, "tier": 1},
+    {"id": "west_camp_05", "region_id": "west_jungle", "position": {"x": -35.0, "z": 32.0}, "tier": 2},
+    {"id": "west_camp_06", "region_id": "west_jungle", "position": {"x": -29.0, "z": 40.0}, "tier": 1},
+    {"id": "east_camp_01", "region_id": "east_jungle", "position": {"x": 34.0, "z": -38.0}, "tier": 1},
+    {"id": "east_camp_02", "region_id": "east_jungle", "position": {"x": 26.0, "z": -28.0}, "tier": 1},
+    {"id": "east_camp_03", "region_id": "east_jungle", "position": {"x": 41.0, "z": -12.0}, "tier": 2},
+    {"id": "east_camp_04", "region_id": "east_jungle", "position": {"x": 25.0, "z": 12.0}, "tier": 1},
+    {"id": "east_camp_05", "region_id": "east_jungle", "position": {"x": 35.0, "z": 32.0}, "tier": 2},
+    {"id": "east_camp_06", "region_id": "east_jungle", "position": {"x": 29.0, "z": 40.0}, "tier": 1}
+  ],
+  "objectives": [
+    {"id": "west_neutral_objective", "position": {"x": -22.0, "z": -13.0}, "radius_m": 7.0},
+    {"id": "east_neutral_objective", "position": {"x": 22.0, "z": 13.0}, "radius_m": 7.0}
+  ],
+  "tower_depths_from_base_m": [18.0, 38.0, 58.0],
+  "navigation": {
+    "nodes": [
+      {"id": "blue_base", "position": {"x": 0.0, "z": -73.0}},
+      {"id": "red_base", "position": {"x": 0.0, "z": 73.0}},
+      {"id": "west_south", "position": {"x": -57.0, "z": -56.0}},
+      {"id": "west_bridge", "position": {"x": -52.0, "z": -8.0}},
+      {"id": "west_north", "position": {"x": -58.0, "z": 48.0}},
+      {"id": "center_south", "position": {"x": 2.0, "z": -56.0}},
+      {"id": "center_bridge", "position": {"x": -1.5, "z": 3.8}},
+      {"id": "center_north", "position": {"x": 2.0, "z": 48.0}},
+      {"id": "east_south", "position": {"x": 56.0, "z": -56.0}},
+      {"id": "east_bridge", "position": {"x": 61.0, "z": -3.7}},
+      {"id": "east_north", "position": {"x": 57.0, "z": 48.0}},
+      {"id": "west_jungle_south", "position": {"x": -34.0, "z": -34.0}},
+      {"id": "west_jungle_north", "position": {"x": -34.0, "z": 33.0}},
+      {"id": "east_jungle_south", "position": {"x": 34.0, "z": -34.0}},
+      {"id": "east_jungle_north", "position": {"x": 34.0, "z": 33.0}},
+      {"id": "west_objective", "position": {"x": -22.0, "z": -13.0}},
+      {"id": "east_objective", "position": {"x": 22.0, "z": 13.0}}
+    ],
+    "links": [
+      ["blue_base", "west_south"], ["blue_base", "center_south"], ["blue_base", "east_south"],
+      ["red_base", "west_north"], ["red_base", "center_north"], ["red_base", "east_north"],
+      ["west_south", "west_bridge"], ["west_bridge", "west_north"],
+      ["center_south", "center_bridge"], ["center_bridge", "center_north"],
+      ["east_south", "east_bridge"], ["east_bridge", "east_north"],
+      ["west_south", "west_jungle_south"], ["center_south", "west_jungle_south"],
+      ["west_jungle_south", "west_jungle_north"], ["west_jungle_north", "west_north"],
+      ["center_north", "west_jungle_north"], ["west_jungle_south", "west_objective"],
+      ["west_jungle_north", "west_objective"],
+      ["east_south", "east_jungle_south"], ["center_south", "east_jungle_south"],
+      ["east_jungle_south", "east_jungle_north"], ["east_jungle_north", "east_north"],
+      ["center_north", "east_jungle_north"], ["east_jungle_south", "east_objective"],
+      ["east_jungle_north", "east_objective"]
+    ]
+  },
+  "art_direction": {
+    "theme": "stylized_medieval_fantasy",
+    "environment_style": "organic_sculpted_world",
+    "forbidden_final_substitutes": ["colored_flat_lane_strips", "repeated_primitive_tree_and_rock_shapes", "flat_river_ribbon", "box_only_architecture"],
+    "required_material_families": ["grass", "soil", "stone", "wood", "river_water", "foliage"]
+  }
+}
