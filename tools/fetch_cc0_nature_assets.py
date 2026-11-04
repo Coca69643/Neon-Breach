@@ -648,11 +648,13 @@ def trim_placements_to_vertex_budget(
     for _ in range(34):
         middle = (low + high) * 0.5
         chosen, projected, kept_ground = candidate(middle)
-        if projected <= target_vertices and kept_ground >= minimum_ground_placements:
-            best = (chosen, projected, kept_ground)
-            low = middle
-        else:
+        if projected > target_vertices:
             high = middle
+        else:
+            if kept_ground >= minimum_ground_placements:
+                best = (chosen, projected, kept_ground)
+            # Below the placement floor, increase density; above it, spend remaining budget.
+            low = middle
 
     if best is None:
         minimum = candidate(4.0)
