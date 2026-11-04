@@ -80,6 +80,8 @@ jobs:
         run: python3 tools/fetch_cc0_life_assets.py
       - name: Bake pinned CC0 nature assets into static GLBs
         run: python3 tools/fetch_cc0_nature_assets.py
+      - name: Generate tileable PBR terrain materials
+        run: python3 tools/generate_terrain_materials.py
       - name: Compile and run native physics tests
         run: |
           g++ -std=c++20 -O2 -Wall -Wextra -Werror \
