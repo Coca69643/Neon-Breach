@@ -21,6 +21,7 @@ android {
     compileSdk 37
 
     defaultConfig {
+        // Keep this package ID stable so the signed 0.16.0 tester APK updates existing installs.
         applicationId 'com.duckdream.projectarena'
         minSdk 23
         targetSdk 35
