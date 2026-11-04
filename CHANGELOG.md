@@ -1,5 +1,20 @@
 # Changelog — Projeto Arena
 
+## [1.7.0 — reconstrução do campo e correção do GLB]
+
+### Build Android
+- versionName 1.7.0 / versionCode 170; pacote `com.duckdream.projectarena` preservado.
+- Nome do APK, checksum, artefato de CI e release agora usam 1.7.0.
+- Adicionado teste que valida índices de cena, nós, meshes, materiais, accessors, bufferViews e texturas do GLB.
+- Corrigido o gerador: peças sem geometria não deixam referências esparsas e inválidas em `scenes.nodes` e `nodes.mesh`.
+- Compilação CI não é prova de inicialização visual; smoke test Android continua obrigatório.
+
+### Mundo e personagens
+- Campo de batalha aberto, com bolsões de selva localizados.
+- Geração procedural offline e reproduzível de pontos de interesse, respeitando rotas, rio, acampamentos, objetivos e bases.
+- Paleta individual da Lyra.
+- Equipamentos visuais por função anexados aos rigs dos minions.
+
 ## [0.16.0 — build de teste]
 
 ### Build Android
