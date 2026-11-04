@@ -47,6 +47,8 @@ workflow = read(".github/workflows/android.yml")
 readme = read("README.md")
 changelog = read("CHANGELOG.md")
 asset_register = read("ASSETS/README.md")
+nature_license = read("ASSETS/Quaternius-Stylized-Nature-License.txt")
+nature_fetch = read("tools/fetch_cc0_nature_assets.py")
 kaykit_license = read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
 quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
@@ -305,6 +307,12 @@ checks = [
     ("Fetch and verify pinned CC0 life assets" in workflow and
      "tools/fetch_cc0_life_assets.py" in workflow,
      "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
+    ("Bake pinned CC0 nature assets into static GLBs" in workflow and
+     "tools/fetch_cc0_nature_assets.py" in workflow and
+     "001ecddebd9a5ed64cfadcccde0daf9342397a1b" in nature_fetch and
+     "CC0 1.0 Universal" in nature_license and
+     "two self-contained GLBs" in asset_register,
+     "pinned CC0 groundcover/rock bake step and license record are missing"),
     ("loadBakedNatureEnvironment" in renderer and "forest_groundcover" in renderer and
      "forest_rocks" in renderer and "riverCenterZ(x)" not in world and
      "private fun leafBlade(" not in world and "boulder_field" not in world and
