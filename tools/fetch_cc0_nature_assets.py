@@ -251,7 +251,8 @@ def build_glb(name: str, group_data: OrderedDict, image_data: dict[str, bytes], 
             textures.append({"sampler": 0, "source": image_index_by_uri[texture_uri]})
 
     for material_index, (key, group) in enumerate(group_data.items()):
-        texture_uri, alpha_mode, alpha_cutoff, double_sided = key
+        texture_uri, alpha_mode, alpha_cutoff = key
+        double_sided = group["double_sided"]
         texture_index = image_index_by_uri[texture_uri]
         material = {
             "name": group["name"],
@@ -377,14 +378,16 @@ def bake(models: dict[str, tuple[dict, bytes]], placements: dict[str, list[tuple
                 texture_uri = doc["images"][source_image]["uri"]
                 alpha_mode = mat.get("alphaMode", "OPAQUE")
                 alpha_cutoff = round(float(mat.get("alphaCutoff", 0.5)), 4)
-                key = (texture_uri, alpha_mode, alpha_cutoff, bool(mat.get("doubleSided", False)))
+                key = (texture_uri, alpha_mode, alpha_cutoff)
                 if key not in groups:
                     groups[key] = {
                         "name": mat.get("name", Path(texture_uri).stem),
                         "attributes": OrderedDict(),
                         "indices": [],
+                        "double_sided": bool(mat.get("doubleSided", False)),
                     }
                 group = groups[key]
+                group["double_sided"] = group["double_sided"] or bool(mat.get("doubleSided", False))
                 attr_source = primitive["attributes"]
                 source_attributes = {}
                 for semantic in ("POSITION", "NORMAL", "TEXCOORD_0", "COLOR_0"):
