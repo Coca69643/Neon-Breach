@@ -180,6 +180,8 @@ checks = [
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
     ("versionCode='171' versionName='1.7.0'" in workflow, "APK package/version verification is stale"),
+    ("Verify bundled KayKit resources in APK" in workflow and "package.read(resource_path)" in workflow,
+     "APK must be inspected for every KayKit GLTF buffer and texture URI"),
     ("project-arena-1.7.0-update" in workflow, "1.7.0 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
