@@ -149,3 +149,12 @@ Não atualizar dependências do runtime sem atualizar as ferramentas de shader c
 - O terreno ativo ainda usa o antigo recorte de ilha e malha de 76 × 76 m; a nova fonte JSON de 180 × 160 m não é consumida pelo renderer, colisão ou simulação.
 - Run CI `41901296794` concluiu com sucesso: pipeline de assets, validação estrutural do JSON, testes nativos, validação do projeto, testes Gradle e compilação Android. O APK foi identificado como **0.16.0**; isso não prova a integração ou aparência visual do mundo 1.7.0.
 - Status corrigido: **fundação do mundo 1.7.0 ainda não integrada ao runtime; aceite visual bloqueado**. Próximo passo obrigatório: geração Kotlin/C++ a partir da fonte canônica e substituição da geometria/posicionamentos legados antes de declarar a arena orgânica e completa. A `main` permanece inalterada.
+
+
+### 2026-11-04 — World contract generation and identity research
+- Pesquisa de identidade registrada em `docs/PROJECT_ARENA_GAMEPLAY_IDENTITY_LIVING_TERRITORY.md`, baseada em notas oficiais de Deadlock, Dota 2, visão mobile do Wild Rift e sessão GDC sobre níveis com vida sistêmica.
+- Direção proposta: **Território Vivo** — ecologia ativa, campo de batalha reativo, regiões com personalidade e objetivos que criam escolhas estratégicas. O ciclo experimental Territory Pulse permanece proposta futura, não feature implementada.
+- Criado `tools/generate_arena_world_17.py`: gera contratos tipados Kotlin e C++ a partir de `world/arena_world_1_7.json`.
+- Criados `ArenaWorld17Generated.kt` e `ArenaWorld17Generated.h`, incluindo limites 180 × 160 m, relevo, controles de elevação, bases, três rotas, rio de 13 pontos, três travessias, duas selvas, doze camps, dois objetivos e grafo de navegação.
+- CI agora executa o gerador e exige que os arquivos gerados permaneçam idênticos ao resultado do JSON canônico; adicionados testes Kotlin e C++ para o contrato gerado.
+- **Limite desta etapa:** o novo contrato está gerado e testado em isolamento; renderer, física e navegação ativos ainda usam o catálogo 0.16.0. Não declarar a nova arena integrada até a migração de todos os consumidores e validação visual no aparelho.
