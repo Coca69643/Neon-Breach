@@ -443,7 +443,8 @@ internal class FilamentGameRenderer(
             "tower_blue", "tower_red",
             "home_blue", "home_red",
             "church_blue", "church_red",
-            "bridge_a"
+            "bridge_a",
+            "fence_wood", "flag_blue", "flag_red"
         )
         worldProvider = UbershaderProvider(engine)
         worldAssetLoader = AssetLoader(engine, worldProvider!!, EntityManager.get())
@@ -523,6 +524,11 @@ internal class FilamentGameRenderer(
                     "bridge_a", crossing.position.x, crossing.position.z,
                     (crossing.deckWidth / 4.8f).coerceIn(1.85f, 2.25f), yaw
                 ))
+            }
+            // Seeded CC0 outposts create POIs in the open outer fields; jungle stays localized.
+            ArenaEnvironmentGenerator.generate().forEach { prop ->
+                add(WorldPlacement(prop.model, prop.x * mapScale, prop.z * mapScale,
+                    prop.scale, prop.yaw))
             }
             ArenaNatureCatalog.trees.forEach { tree ->
                 add(WorldPlacement(tree.model, tree.x * mapScale, tree.z * mapScale,
