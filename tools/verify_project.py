@@ -295,7 +295,7 @@ checks = [
     ("wildlifeMovesAndRetreatsFromNearbyPlayer" in life_tests and
      "campGuardiansStayAnchoredButHaveIdleMotion" in life_tests and
      "lifeCatalogContainsDistinctAmbientAndCampSpecies" in life_tests and
-     "worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover" in world_tests,
+     "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
      "life roster, movement and scenery regression tests are missing"),
     ("source_commit" in life_fetch and "git_blob_sha" in life_fetch and
      "CC0" in asset_register and "af7c09239feb1b675ae3ad469bbcacd7b56975f2" in life_fetch and
@@ -305,10 +305,11 @@ checks = [
     ("Fetch and verify pinned CC0 life assets" in workflow and
      "tools/fetch_cc0_life_assets.py" in workflow,
      "CI must fetch and validate CC0 GLB assets before tests and APK packaging"),
-    ("fern_leaves" in world and "meadow_flower_petals" in world and
-     "camp_mushroom_caps" in world and "fallen_timber" in world and
-     "River reeds" not in world and "riverCenterZ(x)" in world,
-     "batched flora, camp groundcover and river vegetation are missing"),
+    ("loadBakedNatureEnvironment" in renderer and "forest_groundcover" in renderer and
+     "forest_rocks" in renderer and "riverCenterZ(x)" not in world and
+     "private fun leafBlade(" not in world and "boulder_field" not in world and
+     "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
+     "textured nature must be baked into two static GLBs instead of procedural world meshes"),
     ("Four readable lane-unit silhouettes" in renderer and
      "val width = when (slot) { 0 -> 1.16f" in renderer and
      "val height = when (slot) { 0 -> 0.92f" in renderer,
@@ -361,7 +362,44 @@ for filename, expected_blob in nature_expected.items():
     model_data = json.loads(model_bytes[20:20 + json_length].decode("utf-8"))
     if not model_data.get("meshes") or any(item.get("uri") for item in model_data.get("buffers", []) + model_data.get("images", [])):
         raise SystemExit("Nature GLB must contain meshes and no external resources: " + filename)
-print("Four pinned CC0 nature GLBs, Git blob hashes and offline packaging verified.")
+print("Four pinned CC0 tree/bush GLBs, Git blob hashes and offline packaging verified.")
+
+baked_nature = {
+    "forest_groundcover.glb": 4,
+    "forest_rocks.glb": 1,
+}
+baked_vertex_total = 0
+for filename, expected_primitives in baked_nature.items():
+    path = nature_assets / filename
+    if not path.is_file():
+        raise SystemExit("Missing build-baked CC0 environment mesh: " + filename)
+    model_bytes = path.read_bytes()
+    if model_bytes[:4] != b"glTF" or int.from_bytes(model_bytes[4:8], "little") != 2:
+        raise SystemExit("Invalid baked GLB 2.0 header: " + filename)
+    if int.from_bytes(model_bytes[8:12], "little") != len(model_bytes):
+        raise SystemExit("Baked GLB length header mismatch: " + filename)
+    json_length = int.from_bytes(model_bytes[12:16], "little")
+    model_data = json.loads(model_bytes[20:20 + json_length].decode("utf-8"))
+    if len(model_data.get("meshes", [])) != 1:
+        raise SystemExit("Baked nature GLB must contain a single merged mesh: " + filename)
+    primitives = model_data["meshes"][0].get("primitives", [])
+    if len(primitives) != expected_primitives:
+        raise SystemExit("Unexpected baked material/draw batch count: " + filename)
+    if any(item.get("uri") for item in model_data.get("buffers", []) + model_data.get("images", [])):
+        raise SystemExit("Baked nature GLB must embed textures and geometry: " + filename)
+    if any("bufferView" not in image for image in model_data.get("images", [])):
+        raise SystemExit("Baked nature texture is not embedded: " + filename)
+    baked_vertex_total += sum(
+        model_data["accessors"][primitive["attributes"]["POSITION"]]["count"]
+        for primitive in primitives
+    )
+    if len(model_bytes) > 6_000_000:
+        raise SystemExit("Baked nature GLB exceeds 6 MB: " + filename)
+if baked_vertex_total > 100_000:
+    raise SystemExit("Baked nature geometry exceeds 100k vertices")
+if "SOURCE_COMMIT = \"001ecddebd9a5ed64cfadcccde0daf9342397a1b\"" not in read("tools/fetch_cc0_nature_assets.py"):
+    raise SystemExit("CC0 nature source must remain pinned to a reviewed commit")
+print("Baked nature verified: two static GLBs, five material batches, textures embedded, vertex budget passed.")
 
 atlas = world_assets / "hexagons_medieval.png"
 if not atlas.is_file() or atlas.stat().st_size < 1000:
