@@ -58,87 +58,42 @@ quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.t
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
 world_assets = ROOT / "app/src/main/assets/world/kaykit"
 
-def extract_pairs(source, start, end, pattern):
-    block = source.split(start, 1)[1].split(end, 1)[0]
-    return [(float(a), float(b)) for a, b in re.findall(pattern, block)]
+# Kotlin and native adapters must project the same generated world contract.
+generated_kotlin = read("app/src/main/java/com/duckdream/neonbreach/ArenaWorld17Generated.kt")
+generated_cpp = read("app/src/main/cpp/ArenaWorld17Generated.h")
+snapshot_layout = read("app/src/main/java/com/duckdream/neonbreach/ArenaSnapshotLayout.kt")
 
-kotlin_lanes = extract_pairs(
-    map_kotlin, "val lanes = listOf(", "val camps = listOf(",
-    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+required_kotlin_contract = (
+    "ArenaWorld17Generated.lanes" in map_kotlin and
+    "ArenaWorld17Generated.river" in map_kotlin and
+    "ArenaWorld17Generated.camps" in map_kotlin and
+    "ArenaWorld17Generated.objectives" in map_kotlin and
+    "ArenaWorld17Generated.bases" in map_kotlin and
+    "const val WORLD_SCALE = 1.0f" in map_kotlin
 )
-native_lanes = extract_pairs(
-    map_native, "kLanes{{", "kCampPositions",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
+required_native_contract = (
+    '#include "ArenaWorld17Generated.h"' in map_native and
+    "arena_world_17::kLanes" in map_native and
+    "arena_world_17::kRiver" in map_native and
+    "arena_world_17::kCamps" in map_native and
+    "arena_world_17::kObjectives" in map_native and
+    "kWorldScale = 1.0f" in map_native
 )
-kotlin_camps = extract_pairs(
-    map_kotlin, "val camps = listOf(", "val objectives = listOf(",
-    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+required_generated_contract = (
+    'const val WORLD_ID = "project_arena_1_7"' in generated_kotlin and
+    'kWorldId = "project_arena_1_7"' in generated_cpp and
+    "TERRAIN_VERTICES_X = 193" in generated_kotlin and
+    "kTerrainVerticesX = 193" in generated_cpp and
+    "val camps = listOf(" in generated_kotlin and
+    "std::array<Camp, 12> kCamps" in generated_cpp
 )
-native_camps = extract_pairs(
-    map_native, "kCampPositions{{", "kObjectivePositions",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
-)
-if kotlin_lanes != native_lanes:
-    raise SystemExit("Kotlin and C++ lane coordinates differ")
-if kotlin_camps != native_camps:
-    raise SystemExit("Kotlin and C++ camp coordinates differ")
-
-kotlin_objectives = extract_pairs(
-    map_kotlin, "val objectives = listOf(", "val groveCenters = listOf(",
-    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
-)
-native_objectives = extract_pairs(
-    map_native, "kObjectivePositions{{", "kObjectiveRadii",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
-)
-if kotlin_objectives != native_objectives:
-    raise SystemExit("Kotlin and C++ objective coordinates differ")
-
-kotlin_groves = extract_pairs(
-    map_kotlin, "val groveCenters = listOf(", "val treeBlockers = listOf(",
-    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
-)
-native_groves = extract_pairs(
-    map_native, "kGroveCenters{{", "kTreeBlockers",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
-)
-if kotlin_groves != native_groves:
-    raise SystemExit("Kotlin and C++ grove coordinates differ")
-
-kotlin_trees = extract_pairs(
-    map_kotlin, "val treeBlockers = listOf(", "fun laneCenterX",
-    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
-)
-native_trees = extract_pairs(
-    map_native, "kTreeBlockers{{", "inline float laneCenterX",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
-)
-if kotlin_trees != native_trees:
-    raise SystemExit("Kotlin and C++ tree blocker coordinates differ")
-
-def extract_river_points(source, start, end, pattern):
-    block = source.split(start, 1)[1].split(end, 1)[0]
-    return [tuple(float(value) for value in match) for match in re.findall(pattern, block)]
-
-kotlin_river = extract_river_points(
-    map_kotlin, "val riverCenterline = listOf(", "private fun riverSegment",
-    r"RiverPoint\(\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*,\s*(\d+(?:\.\d+)?)f\s*\)"
-)
-native_river = extract_river_points(
-    map_native, "kRiverCenterline{{", "inline int riverSegment",
-    r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*,\s*(\d+(?:\.\d+)?)f\s*\}"
-)
-if kotlin_river != native_river:
-    raise SystemExit("Kotlin and C++ river centerline/width profile differ")
-if max(point[2] for point in kotlin_river) - min(point[2] for point in kotlin_river) < 1.0:
-    raise SystemExit("River channel must have a meaningful variable-width profile")
-
-kotlin_scale = float(map_kotlin.split("const val WORLD_SCALE = ", 1)[1].split("f", 1)[0])
-native_scale = float(map_native.split("kWorldScale = ", 1)[1].split("f", 1)[0])
-if abs(kotlin_scale - native_scale) > 0.000001:
-    raise SystemExit("Kotlin and C++ world scale values differ")
+if not required_kotlin_contract or not required_native_contract or not required_generated_contract:
+    raise SystemExit("Kotlin/C++ runtime adapters are not consuming the generated canonical v1.7 world")
 if "p.add(x * scale)" not in world or "arena_map::kWorldScale" not in physics or "arena_map::kWorldScale" not in native:
     raise SystemExit("Map scale is not applied across geometry and native gameplay")
+if ("const val SIZE = 332" not in snapshot_layout or
+    "kSnapshotCount = 332" not in native or "ArenaSnapshotLayout.SIZE" not in main):
+    raise SystemExit("JNI snapshot must preserve old offsets and carry all twelve camp signals")
 
 checks = [
     ("ArenaMovementInput.fromScreenStick" in main and

@@ -64,7 +64,7 @@ internal object ArenaLifeCatalog {
     // These are visual-only actors; the native lane/camp simulation remains authoritative.
     val wildlife = listOf(
         LifeActorSpawn("deer_west", "deer", LifeActorKind.WILDLIFE, -43f, -33f, 2.8f, 0.4f, 0.27f),
-        LifeActorSpawn("deer_east", "deer", LifeActorKind.WILDLIFE, 42f, 31f, 2.6f, 2.1f, 0.25f),
+        LifeActorSpawn("deer_east", "deer", LifeActorKind.WILDLIFE, 42f, -47f, 2.6f, 2.1f, 0.25f),
         LifeActorSpawn("wolf_west", "wolf", LifeActorKind.WILDLIFE, -44f, 15f, 3.0f, 1.2f, 0.35f),
         LifeActorSpawn("wolf_east", "wolf", LifeActorKind.WILDLIFE, 44f, -15f, 3.0f, 2.8f, 0.33f),
         LifeActorSpawn("bird_west", "bird", LifeActorKind.WILDLIFE, -28f, -50f, 3.7f, 0.7f, 0.48f),
