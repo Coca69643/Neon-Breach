@@ -94,9 +94,7 @@ inline constexpr std::array<Objective, 2> kObjectives{{
     {"west_neutral_objective", Point{-22.0f, -13.0f}, 7.0f},
     {"east_neutral_objective", Point{22.0f, 13.0f}, 7.0f}
 }};
-inline constexpr std::array<float, 3> kTowerDepthsFromBase{{
-    18.0f, 38.0f, 58.0f
-}};
+inline constexpr std::array<float, 3> kTowerDepthsFromBase{{18.0f, 38.0f, 58.0f}};
 inline constexpr std::array<NavigationNode, 17> kNavigationNodes{{
     {"blue_base", Point{0.0f, -73.0f}},
     {"red_base", Point{0.0f, 73.0f}},
