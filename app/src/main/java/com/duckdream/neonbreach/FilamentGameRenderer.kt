@@ -325,7 +325,24 @@ internal class FilamentGameRenderer(
     }
 
     private fun loadWorld() {
-        val world = WorldGlbBuilder.build()
+        val terrainDirectory = "world/terrain/"
+        fun readTerrainMap(name: String): ByteArray =
+            context.assets.open(terrainDirectory + name).use { it.readBytes() }
+        val terrainTextures = TerrainTextureSet(
+            albedo = listOf(
+                readTerrainMap("grass_albedo.png"),
+                readTerrainMap("moss_albedo.png"),
+                readTerrainMap("soil_albedo.png"),
+                readTerrainMap("rock_albedo.png")
+            ),
+            normal = listOf(
+                readTerrainMap("grass_normal.png"),
+                readTerrainMap("moss_normal.png"),
+                readTerrainMap("soil_normal.png"),
+                readTerrainMap("rock_normal.png")
+            )
+        )
+        val world = WorldGlbBuilder.build(terrainTextures)
         viewer.loadModelGlb(ByteBuffer.wrap(world))
         val asset = viewer.asset ?: error("MOBA world GLB failed to load")
         val transforms = engine.transformManager
