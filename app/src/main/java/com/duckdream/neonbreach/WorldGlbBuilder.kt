@@ -697,7 +697,7 @@ internal object WorldGlbBuilder {
             listOf(0.06f,0.095f,0.045f,1f),
             listOf(0.30f,0.245f,0.17f,1f),
             listOf(0.13f,0.11f,0.075f,1f),
-            listOf(0.025f,0.075f,0.11f,1f),
+            listOf(0.035f,0.22f,0.27f,1f),
             listOf(0.105f,0.10f,0.085f,1f),
             listOf(0.07f,0.39f,0.72f,1f),
             listOf(0.72f,0.50f,0.12f,1f),
