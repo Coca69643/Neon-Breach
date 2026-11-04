@@ -263,21 +263,60 @@ internal class FilamentGameRenderer(
         viewer = created.second
         backendName = created.third
 
+        // Neutral outdoor palette: cool sky fill and a soft, slightly warm sun.
         skybox = Skybox.Builder()
-            .color(floatArrayOf(0.27f, 0.29f, 0.25f, 1f))
+            .color(floatArrayOf(0.36f, 0.47f, 0.54f, 1f))
             .build(engine)
         viewer.scene.skybox = skybox
         indirectLight = IndirectLight.Builder()
-            .irradiance(1, floatArrayOf(0.20f, 0.21f, 0.18f))
+            .irradiance(1, floatArrayOf(0.18f, 0.21f, 0.24f))
             .intensity(9_500.0f)
             .build(engine)
         viewer.scene.indirectLight = indirectLight
 
-        // ModelViewer supplies a sun, but its default direction is straight down.
-        // Angle it across the map so foliage, towers and lane walls gain readable form.
-        engine.lightManager.setDirection(viewer.light, -0.42f, -1.0f, -0.34f)
-        engine.lightManager.setColor(viewer.light, 1.0f, 0.93f, 0.82f)
-        engine.lightManager.setIntensity(viewer.light, 46_000.0f)
+        // ModelViewer already creates a shadow-capable SUN. Tune that single light
+        // instead of adding another directional source to the mobile render path.
+        val lightManager = engine.lightManager
+        lightManager.setDirection(viewer.light, -0.36f, -0.86f, -0.36f)
+        lightManager.setColor(viewer.light, 1.0f, 0.97f, 0.92f)
+        lightManager.setIntensity(viewer.light, 62_000.0f)
+        val sunInstance = lightManager.getInstance(viewer.light)
+        if (sunInstance != 0) {
+            val shadowOptions = lightManager.getShadowOptions(sunInstance)
+            shadowOptions.mapSize = 1024
+            shadowOptions.shadowCascades = 1
+            shadowOptions.stable = true
+            shadowOptions.maxShadowDistance = 56.0f
+            lightManager.setShadowOptions(sunInstance, shadowOptions)
+            lightManager.setShadowCaster(sunInstance, true)
+        }
+        viewer.view.setShadowingEnabled(true)
+        viewer.view.setShadowType(View.ShadowType.PCF)
+
+        // Half-resolution SAO adds contact depth at a bounded mobile cost.
+        viewer.view.setAmbientOcclusionOptions(View.AmbientOcclusionOptions().apply {
+            enabled = true
+            aoType = View.AmbientOcclusionOptions.AmbientOcclusionType.SAO
+            radius = 0.42f
+            power = 1.08f
+            bias = 0.001f
+            resolution = 0.5f
+            intensity = 0.62f
+            quality = View.QualityLevel.LOW
+            lowPassFilter = View.QualityLevel.LOW
+            upsampling = View.QualityLevel.LOW
+        })
+        // A restrained distance haze separates the far tree line without obscuring lanes.
+        viewer.view.setFogOptions(View.FogOptions().apply {
+            distance = 25.0f
+            cutOffDistance = 94.0f
+            maximumOpacity = 0.16f
+            height = 0.0f
+            heightFalloff = 0.045f
+            color = floatArrayOf(0.55f, 0.63f, 0.67f)
+            density = 0.0026f
+            enabled = true
+        })
         viewer.camera.setExposure(15.5f, 1.0f / 100.0f, 80.0f)
 
         viewer.view.renderQuality = viewer.view.renderQuality.apply {
@@ -324,6 +363,21 @@ internal class FilamentGameRenderer(
         }
     }
 
+    private fun configureAssetShadowing(
+        entities: IntArray,
+        castsShadows: Boolean,
+        receivesShadows: Boolean
+    ) {
+        val renderables = engine.renderableManager
+        for (entity in entities) {
+            val instance = renderables.getInstance(entity)
+            if (instance != 0) {
+                renderables.setCastShadows(instance, castsShadows)
+                renderables.setReceiveShadows(instance, receivesShadows)
+            }
+        }
+    }
+
     private fun loadWorld() {
         val terrainDirectory = "world/terrain/"
         fun readTerrainMap(name: String): ByteArray =
@@ -345,6 +399,8 @@ internal class FilamentGameRenderer(
         val world = WorldGlbBuilder.build(terrainTextures)
         viewer.loadModelGlb(ByteBuffer.wrap(world))
         val asset = viewer.asset ?: error("MOBA world GLB failed to load")
+        // The terrain is a receiver, not a shadow caster; static props cast onto it.
+        configureAssetShadowing(asset.entities, castsShadows = false, receivesShadows = true)
         val transforms = engine.transformManager
         asset.entities.forEach { entity ->
             when (asset.getName(entity)) {
@@ -445,6 +501,11 @@ internal class FilamentGameRenderer(
             val instance = worldAssetLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance KayKit model: ${placement.model}")
             worldInstances.add(instance)
+            configureAssetShadowing(
+                instance.entities,
+                castsShadows = placement.model != "nature_bush",
+                receivesShadows = true
+            )
             viewer.scene.addEntities(instance.entities)
             val root = transforms.getInstance(instance.root)
             check(root != 0) { "KayKit transform root missing: ${placement.model}" }
@@ -494,6 +555,11 @@ internal class FilamentGameRenderer(
                 ?: throw IllegalStateException("Could not instance baked nature GLB: $name")
             worldAssets[name] = asset
             worldInstances.add(instance)
+            configureAssetShadowing(
+                instance.entities,
+                castsShadows = name == "forest_rocks",
+                receivesShadows = true
+            )
             viewer.scene.addEntities(instance.entities)
             asset.releaseSourceData()
             Log.i(TAG, "Baked nature loaded: " + name + ", bytes=" + bytes.size + ", entities=" + instance.entities.size)
@@ -662,6 +728,7 @@ internal class FilamentGameRenderer(
         for (index in 0 until 9) {
             val instance = characterLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance bot humanoid $index")
+            configureAssetShadowing(instance.entities, castsShadows = false, receivesShadows = true)
             botInstances.add(instance)
             botAnimators.add(instance.animator)
             botMaterialSets.add(instance.materialInstances.toList())
@@ -681,6 +748,7 @@ internal class FilamentGameRenderer(
         for (index in 0 until 48) {
             val instance = characterLoader!!.createInstance(asset)
                 ?: throw IllegalStateException("Could not instance lane unit $index")
+            configureAssetShadowing(instance.entities, castsShadows = false, receivesShadows = true)
             minionInstances.add(instance)
             minionAnimators.add(instance.animator)
             val rootInstance = transforms.getInstance(instance.root)
@@ -747,6 +815,7 @@ internal class FilamentGameRenderer(
                 resources.loadResources(asset)
                 instance = loader.createInstance(asset)
                     ?: error("Filament could not instance ${definition.id}")
+                configureAssetShadowing(instance.entities, castsShadows = true, receivesShadows = true)
                 check(instance.skinCount > 0) { "${definition.id} GLB has no skinned body" }
                 val joints = instance.getJointsAt(0)
                 check(joints.size >= 25) { "${definition.id} humanoid rig is incomplete: ${joints.size} joints" }

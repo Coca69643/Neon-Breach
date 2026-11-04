@@ -328,6 +328,11 @@ checks = [
      "terrainGlbEmbedsFourPbrSurfacePairsAndTerrainUvCoordinates" in world_tests and
      "grass_albedo.png" in renderer and "rock_normal.png" in renderer,
      "terrain albedo/normal maps must be embedded and applied to the terrain mesh"),
+    ("setShadowingEnabled(true)" in renderer and "View.ShadowType.PCF" in renderer and
+     "setShadowOptions" in renderer and "shadowOptions.mapSize = 1024" in renderer and
+     "setAmbientOcclusionOptions" in renderer and "AmbientOcclusionType.SAO" in renderer and
+     "setFogOptions" in renderer and "configureAssetShadowing" in renderer,
+     "outdoor rendering must use bounded sun shadows, low-cost contact AO and subtle atmospheric depth"),
     ("Four readable lane-unit silhouettes" in renderer and
      "val width = when (slot) { 0 -> 1.16f" in renderer and
      "val height = when (slot) { 0 -> 0.92f" in renderer,

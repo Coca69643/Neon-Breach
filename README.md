@@ -4,7 +4,7 @@ MOBA 3D nativo para Android, com partidas 5v5 offline contra IA. Inclui três ro
 
 ## Log de atualizações
 
-- **0.16.0 (em desenvolvimento)** — Vegetação CC0 agrupada em GLBs estáticos e terreno com materiais PBR tileable; colisões e relevo preservados.
+- **0.16.0 (em desenvolvimento)** — Vegetação CC0, materiais PBR e iluminação ambiental com sombras, oclusão de contato e névoa leve; relevo e colisões preservados.
 - **0.15.12** — Corrigida a orientação dos três heróis e aplicadas paletas de materiais individuais.
 - **0.15.11** — Novo ícone e identificador Android próprio, sem conflito de instalação com ORION-9.
 - **0.15.10** — Fauna reposicionada perto das rotas; culling acompanha os animais em movimento.

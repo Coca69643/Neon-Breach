@@ -2,6 +2,13 @@
 
 ## [0.16.0 — em desenvolvimento]
 
+### Iluminação e profundidade ambiental
+- Ajustada a única luz solar direcional do Filament, com direção natural e cor levemente quente; sem fontes de luz extras.
+- Sombras PCF estáveis com mapa de 1024 px e uma cascata; estruturas, pontes, árvores e rochas projetam sombras no terreno.
+- Oclusão ambiente SAO em meia resolução para contato entre objetos e solo; tropas numerosas e vegetação rasteira não geram mapas de sombra.
+- Névoa de distância discreta para separar o plano distante sem encobrir as rotas e objetivos.
+- Mantidos relevo, rio, geometria, colisões e a resolução dinâmica de renderização.
+
 ### Superfície do terreno com materiais PBR
 - Introduz quatro superfícies tileable: grama, musgo, terra compactada e rocha exposta, cada uma com albedo e normal map.
 - Os oito PNGs de 256×256 são gerados deterministicamente no CI e embutidos no GLB do mundo; não há geração de textura em runtime nem dependência online.
