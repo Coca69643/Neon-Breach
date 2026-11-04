@@ -293,6 +293,8 @@ internal class FilamentGameRenderer(
         loadWorld()
         Log.i(TAG, "Startup stage: KayKit environment")
         loadKayKitEnvironment()
+        Log.i(TAG, "Startup stage: baked CC0 groundcover and rock environment")
+        loadBakedNatureEnvironment()
         Log.i(TAG, "Startup stage: characters and rigs")
         loadCharacter()
         Log.i(TAG, "Startup stage: wildlife and camp guardians")
@@ -457,6 +459,28 @@ internal class FilamentGameRenderer(
 
         worldAssets.values.forEach { it.releaseSourceData() }
         Log.i(TAG, "KayKit CC0 environment loaded: ${worldAssets.size} models, ${worldInstances.size} placements")
+    }
+
+    /** Loads two pre-baked static meshes; each packs all placements by texture/material. */
+    private fun loadBakedNatureEnvironment() {
+        val loader = worldAssetLoader ?: error("World AssetLoader is unavailable for baked nature")
+        val resources = worldResourceLoader ?: error("World ResourceLoader is unavailable for baked nature")
+        for (name in listOf("forest_groundcover", "forest_rocks")) {
+            val bytes = context.assets.open("world/nature/$name.glb").use { it.readBytes() }
+            val asset = loader.createAsset(ByteBuffer.wrap(bytes))
+                ?: throw IllegalStateException("Filament rejected baked nature GLB: $name")
+            check(asset.resourceUris.isEmpty()) {
+                "Baked nature GLB must embed all textures for offline loading: $name"
+            }
+            resources.loadResources(asset)
+            val instance = loader.createInstance(asset)
+                ?: throw IllegalStateException("Could not instance baked nature GLB: $name")
+            worldAssets[name] = asset
+            worldInstances.add(instance)
+            viewer.scene.addEntities(instance.entities)
+            asset.releaseSourceData()
+            Log.i(TAG, "Baked nature loaded: " + name + ", bytes=" + bytes.size + ", entities=" + instance.entities.size)
+        }
     }
 
     private fun loadLivingWorld() {
