@@ -201,11 +201,10 @@ checks = [
     ("towerRootInstances = IntArray(18)" in renderer and "snapshot[107 + index]" in renderer, "18 tower render instances not connected"),
     ("minionRootInstances = IntArray(48)" in renderer and "snapshot[222 + index]" in renderer and "snapshot[126 + index * 2]" in renderer, "48 minion renderer/snapshot layout mismatch"),
     ("private fun laneCenterX(lane: Int, worldZ: Float)" in renderer and "ArenaNatureCatalog.trees" in renderer and "ArenaMapDefinition.lanes" in world and "ArenaMapDefinition.camps" in world and "ArenaMapDefinition.objectives" in world and "ArenaMapDefinition.h" in native and "ArenaMapDefinition.h" in physics and "arena_map::kTreeBlockers" in physics and "arena_map::kCampPositions" in native and "heightAt(x: Float, z: Float)" in world and "private fun shrine(" in world and "surrounding_water" in world, "reconstructed relief, canonical forest and objective geometry missing"),
-    ("forestTreeAnchors" in read("app/src/main/java/com/duckdream/neonbreach/ArenaWorld17Generated.kt") and
-     "kForestTreeAnchors" in read("app/src/main/cpp/ArenaWorld17Generated.h") and
-     "forestTreeAnchors" in map_kotlin and "kForestTreeAnchors" in map_native and
-     "kTreeBlockers" in physics,
-     "canonical forest canopy must feed renderer and physics from the same generated anchors"),
+    ("treeOffsets = listOf(" in map_kotlin and "Point(-4.8f, -3.8f), Point(4.8f, 3.8f)" in map_kotlin and
+     "std::array<Point, 2> offsets" in map_native and "kTreeBlockers" in physics and
+     "require(treeBlockers.size == 24)" in map_kotlin,
+     "jungle vegetation must stay clustered around camp pockets, not cover the full arena"),
     ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
      "moveActorOnMap" in native and "testArenaNavigationGraph" in read("tests/arena_physics_tests.cpp"),
      "MOBA bots are not using the lane/jungle navigation graph"),

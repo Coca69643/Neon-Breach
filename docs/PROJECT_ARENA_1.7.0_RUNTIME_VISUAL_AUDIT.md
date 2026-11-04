@@ -29,7 +29,7 @@ The older findings below describe the pre-cutover state and must not be read as 
 
 ### Remaining visual blockers
 
-1. Canopy distribution now derives 62 deterministic anchors from both canonical jungle polygons, while 48 camp-approach trunks remain around neutral clearings. The same generated 110 positions feed tree rendering and native collision. Visual density, silhouettes and traversal comfort still require Android inspection.
+1. Tree distribution is now deliberately localized: 24 trees frame the 12 neutral camp pockets (two per camp). The same 24 positions feed rendering and native collision; the remaining battlefield is open cultivated ground and stone. Density, silhouettes and traversal comfort still require Android inspection.
 2. The objective shrine builder still uses repeated primitive stone geometry; it must be replaced by a less regular authored/CC0 composition before visual acceptance.
 3. Bridge placement now uses the three canonical crossings, but one shared bridge asset is still reused. Confirm deck width, orientation, bank connection, collision and visual proportions from the gameplay camera.
 4. Roads are smooth procedural ribbons. Their edge blending, width, shoulder variation and transitions into terrain must be inspected and refined so they do not read as uniform strips.

@@ -58,19 +58,15 @@ inline constexpr auto kGroveCenters = kCampPositions;
 
 // Four collision trunks around each canonical camp. Their placement is derived, never separately authored.
 inline constexpr auto kTreeBlockers = [] {
-    constexpr std::array<Point, 4> offsets{{
-        {-4.8f, -3.8f}, {4.8f, -3.8f}, {-4.8f, 3.8f}, {4.8f, 3.8f}
+    constexpr std::array<Point, 2> offsets{{
+        {-4.8f, -3.8f}, {4.8f, 3.8f}
     }};
-    constexpr std::size_t campTreeCount = arena_world_17::kCamps.size() * offsets.size();
-    std::array<Point, campTreeCount + arena_world_17::kForestTreeAnchors.size()> result{};
+    std::array<Point, arena_world_17::kCamps.size() * offsets.size()> result{};
     for (std::size_t i = 0; i < arena_world_17::kCamps.size(); ++i) {
         const auto center = arena_world_17::kCamps[i].position;
         for (std::size_t j = 0; j < offsets.size(); ++j) {
             result[i * offsets.size() + j] = {center.x + offsets[j].x, center.z + offsets[j].z};
         }
-    }
-    for (std::size_t i = 0; i < arena_world_17::kForestTreeAnchors.size(); ++i) {
-        result[campTreeCount + i] = arena_world_17::kForestTreeAnchors[i];
     }
     return result;
 }();

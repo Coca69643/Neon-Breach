@@ -26,7 +26,7 @@ internal object ArenaNatureCatalog {
         )
     }
 
-    // Low shrubs fill the forest margins, not the lane corridors or objective combat spaces.
+    // Low shrubs remain clustered at neutral camp pockets rather than filling the field.
     val bushes: List<Placement> = ArenaMapDefinition.groveCenters.mapIndexed { index, point ->
         val side = if (index % 2 == 0) -1f else 1f
         Placement(
