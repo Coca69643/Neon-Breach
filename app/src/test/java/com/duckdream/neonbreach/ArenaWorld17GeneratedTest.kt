@@ -8,8 +8,8 @@ class ArenaWorld17GeneratedTest {
     @Test
     fun generatedWorldUsesApprovedEnvelopeAndTerrainResolution() {
         assertEquals("project_arena_1_7", ArenaWorld17Generated.WORLD_ID)
-        assertEquals(90f, ArenaWorld17Generated.HALF_WIDTH_M)
-        assertEquals(80f, ArenaWorld17Generated.HALF_DEPTH_M)
+        assertEquals(90f, ArenaWorld17Generated.HALF_WIDTH_M, 0.0001f)
+        assertEquals(80f, ArenaWorld17Generated.HALF_DEPTH_M, 0.0001f)
         assertEquals(193, ArenaWorld17Generated.TERRAIN_VERTICES_X)
         assertEquals(177, ArenaWorld17Generated.TERRAIN_VERTICES_Z)
         assertEquals(7, ArenaWorld17Generated.elevationControls.size)
