@@ -555,6 +555,135 @@ def bake(models: dict[str, tuple[dict, bytes]], placements: dict[str, list[tuple
     return groups
 
 
+
+def source_vertex_costs(models: dict[str, tuple[dict, bytes]]) -> dict[str, int]:
+    """Count source POSITION vertices replicated by one baked placement of each model."""
+    costs: dict[str, int] = {}
+    for model_name, (doc, _) in models.items():
+        total = 0
+        for node in doc.get("nodes", []):
+            mesh_index = node.get("mesh")
+            if mesh_index is None:
+                continue
+            for primitive in doc["meshes"][mesh_index]["primitives"]:
+                position_accessor = primitive["attributes"]["POSITION"]
+                total += int(doc["accessors"][position_accessor]["count"])
+        if total <= 0:
+            raise SystemExit(f"Source model has no POSITION vertices: {model_name}")
+        costs[model_name] = total
+    return costs
+
+
+def trim_placements_to_vertex_budget(
+    models: dict[str, tuple[dict, bytes]],
+    placements: dict[str, list[tuple[float, float, float, float, float]]],
+    target_vertices: int = 95_000,
+    minimum_ground_placements: int = 150,
+) -> tuple[dict[str, list[tuple[float, float, float, float, float]]], dict[str, int]]:
+    """Deterministically thin only secondary groundcover while preserving gameplay rocks."""
+    costs = source_vertex_costs(models)
+    rock_names = [name for name in MODELS if name.startswith("Rock_")]
+    ground_names = [name for name in MODELS if not name.startswith("Rock_")]
+    rock_vertices = sum(len(placements[name]) * costs[name] for name in rock_names)
+    ground_candidates = [
+        (name, index, item)
+        for name in ground_names
+        for index, item in enumerate(placements[name])
+    ]
+    original_ground_vertices = sum(len(placements[name]) * costs[name] for name in ground_names)
+    original_total = rock_vertices + original_ground_vertices
+
+    if rock_vertices >= target_vertices:
+        raise SystemExit(
+            f"Gameplay rocks alone exceed the nature vertex target: "
+            f"{rock_vertices} > {target_vertices}"
+        )
+    if original_total <= target_vertices:
+        return {name: list(items) for name, items in placements.items()}, {
+            "original_vertices": original_total,
+            "kept_vertices": original_total,
+            "original_ground": len(ground_candidates),
+            "kept_ground": len(ground_candidates),
+        }
+
+    # Fern silhouettes are the primary low vegetation read. Fine grass remains common;
+    # flowers and mushrooms are accents and are thinned first when a device budget is hit.
+    visual_weights = {
+        "Fern_1": 2.40,
+        "Grass_Wispy_Short": 2.10,
+        "Grass_Common_Tall": 1.50,
+        "Flower_3_Group": 1.00,
+        "Mushroom_Common": 0.90,
+    }
+    model_seed = {name: 1801 + index * 97 for index, name in enumerate(MODELS)}
+    target = {
+        name: list(placements[name]) if name in rock_names else []
+        for name in MODELS
+    }
+
+    def candidate(scale: float):
+        chosen: dict[str, list[tuple[float, float, float, float, float]]] = {
+            name: list(placements[name]) if name in rock_names else []
+            for name in MODELS
+        }
+        kept_ground = 0
+        projected = rock_vertices
+        for model_name in ground_names:
+            probability = min(1.0, visual_weights[model_name] * scale)
+            for index, item in enumerate(placements[model_name]):
+                x, z = item[0], item[1]
+                score = hash01(
+                    round(x * 10),
+                    round(z * 10),
+                    model_seed[model_name] + index * 13
+                )
+                if score < probability:
+                    chosen[model_name].append(item)
+                    kept_ground += 1
+                    projected += costs[model_name]
+        return chosen, projected, kept_ground
+
+    low, high = 0.0, 4.0
+    best = None
+    for _ in range(34):
+        middle = (low + high) * 0.5
+        chosen, projected, kept_ground = candidate(middle)
+        if projected <= target_vertices and kept_ground >= minimum_ground_placements:
+            best = (chosen, projected, kept_ground)
+            low = middle
+        else:
+            high = middle
+
+    if best is None:
+        minimum = candidate(4.0)
+        costs_report = ", ".join(
+            f"{name}:{len(placements[name])}x{costs[name]}"
+            for name in MODELS
+        )
+        raise SystemExit(
+            f"Cannot fit the 100k nature budget while retaining {minimum_ground_placements} "
+            f"ground placements. rocks={rock_vertices}, modelCosts=[{costs_report}]"
+        )
+
+    chosen, projected, kept_ground = best
+    if projected > target_vertices or kept_ground < minimum_ground_placements:
+        raise SystemExit("Deterministic nature budget optimizer violated its target")
+    kept_counts = {name: len(chosen[name]) for name in MODELS}
+    print(
+        "Nature LOD budget: "
+        f"{original_total} -> {projected} vertices, "
+        f"ground placements {len(ground_candidates)} -> {kept_ground}, "
+        f"retained per model={kept_counts}"
+    )
+    return chosen, {
+        "original_vertices": original_total,
+        "kept_vertices": projected,
+        "original_ground": len(ground_candidates),
+        "kept_ground": kept_ground,
+    }
+
+
+
 def main() -> None:
     raw = fetch_assets()
     models: dict[str, tuple[dict, bytes]] = {}
@@ -573,6 +702,7 @@ def main() -> None:
             image_data[uri] = raw[uri]
 
     placements = build_placements()
+    placements, budget = trim_placements_to_vertex_budget(models, placements)
     ground = bake(models, placements, image_data, "ground")
     rocks = bake(models, placements, image_data, "rocks")
     ground_batches, ground_vertices = build_glb(
@@ -591,7 +721,8 @@ def main() -> None:
             raise SystemExit(f"Packed nature GLB exceeds 6 MB: {filename}")
     print(
         "Baked CC0 nature: "
-        f"{sum(map(len, placements.values()))} source placements -> "
+        f"{sum(map(len, placements.values()))} optimized placements "
+        f"(from {budget['original_ground'] + sum(len(placements[name]) for name in MODELS if name.startswith('Rock_'))} before budget) -> "
         f"{ground_batches + rock_batches} draw batches, {total_vertices} vertices."
     )
 
