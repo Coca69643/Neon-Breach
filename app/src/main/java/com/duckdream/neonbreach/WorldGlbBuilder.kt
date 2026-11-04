@@ -331,14 +331,14 @@ internal object WorldGlbBuilder {
 
         var previousWaterLeft: FloatArray? = null
         var previousWaterRight: FloatArray? = null
-        var previousShallowLeftInner: FloatArray? = null
-        var previousShallowLeftOuter: FloatArray? = null
-        var previousShallowRightInner: FloatArray? = null
-        var previousShallowRightOuter: FloatArray? = null
-        var previousBankLeftInner: FloatArray? = null
-        var previousBankLeftOuter: FloatArray? = null
-        var previousBankRightInner: FloatArray? = null
-        var previousBankRightOuter: FloatArray? = null
+        var previousShallowInnerLeft: FloatArray? = null
+        var previousShallowOuterLeft: FloatArray? = null
+        var previousShallowInnerRight: FloatArray? = null
+        var previousShallowOuterRight: FloatArray? = null
+        var previousBankInnerLeft: FloatArray? = null
+        var previousBankOuterLeft: FloatArray? = null
+        var previousBankInnerRight: FloatArray? = null
+        var previousBankOuterRight: FloatArray? = null
 
         fun addBand(part: Part, previousInner: FloatArray, inner: FloatArray,
                     previousOuter: FloatArray, outer: FloatArray) {
