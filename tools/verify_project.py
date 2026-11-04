@@ -283,7 +283,12 @@ checks = [
      "maxDistance = (if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) 31f else 36f) * mapScale" in renderer and
      "viewer.scene.removeEntities(actor.instance.entities)" in renderer,
      "neutral guardians and ambient wildlife must be visibility- and distance-managed in world scale"),
-    ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
+    ("ArenaNatureCatalog.trees" in renderer and "ArenaNatureCatalog.bushes" in renderer and
+     "nature_tree_oak" in renderer and "nature_tree_pine" in renderer and
+     "nature_tree_broadleaf" in renderer and "nature_bush" in renderer and
+     "natureUsesThreeTreeSilhouettesAndSharedBushAsset" in read("app/src/test/java/com/duckdream/neonbreach/ArenaNatureCatalogTest.kt"),
+     "CC0 tree and bush variation must replace the grouped procedural tree asset"),
+        ("ArenaLifeCatalog.wildlife" in renderer and "ArenaLifeCatalog.campGuardians()" in renderer and
      "deer" in life_catalog and "wolf" in life_catalog and "bird" in life_catalog and
      "mushroom" in life_catalog and "walking-tree" in life_catalog and "ghost" in life_catalog,
      "ambient and neutral life roster is incomplete"),
@@ -318,7 +323,7 @@ for ok, message in checks:
 
 model_names = [
     "castle_blue", "castle_red", "tower_blue", "tower_red", "home_blue", "home_red",
-    "church_blue", "church_red", "bridge_a", "trees_a", 
+    "church_blue", "church_red", "bridge_a",
 ]
 if not world_assets.is_dir():
     raise SystemExit("KayKit world asset directory missing")
@@ -334,6 +339,30 @@ for name in model_names:
         uri = resource.get("uri")
         if uri and not (world_assets / uri).is_file():
             raise SystemExit("Missing GLTF resource " + uri + " required by " + name)
+nature_assets = ROOT / "app/src/main/assets/world/nature"
+nature_expected = {
+    "tree_oak.glb.b64": "80bd662cc51f983986f4e201463dc3a729a6cd4a",
+    "tree_pine.glb.b64": "0197de65879eb650247c8d56ac52da34489938cb",
+    "tree_broadleaf.glb.b64": "828786b4bdb5224a8b3672f5e5d6cebe1c65bd93",
+    "bush_common.glb.b64": "84b4153c17e988a658e56d4093b0028d1b034c3f",
+}
+for filename, expected_blob in nature_expected.items():
+    path = nature_assets / filename
+    if not path.is_file():
+        raise SystemExit("Missing pinned CC0 nature model: " + filename)
+    encoded = path.read_text(encoding="ascii").strip()
+    model_bytes = base64.b64decode(encoded, validate=True)
+    git_blob = hashlib.sha1((b"blob " + str(len(model_bytes)).encode("ascii") + b"\\0") + model_bytes).hexdigest()
+    if git_blob != expected_blob:
+        raise SystemExit("Pinned CC0 nature model Git blob SHA mismatch: " + filename)
+    if model_bytes[:4] != b"glTF" or int.from_bytes(model_bytes[4:8], "little") != 2:
+        raise SystemExit("Invalid self-contained GLB 2.0 nature model: " + filename)
+    json_length = int.from_bytes(model_bytes[12:16], "little")
+    model_data = json.loads(model_bytes[20:20 + json_length].decode("utf-8"))
+    if not model_data.get("meshes") or any(item.get("uri") for item in model_data.get("buffers", []) + model_data.get("images", [])):
+        raise SystemExit("Nature GLB must contain meshes and no external resources: " + filename)
+print("Four pinned CC0 nature GLBs, Git blob hashes and offline packaging verified.")
+
 atlas = world_assets / "hexagons_medieval.png"
 if not atlas.is_file() or atlas.stat().st_size < 1000:
     raise SystemExit("Shared KayKit texture atlas missing")
