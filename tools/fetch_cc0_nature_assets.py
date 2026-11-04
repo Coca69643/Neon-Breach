@@ -14,7 +14,8 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 OUT = ROOT / "app/src/main/assets/world/nature"
 SOURCE = "https://raw.githubusercontent.com/anandin/the-wild-between/001ecddebd9a5ed64cfadcccde0daf9342397a1b/assets/quaternius-nature/"
-WORLD_SCALE = 1.15
+WORLD = json.loads((ROOT / "world/arena_world_1_7.json").read_text(encoding="utf-8"))
+WORLD_SCALE = 1.0
 SOURCE_COMMIT = "001ecddebd9a5ed64cfadcccde0daf9342397a1b"
 
 EXPECTED = {
@@ -26,9 +27,9 @@ EXPECTED = {
     "Grass_Wispy_Short.bin": "bb62b3768f54b700c1334980aa57c5543f447c56",
     "Flower_3_Group.gltf": "e1e083986d17ba0362349e83256e1f38bf8b8d30",
     "Flower_3_Group.bin": "faa36e37db8a5fb8b0a29e382b27b2184a832be6",
-    "Rock_Medium_1.gltf": "10896291ed3b58a2c51fe2e9cb8f912705e5b239",
-    "Rock_Medium_1.bin": "3b8d132a71b30b62787e206ee6b517097370267a",
+    "Rock_Medium_1.gltf": "10896291ed3b58b4f8f2e9cb8f912705e5b239",
     "Rock_Medium_2.gltf": "353d1d80729226b73ac5bc22b227da7d50dfdc8a",
+    "Rock_Medium_1.bin": "3b8d132a71b30b62787e206ee6b517097370267a",
     "Rock_Medium_2.bin": "064074dca1028d3eb965b93be24da19710f44b55",
     "Mushroom_Common.gltf": "b0cc681e6630187d3fc1bb984f3f375997935135",
     "Mushroom_Common.bin": "b99724f959a5cb70937d8c6f830484d13e04b100",
@@ -49,22 +50,31 @@ MODELS = (
     "Rock_Medium_2",
 )
 
-GROVES = (
-    (-25.0, -19.0), (-27.0, -8.0), (-23.0, 8.0), (-26.0, 19.0),
-    (25.0, -19.0), (27.0, -8.0), (23.0, 8.0), (26.0, 19.0),
-    (-8.5, -21.0), (8.5, -21.0), (-8.5, 21.0), (8.5, 21.0),
-)
-CAMPS = (
-    (-8.2, -14.5), (8.2, -14.5), (-20.2, -10.0), (20.2, -10.0),
-    (-8.2, 14.5), (8.2, 14.5), (-20.2, 10.0), (20.2, 10.0),
-)
-OBJECTIVES = ((-7.0, 0.2, 4.55), (7.0, 0.2, 4.55))
-RIVER = (
-    (-34.0, 1.1, 0.78), (-28.0, 0.55, 1.15), (-21.0, 0.05, 1.48),
-    (-15.0, -0.45, 1.68), (-9.0, -0.22, 1.92), (-3.0, 0.25, 1.58),
-    (4.0, 0.38, 1.82), (10.0, 0.02, 1.95), (16.0, -0.38, 1.62),
-    (23.0, -0.18, 1.62), (29.0, 0.22, 1.15), (34.0, 0.8, 0.78),
-)
+RIVER = [
+    (float(point["x"]), float(point["z"]), float(point["half_width_m"]))
+    for point in WORLD["river"]["centerline"]
+]
+LANES = [
+    ([(float(point["x"]), float(point["z"])) for point in lane["waypoints"]],
+     float(lane["width_m"]))
+    for lane in WORLD["lanes"]
+]
+CAMPS = [
+    (float(camp["position"]["x"]), float(camp["position"]["z"]))
+    for camp in WORLD["camps"]
+]
+OBJECTIVES = [
+    (float(item["position"]["x"]), float(item["position"]["z"]), float(item["radius_m"]))
+    for item in WORLD["objectives"]
+]
+JUNGLES = [
+    (region["id"], [(float(point["x"]), float(point["z"])) for point in region["boundary"]])
+    for region in WORLD["jungle_regions"]
+]
+CROSSINGS = [
+    (float(item["position"]["x"]), float(item["position"]["z"]), float(item["deck_width_m"]))
+    for item in WORLD["river"]["crossings"]
+]
 
 COMPONENTS = {
     5120: ("b", 1, True), 5121: ("B", 1, False),
@@ -84,7 +94,7 @@ def fetch_assets() -> dict[str, bytes]:
     for name, expected in EXPECTED.items():
         request = urllib.request.Request(
             SOURCE + name,
-            headers={"User-Agent": "DuckDreamStudios-ProjectArena/0.16"},
+            headers={"User-Agent": "DuckDreamStudios-ProjectArena/1.7"},
         )
         with urllib.request.urlopen(request, timeout=45) as response:
             data = response.read()
@@ -95,90 +105,200 @@ def fetch_assets() -> dict[str, bytes]:
     return downloaded
 
 
-def river_sample(x: float, field: int) -> float:
-    x = min(max(x, RIVER[0][0]), RIVER[-1][0])
-    for index in range(len(RIVER) - 1):
-        a, b = RIVER[index], RIVER[index + 1]
-        if x <= b[0]:
-            t = (x - a[0]) / (b[0] - a[0])
-            return a[field] + (b[field] - a[field]) * t
-    return RIVER[-1][field]
+def hash01(ix: int, iz: int, seed: int) -> float:
+    value = (ix * 73856093) ^ (iz * 19349663) ^ (seed * 83492791)
+    value &= 0xFFFFFFFF
+    value ^= value >> 13
+    value = (value * 1274126177) & 0xFFFFFFFF
+    value ^= value >> 16
+    return value / 0xFFFFFFFF
+
+
+def distance_to_segment(x: float, z: float, a: tuple[float, float],
+                        b: tuple[float, float]) -> float:
+    dx, dz = b[0] - a[0], b[1] - a[1]
+    denominator = max(dx * dx + dz * dz, 0.0001)
+    t = max(0.0, min(1.0, ((x - a[0]) * dx + (z - a[1]) * dz) / denominator))
+    return math.hypot(x - (a[0] + dx * t), z - (a[1] + dz * t))
+
+
+def distance_to_polyline(x: float, z: float, points: list[tuple[float, float]]) -> float:
+    return min(
+        distance_to_segment(x, z, a, b)
+        for a, b in zip(points, points[1:])
+    )
+
+
+def point_in_polygon(x: float, z: float, polygon: list[tuple[float, float]]) -> bool:
+    inside = False
+    for a, b in zip(polygon, polygon[1:] + polygon[:1]):
+        if (a[1] > z) != (b[1] > z):
+            crossing_x = (b[0] - a[0]) * (z - a[1]) / (b[1] - a[1]) + a[0]
+            if x < crossing_x:
+                inside = not inside
+    return inside
+
+
+def river_nearest(x: float, z: float) -> tuple[float, float, float, float]:
+    best_distance = float("inf")
+    best_width = RIVER[0][2]
+    best_x, best_z = x, z
+    for a, b in zip(RIVER, RIVER[1:]):
+        dx, dz = b[0] - a[0], b[1] - a[1]
+        denominator = max(dx * dx + dz * dz, 0.0001)
+        t = max(0.0, min(1.0, ((x - a[0]) * dx + (z - a[1]) * dz) / denominator))
+        px, pz = a[0] + dx * t, a[1] + dz * t
+        distance = math.hypot(x - px, z - pz)
+        if distance < best_distance:
+            best_distance = distance
+            best_width = a[2] + (b[2] - a[2]) * t
+            best_x, best_z = px, pz
+    return best_distance, best_width, best_x, best_z
 
 
 def terrain_height(x: float, z: float) -> float:
-    west = 2.35 * math.exp(-((x + 24.0) ** 2) / 44.0) * (0.58 + 0.42 * math.cos(z * 0.075))
-    east = 2.18 * math.exp(-((x - 24.0) ** 2) / 48.0) * (0.58 + 0.42 * math.cos(z * 0.07))
-    south = 1.55 * math.exp(-((z + 27.0) ** 2) / 36.0) * math.exp(-(x ** 2) / 420.0)
-    north = 1.55 * math.exp(-((z - 27.0) ** 2) / 36.0) * math.exp(-(x ** 2) / 420.0)
-    jungle = 0.78 * math.exp(-((abs(x) - 8.5) ** 2) / 8.5) * math.exp(-((abs(z) - 14.0) ** 2) / 42.0)
-    distance = abs(z - river_sample(x, 1))
-    width = river_sample(x, 2)
-    bed = -0.76 * math.exp(-(distance * distance) / (width * width * 0.82))
-    bank_distance = distance - (width + 0.66)
-    bank = 0.48 * math.exp(-(bank_distance * bank_distance) / 2.4)
-    rolling = 0.26 * math.sin(x * 0.18) * math.cos(z * 0.14) + 0.16 * math.sin((x + z) * 0.29)
-    shelf = 0.52 * math.exp(-((abs(x) - 18.5) ** 2) / 5.5) * math.exp(-((abs(z) - 13.0) ** 2) / 110.0)
-    return rolling + west + east + south + north + jungle + bed + bank + shelf
+    ridge = 0.0
+    valley_control = 0.0
+    for control in WORLD["terrain"]["elevation_controls"]:
+        dx = x - float(control["position"]["x"])
+        dz = z - float(control["position"]["z"])
+        height = float(control["height_m"])
+        radius = float(control["radius_m"])
+        influence = math.exp(-(dx * dx + dz * dz) / max(radius * radius * 0.50, 0.001))
+        if height >= 0.0:
+            ridge = max(ridge, height * influence)
+        else:
+            valley_control += height * influence
+    distance, half_width, _, _ = river_nearest(x, z)
+    channel = -float(WORLD["terrain"]["river_valley_depth_m"]) * math.exp(
+        -(distance * distance) / max(half_width * half_width * 1.60, 0.001)
+    )
+    broad_phase = (int(WORLD["terrain"]["broad_noise_seed"]) % 97) * 0.013
+    detail_phase = (int(WORLD["terrain"]["detail_noise_seed"]) % 97) * 0.013
+    broad_amp = float(WORLD["terrain"]["broad_noise_amplitude_m"])
+    detail_amp = float(WORLD["terrain"]["detail_noise_amplitude_m"])
+    broad_noise = broad_amp * (
+        0.58 * math.sin((x + broad_phase) * 0.031) * math.cos((z - broad_phase) * 0.027)
+        + 0.42 * math.sin((x + z) * 0.019 + broad_phase)
+    )
+    detail_noise = detail_amp * math.sin(x * 0.19 + z * 0.13 + detail_phase) * math.cos(
+        z * 0.17 - x * 0.11 - detail_phase
+    )
+    low = float(WORLD["terrain"]["height_min_m"])
+    high = float(WORLD["terrain"]["height_max_m"])
+    return max(low, min(high, ridge + valley_control + channel + broad_noise + detail_noise))
 
 
 def build_placements() -> dict[str, list[tuple[float, float, float, float, float]]]:
-    result: dict[str, list[tuple[float, float, float, float, float]]] = {name: [] for name in MODELS}
+    result: dict[str, list[tuple[float, float, float, float, float]]] = {
+        name: [] for name in MODELS
+    }
 
-    def add(model: str, x: float, z: float, scale: float, yaw: float, lift: float = 0.035) -> None:
+    def add(model: str, x: float, z: float, scale: float, yaw: float,
+            lift: float = 0.035) -> None:
         result[model].append((x, z, scale, yaw, lift))
 
-    for index, (x, z) in enumerate(GROVES):
-        add("Fern_1", x - 0.95, z + 0.55, 0.22, index * 0.91)
-        add("Grass_Common_Tall", x + 1.08, z - 0.65, 0.55, index * 1.37)
-        add("Grass_Wispy_Short", x + 0.12, z + 1.30, 0.92, index * 1.71)
-        if index % 2 == 0:
-            add("Flower_3_Group", x + 0.82, z + 0.92, 0.57, index * 0.73)
-        if index % 3 == 1:
-            add("Mushroom_Common", x - 1.05, z - 1.05, 1.35, index * 1.13)
+    # Scatter light groundcover through both authored jungle polygons.
+    # Lanes, river, camp clearings, crossings and objective arenas remain readable.
+    spacing = 5.5
+    accepted = 0
+    for region_index, (region_id, polygon) in enumerate(JUNGLES):
+        min_x, max_x = min(p[0] for p in polygon), max(p[0] for p in polygon)
+        min_z, max_z = min(p[1] for p in polygon), max(p[1] for p in polygon)
+        x = math.floor(min_x / spacing) * spacing + spacing * 0.5
+        while x <= max_x:
+            z = math.floor(min_z / spacing) * spacing + spacing * 0.5
+            while z <= max_z:
+                gx, gz = round(x * 10), round(z * 10)
+                px = x + (hash01(gx, gz, 1703) - 0.5) * 1.8
+                pz = z + (hash01(gx, gz, 1705) - 0.5) * 1.8
+                if point_in_polygon(px, pz, polygon):
+                    river_distance, river_width, _, _ = river_nearest(px, pz)
+                    lane_clear = all(
+                        distance_to_polyline(px, pz, points) >= width * 0.5 + 2.4
+                        for points, width in LANES
+                    )
+                    camp_clear = all(math.hypot(px - cx, pz - cz) >= 5.8 for cx, cz in CAMPS)
+                    objective_clear = all(
+                        math.hypot(px - ox, pz - oz) >= radius + 3.0
+                        for ox, oz, radius in OBJECTIVES
+                    )
+                    crossing_clear = all(
+                        math.hypot(px - bx, pz - bz) >= deck_width * 0.5 + 2.0
+                        for bx, bz, deck_width in CROSSINGS
+                    )
+                    density = hash01(gx, gz, 1709)
+                    if (
+                        river_distance >= river_width + 1.7 and lane_clear and
+                        camp_clear and objective_clear and crossing_clear and density < 0.62
+                    ):
+                        accepted += 1
+                        yaw = hash01(gx, gz, 1711) * math.tau
+                        add("Fern_1", px - 0.46, pz + 0.38,
+                            0.15 + hash01(gx, gz, 1713) * 0.10, yaw)
+                        add("Grass_Wispy_Short", px + 0.48, pz - 0.33,
+                            0.48 + hash01(gx, gz, 1717) * 0.32, yaw + 1.7)
+                        if hash01(gx, gz, 1721) < 0.34:
+                            add("Grass_Common_Tall", px + 0.18, pz + 0.78,
+                                0.36 + hash01(gx, gz, 1723) * 0.22, yaw + 0.9)
+                        if hash01(gx, gz, 1727) < 0.095:
+                            add("Flower_3_Group", px - 0.64, pz - 0.56,
+                                0.34 + hash01(gx, gz, 1729) * 0.20, yaw + 2.2)
+                        if hash01(gx, gz, 1733) < 0.055:
+                            add("Mushroom_Common", px + 0.82, pz + 0.36,
+                                0.78 + hash01(gx, gz, 1739) * 0.44, yaw + 0.45)
+                z += spacing
+            x += spacing
 
+    # Small organic vegetation halos frame camps but never cover their gameplay clearings.
     for index, (x, z) in enumerate(CAMPS):
-        side = -1.0 if index % 2 == 0 else 1.0
-        add("Fern_1", x - side * 2.2, z - 1.35, 0.20, index * 0.87)
-        add("Mushroom_Common", x + side * 2.15, z + 1.45, 1.2, index * 1.41)
+        angle = index * 0.31
+        for slot in range(2):
+            side = angle + slot * math.pi
+            add("Fern_1", x + math.cos(side) * 5.0, z + math.sin(side) * 4.6,
+                0.17, side)
+            add("Mushroom_Common", x + math.cos(side + 1.0) * 5.3,
+                z + math.sin(side + 1.0) * 4.8, 0.82, side + 1.0)
 
-    for index, x in enumerate((-26.0, -18.0, -10.0, -2.0, 6.0, 14.0, 22.0, 30.0)):
-        center_z = river_sample(x, 1)
-        side = -1.0 if index % 2 == 0 else 1.0
-        add("Fern_1", x, center_z + side * 2.25, 0.19, index * 0.59)
-        add("Grass_Wispy_Short", x + 0.65, center_z - side * 2.15, 0.74, index * 1.09)
+    # Riverbank vegetation follows the authored spline, not a legacy straight strip.
+    for index in (1, 3, 5, 7, 9, 11):
+        x, z, width = RIVER[index]
+        for side in (-1.0, 1.0):
+            px, pz = x, z + side * (width + 1.0)
+            add("Fern_1", px, pz, 0.16, index * 0.61 + side)
+            if index % 2 == 1:
+                add("Grass_Wispy_Short", px + side * 0.7, pz, 0.62, index * 0.83)
 
-    for index, (x, z, radius) in enumerate(OBJECTIVES):
-        add("Flower_3_Group", x + (1.45 if index == 0 else -1.45), z + 3.85, 0.50, index * 1.2)
-
-    rocks = []
+    # Objective debris remains asymmetric and readable from the lane entrances.
+    rocks: list[tuple[str, float, float, float, float, float]] = []
     for index, (x, z) in enumerate(CAMPS):
         for slot in range(3):
             angle = index * 0.31 + slot * (2.0 * math.pi / 3.0)
             model = "Rock_Medium_1" if (index + slot) % 2 == 0 else "Rock_Medium_2"
-            rocks.append((model, x + math.cos(angle) * 2.55, z + math.sin(angle) * 2.0,
-                          0.38 + (slot % 2) * 0.035, angle, 0.055))
-    for index, (x, z) in enumerate(GROVES):
-        for slot in range(2):
-            angle = index * 0.43 + slot * math.pi
-            model = "Rock_Medium_1" if (index + slot) % 2 == 0 else "Rock_Medium_2"
-            rocks.append((model, x + math.cos(angle) * 2.0, z + math.sin(angle) * 1.55,
-                          0.31 + (slot * 0.025), angle, 0.045))
+            rocks.append((model, x + math.cos(angle) * 3.7, z + math.sin(angle) * 3.0,
+                          0.30 + (slot % 2) * 0.045, angle, 0.045))
     for index, (x, z, radius) in enumerate(OBJECTIVES):
         for slot in range(6):
             angle = index * 0.19 + slot * (2.0 * math.pi / 6.0)
             model = "Rock_Medium_1" if slot % 2 == 0 else "Rock_Medium_2"
-            rocks.append((model, x + math.cos(angle) * (radius + 0.1),
-                          z + math.sin(angle) * 3.8, 0.34, angle, 0.04))
-    for index, x in enumerate((-26.0, -18.0, -10.0, -2.0, 6.0, 14.0, 22.0, 30.0)):
-        center_z = river_sample(x, 1)
+            rocks.append((model, x + math.cos(angle) * (radius + 1.1),
+                          z + math.sin(angle) * (radius + 0.5), 0.34, angle, 0.04))
+    for index in (2, 5, 8, 11):
+        x, z, width = RIVER[index]
         side = -1.0 if index % 2 == 0 else 1.0
         model = "Rock_Medium_1" if index % 2 == 0 else "Rock_Medium_2"
-        rocks.append((model, x, center_z + side * 2.25, 0.24, index * 0.77, 0.06))
-
+        rocks.append((model, x, z + side * (width + 1.35), 0.26, index * 0.77, 0.05))
     for model, x, z, scale, yaw, lift in rocks:
         result[model].append((x, z, scale, yaw, lift))
-    return result
 
+    total_ground = sum(len(result[name]) for name in MODELS if not name.startswith("Rock_"))
+    total_rocks = sum(len(result[name]) for name in MODELS if name.startswith("Rock_"))
+    if accepted < 55 or total_ground < 150 or total_rocks < 55:
+        raise SystemExit(
+            f"Canonical jungle scatter is too sparse: cells={accepted}, "
+            f"ground={total_ground}, rocks={total_rocks}"
+        )
+    return result
 
 def read_accessor(doc: dict, binary: bytes, accessor_index: int) -> list[tuple[float, ...]]:
     accessor = doc["accessors"][accessor_index]
