@@ -161,3 +161,8 @@ Esses sistemas não serão reescritos para acomodar coordenadas antigas. Serão 
 ## 11. Estado honesto
 
 Esta documentação registra a decisão de arquitetura e os critérios aprovados para começar. Não declara que o novo mapa, os assets, a navegação, a física ou o APK da 1.7.0 já foram implementados ou testados.
+
+
+## 12. Plano tecnológico persistente
+
+A estratégia de evolução tecnológica, stack aprovada, referências e ordem de implementação estão registradas em [PROJECT_ARENA_1.7.0_TECHNOLOGY_ROADMAP.md](PROJECT_ARENA_1.7.0_TECHNOLOGY_ROADMAP.md). A fonte inicial do novo mundo está em [world/arena_world_1_7.json](../world/arena_world_1_7.json), validada por [verify_arena_world.py](../tools/verify_arena_world.py).
