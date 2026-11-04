@@ -1,5 +1,12 @@
 # Changelog — Projeto Arena
 
+## [1.7.0 — hotfix de carregamento KayKit]
+
+- Corrigido o URI interno do GLTF `fence_wood.gltf`: o buffer agora aponta para `fence_wood.bin`, que é o arquivo realmente empacotado.
+- Validação estrutural ampliada para os 12 modelos KayKit efetivamente carregados e para todos os buffers/texturas referenciados.
+- `versionName` permanece `1.7.0`; `versionCode` avança para `171` para permitir atualização sobre a build anterior.
+- O APK só é considerado pronto após validar os recursos dentro do pacote gerado.
+
 ## [1.7.0 — reconstrução do campo e correção do GLB]
 
 ### Build Android
