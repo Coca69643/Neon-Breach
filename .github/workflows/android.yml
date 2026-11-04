@@ -109,7 +109,7 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.projectarena' versionCode='170' versionName='1.7.0'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.projectarena' versionCode='171' versionName='1.7.0'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Prepare versioned APK and checksum
         run: |
@@ -139,7 +139,7 @@ jobs:
             - Paleta individual da Lyra e equipamentos visuais dos minions anexados aos rigs.
             - Corrigidas as referências compactas de nós e meshes no GLB; teste Kotlin valida o grafo glTF.
             - Mantido o funcionamento offline e o applicationId com.duckdream.projectarena.
-            versionCode: 170
+            versionCode: 171
             Commit: ${{ github.sha }}
             APK compilado, assinado e validado pelo GitHub Actions.
             A inicialização 3D exige smoke test em aparelho; CI não substitui inspeção visual e de desempenho no Realme C53.
