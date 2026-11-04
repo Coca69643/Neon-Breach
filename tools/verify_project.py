@@ -429,7 +429,7 @@ for filename in terrain_maps:
     if not path.is_file():
         raise SystemExit("Missing generated terrain PBR map: " + filename)
     data = path.read_bytes()
-    if data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
         raise SystemExit("Terrain PBR map is not a PNG: " + filename)
     if len(data) > 600_000 or len(data) < 128:
         raise SystemExit("Terrain PBR map violates the texture size budget: " + filename)
