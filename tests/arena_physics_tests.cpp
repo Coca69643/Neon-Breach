@@ -1,5 +1,6 @@
 #include "../app/src/main/cpp/ArenaPhysics.h"
 #include "../app/src/main/cpp/ArenaMapDefinition.h"
+#include "../app/src/main/cpp/ArenaWorld17Generated.h"
 #include "../app/src/main/cpp/ArenaNavigation.h"
 #include "../app/src/main/cpp/ArenaCampCombat.h"
 
@@ -12,6 +13,33 @@ namespace {
 float distance(float ax,float az,float bx,float bz) {
     const float x=bx-ax,z=bz-az;
     return std::sqrt(x*x+z*z);
+}
+void testGeneratedArenaWorld17Contract() {
+    using namespace arena_world_17;
+    assert(kWorldId == "project_arena_1_7");
+    assert(kHalfWidthM == 90.0f && kHalfDepthM == 80.0f);
+    assert(kTerrainVerticesX == 193 && kTerrainVerticesZ == 177);
+    assert(kLanes.size() == 3 && kLanes[0].waypoints.size() == 8);
+    assert(kRiver.size() == 13);
+    assert(kCrossings.size() == 3);
+    assert(kJungles.size() == 2);
+    assert(kCamps.size() == 12);
+    assert(kObjectives.size() == 2);
+    assert(kNavigationNodes.size() == 17);
+    assert(kNavigationLinks.size() == 26);
+    assert(kTowerDepthsFromBase[0] == 18.0f);
+    assert(kTowerDepthsFromBase[2] == 58.0f);
+    for (const auto &lane : kLanes) {
+        assert(lane.width >= 9.5f && lane.width <= 10.0f);
+        for (const auto &point : lane.waypoints) {
+            assert(std::abs(point.x) <= kHalfWidthM);
+            assert(std::abs(point.z) <= kHalfDepthM);
+        }
+    }
+    for (const auto &camp : kCamps) {
+        assert(std::abs(camp.position.x) < kHalfWidthM);
+        assert(std::abs(camp.position.z) < kHalfDepthM);
+    }
 }
 void testNeutralCampCombatRules() {
     assert(arena_camp::canAggro(180.0f,7.0f,12.0f,10.0f));
@@ -173,6 +201,7 @@ void testCharacterSeparation() {
 }
 }
 int main() {
+    testGeneratedArenaWorld17Contract();
     testNeutralCampCombatRules();
     testArenaNavigationGraph();
     testSharedArenaMapCatalog();
