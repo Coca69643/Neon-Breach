@@ -49,6 +49,7 @@ changelog = read("CHANGELOG.md")
 asset_register = read("ASSETS/README.md")
 nature_license = read("ASSETS/Quaternius-Stylized-Nature-License.txt")
 nature_fetch = read("tools/fetch_cc0_nature_assets.py")
+terrain_generator = read("tools/generate_terrain_materials.py")
 kaykit_license = read("ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt")
 quaternius_license = read("ASSETS/Quaternius-Universal-Base-Characters-LICENSE.txt")
 avatar = ROOT / "app/src/main/assets/characters/quaternius-character.glb.b64"
@@ -318,6 +319,13 @@ checks = [
      "private fun leafBlade(" not in world and "boulder_field" not in world and
      "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
      "textured nature must be baked into two static GLBs while retaining shared river terrain sampling"),
+    ("Generate tileable PBR terrain materials" in workflow and
+     "tools/generate_terrain_materials.py" in workflow and
+     "TerrainTextureSet" in world and "normalTexture" in world and
+     "baseColorTexture" in world and "TEXCOORD_0" in world and
+     "terrainGlbEmbedsFourPbrSurfacePairsAndTerrainUvCoordinates" in world_tests and
+     "grass_albedo.png" in renderer and "rock_normal.png" in renderer,
+     "terrain albedo/normal maps must be embedded and applied to the terrain mesh"),
     ("Four readable lane-unit silhouettes" in renderer and
      "val width = when (slot) { 0 -> 1.16f" in renderer and
      "val height = when (slot) { 0 -> 0.92f" in renderer,
@@ -408,6 +416,30 @@ if baked_vertex_total > 100_000:
 if "SOURCE_COMMIT = \"001ecddebd9a5ed64cfadcccde0daf9342397a1b\"" not in read("tools/fetch_cc0_nature_assets.py"):
     raise SystemExit("CC0 nature source must remain pinned to a reviewed commit")
 print("Baked nature verified: two static GLBs, five material batches, textures embedded, vertex budget passed.")
+
+terrain_assets = ROOT / "app/src/main/assets/world/terrain"
+terrain_maps = (
+    "grass_albedo.png", "grass_normal.png",
+    "moss_albedo.png", "moss_normal.png",
+    "soil_albedo.png", "soil_normal.png",
+    "rock_albedo.png", "rock_normal.png",
+)
+for filename in terrain_maps:
+    path = terrain_assets / filename
+    if not path.is_file():
+        raise SystemExit("Missing generated terrain PBR map: " + filename)
+    data = path.read_bytes()
+    if data[:8] != b"\\x89PNG\\r\\n\\x1a\\n":
+        raise SystemExit("Terrain PBR map is not a PNG: " + filename)
+    if len(data) > 600_000 or len(data) < 128:
+        raise SystemExit("Terrain PBR map violates the texture size budget: " + filename)
+    width = int.from_bytes(data[16:20], "big")
+    height = int.from_bytes(data[20:24], "big")
+    if width != 256 or height != 256:
+        raise SystemExit("Terrain PBR maps must be 256x256: " + filename)
+if "periodic(u, v" not in terrain_generator or "build_maps" not in terrain_generator:
+    raise SystemExit("Terrain generator must use deterministic seamless periodic patterns")
+print("Terrain PBR verified: eight seamless 256x256 maps, four material sets, albedo plus normal.")
 
 atlas = world_assets / "hexagons_medieval.png"
 if not atlas.is_file() or atlas.stat().st_size < 1000:
