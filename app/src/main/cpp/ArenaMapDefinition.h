@@ -8,6 +8,7 @@
 namespace arena_map {
 
 struct Point { float x; float z; };
+struct RiverPoint { float x; float z; float halfWidth; };
 struct Lane {
     float width;
     std::array<Point, 9> points;
@@ -16,7 +17,6 @@ struct Lane {
 inline constexpr float kWorldScale = 1.15f;
 inline constexpr float kHalfExtentX = 35.0f;
 inline constexpr float kHalfExtentZ = 31.0f;
-inline constexpr float kRiverWidth = 1.72f;
 
 inline constexpr std::array<Lane, 3> kLanes{{
     {2.42f, {{
@@ -36,11 +36,36 @@ inline constexpr std::array<Lane, 3> kLanes{{
     }}}
 }};
 
-inline constexpr std::array<Point, 12> kRiverCenterline{{
-    {-34.0f,1.1f}, {-28.0f,0.55f}, {-21.0f,0.05f}, {-15.0f,-0.45f},
-    {-9.0f,-0.22f}, {-3.0f,0.25f}, {4.0f,0.38f}, {10.0f,0.02f},
-    {16.0f,-0.38f}, {23.0f,-0.18f}, {29.0f,0.22f}, {34.0f,0.8f}
+inline constexpr std::array<RiverPoint, 12> kRiverCenterline{{
+    {-34.0f,1.1f,0.78f}, {-28.0f,0.55f,1.15f},
+    {-21.0f,0.05f,1.48f}, {-15.0f,-0.45f,1.68f},
+    {-9.0f,-0.22f,1.92f}, {-3.0f,0.25f,1.58f},
+    {4.0f,0.38f,1.82f}, {10.0f,0.02f,1.95f},
+    {16.0f,-0.38f,1.62f}, {23.0f,-0.18f,1.62f},
+    {29.0f,0.22f,1.15f}, {34.0f,0.8f,0.78f}
 }};
+
+inline int riverSegment(float x) {
+    if (x <= kRiverCenterline.front().x) return 0;
+    for (std::size_t i = 0; i + 1 < kRiverCenterline.size(); ++i) {
+        if (x <= kRiverCenterline[i + 1].x) return static_cast<int>(i);
+    }
+    return static_cast<int>(kRiverCenterline.size()) - 2;
+}
+inline float riverCenterZ(float x) {
+    const int index = riverSegment(x);
+    const auto &a = kRiverCenterline[static_cast<std::size_t>(index)];
+    const auto &b = kRiverCenterline[static_cast<std::size_t>(index + 1)];
+    const float t = std::clamp((x - a.x) / (b.x - a.x), 0.0f, 1.0f);
+    return a.z + (b.z - a.z) * t;
+}
+inline float riverHalfWidth(float x) {
+    const int index = riverSegment(x);
+    const auto &a = kRiverCenterline[static_cast<std::size_t>(index)];
+    const auto &b = kRiverCenterline[static_cast<std::size_t>(index + 1)];
+    const float t = std::clamp((x - a.x) / (b.x - a.x), 0.0f, 1.0f);
+    return a.halfWidth + (b.halfWidth - a.halfWidth) * t;
+}
 
 inline constexpr std::array<Point, 8> kCampPositions{{
     {-8.2f,-14.5f}, {8.2f,-14.5f}, {-20.2f,-10.0f}, {20.2f,-10.0f},
