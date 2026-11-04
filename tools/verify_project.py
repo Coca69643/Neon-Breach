@@ -166,13 +166,19 @@ checks = [
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
     ("ArenaWorld17Generated.TERRAIN_VERTICES_X" in world and "ArenaWorld17Generated.TERRAIN_VERTICES_Z" in world and "insideIsland" in world and "vertexCache" in world and "riverNearest" in world, "full-resolution canonical organic terrain mesh missing"),
     ("kElevationControls" in physics and "kRiverValleyDepthM" in physics and "closestRiver" in physics and "testTerrainSurface" in physics_tests, "native terrain does not share the canonical heightfield"),
-    ("versionCode 59" in gradle and "versionName '0.16.0'" in gradle, "app version must be 0.15.12 / code 58"),
+    ("var emittedMeshCount = 0" in world and "0 until emittedMeshCount" in world and
+      "emittedMeshCount += 1" in world and
+      "generatedGlbHasValidCompactSceneNodeMeshAndAccessorIndices" in world_tests,
+      "generated GLB must compact and test its scene/node/mesh references"),
+    ("Project-Arena-1.7.0.apk" in workflow and "tag_name: project-arena-1.7.0" in workflow,
+      "1.7.0 APK and release metadata must match the app version"),
+    ("versionCode 170" in gradle and "versionName '1.7.0'" in gradle, "app version must be 1.7.0 / code 170"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='59' versionName='0.16.0'" in workflow, "APK package/version verification is stale"),
-    ("project-arena-0.16.0-update" in workflow, "0.15.12 artifact name missing"),
+    ("versionCode='170' versionName='1.7.0'" in workflow, "APK package/version verification is stale"),
+    ("project-arena-1.7.0-update" in workflow, "1.7.0 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
     ("android.builtInKotlin=false" in props and "android.newDsl=false" in props, "AGP migration flags missing"),
@@ -516,7 +522,7 @@ if missing:
     raise SystemExit("Playable hero rig is missing joints: " + ", ".join(sorted(missing)))
 if not model_gltf.get("skins") or max(len(skin.get("joints", [])) for skin in model_gltf["skins"]) < 60:
     raise SystemExit("Playable humanoid must retain its full skinned rig")
-print("Project Arena 0.16.0 structural verification passed.")
+print("Project Arena 1.7.0 structural verification passed.")
 print("Hero showcase clearance, right-side composition, readable combat framing and terrain palette verified.")
 print("NPC roster regression tests verified: three CC0 bodies, material-name skin palettes and authored locomotion.")
 print("Archived jade mannequin retained for provenance only; it is excluded from runtime character loading.")
