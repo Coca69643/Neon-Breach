@@ -34,6 +34,20 @@ class WorldGlbBuilderTest {
     }
 
     @Test
+    fun riverGlbContainsIndependentWaterShallowsSandbanksAndFlowHighlights() {
+        val bytes = WorldGlbBuilder.build()
+        val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val jsonLength = glb.getInt(12)
+        val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
+        listOf("crossing_river", "river_shallows", "river_sandbanks", "river_flow_glints")
+            .forEach { layer -> assertTrue("Missing river geometry layer: $layer", json.contains(layer)) }
+        assertTrue(json.contains("\"name\":\"River water\""))
+        assertTrue(json.contains("\"name\":\"River shallows\""))
+        assertTrue(json.contains("\"name\":\"River sandbanks\""))
+        assertTrue(json.contains("\"name\":\"Water shimmer\""))
+    }
+
+    @Test
     fun worldGlbContainsBatchedForestFloraAndDistinctCampGroundcover() {
         val bytes = WorldGlbBuilder.build()
         val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
@@ -46,10 +60,12 @@ class WorldGlbBuilderTest {
         listOf(
             "fern_leaves", "meadow_flower_stems", "meadow_flower_petals",
             "camp_mushroom_stems", "camp_mushroom_caps", "fallen_timber",
-            "Neutral camp markers", "Forest soil", "River water"
+            "Neutral camp markers", "Forest soil", "River water",
+            "river_shallows", "river_sandbanks", "river_flow_glints",
+            "River shallows", "River sandbanks", "Water shimmer"
         ).forEach { name ->
             assertTrue("Missing world GLB part/material: $name", json.contains(name))
         }
-        assertTrue("World GLB should have the expanded 25-material palette", json.contains("Fallen timber"))
+        assertTrue("World GLB should have the expanded 28-material palette", json.contains("Water shimmer"))
     }
 }
