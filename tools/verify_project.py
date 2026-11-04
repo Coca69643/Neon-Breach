@@ -19,6 +19,8 @@ root_gradle = read("build.gradle")
 props = read("gradle.properties")
 manifest = read("app/src/main/AndroidManifest.xml")
 main = read("app/src/main/java/com/duckdream/neonbreach/MainActivity.kt")
+movement_input = read("app/src/main/java/com/duckdream/neonbreach/ArenaMovementInput.kt")
+movement_tests = read("app/src/test/java/com/duckdream/neonbreach/ArenaMovementInputTest.kt")
 meta = read("app/src/main/java/com/duckdream/neonbreach/ArenaMetaStore.kt")
 renderer = read("app/src/main/java/com/duckdream/neonbreach/FilamentGameRenderer.kt")
 presentation = read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt")
@@ -139,6 +141,15 @@ if "p.add(x * scale)" not in world or "arena_map::kWorldScale" not in physics or
     raise SystemExit("Map scale is not applied across geometry and native gameplay")
 
 checks = [
+    ("ArenaMovementInput.fromScreenStick" in main and
+     "moveX = worldInput.x" in main and "moveZ = worldInput.z" in main and
+     "SCREEN_RIGHT_TO_WORLD_X = -1f" in movement_input and
+     "SCREEN_DOWN_TO_WORLD_Z = -1f" in movement_input and
+     "screenLeftMovesLeftOnScreen" in movement_tests and
+     "screenRightMovesRightOnScreen" in movement_tests and
+     "screenUpMovesForwardAlongWorldNorth" in movement_tests and
+     "screenDownMovesBackwardAlongWorldSouth" in movement_tests,
+     "joystick screen-space directions must map to the fixed gameplay camera's world axes"),
     ("renderer.setMenuPresentation" in main and "renderer.setHeroSelectionPresentation" in main and
      "renderer.updateMenuPresentation(dt)" in main and "renderer.render(frameTimeNanos)" in main and
      "if (state != AppState.MENU) renderer.render" not in main, "menu and hero selection must render the native 3D scene"),
