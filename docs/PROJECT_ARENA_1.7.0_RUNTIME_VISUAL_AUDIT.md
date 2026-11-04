@@ -55,3 +55,30 @@ The map is not accepted until all conditions below are demonstrated in the runni
 ## Release rule
 
 Do not label a build as Project Arena 1.7.0, do not merge this work to `main`, and do not claim the map is organic or complete until the visual acceptance gate passes. A successful build of the current 0.16.0 runtime only proves that the legacy app still compiles and that the new world JSON is structurally valid.
+
+
+## Runtime consumer migration matrix
+
+The following active consumers were inspected after introducing the generated contracts. They must be migrated as one coordinated runtime cutover:
+
+| Consumer | Legacy dependency | Required 1.7.0 source |
+|---|---|---|
+| `WorldGlbBuilder.kt` | 76 × 76 m mesh, island clipping at roughly ±35 × ±31 m, legacy lane/camp positions, river width clamped to 0.68–2.0 m, decorative shoals and old base walls | Full 180 × 160 m heightfield; generated elevation controls, 8-point lane splines, 13-point river at 4.5–8.5 m half-width, explicit bridge crossings, jungle polygons and new objective/camp clearings |
+| `FilamentGameRenderer.kt` | `ArenaMapDefinition.WORLD_SCALE`, legacy lane/camp placements, bridge placement inferred from lane points nearest z=0 | Generated base/gate/tower/crossing/camp/objective data; renderer must not infer bridge positions or use legacy scale |
+| `ArenaNatureCatalog.kt` | 32 hard-coded tree blockers and 12 legacy grove centers | Deterministic vegetation distribution sampled inside generated jungle polygons with road/camp/objective/crossing exclusion masks; collision blockers generated from the same placements |
+| `ArenaPhysics.cpp` | Legacy elliptical boundary, old river interpolation and old tree/camp/objective blockers | 180 × 160 m world boundary, generated river polyline and terrain heightfield, generated camp/objective collision, vegetation blocker set from the same deterministic scatter |
+| `ArenaSimulation.cpp` | Old core positions, tower curve, 8 camp positions and 2 objective positions | Bases, lane gates, three tower depths, 12 camps and objectives generated from the canonical world; update initial player spawns and all spawn/respawn positions |
+| `ArenaNavigation.h` | Fixed graph layout with 27 lane nodes, 8 camp nodes and legacy positions | Generate graph nodes/links from the 17 canonical navigation nodes and 26 links; add camp/objective associations and verify all routes are reachable |
+| Minimap / HUD | Existing consumers must be located and audited during cutover | Draw lanes, river, bridges, bases, camps and objectives from the same generated coordinates; never maintain a separate minimap map |
+
+### Cutover sequence
+
+1. Finish the canonical data contract and generated-output CI gate (current stage).
+2. Add shared deterministic terrain sampling and polyline utilities, with Kotlin/C++ parity tests.
+3. Replace the world mesh and all static placements in the renderer; use explicit JSON crossings and 180 × 160 m extents.
+4. Switch physics and simulation to the same generated world in the same change set; update bounds, spawns, towers, camps and objectives.
+5. Generate navigation from the canonical graph and migrate minimap/HUD markers.
+6. Add vegetation scatter from jungle polygons and derive collision blockers from the exact same seeded placements.
+7. Only then enable the 1.7.0 runtime world and validate it in the Android build and on the Realme C53.
+
+**Hard rule:** do not switch only the renderer or only the simulation. A visually new map with old collision/navigation is a broken build, not a partial release.
