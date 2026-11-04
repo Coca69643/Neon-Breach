@@ -42,22 +42,22 @@ def surface_pixel(kind: str, u: float, v: float) -> tuple[tuple[int, int, int], 
         blades = max(0.0, periodic(u, v, 29, 7, 1.2)) ** 9
         height = 0.048 * broad + 0.026 * mid + 0.014 * fine + 0.010 * blades
         light = 7.0 * broad + 4.0 * mid + 2.6 * fine + 5.0 * blades + 1.8 * grain
-        color = (76 + light, 96 + light * 1.10, 48 + light * 0.72)
+        color = (116 + light, 111 + light * 0.96, 73 + light * 0.72)
     elif kind == "moss":
         moss = max(0.0, periodic(u, v, 5, 3, 1.9)) ** 4
         height = 0.045 * broad + 0.026 * mid + 0.013 * fine
         light = 6.5 * broad + 3.6 * mid + 2.3 * fine + 4.0 * moss + 1.5 * grain
-        color = (48 + light * 0.72, 68 + light, 38 + light * 0.67)
+        color = (73 + light * 0.76, 83 + light, 49 + light * 0.70)
     elif kind == "soil":
         pebble = max(0.0, periodic(u, v, 23, 17, 0.7)) ** 12
         height = 0.052 * broad + 0.031 * mid + 0.018 * fine + 0.016 * pebble
         light = 9.0 * broad + 5.0 * mid + 3.0 * fine + 8.0 * pebble + 2.2 * grain
-        color = (105 + light, 76 + light * 0.83, 48 + light * 0.58)
+        color = (121 + light, 91 + light * 0.86, 61 + light * 0.62)
     elif kind == "rock":
         strata = periodic(u, v, 4, 1, 0.8) + 0.38 * periodic(u, v, 9, 2, 1.4)
         height = 0.072 * broad + 0.040 * mid + 0.020 * fine + 0.012 * strata
         light = 10.0 * broad + 6.0 * mid + 3.2 * fine + 2.2 * grain + 2.0 * strata
-        color = (112 + light, 108 + light * 0.97, 94 + light * 0.88)
+        color = (139 + light, 132 + light * 0.97, 116 + light * 0.88)
     else:
         raise ValueError(kind)
     return tuple(clamp(channel) for channel in color), height

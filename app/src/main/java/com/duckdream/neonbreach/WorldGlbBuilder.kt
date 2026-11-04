@@ -218,14 +218,9 @@ internal object WorldGlbBuilder {
     private lateinit var earth: Part
     private lateinit var rock: Part
 
-    private fun insideIsland(x: Float, z: Float): Boolean {
-        val angle = atan2(z / ArenaWorld17Generated.HALF_DEPTH_M, x / ArenaWorld17Generated.HALF_WIDTH_M)
-        val edge = 1f + 0.016f * sin(angle * 5f) + 0.009f * sin(angle * 9f + 1.4f) +
-            0.006f * cos(angle * 13f)
-        val nx = abs(x / ArenaWorld17Generated.HALF_WIDTH_M)
-        val nz = abs(z / ArenaWorld17Generated.HALF_DEPTH_M)
-        return nx.pow(4) + nz.pow(4) <= edge.pow(4)
-    }
+    private fun insideIsland(x: Float, z: Float): Boolean =
+        x in -ArenaWorld17Generated.HALF_WIDTH_M..ArenaWorld17Generated.HALF_WIDTH_M &&
+            z in -ArenaWorld17Generated.HALF_DEPTH_M..ArenaWorld17Generated.HALF_DEPTH_M
 
     private fun terrainMesh() {
         val countX = ArenaWorld17Generated.TERRAIN_VERTICES_X
@@ -264,18 +259,42 @@ internal object WorldGlbBuilder {
                 val river = riverNearest(cx, cz)
                 if (river[0] < river[1] + 0.72f) continue
 
-                val rolling = sin(cx * 0.043f + cz * 0.021f) +
-                    cos(cz * 0.037f - cx * 0.017f)
+                val fieldNoise = sin(cx * 0.071f + cos(cz * 0.043f)) +
+                    0.55f * cos(cz * 0.058f - cx * 0.037f)
                 val slope = sqrt(
                     ((h(x1, cz) - h(x0, cz)) / cellX).pow(2) +
                         ((h(cx, z1) - h(cx, z0)) / cellZ).pow(2)
                 )
+                var laneDistance = Float.POSITIVE_INFINITY
+                for (lane in ArenaMapDefinition.lanes) {
+                    for (segment in 0 until lane.points.lastIndex) {
+                        val a = lane.points[segment]
+                        val b = lane.points[segment + 1]
+                        val dx = b.x - a.x
+                        val dz = b.z - a.z
+                        val denominator = (dx * dx + dz * dz).coerceAtLeast(0.0001f)
+                        val t = (((cx - a.x) * dx + (cz - a.z) * dz) / denominator).coerceIn(0f, 1f)
+                        laneDistance = min(laneDistance, hypot(cx - (a.x + dx * t), cz - (a.z + dz * t)) - lane.width * 0.5f)
+                    }
+                }
+                val campDistance = ArenaMapDefinition.camps.minOf { hypot(cx - it.position.x, cz - it.position.z) }
+                val inJunglePocket = campDistance < 15.0f &&
+                    ArenaWorld17Generated.jungles.any { region ->
+                        var inside = false
+                        for (i in region.boundary.indices) {
+                            val a = region.boundary[i]
+                            val q = region.boundary[(i + 1) % region.boundary.size]
+                            if ((a.z > cz) != (q.z > cz) && cx < (q.x - a.x) * (cz - a.z) / (q.z - a.z) + a.x) inside = !inside
+                        }
+                        inside
+                    }
                 val material = when {
-                    slope > 0.48f -> 4
-                    abs(rolling) > 1.20f && river[0] > river[1] + 7f -> 3
-                    rolling > 0.62f -> 1
-                    rolling < -0.62f -> 2
-                    else -> 0
+                    slope > 0.72f -> 4
+                    inJunglePocket -> if (fieldNoise > 0.15f) 1 else 2
+                    laneDistance < 2.2f -> 3
+                    river[0] < river[1] + 3.2f -> 3
+                    fieldNoise > 0.55f -> 0
+                    else -> 3
                 }
 
                 val a = vertex(material, ix, iz)
@@ -288,27 +307,7 @@ internal object WorldGlbBuilder {
             }
         }
 
-        // The coastline follows a rounded, subtly irregular superellipse rather than a rectangular slab.
-        val segments = 260
-        for (index in 0 until segments) {
-            val a0 = 2f * PI.toFloat() * index / segments
-            val a1 = 2f * PI.toFloat() * (index + 1) / segments
-            fun edgePoint(angle: Float): FloatArray {
-                val c = cos(angle)
-                val s = sin(angle)
-                val wobble = 1f + 0.016f * sin(angle * 5f) +
-                    0.009f * sin(angle * 9f + 1.4f) + 0.006f * cos(angle * 13f)
-                val x = halfX * sign(c) * abs(c).pow(0.5f) * wobble
-                val z = halfZ * sign(s) * abs(s).pow(0.5f) * wobble
-                return floatArrayOf(x, h(x, z) - 0.03f, z)
-            }
-            val topA = edgePoint(a0)
-            val topB = edgePoint(a1)
-            val bottomA = floatArrayOf(topA[0] * 1.055f, -8.5f, topA[2] * 1.055f)
-            val bottomB = floatArrayOf(topB[0] * 1.055f, -8.5f, topB[2] * 1.055f)
-            tri(cliffs, topA, bottomA, topB)
-            tri(cliffs, topB, bottomA, bottomB)
-        }
+
     }
 
     private fun ringMesh(p: Part, innerRadius: Float, outerRadius: Float) {
@@ -517,13 +516,8 @@ internal object WorldGlbBuilder {
         ringMesh(pulse,0.88f,1.08f)
         ringMesh(shield,0.98f,1.15f)
 
-        // Three asymmetric but readable lanes; each bends independently through the battlefield.
+        // Primary lanes are blended into the packed-earth terrain mask, not bright ribbons.
         ArenaMapDefinition.validate()
-        ArenaMapDefinition.lanes.forEach { lane ->
-            val points = lane.points.map { floatArrayOf(it.x, it.z) }
-            ribbon(routeEdge, points, lane.width * 0.5f + 0.85f, 0.035f)
-            ribbon(trail, points, lane.width * 0.5f, 0.085f)
-        }
 
         // Narrow organic tracks connect each neutral clearing to its nearest route.
         ArenaMapDefinition.camps.forEach { camp ->
@@ -546,13 +540,6 @@ internal object WorldGlbBuilder {
 
         buildRiverChannel(water, riverShallows, riverSandbanks, ArenaMapDefinition.riverCenterline)
 
-        // Short broken glints communicate flow without making another uniform stripe.
-        val riverGlintPath = ArenaMapDefinition.riverCenterline.map { point ->
-            floatArrayOf(point.x, point.z)
-        }
-        ribbon(riverGlints, riverGlintPath.subList(1, 4), 0.034f, 0.60f, 42)
-        ribbon(riverGlints, riverGlintPath.subList(5, 8), 0.028f, 0.59f, 42)
-        ribbon(riverGlints, riverGlintPath.subList(8, 11), 0.038f, 0.60f, 42)
 
         // Low, asymmetrical shoals are anchored to three bends in the canonical river spline.
         listOf(3, 6, 9).forEachIndexed { index, pointIndex ->
@@ -567,7 +554,7 @@ internal object WorldGlbBuilder {
         ArenaMapDefinition.camps.forEachIndexed { index, camp ->
             val x = camp.position.x
             val z = camp.position.z
-            groundDisc(forestFloor,x,z,3.2f,2.65f,0.035f)
+            groundDisc(earth,x,z,3.4f,2.8f,0.035f)
             groundDisc(earth,x,z,2.35f,1.85f,0.075f)
             // Textured rocks, ferns and mushrooms are baked into the static nature GLBs.
         }
@@ -580,13 +567,9 @@ internal object WorldGlbBuilder {
         ArenaMapDefinition.objectives.forEachIndexed { index, objective ->
             val x = objective.position.x
             val z = objective.position.z
-            groundDisc(forestFloor,x,z,5.15f,4.25f,0.045f)
+            groundDisc(rock,x,z,5.15f,4.25f,0.045f)
             ringMeshAt(objectiveMarks,x,z,4.12f,4.32f)
             shrine(shrineStone,x,z,0.92f,index == 0)
-        }
-        // Additional elevation and rubble make the outer jungle and base approaches readable.
-        ArenaMapDefinition.groveCenters.forEachIndexed { index, point ->
-            groundDisc(forestFloor,point.x,point.z,2.8f,2.1f,0.02f)
         }
 
         // Groundcover and rocks are supplied by two offline, texture-backed GLBs.
@@ -596,9 +579,7 @@ internal object WorldGlbBuilder {
             groundDisc(masonry, base.position.x, base.position.z, 8.6f, 7.4f, 0.16f)
         }
 
-        // Surrounding water sits below the full coastline, not a small central patch.
-        quad(ocean,floatArrayOf(-165f,-9.0f,-155f),floatArrayOf(165f,-9.0f,-155f),
-            floatArrayOf(165f,-9.0f,155f),floatArrayOf(-165f,-9.0f,155f))
+        // Connected mainland battlefield; no island moat or coastline mesh.
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0

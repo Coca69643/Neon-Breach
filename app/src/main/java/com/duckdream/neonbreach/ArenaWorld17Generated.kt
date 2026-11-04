@@ -23,25 +23,25 @@ internal object ArenaWorld17Generated {
     const val HALF_DEPTH_M = 80.0f
     const val TERRAIN_VERTICES_X = 193
     const val TERRAIN_VERTICES_Z = 177
-    const val MIN_HEIGHT_M = -4.0f
-    const val MAX_HEIGHT_M = 22.0f
-    const val MAX_WALKABLE_SLOPE_DEGREES = 28.0f
-    const val RIVER_VALLEY_DEPTH_M = 5.5f
+    const val MIN_HEIGHT_M = -1.6f
+    const val MAX_HEIGHT_M = 7.5f
+    const val MAX_WALKABLE_SLOPE_DEGREES = 30.0f
+    const val RIVER_VALLEY_DEPTH_M = 1.25f
     const val BROAD_NOISE_SEED = 1701
     const val DETAIL_NOISE_SEED = 1702
-    const val BROAD_NOISE_AMPLITUDE_M = 2.8f
-    const val DETAIL_NOISE_AMPLITUDE_M = 0.65f
+    const val BROAD_NOISE_AMPLITUDE_M = 0.42f
+    const val DETAIL_NOISE_AMPLITUDE_M = 0.1f
     const val ART_THEME = "stylized_medieval_fantasy"
-    const val ENVIRONMENT_STYLE = "organic_sculpted_world"
+    const val ENVIRONMENT_STYLE = "open_battlefield_with_jungle_pockets"
 
     val elevationControls = listOf(
-        ElevationControl("southwest_ridge", Point(-74.0f, -38.0f), 18.0f, 25.0f),
-        ElevationControl("northwest_ridge", Point(-72.0f, 42.0f), 17.0f, 26.0f),
-        ElevationControl("southeast_ridge", Point(74.0f, -36.0f), 20.0f, 26.0f),
-        ElevationControl("northeast_ridge", Point(73.0f, 42.0f), 18.5f, 25.0f),
-        ElevationControl("west_jungle_highland", Point(-35.0f, 8.0f), 9.0f, 28.0f),
-        ElevationControl("east_jungle_highland", Point(35.0f, -8.0f), 10.0f, 28.0f),
-        ElevationControl("central_river_valley", Point(0.0f, 3.0f), -3.0f, 40.0f)
+        ElevationControl("southwest_ridge", Point(-74.0f, -38.0f), 3.2f, 27.0f),
+        ElevationControl("northwest_ridge", Point(-72.0f, 42.0f), 3.6f, 28.0f),
+        ElevationControl("southeast_ridge", Point(74.0f, -36.0f), 3.8f, 28.0f),
+        ElevationControl("northeast_ridge", Point(73.0f, 42.0f), 3.4f, 27.0f),
+        ElevationControl("west_jungle_highland", Point(-35.0f, 8.0f), 1.7f, 20.0f),
+        ElevationControl("east_jungle_highland", Point(35.0f, -8.0f), 1.9f, 20.0f),
+        ElevationControl("central_river_valley", Point(0.0f, 3.0f), -0.6f, 36.0f)
     )
     val bases = listOf(
         Base("blue_base", 0, Point(0.0f, -73.0f), listOf(Gate("west", Point(-57.0f, -72.0f)), Gate("center", Point(0.0f, -72.0f)), Gate("east", Point(57.0f, -72.0f)))),

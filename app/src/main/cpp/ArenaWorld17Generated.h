@@ -23,25 +23,25 @@ inline constexpr float kHalfWidthM = 90.0f;
 inline constexpr float kHalfDepthM = 80.0f;
 inline constexpr int kTerrainVerticesX = 193;
 inline constexpr int kTerrainVerticesZ = 177;
-inline constexpr float kMinHeightM = -4.0f;
-inline constexpr float kMaxHeightM = 22.0f;
-inline constexpr float kMaxWalkableSlopeDegrees = 28.0f;
-inline constexpr float kRiverValleyDepthM = 5.5f;
+inline constexpr float kMinHeightM = -1.6f;
+inline constexpr float kMaxHeightM = 7.5f;
+inline constexpr float kMaxWalkableSlopeDegrees = 30.0f;
+inline constexpr float kRiverValleyDepthM = 1.25f;
 inline constexpr unsigned int kBroadNoiseSeed = 1701;
 inline constexpr unsigned int kDetailNoiseSeed = 1702;
-inline constexpr float kBroadNoiseAmplitudeM = 2.8f;
-inline constexpr float kDetailNoiseAmplitudeM = 0.65f;
+inline constexpr float kBroadNoiseAmplitudeM = 0.42f;
+inline constexpr float kDetailNoiseAmplitudeM = 0.1f;
 inline constexpr std::string_view kArtTheme = "stylized_medieval_fantasy";
-inline constexpr std::string_view kEnvironmentStyle = "organic_sculpted_world";
+inline constexpr std::string_view kEnvironmentStyle = "open_battlefield_with_jungle_pockets";
 
 inline constexpr std::array<ElevationControl, 7> kElevationControls{{
-    {"southwest_ridge", Point{-74.0f, -38.0f}, 18.0f, 25.0f},
-    {"northwest_ridge", Point{-72.0f, 42.0f}, 17.0f, 26.0f},
-    {"southeast_ridge", Point{74.0f, -36.0f}, 20.0f, 26.0f},
-    {"northeast_ridge", Point{73.0f, 42.0f}, 18.5f, 25.0f},
-    {"west_jungle_highland", Point{-35.0f, 8.0f}, 9.0f, 28.0f},
-    {"east_jungle_highland", Point{35.0f, -8.0f}, 10.0f, 28.0f},
-    {"central_river_valley", Point{0.0f, 3.0f}, -3.0f, 40.0f}
+    {"southwest_ridge", Point{-74.0f, -38.0f}, 3.2f, 27.0f},
+    {"northwest_ridge", Point{-72.0f, 42.0f}, 3.6f, 28.0f},
+    {"southeast_ridge", Point{74.0f, -36.0f}, 3.8f, 28.0f},
+    {"northeast_ridge", Point{73.0f, 42.0f}, 3.4f, 27.0f},
+    {"west_jungle_highland", Point{-35.0f, 8.0f}, 1.7f, 20.0f},
+    {"east_jungle_highland", Point{35.0f, -8.0f}, 1.9f, 20.0f},
+    {"central_river_valley", Point{0.0f, 3.0f}, -0.6f, 36.0f}
 }};
 inline constexpr std::array<Base, 2> kBases{{
     {"blue_base", 0, Point{0.0f, -73.0f}, std::array<Point, 3>{Point{-57.0f, -72.0f}, Point{0.0f, -72.0f}, Point{57.0f, -72.0f}}},
