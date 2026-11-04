@@ -314,10 +314,10 @@ checks = [
      "two self-contained GLBs" in asset_register,
      "pinned CC0 groundcover/rock bake step and license record are missing"),
     ("loadBakedNatureEnvironment" in renderer and "forest_groundcover" in renderer and
-     "forest_rocks" in renderer and "riverCenterZ(x)" not in world and
+     "forest_rocks" in renderer and "ArenaMapDefinition.riverCenterZ(x)" in world and
      "private fun leafBlade(" not in world and "boulder_field" not in world and
      "terrainGlbNoLongerEmbedsProceduralNatureOrRockClusters" in world_tests,
-     "textured nature must be baked into two static GLBs instead of procedural world meshes"),
+     "textured nature must be baked into two static GLBs while retaining shared river terrain sampling"),
     ("Four readable lane-unit silhouettes" in renderer and
      "val width = when (slot) { 0 -> 1.16f" in renderer and
      "val height = when (slot) { 0 -> 0.92f" in renderer,
