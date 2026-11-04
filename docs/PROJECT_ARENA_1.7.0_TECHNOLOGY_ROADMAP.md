@@ -140,3 +140,12 @@ Não atualizar dependências do runtime sem atualizar as ferramentas de shader c
 - Fonte canônica world/arena_world_1_7.json e validador tools/verify_arena_world.py foram adicionados; o workflow Android executa a validação.
 - Validador executado com sucesso no GitHub Actions, run 41894611911: envelope, três rotas, três pontes, duas selvas, doze acampamentos e grafo conectado aprovados.
 - Escopo implementado nesta etapa: fonte de dados + validação estrutural. O JSON ainda não alimenta o renderer/física ativos; geração Kotlin/C++ e integração runtime são os próximos passos. O mapa ativo 0.16.0 permanece intacto.
+
+
+### 2026-11-04 — Auditoria do runtime visual da arena
+- Auditoria concluída em `docs/PROJECT_ARENA_1.7.0_RUNTIME_VISUAL_AUDIT.md`.
+- Confirmado: o runtime ainda chama `WorldGlbBuilder.build()` usando `ArenaMapDefinition.kt` e o espelho C++ `ArenaMapDefinition.h`, ambos com a escala antiga de 35 × 31 m e `WORLD_SCALE = 1.15`.
+- Confirmado: castelos, torres, casas, igrejas, pontes, vegetação e GLBs de groundcover/rochas já existem, mas suas posições e o bake ambiental ainda usam as coordenadas do mapa 0.16.0.
+- O terreno ativo ainda usa o antigo recorte de ilha e malha de 76 × 76 m; a nova fonte JSON de 180 × 160 m não é consumida pelo renderer, colisão ou simulação.
+- Run CI `41901296794` concluiu com sucesso: pipeline de assets, validação estrutural do JSON, testes nativos, validação do projeto, testes Gradle e compilação Android. O APK foi identificado como **0.16.0**; isso não prova a integração ou aparência visual do mundo 1.7.0.
+- Status corrigido: **fundação do mundo 1.7.0 ainda não integrada ao runtime; aceite visual bloqueado**. Próximo passo obrigatório: geração Kotlin/C++ a partir da fonte canônica e substituição da geometria/posicionamentos legados antes de declarar a arena orgânica e completa. A `main` permanece inalterada.
