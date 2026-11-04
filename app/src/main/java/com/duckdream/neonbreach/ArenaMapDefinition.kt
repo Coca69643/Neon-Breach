@@ -8,6 +8,7 @@ package com.duckdream.neonbreach
  */
 internal object ArenaMapDefinition {
     data class Point(val x: Float, val z: Float)
+    data class RiverPoint(val x: Float, val z: Float, val halfWidth: Float)
     data class Lane(val id: Int, val width: Float, val points: List<Point>)
     data class Camp(val id: String, val position: Point, val kind: CampKind)
     enum class CampKind { SMALL, LARGE }
@@ -17,7 +18,6 @@ internal object ArenaMapDefinition {
     const val WORLD_SCALE = 1.15f
     const val HALF_EXTENT_X = 35f
     const val HALF_EXTENT_Z = 31f
-    const val RIVER_WIDTH = 1.72f
 
     val lanes = listOf(
         Lane(0, 2.42f, listOf(
@@ -35,11 +35,37 @@ internal object ArenaMapDefinition {
     )
 
     val riverCenterline = listOf(
-        Point(-34f,1.1f), Point(-28f,0.55f), Point(-21f,0.05f),
-        Point(-15f,-0.45f), Point(-9f,-0.22f), Point(-3f,0.25f),
-        Point(4f,0.38f), Point(10f,0.02f), Point(16f,-0.38f),
-        Point(23f,-0.18f), Point(29f,0.22f), Point(34f,0.8f)
+        RiverPoint(-34f,1.1f,0.78f), RiverPoint(-28f,0.55f,1.15f),
+        RiverPoint(-21f,0.05f,1.48f), RiverPoint(-15f,-0.45f,1.68f),
+        RiverPoint(-9f,-0.22f,1.92f), RiverPoint(-3f,0.25f,1.58f),
+        RiverPoint(4f,0.38f,1.82f), RiverPoint(10f,0.02f,1.95f),
+        RiverPoint(16f,-0.38f,1.62f), RiverPoint(23f,-0.18f,1.62f),
+        RiverPoint(29f,0.22f,1.15f), RiverPoint(34f,0.8f,0.78f)
     )
+
+    private fun riverSegment(x: Float): Int {
+        if (x <= riverCenterline.first().x) return 0
+        for (index in 0 until riverCenterline.lastIndex) {
+            if (x <= riverCenterline[index + 1].x) return index
+        }
+        return riverCenterline.lastIndex - 1
+    }
+
+    fun riverCenterZ(x: Float): Float {
+        val index = riverSegment(x)
+        val a = riverCenterline[index]
+        val b = riverCenterline[index + 1]
+        val t = ((x - a.x) / (b.x - a.x)).coerceIn(0f, 1f)
+        return a.z + (b.z - a.z) * t
+    }
+
+    fun riverHalfWidth(x: Float): Float {
+        val index = riverSegment(x)
+        val a = riverCenterline[index]
+        val b = riverCenterline[index + 1]
+        val t = ((x - a.x) / (b.x - a.x)).coerceIn(0f, 1f)
+        return a.halfWidth + (b.halfWidth - a.halfWidth) * t
+    }
 
     val camps = listOf(
         Camp("west_south", Point(-8.2f,-14.5f), CampKind.SMALL),
@@ -97,7 +123,12 @@ internal object ArenaMapDefinition {
     fun validate() {
         require(lanes.size == 3 && lanes.all { it.points.size >= 2 })
         require(riverCenterline.size == 12)
-        require(riverCenterline.all { kotlin.math.abs(it.x) < HALF_EXTENT_X && kotlin.math.abs(it.z) < HALF_EXTENT_Z })
+        require(riverCenterline.all {
+            kotlin.math.abs(it.x) < HALF_EXTENT_X && kotlin.math.abs(it.z) < HALF_EXTENT_Z &&
+                it.halfWidth in 0.65f..2.0f
+        })
+        require(riverCenterline.first().halfWidth < riverCenterline.maxOf { it.halfWidth })
+        require(riverCenterline.last().halfWidth < riverCenterline.maxOf { it.halfWidth })
         require(camps.size == 8 && camps.map { it.id }.toSet().size == camps.size)
         require(objectives.size == 2)
         require(WORLD_SCALE > 1f)
