@@ -2,7 +2,7 @@ package com.duckdream.neonbreach
 
 /**
  * Generated from world/arena_world_1_7.json by tools/generate_arena_world_17.py.
- * Do not edit manually. This is the typed 1.7.0 world contract; runtime migration is staged separately.
+ * Do not edit manually. Typed 1.7.0 world contract; runtime migration is staged separately.
  */
 internal object ArenaWorld17Generated {
     data class Point(val x: Float, val z: Float)
@@ -19,13 +19,13 @@ internal object ArenaWorld17Generated {
     data class NavigationLink(val from: String, val to: String)
 
     const val WORLD_ID = "project_arena_1_7"
-    const val HALF_WIDTH_M = 90f
-    const val HALF_DEPTH_M = 80f
+    const val HALF_WIDTH_M = 90.0f
+    const val HALF_DEPTH_M = 80.0f
     const val TERRAIN_VERTICES_X = 193
     const val TERRAIN_VERTICES_Z = 177
-    const val MIN_HEIGHT_M = -4f
-    const val MAX_HEIGHT_M = 22f
-    const val MAX_WALKABLE_SLOPE_DEGREES = 28f
+    const val MIN_HEIGHT_M = -4.0f
+    const val MAX_HEIGHT_M = 22.0f
+    const val MAX_WALKABLE_SLOPE_DEGREES = 28.0f
     const val RIVER_VALLEY_DEPTH_M = 5.5f
     const val BROAD_NOISE_SEED = 1701
     const val DETAIL_NOISE_SEED = 1702
@@ -35,84 +35,84 @@ internal object ArenaWorld17Generated {
     const val ENVIRONMENT_STYLE = "organic_sculpted_world"
 
     val elevationControls = listOf(
-        ElevationControl("southwest_ridge", Point(-74f, -38f), 18f, 25f),
-        ElevationControl("northwest_ridge", Point(-72f, 42f), 17f, 26f),
-        ElevationControl("southeast_ridge", Point(74f, -36f), 20f, 26f),
-        ElevationControl("northeast_ridge", Point(73f, 42f), 18.5f, 25f),
-        ElevationControl("west_jungle_highland", Point(-35f, 8f), 9f, 28f),
-        ElevationControl("east_jungle_highland", Point(35f, -8f), 10f, 28f),
-        ElevationControl("central_river_valley", Point(0f, 3f), -3f, 40f)
+        ElevationControl("southwest_ridge", Point(-74.0f, -38.0f), 18.0f, 25.0f),
+        ElevationControl("northwest_ridge", Point(-72.0f, 42.0f), 17.0f, 26.0f),
+        ElevationControl("southeast_ridge", Point(74.0f, -36.0f), 20.0f, 26.0f),
+        ElevationControl("northeast_ridge", Point(73.0f, 42.0f), 18.5f, 25.0f),
+        ElevationControl("west_jungle_highland", Point(-35.0f, 8.0f), 9.0f, 28.0f),
+        ElevationControl("east_jungle_highland", Point(35.0f, -8.0f), 10.0f, 28.0f),
+        ElevationControl("central_river_valley", Point(0.0f, 3.0f), -3.0f, 40.0f)
     )
     val bases = listOf(
-        Base("blue_base", 0, Point(0f, -73f), listOf(Gate("west", Point(-57f, -72f)), Gate("center", Point(0f, -72f)), Gate("east", Point(57f, -72f)))),
-        Base("red_base", 1, Point(0f, 73f), listOf(Gate("west", Point(-56f, 72f)), Gate("center", Point(0f, 72f)), Gate("east", Point(60f, 72f))))
+        Base("blue_base", 0, Point(0.0f, -73.0f), listOf(Gate("west", Point(-57.0f, -72.0f)), Gate("center", Point(0.0f, -72.0f)), Gate("east", Point(57.0f, -72.0f)))),
+        Base("red_base", 1, Point(0.0f, 73.0f), listOf(Gate("west", Point(-56.0f, 72.0f)), Gate("center", Point(0.0f, 72.0f)), Gate("east", Point(60.0f, 72.0f))))
     )
     val lanes = listOf(
-        Lane("west", 9.5f, listOf(Point(-57f, -72f), Point(-60f, -54f), Point(-56f, -36f), Point(-51f, -16f), Point(-52f, 4f), Point(-58f, 24f), Point(-60f, 48f), Point(-56f, 72f))),
-        Lane("center", 10f, listOf(Point(0f, -72f), Point(3f, -54f), Point(5f, -36f), Point(1f, -16f), Point(-3f, 4f), Point(1f, 24f), Point(4f, 48f), Point(0f, 72f))),
-        Lane("east", 9.5f, listOf(Point(57f, -72f), Point(55f, -54f), Point(54f, -36f), Point(60f, -16f), Point(63f, 4f), Point(58f, 24f), Point(55f, 48f), Point(60f, 72f)))
+        Lane("west", 9.5f, listOf(Point(-57.0f, -72.0f), Point(-60.0f, -54.0f), Point(-56.0f, -36.0f), Point(-51.0f, -16.0f), Point(-52.0f, 4.0f), Point(-58.0f, 24.0f), Point(-60.0f, 48.0f), Point(-56.0f, 72.0f))),
+        Lane("center", 10.0f, listOf(Point(0.0f, -72.0f), Point(3.0f, -54.0f), Point(5.0f, -36.0f), Point(1.0f, -16.0f), Point(-3.0f, 4.0f), Point(1.0f, 24.0f), Point(4.0f, 48.0f), Point(0.0f, 72.0f))),
+        Lane("east", 9.5f, listOf(Point(57.0f, -72.0f), Point(55.0f, -54.0f), Point(54.0f, -36.0f), Point(60.0f, -16.0f), Point(63.0f, 4.0f), Point(58.0f, 24.0f), Point(55.0f, 48.0f), Point(60.0f, 72.0f)))
     )
     val river = listOf(
-        RiverPoint(Point(-88f, -4f), 4.5f),
-        RiverPoint(Point(-72f, -7f), 5.5f),
-        RiverPoint(Point(-58f, -9f), 6.5f),
-        RiverPoint(Point(-44f, -6f), 7.2f),
-        RiverPoint(Point(-30f, -2f), 8f),
-        RiverPoint(Point(-15f, 2f), 8.5f),
-        RiverPoint(Point(0f, 4f), 8f),
-        RiverPoint(Point(15f, 2f), 8.5f),
-        RiverPoint(Point(30f, -2f), 8f),
-        RiverPoint(Point(44f, -5f), 7.2f),
-        RiverPoint(Point(60f, -4f), 6.5f),
-        RiverPoint(Point(75f, 1f), 5.5f),
-        RiverPoint(Point(88f, 5f), 4.5f)
+        RiverPoint(Point(-88.0f, -4.0f), 4.5f),
+        RiverPoint(Point(-72.0f, -7.0f), 5.5f),
+        RiverPoint(Point(-58.0f, -9.0f), 6.5f),
+        RiverPoint(Point(-44.0f, -6.0f), 7.2f),
+        RiverPoint(Point(-30.0f, -2.0f), 8.0f),
+        RiverPoint(Point(-15.0f, 2.0f), 8.5f),
+        RiverPoint(Point(0.0f, 4.0f), 8.0f),
+        RiverPoint(Point(15.0f, 2.0f), 8.5f),
+        RiverPoint(Point(30.0f, -2.0f), 8.0f),
+        RiverPoint(Point(44.0f, -5.0f), 7.2f),
+        RiverPoint(Point(60.0f, -4.0f), 6.5f),
+        RiverPoint(Point(75.0f, 1.0f), 5.5f),
+        RiverPoint(Point(88.0f, 5.0f), 4.5f)
     )
     val crossings = listOf(
-        Crossing("west_bridge", "west", Point(-52f, -8f), 9.5f, 20f),
-        Crossing("center_bridge", "center", Point(-1.5f, 3.8f), 10f, 22f),
-        Crossing("east_bridge", "east", Point(61f, -3.7f), 9.5f, 18f)
+        Crossing("west_bridge", "west", Point(-52.0f, -8.0f), 9.5f, 20.0f),
+        Crossing("center_bridge", "center", Point(-1.5f, 3.8f), 10.0f, 22.0f),
+        Crossing("east_bridge", "east", Point(61.0f, -3.7f), 9.5f, 18.0f)
     )
     val jungles = listOf(
-        JungleRegion("west_jungle", listOf(Point(-48f, -46f), Point(-22f, -52f), Point(-12f, -31f), Point(-15f, -10f), Point(-12f, 12f), Point(-22f, 40f), Point(-35f, 48f), Point(-49f, 40f), Point(-54f, 14f), Point(-51f, -14f))),
-        JungleRegion("east_jungle", listOf(Point(48f, -46f), Point(22f, -52f), Point(12f, -31f), Point(15f, -10f), Point(12f, 12f), Point(22f, 40f), Point(35f, 48f), Point(49f, 40f), Point(54f, 14f), Point(51f, -14f)))
+        JungleRegion("west_jungle", listOf(Point(-48.0f, -46.0f), Point(-22.0f, -52.0f), Point(-12.0f, -31.0f), Point(-15.0f, -10.0f), Point(-12.0f, 12.0f), Point(-22.0f, 40.0f), Point(-35.0f, 48.0f), Point(-49.0f, 40.0f), Point(-54.0f, 14.0f), Point(-51.0f, -14.0f))),
+        JungleRegion("east_jungle", listOf(Point(48.0f, -46.0f), Point(22.0f, -52.0f), Point(12.0f, -31.0f), Point(15.0f, -10.0f), Point(12.0f, 12.0f), Point(22.0f, 40.0f), Point(35.0f, 48.0f), Point(49.0f, 40.0f), Point(54.0f, 14.0f), Point(51.0f, -14.0f)))
     )
     val camps = listOf(
-        Camp("west_camp_01", "west_jungle", Point(-34f, -38f), 1),
-        Camp("west_camp_02", "west_jungle", Point(-26f, -28f), 1),
-        Camp("west_camp_03", "west_jungle", Point(-41f, -12f), 2),
-        Camp("west_camp_04", "west_jungle", Point(-25f, 12f), 1),
-        Camp("west_camp_05", "west_jungle", Point(-35f, 32f), 2),
-        Camp("west_camp_06", "west_jungle", Point(-29f, 40f), 1),
-        Camp("east_camp_01", "east_jungle", Point(34f, -38f), 1),
-        Camp("east_camp_02", "east_jungle", Point(26f, -28f), 1),
-        Camp("east_camp_03", "east_jungle", Point(41f, -12f), 2),
-        Camp("east_camp_04", "east_jungle", Point(25f, 12f), 1),
-        Camp("east_camp_05", "east_jungle", Point(35f, 32f), 2),
-        Camp("east_camp_06", "east_jungle", Point(29f, 40f), 1)
+        Camp("west_camp_01", "west_jungle", Point(-34.0f, -38.0f), 1),
+        Camp("west_camp_02", "west_jungle", Point(-26.0f, -28.0f), 1),
+        Camp("west_camp_03", "west_jungle", Point(-41.0f, -12.0f), 2),
+        Camp("west_camp_04", "west_jungle", Point(-25.0f, 12.0f), 1),
+        Camp("west_camp_05", "west_jungle", Point(-35.0f, 32.0f), 2),
+        Camp("west_camp_06", "west_jungle", Point(-29.0f, 40.0f), 1),
+        Camp("east_camp_01", "east_jungle", Point(34.0f, -38.0f), 1),
+        Camp("east_camp_02", "east_jungle", Point(26.0f, -28.0f), 1),
+        Camp("east_camp_03", "east_jungle", Point(41.0f, -12.0f), 2),
+        Camp("east_camp_04", "east_jungle", Point(25.0f, 12.0f), 1),
+        Camp("east_camp_05", "east_jungle", Point(35.0f, 32.0f), 2),
+        Camp("east_camp_06", "east_jungle", Point(29.0f, 40.0f), 1)
     )
     val objectives = listOf(
-        Objective("west_neutral_objective", Point(-22f, -13f), 7f),
-        Objective("east_neutral_objective", Point(22f, 13f), 7f)
+        Objective("west_neutral_objective", Point(-22.0f, -13.0f), 7.0f),
+        Objective("east_neutral_objective", Point(22.0f, 13.0f), 7.0f)
     )
-    val towerDepthsFromBase = floatArrayOf(18f, 38f, 58f)
+    val towerDepthsFromBase = floatArrayOf(18.0f, 38.0f, 58.0f)
     val navigationNodes = listOf(
-        NavigationNode("blue_base", Point(0f, -73f)),
-        NavigationNode("red_base", Point(0f, 73f)),
-        NavigationNode("west_south", Point(-57f, -56f)),
-        NavigationNode("west_bridge", Point(-52f, -8f)),
-        NavigationNode("west_north", Point(-58f, 48f)),
-        NavigationNode("center_south", Point(2f, -56f)),
+        NavigationNode("blue_base", Point(0.0f, -73.0f)),
+        NavigationNode("red_base", Point(0.0f, 73.0f)),
+        NavigationNode("west_south", Point(-57.0f, -56.0f)),
+        NavigationNode("west_bridge", Point(-52.0f, -8.0f)),
+        NavigationNode("west_north", Point(-58.0f, 48.0f)),
+        NavigationNode("center_south", Point(2.0f, -56.0f)),
         NavigationNode("center_bridge", Point(-1.5f, 3.8f)),
-        NavigationNode("center_north", Point(2f, 48f)),
-        NavigationNode("east_south", Point(56f, -56f)),
-        NavigationNode("east_bridge", Point(61f, -3.7f)),
-        NavigationNode("east_north", Point(57f, 48f)),
-        NavigationNode("west_jungle_south", Point(-34f, -34f)),
-        NavigationNode("west_jungle_north", Point(-34f, 33f)),
-        NavigationNode("east_jungle_south", Point(34f, -34f)),
-        NavigationNode("east_jungle_north", Point(34f, 33f)),
-        NavigationNode("west_objective", Point(-22f, -13f)),
-        NavigationNode("east_objective", Point(22f, 13f))
+        NavigationNode("center_north", Point(2.0f, 48.0f)),
+        NavigationNode("east_south", Point(56.0f, -56.0f)),
+        NavigationNode("east_bridge", Point(61.0f, -3.7f)),
+        NavigationNode("east_north", Point(57.0f, 48.0f)),
+        NavigationNode("west_jungle_south", Point(-34.0f, -34.0f)),
+        NavigationNode("west_jungle_north", Point(-34.0f, 33.0f)),
+        NavigationNode("east_jungle_south", Point(34.0f, -34.0f)),
+        NavigationNode("east_jungle_north", Point(34.0f, 33.0f)),
+        NavigationNode("west_objective", Point(-22.0f, -13.0f)),
+        NavigationNode("east_objective", Point(22.0f, 13.0f))
     )
     val navigationLinks = listOf(
         NavigationLink("blue_base", "west_south"),
