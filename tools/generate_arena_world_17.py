@@ -9,24 +9,33 @@ SOURCE = ROOT / "world/arena_world_1_7.json"
 KOTLIN = ROOT / "app/src/main/java/com/duckdream/neonbreach/ArenaWorld17Generated.kt"
 CPP = ROOT / "app/src/main/cpp/ArenaWorld17Generated.h"
 
-def main() -> None:
-    world = json.loads(SOURCE.read_text(encoding="utf-8"))
-    # Generation is deliberately deterministic. The CI check compares these
-    # committed outputs with a fresh generation from the canonical JSON.
-    def q(value): return json.dumps(value, ensure_ascii=False)
-    def f(value):
-        rendered = f"{float(value):.3f}".rstrip("0").rstrip(".")
-        return (rendered if rendered else "0") + "f"
-    def kp(p): return f"Point({f(p['x'])}, {f(p['z'])})"
-    def cp(p): return "{" + f(p["x"]) + ", " + f(p["z"]) + "}"
-    def lines(values, render, indent="        "):
-        return ",\n".join(indent + render(value) for value in values)
+def q(value):
+    return json.dumps(value, ensure_ascii=False)
 
+def number(value):
+    rendered = f"{float(value):.3f}".rstrip("0").rstrip(".")
+    if "." not in rendered:
+        rendered += ".0"
+    return rendered + "f"
+
+def kotlin_point(point):
+    return f"Point({number(point['x'])}, {number(point['z'])})"
+
+def cpp_point(point):
+    return f"Point{{{number(point['x'])}, {number(point['z'])}}}"
+
+def joined(values, render, indent="        "):
+    return ",\n".join(indent + render(value) for value in values)
+
+def generate(world):
+    f = number
+    kp = kotlin_point
+    cp = cpp_point
     kotlin = f'''package com.duckdream.neonbreach
 
 /**
  * Generated from world/arena_world_1_7.json by tools/generate_arena_world_17.py.
- * Do not edit manually. This is the typed 1.7.0 world contract; runtime migration is staged separately.
+ * Do not edit manually. Typed 1.7.0 world contract; runtime migration is staged separately.
  */
 internal object ArenaWorld17Generated {{
     data class Point(val x: Float, val z: Float)
@@ -59,39 +68,38 @@ internal object ArenaWorld17Generated {{
     const val ENVIRONMENT_STYLE = {q(world["art_direction"]["environment_style"])}
 
     val elevationControls = listOf(
-{lines(world["terrain"]["elevation_controls"], lambda x: f"ElevationControl({q(x['id'])}, {kp(x['position'])}, {f(x['height_m'])}, {f(x['radius_m'])})")}
+{joined(world["terrain"]["elevation_controls"], lambda x: f"ElevationControl({q(x['id'])}, {kp(x['position'])}, {f(x['height_m'])}, {f(x['radius_m'])})")}
     )
     val bases = listOf(
-{lines(world["bases"], lambda x: "Base(" + q(x["id"]) + f", {x['team']}, {kp(x['position'])}, listOf(" + ", ".join(f"Gate({q(k)}, {kp(v)})" for k,v in x["lane_gates"].items()) + "))")}
+{joined(world["bases"], lambda x: "Base(" + q(x["id"]) + f", {x['team']}, {kp(x['position'])}, listOf(" + ", ".join(f"Gate({q(key)}, {kp(value)})" for key,value in x["lane_gates"].items()) + "))")}
     )
     val lanes = listOf(
-{lines(world["lanes"], lambda x: f"Lane({q(x['id'])}, {f(x['width_m'])}, listOf(" + ", ".join(kp(p) for p in x["waypoints"]) + "))")}
+{joined(world["lanes"], lambda x: f"Lane({q(x['id'])}, {f(x['width_m'])}, listOf(" + ", ".join(kp(p) for p in x["waypoints"]) + "))")}
     )
     val river = listOf(
-{lines(world["river"]["centerline"], lambda x: f"RiverPoint({kp(x)}, {f(x['half_width_m'])})")}
+{joined(world["river"]["centerline"], lambda x: f"RiverPoint({kp(x)}, {f(x['half_width_m'])})")}
     )
     val crossings = listOf(
-{lines(world["river"]["crossings"], lambda x: f"Crossing({q(x['id'])}, {q(x['lane_id'])}, {kp(x['position'])}, {f(x['deck_width_m'])}, {f(x['span_m'])})")}
+{joined(world["river"]["crossings"], lambda x: f"Crossing({q(x['id'])}, {q(x['lane_id'])}, {kp(x['position'])}, {f(x['deck_width_m'])}, {f(x['span_m'])})")}
     )
     val jungles = listOf(
-{lines(world["jungle_regions"], lambda x: f"JungleRegion({q(x['id'])}, listOf(" + ", ".join(kp(p) for p in x["boundary"]) + "))")}
+{joined(world["jungle_regions"], lambda x: f"JungleRegion({q(x['id'])}, listOf(" + ", ".join(kp(p) for p in x["boundary"]) + "))")}
     )
     val camps = listOf(
-{lines(world["camps"], lambda x: f"Camp({q(x['id'])}, {q(x['region_id'])}, {kp(x['position'])}, {x['tier']})")}
+{joined(world["camps"], lambda x: f"Camp({q(x['id'])}, {q(x['region_id'])}, {kp(x['position'])}, {x['tier']})")}
     )
     val objectives = listOf(
-{lines(world["objectives"], lambda x: f"Objective({q(x['id'])}, {kp(x['position'])}, {f(x['radius_m'])})")}
+{joined(world["objectives"], lambda x: f"Objective({q(x['id'])}, {kp(x['position'])}, {f(x['radius_m'])})")}
     )
     val towerDepthsFromBase = floatArrayOf({", ".join(f(x) for x in world["tower_depths_from_base_m"])})
     val navigationNodes = listOf(
-{lines(world["navigation"]["nodes"], lambda x: f"NavigationNode({q(x['id'])}, {kp(x['position'])})")}
+{joined(world["navigation"]["nodes"], lambda x: f"NavigationNode({q(x['id'])}, {kp(x['position'])})")}
     )
     val navigationLinks = listOf(
-{lines(world["navigation"]["links"], lambda x: f"NavigationLink({q(x[0])}, {q(x[1])})")}
+{joined(world["navigation"]["links"], lambda x: f"NavigationLink({q(x[0])}, {q(x[1])})")}
     )
 }}
 '''
-    bases = lines(world["bases"], lambda x: "{" + q(x["id"]) + f", {x['team']}, {cp(x['position'])}, {{{{" + ", ".join(cp(v) for v in x["lane_gates"].values()) + "}}}}}")
     cpp = f'''#pragma once
 
 // Generated from world/arena_world_1_7.json by tools/generate_arena_world_17.py.
@@ -129,35 +137,35 @@ inline constexpr std::string_view kArtTheme = {q(world["art_direction"]["theme"]
 inline constexpr std::string_view kEnvironmentStyle = {q(world["art_direction"]["environment_style"])};
 
 inline constexpr std::array<ElevationControl, {len(world["terrain"]["elevation_controls"])}> kElevationControls{{{{
-{lines(world["terrain"]["elevation_controls"], lambda x: "{" + q(x["id"]) + ", " + cp(x["position"]) + ", " + f(x["height_m"]) + ", " + f(x["radius_m"]) + "}", "    ")}
+{joined(world["terrain"]["elevation_controls"], lambda x: "{" + q(x["id"]) + ", " + cp(x["position"]) + ", " + f(x["height_m"]) + ", " + f(x["radius_m"]) + "}", "    ")}
 }}}};
 inline constexpr std::array<Base, {len(world["bases"])}> kBases{{{{
-{bases}
+{joined(world["bases"], lambda x: "{" + q(x["id"]) + f", {x['team']}, " + cp(x["position"]) + ", std::array<Point, 3>{" + ", ".join(cp(v) for v in x["lane_gates"].values()) + "}}", "    ")}
 }}}};
 inline constexpr std::array<Lane, {len(world["lanes"])}> kLanes{{{{
-{lines(world["lanes"], lambda x: "{" + q(x["id"]) + ", " + f(x["width_m"]) + ", {{{" + ", ".join(cp(p) for p in x["waypoints"]) + "}}}}", "    ")}
+{joined(world["lanes"], lambda x: "{" + q(x["id"]) + ", " + f(x["width_m"]) + ", std::array<Point, 8>{" + ", ".join(cp(p) for p in x["waypoints"]) + "}}", "    ")}
 }}}};
 inline constexpr std::array<RiverPoint, {len(world["river"]["centerline"])}> kRiver{{{{
-{lines(world["river"]["centerline"], lambda x: "{" + cp(x) + ", " + f(x["half_width_m"]) + "}", "    ")}
+{joined(world["river"]["centerline"], lambda x: "{" + cp(x) + ", " + f(x["half_width_m"]) + "}", "    ")}
 }}}};
 inline constexpr std::array<Crossing, {len(world["river"]["crossings"])}> kCrossings{{{{
-{lines(world["river"]["crossings"], lambda x: "{" + q(x["id"]) + ", " + q(x["lane_id"]) + ", " + cp(x["position"]) + ", " + f(x["deck_width_m"]) + ", " + f(x["span_m"]) + "}", "    ")}
+{joined(world["river"]["crossings"], lambda x: "{" + q(x["id"]) + ", " + q(x["lane_id"]) + ", " + cp(x["position"]) + ", " + f(x["deck_width_m"]) + ", " + f(x["span_m"]) + "}", "    ")}
 }}}};
 inline constexpr std::array<JungleRegion, {len(world["jungle_regions"])}> kJungles{{{{
-{lines(world["jungle_regions"], lambda x: "{" + q(x["id"]) + ", {{{" + ", ".join(cp(p) for p in x["boundary"]) + "}}}}", "    ")}
+{joined(world["jungle_regions"], lambda x: "{" + q(x["id"]) + ", std::array<Point, 10>{" + ", ".join(cp(p) for p in x["boundary"]) + "}}", "    ")}
 }}}};
 inline constexpr std::array<Camp, {len(world["camps"])}> kCamps{{{{
-{lines(world["camps"], lambda x: "{" + q(x["id"]) + ", " + q(x["region_id"]) + ", " + cp(x["position"]) + ", " + str(x["tier"]) + "}", "    ")}
+{joined(world["camps"], lambda x: "{" + q(x["id"]) + ", " + q(x["region_id"]) + ", " + cp(x["position"]) + f", {x['tier']}" + "}", "    ")}
 }}}};
 inline constexpr std::array<Objective, {len(world["objectives"])}> kObjectives{{{{
-{lines(world["objectives"], lambda x: "{" + q(x["id"]) + ", " + cp(x["position"]) + ", " + f(x["radius_m"]) + "}", "    ")}
+{joined(world["objectives"], lambda x: "{" + q(x["id"]) + ", " + cp(x["position"]) + ", " + f(x["radius_m"]) + "}", "    ")}
 }}}};
 inline constexpr std::array<float, {len(world["tower_depths_from_base_m"])}> kTowerDepthsFromBase{{{{{", ".join(f(x) for x in world["tower_depths_from_base_m"])}}}}};
 inline constexpr std::array<NavigationNode, {len(world["navigation"]["nodes"])}> kNavigationNodes{{{{
-{lines(world["navigation"]["nodes"], lambda x: "{" + q(x["id"]) + ", " + cp(x["position"]) + "}", "    ")}
+{joined(world["navigation"]["nodes"], lambda x: "{" + q(x["id"]) + ", " + cp(x["position"]) + "}", "    ")}
 }}}};
 inline constexpr std::array<NavigationLink, {len(world["navigation"]["links"])}> kNavigationLinks{{{{
-{lines(world["navigation"]["links"], lambda x: "{" + q(x[0]) + ", " + q(x[1]) + "}", "    ")}
+{joined(world["navigation"]["links"], lambda x: "{" + q(x[0]) + ", " + q(x[1]) + "}", "    ")}
 }}}};
 static_assert(kLanes.size() == 3);
 static_assert(kCrossings.size() == 3);
@@ -166,6 +174,11 @@ static_assert(kCamps.size() == 12);
 static_assert(kObjectives.size() == 2);
 }} // namespace arena_world_17
 '''
+    return kotlin, cpp
+
+def main() -> None:
+    world = json.loads(SOURCE.read_text(encoding="utf-8"))
+    kotlin, cpp = generate(world)
     KOTLIN.parent.mkdir(parents=True, exist_ok=True)
     CPP.parent.mkdir(parents=True, exist_ok=True)
     KOTLIN.write_text(kotlin, encoding="utf-8")
