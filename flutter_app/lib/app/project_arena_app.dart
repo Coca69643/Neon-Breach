@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../core/state_machine/state_machine.dart';
 import 'state/app_flow_machine.dart';
 
 /// Internal foundation harness.
