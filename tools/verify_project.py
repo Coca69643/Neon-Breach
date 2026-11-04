@@ -186,8 +186,10 @@ checks = [
      "val height = (if (overviewCamera) 9.6f else 9.2f) * mapScale" in renderer and
      "val fov = if (overviewCamera) 48.0 else 44.0" in renderer,
      "combat camera must keep a closer readable character framing and scale with the battlefield"),
-    ("0.13f,0.17f,0.075f,1f" in world and "0.19f,0.24f,0.10f,1f" in world,
-     "terrain palette must use the lower-saturation olive values"),
+    ("textureSlot = when(i){0,1->0;2->1;9->2;10->3;else->-1}" in world and
+     "baseColorTexture" in world and "normalTexture" in world and
+     "0.96f,1.0f,0.88f,1f" in world,
+     "terrain surface must use embedded texture maps with pale material tints"),
     ("Diagnóstico:" in main and "rootCause.message" in main,
      "renderer startup recovery must expose the technical root cause"),
     ("for (style in 0..4)" in renderer and "botStyleForRole" in renderer and "botGearStyles" in renderer, "five distinct AI role silhouettes are not assigned"),
