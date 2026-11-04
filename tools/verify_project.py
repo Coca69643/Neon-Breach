@@ -207,7 +207,7 @@ checks = [
      "jungle vegetation must stay clustered around camp pockets, not cover the full arena"),
     ("ArenaEnvironmentGenerator.generate()" in renderer and "fence_wood" in renderer and
      "flag_blue" in renderer and "flag_red" in renderer and
-     "class ArenaEnvironmentGenerator" in read("app/src/main/java/com/duckdream/neonbreach/ArenaEnvironmentGenerator.kt") and
+     "object ArenaEnvironmentGenerator" in read("app/src/main/java/com/duckdream/neonbreach/ArenaEnvironmentGenerator.kt") and
      "changingSeedChangesDecorationWithoutChangingGameplayRoutes" in read("app/src/test/java/com/duckdream/neonbreach/ArenaEnvironmentGeneratorTest.kt"),
      "seeded offline CC0 outpost generation is not connected to the runtime"),
     ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
