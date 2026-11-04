@@ -1,0 +1,56 @@
+name: Project Arena Flutter Foundation
+
+on:
+  push:
+    branches: [migration/project-arena-flutter-foundation]
+    paths:
+      - 'flutter_app/**'
+      - 'PROJECT_ARENA_FLUTTER_MIGRATION.md'
+      - '.github/workflows/flutter-foundation.yml'
+  pull_request:
+    paths:
+      - 'flutter_app/**'
+      - 'PROJECT_ARENA_FLUTTER_MIGRATION.md'
+      - '.github/workflows/flutter-foundation.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  flutter-foundation:
+    name: Analyze, test and compile Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          flutter-version: '3.47.1'
+          cache: true
+
+      - name: Show Flutter toolchain
+        run: flutter --version
+
+      - name: Resolve Dart and Flutter dependencies
+        working-directory: flutter_app
+        run: flutter pub get
+
+      - name: Analyze Dart code
+        working-directory: flutter_app
+        run: flutter analyze --fatal-infos
+
+      - name: Run state machine and simulation tests
+        working-directory: flutter_app
+        run: flutter test --reporter expanded
+
+      - name: Create Android host project in CI workspace
+        working-directory: flutter_app
+        run: flutter create . --platforms=android --org com.duckdream --project-name projectarena
+
+      - name: Compile arm64 Android debug APK
+        working-directory: flutter_app
+        run: flutter build apk --debug --target-platform android-arm64
