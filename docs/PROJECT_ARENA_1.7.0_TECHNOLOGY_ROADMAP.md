@@ -127,6 +127,13 @@ Não atualizar dependências do runtime sem atualizar as ferramentas de shader c
 
 ## Registro de implementação
 
+### 2026-11-04 — Correção de orientação do joystick
+- Identificado o desalinhamento entre o eixo X do mundo e o eixo horizontal da câmera fixa (câmera em -Z olhando para +Z).
+- Criado ArenaMovementInput para converter o vetor do joystick em coordenadas de mundo: esquerda/direita e frente/trás alinhados à tela.
+- Movimento e dash usam a mesma conversão.
+- Adicionados testes unitários para quatro direções cardinais, diagonal e sensibilidade; validador estrutural verifica integração e contrato de eixos.
+- CI específico da correção ainda precisa concluir antes de declarar a correção validada em build. Teste físico ainda requer aparelho.
+
 ### 2026-11-04 — World Pipeline 2.0, etapa inicial
 - Branch isolada criada a partir da main: rebuild/project-arena-1.7.0-world-foundation.
 - Especificação da fundação do mapa registrada em docs/PROJECT_ARENA_1.7.0_WORLD_FOUNDATION.md.
