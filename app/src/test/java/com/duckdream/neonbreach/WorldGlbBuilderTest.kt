@@ -8,6 +8,7 @@ import kotlin.math.sqrt
 import kotlin.math.tan
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Base64
 
 class WorldGlbBuilderTest {
     @Test
@@ -32,6 +33,31 @@ class WorldGlbBuilderTest {
         }
         assertTrue("Terrain relief must exceed 3.2 world units", high - low > 3.2f)
         assertTrue("Playable terrain exceeds the 43-degree walkability cap", steepest < tan(Math.toRadians(43.0)).toFloat())
+    }
+
+    @Test
+    fun terrainGlbEmbedsFourPbrSurfacePairsAndTerrainUvCoordinates() {
+        val pixel = Base64.getDecoder().decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO+/cZkAAAAASUVORK5CYII="
+        )
+        val textures = TerrainTextureSet(
+            albedo = List(4) { pixel },
+            normal = List(4) { pixel }
+        )
+        val bytes = WorldGlbBuilder.build(textures)
+        val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+        val jsonLength = glb.getInt(12)
+        val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
+        assertEquals(8, "\"mimeType\":\"image/png\"".toRegex().findAll(json).count())
+        assertTrue(json.contains("\"grass_albedo\""))
+        assertTrue(json.contains("\"rock_normal\""))
+        assertTrue(json.contains("\"TEXCOORD_0\""))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":0}"))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":1}"))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":2}"))
+        assertTrue(json.contains("\"baseColorTexture\":{\"index\":3}"))
+        assertTrue(json.contains("\"normalTexture\":{\"index\":4,\"scale\":0.68}"))
+        assertTrue(json.contains("\"normalTexture\":{\"index\":7,\"scale\":0.68}"))
     }
 
     @Test
