@@ -349,9 +349,11 @@ checks = [
      "setAmbientOcclusionOptions" in renderer and "AmbientOcclusionType.SAO" in renderer and
      "setFogOptions" in renderer and "configureAssetShadowing" in renderer,
      "outdoor rendering must use bounded sun shadows, low-cost contact AO and subtle atmospheric depth"),
-    ("Four readable lane-unit silhouettes" in renderer and
-     "val width = when (slot) { 0 -> 1.16f" in renderer and
-     "val height = when (slot) { 0 -> 0.92f" in renderer,
+    ("fun minionWidthFactor(index: Int)" in npc_catalog and
+     "fun minionHeightFactor(index: Int)" in npc_catalog and
+     "NpcVisualCatalog.minionWidthFactor(index)" in renderer and
+     "NpcVisualCatalog.minionHeightFactor(index)" in renderer and
+     "minionSilhouettesHaveDifferentProportions" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt"),
      "lane units must have role-distinct body proportions"),
     ("0.91f,0.70f,0.28f" in gear and "0.18f,0.73f,0.70f" in gear and
      "0.63f,0.45f,0.82f" in gear,
