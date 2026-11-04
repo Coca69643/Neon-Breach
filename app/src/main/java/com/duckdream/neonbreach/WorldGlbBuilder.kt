@@ -410,95 +410,6 @@ internal object WorldGlbBuilder {
     private fun intBytes(v:List<Int>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putInt(it)}}.array()
     private fun align(out:ByteArrayOutputStream){while(out.size()%4!=0)out.write(0)}
 
-    private fun leafBlade(p: Part, x: Float, z: Float, angle: Float, length: Float, width: Float) {
-        val dirX = cos(angle)
-        val dirZ = sin(angle)
-        val sideX = -dirZ
-        val sideZ = dirX
-        val baseY = h(x, z) + 0.07f
-        val base = floatArrayOf(x, baseY, z)
-        val midX = x + dirX * length * 0.54f
-        val midZ = z + dirZ * length * 0.54f
-        val mid = floatArrayOf(midX, h(midX, midZ) + length * 0.18f, midZ)
-        val tipX = x + dirX * length
-        val tipZ = z + dirZ * length
-        val tip = floatArrayOf(tipX, h(tipX, tipZ) + length * 0.08f, tipZ)
-        val left = floatArrayOf(x + sideX * width, baseY + 0.025f, z + sideZ * width)
-        val right = floatArrayOf(x - sideX * width, baseY + 0.025f, z - sideZ * width)
-        tri(p, base, left, mid)
-        tri(p, base, mid, right)
-        tri(p, mid, left, tip)
-        tri(p, mid, tip, right)
-        tri(p, mid, left, base)
-        tri(p, mid, base, right)
-        tri(p, tip, left, mid)
-        tri(p, tip, mid, right)
-    }
-
-    private fun fern(p: Part, x: Float, z: Float, scale: Float, seed: Float) {
-        for (i in 0 until 6) {
-            val angle = seed + i * (2f * PI.toFloat() / 6f)
-            leafBlade(p, x, z, angle, scale * (0.52f + (i % 3) * 0.12f), scale * 0.16f)
-        }
-    }
-
-    private fun flowerClump(p: Part, petals: Part, x: Float, z: Float, scale: Float, seed: Float) {
-        val ground = h(x, z)
-        box(p, x, ground + scale * 0.18f, z, scale * 0.045f, scale * 0.36f, scale * 0.045f)
-        leafBlade(p, x, z, seed + 1.6f, scale * 0.38f, scale * 0.10f)
-        leafBlade(p, x, z, seed - 1.6f, scale * 0.34f, scale * 0.09f)
-        val flowerX = x + cos(seed) * scale * 0.08f
-        val flowerZ = z + sin(seed) * scale * 0.08f
-        val flowerY = h(flowerX, flowerZ) + scale * 0.36f
-        for (i in 0 until 5) {
-            val angle = seed + i * (2f * PI.toFloat() / 5f)
-            val px = flowerX + cos(angle) * scale * 0.11f
-            val pz = flowerZ + sin(angle) * scale * 0.11f
-            boulder(petals, px, pz, scale * 0.075f, scale * 0.055f, scale * 0.075f, angle)
-        }
-        boulder(petals, flowerX, flowerZ, scale * 0.055f, scale * 0.05f, scale * 0.055f, seed + 0.3f)
-    }
-
-    private fun mushroomClump(stems: Part, caps: Part, x: Float, z: Float, scale: Float, seed: Float) {
-        for (i in 0 until 3) {
-            val angle = seed + i * 2.15f
-            val offsetX = cos(angle) * scale * (0.22f + i * 0.10f)
-            val offsetZ = sin(angle) * scale * (0.18f + i * 0.08f)
-            val px = x + offsetX
-            val pz = z + offsetZ
-            val height = scale * (0.22f + (i % 2) * 0.10f)
-            box(stems, px, h(px, pz) + height * 0.50f, pz,
-                scale * 0.11f, height, scale * 0.11f)
-            boulder(caps, px, pz, scale * 0.23f, scale * 0.15f, scale * 0.22f, angle)
-        }
-    }
-
-    private fun fallenLog(p: Part, x: Float, z: Float, length: Float, angle: Float, radius: Float) {
-        val c = cos(angle)
-        val s = sin(angle)
-        val hx = length * 0.5f
-        val hy = radius
-        val hz = radius
-        val corners = arrayOf(
-            floatArrayOf(-hx,-hy,-hz), floatArrayOf(hx,-hy,-hz),
-            floatArrayOf(hx,-hy,hz), floatArrayOf(-hx,-hy,hz),
-            floatArrayOf(-hx,hy,-hz), floatArrayOf(hx,hy,-hz),
-            floatArrayOf(hx,hy,hz), floatArrayOf(-hx,hy,hz)
-        )
-        val y = h(x, z) + radius * 0.82f
-        val transformed = corners.map { q ->
-            floatArrayOf(x + q[0] * c - q[2] * s, y + q[1], z + q[0] * s + q[2] * c)
-        }
-        val faces = arrayOf(
-            intArrayOf(0,1,2,3), intArrayOf(4,7,6,5), intArrayOf(0,4,5,1),
-            intArrayOf(1,5,6,2), intArrayOf(2,6,7,3), intArrayOf(3,7,4,0)
-        )
-        faces.forEach { face ->
-            triOutward(p, transformed[face[0]], transformed[face[1]], transformed[face[2]], x, y, z)
-            triOutward(p, transformed[face[0]], transformed[face[2]], transformed[face[3]], x, y, z)
-        }
-    }
-
     fun build():ByteArray {
         parts.clear()
         terrain=part("meadow_terrain",0)
@@ -515,20 +426,12 @@ internal object WorldGlbBuilder {
         val campMarks=part("neutral_camp_marks",11)
         val objectiveMarks=part("neutral_objective_marks",12)
         val forestFloor=part("forest_floor",13)
-        val undergrowth=part("undergrowth",14)
-        val masonry=part("ruined_masonry",15)
-        val boulderField=part("boulder_field",16)
-        val shrineStone=part("objective_shrine",17)
-        val ocean=part("surrounding_water",18)
-        val fernLeaves=part("fern_leaves",19)
-        val flowerStems=part("meadow_flower_stems",20)
-        val flowerPetals=part("meadow_flower_petals",21)
-        val mushroomStems=part("camp_mushroom_stems",22)
-        val mushroomCaps=part("camp_mushroom_caps",23)
-        val fallenTimber=part("fallen_timber",24)
-        val riverShallows=part("river_shallows",25)
-        val riverSandbanks=part("river_sandbanks",26)
-        val riverGlints=part("river_flow_glints",27)
+        val masonry=part("ruined_masonry",14)
+        val shrineStone=part("objective_shrine",15)
+        val ocean=part("surrounding_water",16)
+        val riverShallows=part("river_shallows",17)
+        val riverSandbanks=part("river_sandbanks",18)
+        val riverGlints=part("river_flow_glints",19)
         terrainMesh()
         ringMesh(pulse,0.88f,1.08f)
         ringMesh(shield,0.98f,1.15f)
@@ -562,37 +465,13 @@ internal object WorldGlbBuilder {
         groundDisc(riverSandbanks, 4.1f, 0.18f, 0.68f, 0.31f, 0.70f)
         groundDisc(riverSandbanks, 23.0f, -0.15f, 0.72f, 0.33f, 0.70f)
 
-        // A few water-worn stones and reed clumps are batched into existing parts.
-        val riverStoneAnchors = listOf(
-            -29.2f to -1.35f, -25.4f to 1.65f, -20.2f to -1.95f,
-            -10.5f to 2.1f, -7.2f to -2.35f, -1.0f to 2.28f,
-            5.5f to -2.30f, 11.9f to 2.05f, 17.7f to -2.1f,
-            22.0f to 2.18f, 28.5f to -1.45f
-        )
-        riverStoneAnchors.forEachIndexed { index, anchor ->
-            boulder(boulderField, anchor.first, ArenaMapDefinition.riverCenterZ(anchor.first) + anchor.second,
-                0.28f + (index % 3) * 0.045f, 0.18f, 0.24f, index * 0.71f)
-        }
-        listOf(-26f to -2.0f, -8f to 2.5f, 6f to -2.5f, 25f to 2.1f).forEachIndexed { index, anchor ->
-            fern(fernLeaves, anchor.first, ArenaMapDefinition.riverCenterZ(anchor.first) + anchor.second,
-                0.68f, index * 0.9f)
-        }
-
         // Forest clearings, camps and river sanctuaries are modeled as world geometry.
         ArenaMapDefinition.camps.forEachIndexed { index, camp ->
             val x = camp.position.x
             val z = camp.position.z
             groundDisc(forestFloor,x,z,3.2f,2.65f,0.035f)
             groundDisc(earth,x,z,2.35f,1.85f,0.075f)
-            for(i in 0 until 7) {
-                val a=2f*PI.toFloat()*i/7f+index*0.31f
-                boulder(boulderField,x+cos(a)*2.65f,z+sin(a)*2.0f,0.38f,0.32f,0.34f,a)
-            }
-            // Keep each camp center clear for its live neutral guardian model.
-            fern(fernLeaves, x - 2.45f, z - 1.55f, 0.82f, index * 0.7f)
-            fern(fernLeaves, x + 2.35f, z + 1.45f, 0.72f, index * 0.4f + 1f)
-            mushroomClump(mushroomStems, mushroomCaps, x - 2.55f, z + 1.55f, 0.75f, index * 0.8f)
-            if (index % 2 == 0) fallenLog(fallenTimber, x + 1.9f, z - 1.9f, 1.45f, 0.6f + index * 0.13f, 0.18f)
+            // Textured rocks, ferns and mushrooms are baked into the static nature GLBs.
         }
         // Subtle stone edging keeps the camp footprint readable without flag markers.
         ArenaMapDefinition.camps.forEach { camp ->
@@ -607,52 +486,12 @@ internal object WorldGlbBuilder {
             ringMeshAt(objectiveMarks,x,z,4.12f,4.32f)
             shrine(shrineStone,x,z,0.92f,index == 0)
         }
-        for(i in 0 until 12) {
-            val a=2f*PI.toFloat()*i/12f
-            ArenaMapDefinition.objectives.forEachIndexed { index, objective ->
-                boulder(boulderField,objective.position.x+cos(a)*objective.radius,
-                    objective.position.z+sin(a)*3.75f,0.48f,0.5f,0.42f,a+index)
-            }
-        }
-
         // Additional elevation and rubble make the outer jungle and base approaches readable.
         ArenaMapDefinition.groveCenters.forEachIndexed { index, point ->
             groundDisc(forestFloor,point.x,point.z,2.8f,2.1f,0.02f)
-            for(j in 0 until 4) {
-                val a=2f*PI.toFloat()*j/4f+index*0.43f
-                val rx=0.42f+(j%2)*0.22f
-                boulder(boulderField,point.x+cos(a)*1.8f,point.z+sin(a)*1.4f,rx,rx*0.82f,rx,a)
-            }
-            fern(fernLeaves,point.x-0.65f,point.z+0.2f,1.15f,index*0.31f)
-            fern(fernLeaves,point.x+0.85f,point.z-0.45f,0.92f,index*0.57f+1f)
-            flowerClump(flowerStems,flowerPetals,point.x+0.25f,point.z+0.85f,0.72f,index*0.43f)
         }
 
-        // Dense low-profile undergrowth fills forest gaps without transparent foliage cards.
-        for(i in 0 until 56) {
-            val x=when(i%4){0->-10.1f;1->-6.1f;2->6.1f;else->10.1f} + sin(i*1.71f)*0.82f
-            val z= -22f + (i/4)*3.15f
-            if (abs(z)>24f) continue
-            if (i%8<4 && z>0f) continue
-            val radius=0.30f+(i%3)*0.07f
-            boulder(undergrowth,x,z,radius*1.45f,radius*0.68f,radius, i*0.31f)
-            if (i % 3 == 0) fern(fernLeaves,x+0.45f,z+0.35f,0.68f,i*0.23f)
-        }
-
-        // Wind-bent reeds line selected river bends; low-poly blades are batched by material.
-        for (i in 0 until 14) {
-            val x = -28f + i * 4.3f
-            val centerZ = ArenaMapDefinition.riverCenterZ(x)
-            fern(fernLeaves,x,centerZ-2.45f,0.86f,i*0.37f)
-            fern(fernLeaves,x+1.15f,centerZ+2.35f,0.74f,i*0.51f)
-        }
-        // A few distinct flower patches break up the repeated meadow texture.
-        for (i in 0 until 18) {
-            val x = if (i % 2 == 0) -30f + (i % 6) * 1.8f else 20f + (i % 5) * 1.5f
-            val z = -26f + (i / 3) * 8.5f
-            if (abs(x) > 32f || abs(z) > 29f) continue
-            flowerClump(flowerStems,flowerPetals,x,z,0.62f,i*0.63f)
-        }
+        // Groundcover and rocks are supplied by two offline, texture-backed GLBs.
 
         // Fortified base approach walls and gatehouse paving.
         for(sign in listOf(-1f,1f)) {
@@ -690,7 +529,7 @@ internal object WorldGlbBuilder {
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
             vi+=3;ai+=3
         }
-        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Forest undergrowth","Ruined masonry","Field boulders","Objective shrine","Surrounding water","Fern foliage","Flower stems","Wildflower petals","Mushroom stems","Mushroom caps","Fallen timber","River shallows","River sandbanks","Water shimmer")
+        val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Ruined masonry","Objective shrine","Surrounding water","River shallows","River sandbanks","Water shimmer")
         val colors=listOf(
             listOf(0.13f,0.17f,0.075f,1f),
             listOf(0.19f,0.24f,0.10f,1f),
@@ -706,22 +545,14 @@ internal object WorldGlbBuilder {
             listOf(0.18f,0.15f,0.10f,1f),
             listOf(0.26f,0.22f,0.15f,1f),
             listOf(0.07f,0.11f,0.05f,1f),
-            listOf(0.09f,0.15f,0.055f,1f),
             listOf(0.22f,0.23f,0.19f,1f),
-            listOf(0.27f,0.27f,0.24f,1f),
             listOf(0.34f,0.30f,0.22f,1f),
             listOf(0.02f,0.06f,0.09f,1f),
-            listOf(0.11f,0.24f,0.055f,1f),
-            listOf(0.10f,0.19f,0.07f,1f),
-            listOf(0.92f,0.62f,0.17f,1f),
-            listOf(0.78f,0.68f,0.52f,1f),
-            listOf(0.68f,0.21f,0.15f,1f),
-            listOf(0.30f,0.19f,0.10f,1f),
             listOf(0.075f,0.36f,0.39f,1f),
             listOf(0.48f,0.36f,0.22f,1f),
             listOf(0.40f,0.78f,0.72f,1f))
-        check(names.size == colors.size && parts.size == names.size && parts.size == 28) {
-            "World GLB palette mismatch: parts=${parts.size}, names=${names.size}, colors=${colors.size}"
+        check(names.size == colors.size && parts.size == names.size && parts.size == 20) {
+            "World GLB terrain palette mismatch: parts=" + parts.size + ", names=" + names.size + ", colors=" + colors.size
         }
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.22f;25->0.30f;27->0.18f;7,8->0.42f;else->0.88f}
