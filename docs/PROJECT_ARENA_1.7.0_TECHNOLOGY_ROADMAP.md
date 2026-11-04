@@ -130,5 +130,5 @@ Não atualizar dependências do runtime sem atualizar as ferramentas de shader c
 ### 2026-11-04 — World Pipeline 2.0, etapa inicial
 - Branch isolada criada a partir da main: rebuild/project-arena-1.7.0-world-foundation.
 - Especificação da fundação do mapa registrada em docs/PROJECT_ARENA_1.7.0_WORLD_FOUNDATION.md.
-- Fonte inicial world/arena_world_1_7.json e validador independente estão sendo adicionados.
+- Fonte canônica world/arena_world_1_7.json e validador tools/verify_arena_world.py foram adicionados; o workflow Android executa a validação.
 - Escopo deste primeiro commit: dados e validação estrutural da nova arena; não substitui ainda o mapa ativo 0.16.0 e não declara renderer, física, navegação, greybox ou APK 1.7.0 concluídos.
