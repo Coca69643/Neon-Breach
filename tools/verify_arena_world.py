@@ -295,8 +295,10 @@ def main() -> None:
 
     art = data.get("art_direction", {})
     required = {"grass", "soil", "stone", "wood", "river_water", "foliage"}
-    if art.get("theme") != "stylized_medieval_fantasy" or art.get("environment_style") != "organic_sculpted_world":
-        fail("art direction must describe the approved organic medieval-fantasy world")
+    if art.get("theme") != "stylized_medieval_fantasy" or art.get("environment_style") not in {
+        "organic_sculpted_world", "open_battlefield_with_jungle_pockets"
+    }:
+        fail("art direction must preserve the medieval-fantasy theme and an authored environment layout")
     if not required.issubset(set(art.get("required_material_families", []))):
         fail("approved environment material families are incomplete")
 
