@@ -131,4 +131,5 @@ Não atualizar dependências do runtime sem atualizar as ferramentas de shader c
 - Branch isolada criada a partir da main: rebuild/project-arena-1.7.0-world-foundation.
 - Especificação da fundação do mapa registrada em docs/PROJECT_ARENA_1.7.0_WORLD_FOUNDATION.md.
 - Fonte canônica world/arena_world_1_7.json e validador tools/verify_arena_world.py foram adicionados; o workflow Android executa a validação.
-- Escopo deste primeiro commit: dados e validação estrutural da nova arena; não substitui ainda o mapa ativo 0.16.0 e não declara renderer, física, navegação, greybox ou APK 1.7.0 concluídos.
+- Validador executado com sucesso no GitHub Actions, run 41894611911: envelope, três rotas, três pontes, duas selvas, doze acampamentos e grafo conectado aprovados.
+- Escopo implementado nesta etapa: fonte de dados + validação estrutural. O JSON ainda não alimenta o renderer/física ativos; geração Kotlin/C++ e integração runtime são os próximos passos. O mapa ativo 0.16.0 permanece intacto.
