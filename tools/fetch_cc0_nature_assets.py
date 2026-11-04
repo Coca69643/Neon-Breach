@@ -27,7 +27,7 @@ EXPECTED = {
     "Grass_Wispy_Short.bin": "bb62b3768f54b700c1334980aa57c5543f447c56",
     "Flower_3_Group.gltf": "e1e083986d17ba0362349e83256e1f38bf8b8d30",
     "Flower_3_Group.bin": "faa36e37db8a5fb8b0a29e382b27b2184a832be6",
-    "Rock_Medium_1.gltf": "10896291ed3b58b4f8f2e9cb8f912705e5b239",
+    "Rock_Medium_1.gltf": "10896291ed3b58a2c51fe2e9cb8f912705e5b239",
     "Rock_Medium_2.gltf": "353d1d80729226b73ac5bc22b227da7d50dfdc8a",
     "Rock_Medium_1.bin": "3b8d132a71b30b62787e206ee6b517097370267a",
     "Rock_Medium_2.bin": "064074dca1028d3eb965b93be24da19710f44b55",
