@@ -48,44 +48,73 @@ internal object WorldGlbBuilder {
     private lateinit var trail:Part
 
     private fun part(name:String,mat:Int)=Part(name,mat).also{parts.add(it)}
-    private fun h(x:Float,z:Float):Float {
-        val westRidge = 2.35f * exp(-((x + 24f).pow(2)) / 44f) * (0.58f + 0.42f * cos(z * 0.075f))
-        val eastRidge = 2.18f * exp(-((x - 24f).pow(2)) / 48f) * (0.58f + 0.42f * cos(z * 0.07f))
-        val southHighland = 1.55f * exp(-((z + 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
-        val northHighland = 1.55f * exp(-((z - 27f).pow(2)) / 36f) * exp(-(x.pow(2)) / 420f)
-        val jungleKnolls = 0.78f * exp(-((abs(x) - 8.5f).pow(2)) / 8.5f) * exp(-((abs(z) - 14f).pow(2)) / 42f)
-        val riverDistance = abs(z - ArenaMapDefinition.riverCenterZ(x))
-        val riverHalfWidth = ArenaMapDefinition.riverHalfWidth(x)
-        val riverBed = -0.76f * exp(-(riverDistance * riverDistance) / (riverHalfWidth * riverHalfWidth * 0.82f))
-        val bankDistance = riverDistance - (riverHalfWidth + 0.66f)
-        val riverBank = 0.48f * exp(-(bankDistance * bankDistance) / 2.4f)
-        val rolling = 0.26f*sin(x*0.18f)*cos(z*0.14f)+0.16f*sin((x+z)*0.29f)
-        val shelf = 0.52f * exp(-((abs(x) - 18.5f).pow(2)) / 5.5f) * exp(-((abs(z) - 13f).pow(2)) / 110f)
-        return rolling + westRidge + eastRidge + southHighland + northHighland +
-            jungleKnolls + riverBed + riverBank + shelf
+    private fun riverNearest(x: Float, z: Float): FloatArray {
+        var bestDistance = Float.POSITIVE_INFINITY
+        var bestWidth = ArenaWorld17Generated.river.first().halfWidth
+        for (index in 0 until ArenaWorld17Generated.river.lastIndex) {
+            val a = ArenaWorld17Generated.river[index]
+            val b = ArenaWorld17Generated.river[index + 1]
+            val dx = b.position.x - a.position.x
+            val dz = b.position.z - a.position.z
+            val denominator = (dx * dx + dz * dz).coerceAtLeast(0.0001f)
+            val t = (((x - a.position.x) * dx + (z - a.position.z) * dz) / denominator).coerceIn(0f, 1f)
+            val px = a.position.x + dx * t
+            val pz = a.position.z + dz * t
+            val distance = (x - px).pow(2) + (z - pz).pow(2)
+            if (distance < bestDistance) {
+                bestDistance = distance
+                bestWidth = a.halfWidth + (b.halfWidth - a.halfWidth) * t
+            }
+        }
+        return floatArrayOf(sqrt(bestDistance), bestWidth)
     }
 
-    internal fun heightAt(x: Float, z: Float): Float {
-        val scale = ArenaMapDefinition.WORLD_SCALE
-        return h(x / scale, z / scale)
+    private fun h(x: Float, z: Float): Float {
+        var ridge = 0f
+        var valleyControl = 0f
+        for (control in ArenaWorld17Generated.elevationControls) {
+            val dx = x - control.position.x
+            val dz = z - control.position.z
+            val influence = exp(-(dx * dx + dz * dz) /
+                (control.radius * control.radius * 0.50f).coerceAtLeast(0.001f))
+            if (control.height >= 0f) ridge = max(ridge, control.height * influence)
+            else valleyControl += control.height * influence
+        }
+        val river = riverNearest(x, z)
+        val channel = -ArenaWorld17Generated.RIVER_VALLEY_DEPTH_M *
+            exp(-(river[0] * river[0]) /
+                (river[1] * river[1] * 1.60f).coerceAtLeast(0.001f))
+        val broadPhase = (ArenaWorld17Generated.BROAD_NOISE_SEED % 97) * 0.013f
+        val detailPhase = (ArenaWorld17Generated.DETAIL_NOISE_SEED % 97) * 0.013f
+        val broadNoise = ArenaWorld17Generated.BROAD_NOISE_AMPLITUDE_M * (
+            0.58f * sin((x + broadPhase) * 0.031f) * cos((z - broadPhase) * 0.027f) +
+                0.42f * sin((x + z) * 0.019f + broadPhase)
+            )
+        val detailNoise = ArenaWorld17Generated.DETAIL_NOISE_AMPLITUDE_M *
+            sin(x * 0.19f + z * 0.13f + detailPhase) *
+            cos(z * 0.17f - x * 0.11f - detailPhase)
+        return (ridge + valleyControl + channel + broadNoise + detailNoise)
+            .coerceIn(ArenaWorld17Generated.MIN_HEIGHT_M, ArenaWorld17Generated.MAX_HEIGHT_M)
     }
+
+    internal fun heightAt(x: Float, z: Float): Float = h(x, z)
+
     internal fun normalAt(x: Float, z: Float): FloatArray {
-        val scale = ArenaMapDefinition.WORLD_SCALE
-        val rawX = x / scale
-        val rawZ = z / scale
-        val e = 0.08f
-        val dx = (h(rawX + e, rawZ) - h(rawX - e, rawZ)) / (2f * e * scale)
-        val dz = (h(rawX, rawZ + e) - h(rawX, rawZ - e)) / (2f * e * scale)
+        val e = 0.12f
+        val dx = (h(x + e, z) - h(x - e, z)) / (2f * e)
+        val dz = (h(x, z + e) - h(x, z - e)) / (2f * e)
         val length = sqrt(dx * dx + 1f + dz * dz)
         return floatArrayOf(-dx / length, 1f / length, -dz / length)
     }
-    private fun norm(x:Float,z:Float):FloatArray {
-        val e=0.04f
-        val dx=(h(x+e,z)-h(x-e,z))/(2f*e)
-        val dz=(h(x,z+e)-h(x,z-e))/(2f*e)
-        val l=sqrt(dx*dx+1f+dz*dz)
-        return floatArrayOf(-dx/l,1f/l,-dz/l)
+
+    private fun norm(x: Float, z: Float): FloatArray {
+        val e = 0.12f
+        val dx = (h(x + e, z) - h(x - e, z)) / (2f * e)
+        val dz = (h(x, z + e) - h(x, z - e)) / (2f * e)
+        val length = sqrt(dx * dx + 1f + dz * dz)
+        return floatArrayOf(-dx / length, 1f / length, -dz / length)
     }
+
     private fun tri(part:Part,a:FloatArray,b:FloatArray,c:FloatArray,
                     na:FloatArray?=null,nb:FloatArray?=null,nc:FloatArray?=null) {
         val ux=b[0]-a[0];val uy=b[1]-a[1];val uz=b[2]-a[2]
@@ -190,59 +219,93 @@ internal object WorldGlbBuilder {
     private lateinit var rock: Part
 
     private fun insideIsland(x: Float, z: Float): Boolean {
-        val angle = atan2(z / 31f, x / 35f)
-        val edge = 1f + 0.035f * sin(angle * 5f) + 0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
-        val radius = sqrt((x / 35f).pow(2) + (z / 31f).pow(2))
-        return radius <= edge
+        val angle = atan2(z / ArenaWorld17Generated.HALF_DEPTH_M, x / ArenaWorld17Generated.HALF_WIDTH_M)
+        val edge = 1f + 0.016f * sin(angle * 5f) + 0.009f * sin(angle * 9f + 1.4f) +
+            0.006f * cos(angle * 13f)
+        val nx = abs(x / ArenaWorld17Generated.HALF_WIDTH_M)
+        val nz = abs(z / ArenaWorld17Generated.HALF_DEPTH_M)
+        return nx.pow(4) + nz.pow(4) <= edge.pow(4)
     }
 
     private fun terrainMesh() {
-        val steps = 136
-        val size = 76f
-        val start = -38f
-        val cell = size / steps
-        for (zi in 0 until steps) {
-            val z0 = start + zi * cell
-            val z1 = z0 + cell
-            for (xi in 0 until steps) {
-                val x0 = start + xi * cell
-                val x1 = x0 + cell
+        val countX = ArenaWorld17Generated.TERRAIN_VERTICES_X
+        val countZ = ArenaWorld17Generated.TERRAIN_VERTICES_Z
+        val halfX = ArenaWorld17Generated.HALF_WIDTH_M
+        val halfZ = ArenaWorld17Generated.HALF_DEPTH_M
+        val cellX = (halfX * 2f) / (countX - 1)
+        val cellZ = (halfZ * 2f) / (countZ - 1)
+        val terrainParts = listOf(terrain, grassLight, grassDark, earth, rock)
+        val vertexCache = Array(terrainParts.size) { IntArray(countX * countZ) { -1 } }
+
+        fun vertex(partIndex: Int, ix: Int, iz: Int): Int {
+            val cache = vertexCache[partIndex]
+            val key = iz * countX + ix
+            val existing = cache[key]
+            if (existing >= 0) return existing
+            val x = -halfX + ix * cellX
+            val z = -halfZ + iz * cellZ
+            val normal = norm(x, z)
+            val created = terrainParts[partIndex].vertex(
+                x, h(x, z), z, normal[0], normal[1], normal[2]
+            )
+            cache[key] = created
+            return created
+        }
+
+        for (iz in 0 until countZ - 1) {
+            val z0 = -halfZ + iz * cellZ
+            val z1 = z0 + cellZ
+            for (ix in 0 until countX - 1) {
+                val x0 = -halfX + ix * cellX
+                val x1 = x0 + cellX
                 val cx = (x0 + x1) * 0.5f
                 val cz = (z0 + z1) * 0.5f
                 if (!insideIsland(cx, cz)) continue
-                // Reserve a continuous channel plus its sloped banks for layered river geometry.
-                if (abs(cz - ArenaMapDefinition.riverCenterZ(cx)) <
-                    ArenaMapDefinition.riverHalfWidth(cx) + 0.82f && abs(cx) < 34.2f) continue
-                val noise = sin(cx * 0.43f + cz * 0.17f) + cos(cz * 0.31f - cx * 0.12f)
-                val part = when {
-                    abs(cx) > 17f && abs(cz) < 23f && noise > -0.25f -> rock
-                    abs(cx) > 18f && noise < -0.35f -> earth
-                    noise > 0.72f -> grassLight
-                    sin(cx * 0.21f - cz * 0.33f) + cos(cx * 0.37f + cz * 0.28f) < -0.86f -> grassDark
-                    else -> terrain
+                val river = riverNearest(cx, cz)
+                if (river[0] < river[1] + 0.72f) continue
+
+                val rolling = sin(cx * 0.043f + cz * 0.021f) +
+                    cos(cz * 0.037f - cx * 0.017f)
+                val slope = sqrt(
+                    ((h(x1, cz) - h(x0, cz)) / cellX).pow(2) +
+                        ((h(cx, z1) - h(cx, z0)) / cellZ).pow(2)
+                )
+                val material = when {
+                    slope > 0.48f -> 4
+                    abs(rolling) > 1.20f && river[0] > river[1] + 7f -> 3
+                    rolling > 0.62f -> 1
+                    rolling < -0.62f -> 2
+                    else -> 0
                 }
-                val p00 = floatArrayOf(x0, h(x0, z0), z0)
-                val p10 = floatArrayOf(x1, h(x1, z0), z0)
-                val p01 = floatArrayOf(x0, h(x0, z1), z1)
-                val p11 = floatArrayOf(x1, h(x1, z1), z1)
-                tri(part, p00, p01, p10, norm(x0,z0), norm(x0,z1), norm(x1,z0))
-                tri(part, p10, p01, p11, norm(x1,z0), norm(x0,z1), norm(x1,z1))
+
+                val a = vertex(material, ix, iz)
+                val b = vertex(material, ix, iz + 1)
+                val c = vertex(material, ix + 1, iz)
+                val d = vertex(material, ix + 1, iz + 1)
+                val target = terrainParts[material]
+                target.tri(a, b, c)
+                target.tri(c, b, d)
             }
         }
-        val segments = 220
-        for (i in 0 until segments) {
-            val a0 = 2f * PI.toFloat() * i / segments
-            val a1 = 2f * PI.toFloat() * (i + 1) / segments
+
+        // The coastline follows a rounded, subtly irregular superellipse rather than a rectangular slab.
+        val segments = 260
+        for (index in 0 until segments) {
+            val a0 = 2f * PI.toFloat() * index / segments
+            val a1 = 2f * PI.toFloat() * (index + 1) / segments
             fun edgePoint(angle: Float): FloatArray {
-                val wobble = 1f + 0.035f * sin(angle * 5f) + 0.020f * sin(angle * 9f + 1.4f) + 0.012f * cos(angle * 13f)
-                val x = 35f * wobble * cos(angle)
-                val z = 31f * wobble * sin(angle)
-                return floatArrayOf(x, h(x,z) - 0.02f, z)
+                val c = cos(angle)
+                val s = sin(angle)
+                val wobble = 1f + 0.016f * sin(angle * 5f) +
+                    0.009f * sin(angle * 9f + 1.4f) + 0.006f * cos(angle * 13f)
+                val x = halfX * sign(c) * abs(c).pow(0.5f) * wobble
+                val z = halfZ * sign(s) * abs(s).pow(0.5f) * wobble
+                return floatArrayOf(x, h(x, z) - 0.03f, z)
             }
             val topA = edgePoint(a0)
             val topB = edgePoint(a1)
-            val bottomA = floatArrayOf(topA[0] * 1.025f, -3.8f, topA[2] * 1.025f)
-            val bottomB = floatArrayOf(topB[0] * 1.025f, -3.8f, topB[2] * 1.025f)
+            val bottomA = floatArrayOf(topA[0] * 1.055f, -8.5f, topA[2] * 1.055f)
+            val bottomB = floatArrayOf(topB[0] * 1.055f, -8.5f, topB[2] * 1.055f)
             tri(cliffs, topA, bottomA, topB)
             tri(cliffs, topB, bottomA, bottomB)
         }
@@ -343,7 +406,7 @@ internal object WorldGlbBuilder {
             return floatArrayOf(
                 cat(p0.x, p1.x, p2.x, p3.x),
                 cat(p0.z, p1.z, p2.z, p3.z),
-                cat(p0.halfWidth, p1.halfWidth, p2.halfWidth, p3.halfWidth).coerceIn(0.68f, 2.0f)
+                cat(p0.halfWidth, p1.halfWidth, p2.halfWidth, p3.halfWidth).coerceIn(4.5f, 8.5f)
             )
         }
 
@@ -458,15 +521,28 @@ internal object WorldGlbBuilder {
         ArenaMapDefinition.validate()
         ArenaMapDefinition.lanes.forEach { lane ->
             val points = lane.points.map { floatArrayOf(it.x, it.z) }
-            ribbon(routeEdge, points, lane.width + 0.76f, 0.025f)
-            ribbon(trail, points, lane.width, 0.075f)
+            ribbon(routeEdge, points, lane.width * 0.5f + 0.85f, 0.035f)
+            ribbon(trail, points, lane.width * 0.5f, 0.085f)
         }
 
-        // Cross-lane jungle paths link the neutral camps to lane entrances.
-        ribbon(earth,listOf(floatArrayOf(-8.2f,-27f),floatArrayOf(-8.8f,-20f),floatArrayOf(-8.2f,-14.5f),floatArrayOf(-9.1f,-8f),floatArrayOf(-7f,-2f)),0.62f,0.095f)
-        ribbon(earth,listOf(floatArrayOf(8.2f,-27f),floatArrayOf(8.8f,-20f),floatArrayOf(8.2f,-14.5f),floatArrayOf(9.1f,-8f),floatArrayOf(7f,-2f)),0.62f,0.095f)
-        ribbon(earth,listOf(floatArrayOf(-7f,2f),floatArrayOf(-9.1f,8f),floatArrayOf(-8.2f,14.5f),floatArrayOf(-8.8f,20f),floatArrayOf(-8.2f,27f)),0.62f,0.095f)
-        ribbon(earth,listOf(floatArrayOf(7f,2f),floatArrayOf(9.1f,8f),floatArrayOf(8.2f,14.5f),floatArrayOf(8.8f,20f),floatArrayOf(8.2f,27f)),0.62f,0.095f)
+        // Narrow organic tracks connect each neutral clearing to its nearest route.
+        ArenaMapDefinition.camps.forEach { camp ->
+            val z = camp.position.z
+            val lane = (0..2).minByOrNull {
+                kotlin.math.abs(ArenaMapDefinition.laneCenterX(it, z) - camp.position.x)
+            } ?: 1
+            val targetX = ArenaMapDefinition.laneCenterX(lane, z)
+            val midpointX = (camp.position.x + targetX) * 0.5f
+            ribbon(
+                earth,
+                listOf(
+                    floatArrayOf(camp.position.x, z),
+                    floatArrayOf(midpointX, z + 0.55f),
+                    floatArrayOf(targetX, z)
+                ),
+                0.72f, 0.09f, 36
+            )
+        }
 
         buildRiverChannel(water, riverShallows, riverSandbanks, ArenaMapDefinition.riverCenterline)
 
@@ -478,10 +554,14 @@ internal object WorldGlbBuilder {
         ribbon(riverGlints, riverGlintPath.subList(5, 8), 0.028f, 0.59f, 42)
         ribbon(riverGlints, riverGlintPath.subList(8, 11), 0.038f, 0.60f, 42)
 
-        // Three low shoals break the silhouette and add scale to the shallow channel.
-        groundDisc(riverSandbanks, -21.0f, 0.10f, 0.78f, 0.34f, 0.70f)
-        groundDisc(riverSandbanks, 4.1f, 0.18f, 0.68f, 0.31f, 0.70f)
-        groundDisc(riverSandbanks, 23.0f, -0.15f, 0.72f, 0.33f, 0.70f)
+        // Low, asymmetrical shoals are anchored to three bends in the canonical river spline.
+        listOf(3, 6, 9).forEachIndexed { index, pointIndex ->
+            val point = ArenaWorld17Generated.river[pointIndex].position
+            groundDisc(
+                riverSandbanks, point.x, point.z,
+                1.15f + index * 0.16f, 0.56f + index * 0.08f, 0.70f
+            )
+        }
 
         // Forest clearings, camps and river sanctuaries are modeled as world geometry.
         ArenaMapDefinition.camps.forEachIndexed { index, camp ->
@@ -511,17 +591,14 @@ internal object WorldGlbBuilder {
 
         // Groundcover and rocks are supplied by two offline, texture-backed GLBs.
 
-        // Fortified base approach walls and gatehouse paving.
-        for(sign in listOf(-1f,1f)) {
-            val z=sign*24.2f
-            box(masonry,-7.0f,h(-7f,z)+0.72f,z,5.2f,1.35f,0.72f)
-            box(masonry,7.0f,h(7f,z)+0.72f,z,5.2f,1.35f,0.72f)
-            box(masonry,0f,h(0f,sign*27f)+0.09f,sign*27f,13.2f,0.18f,4.8f)
+        // Fortified courtyards are softly integrated into the terrain at the canonical base anchors.
+        ArenaWorld17Generated.bases.forEach { base ->
+            groundDisc(masonry, base.position.x, base.position.z, 8.6f, 7.4f, 0.16f)
         }
 
-        // A dark-blue water plane below the island cliffs adds a real horizon layer.
-        quad(ocean,floatArrayOf(-58f,-2.55f,-52f),floatArrayOf(58f,-2.55f,-52f),
-            floatArrayOf(58f,-2.55f,52f),floatArrayOf(-58f,-2.55f,52f))
+        // Surrounding water sits below the full coastline, not a small central patch.
+        quad(ocean,floatArrayOf(-165f,-9.0f,-155f),floatArrayOf(165f,-9.0f,-155f),
+            floatArrayOf(165f,-9.0f,155f),floatArrayOf(-165f,-9.0f,155f))
 
         val bin=ByteArrayOutputStream();val views=StringBuilder();val accessors=StringBuilder()
         val meshes=StringBuilder();val nodes=StringBuilder();var vi=0;var ai=0
