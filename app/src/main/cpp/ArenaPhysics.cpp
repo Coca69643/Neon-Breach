@@ -74,18 +74,6 @@ struct Colliders {
 };
 const Colliders &world(){static const Colliders c;return c;}
 
-float riverZ(float x) {
-    constexpr std::array<std::array<float,2>,12> p{{
-        {{-34,1.1f}},{{-28,0.55f}},{{-21,0.05f}},{{-15,-0.45f}},
-        {{-9,-0.22f}},{{-3,0.25f}},{{4,0.38f}},{{10,0.02f}},
-        {{16,-0.38f}},{{23,-0.18f}},{{29,0.22f}},{{34,0.8f}}
-    }};
-    for(std::size_t i=0;i+1<p.size();++i) if(x<=p[i+1][0]) {
-        const float t=std::clamp((x-p[i][0])/(p[i+1][0]-p[i][0]),0.0f,1.0f);
-        return p[i][1]+(p[i+1][1]-p[i][1])*t;
-    }
-    return p.back()[1];
-}
 void confine(Body &b) {
     const float halfX=arena_map::kHalfExtentX*arena_map::kWorldScale;
     const float halfZ=arena_map::kHalfExtentZ*arena_map::kWorldScale;
@@ -136,9 +124,11 @@ float terrainHeight(float x,float z) {
     const float north=1.55f*std::exp(-((z-27)*(z-27))/36.0f)*std::exp(-(x*x)/420.0f);
     const float ax=std::abs(x),az=std::abs(z);
     const float knoll=0.78f*std::exp(-((ax-8.5f)*(ax-8.5f))/8.5f)*std::exp(-((az-14)*(az-14))/42.0f);
-    const float river=std::abs(z-riverZ(x));
-    const float bed=-0.58f*std::exp(-(river*river)/8.5f);
-    const float bank=0.72f*std::exp(-((river-2.55f)*(river-2.55f))/1.9f);
+    const float river=std::abs(z-arena_map::riverCenterZ(x));
+    const float riverHalfWidth=arena_map::riverHalfWidth(x);
+    const float bed=-0.76f*std::exp(-(river*river)/(riverHalfWidth*riverHalfWidth*0.82f));
+    const float bankDistance=river-(riverHalfWidth+0.66f);
+    const float bank=0.48f*std::exp(-(bankDistance*bankDistance)/2.4f);
     const float rolling=0.26f*std::sin(x*0.18f)*std::cos(z*0.14f)+0.16f*std::sin((x+z)*0.29f);
     const float shelf=0.52f*std::exp(-((ax-18.5f)*(ax-18.5f))/5.5f)*std::exp(-((az-13)*(az-13))/110.0f);
     return rolling+west+east+south+north+knoll+bed+bank+shelf;
