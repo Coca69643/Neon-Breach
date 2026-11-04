@@ -174,12 +174,12 @@ checks = [
       "1.7.0 APK and release metadata must match the app version"),
     ("path: |\n            Project-Arena-1.7.0.apk\n            Project-Arena-1.7.0.apk.sha256" in workflow,
       "artifact upload paths must match the 1.7.0 APK filenames"),
-    ("versionCode 170" in gradle and "versionName '1.7.0'" in gradle, "app version must be 1.7.0 / code 170"),
+    ("versionCode 171" in gradle and "versionName '1.7.0'" in gradle, "app version must be 1.7.0 / code 171"),
     ("applicationId 'com.duckdream.projectarena'" in gradle, "applicationId must remain stable"),
     ("stableDebug" in gradle and "NEON_BREACH_KEYSTORE_PATH" in gradle, "persistent signing config missing"),
     ("NEON_BREACH_KEYSTORE_BASE64" in workflow and "refusing to publish an update APK" in workflow, "workflow must require persistent signing"),
     ("if: github.event_name != 'pull_request'" in workflow, "PR builds must not publish signed APK releases"),
-    ("versionCode='170' versionName='1.7.0'" in workflow, "APK package/version verification is stale"),
+    ("versionCode='171' versionName='1.7.0'" in workflow, "APK package/version verification is stale"),
     ("project-arena-1.7.0-update" in workflow, "1.7.0 artifact name missing"),
     ("refs/heads/rebuild/project-arena-0.15.0-visual-overhaul" in workflow, "0.15.0 release branch condition missing"),
     ("org.jetbrains.kotlin.android" in root_gradle, "Kotlin Android plugin missing"),
@@ -357,7 +357,7 @@ for ok, message in checks:
 
 model_names = [
     "castle_blue", "castle_red", "tower_blue", "tower_red", "home_blue", "home_red",
-    "church_blue", "church_red", "bridge_a",
+    "church_blue", "church_red", "bridge_a", "fence_wood", "flag_blue", "flag_red",
 ]
 if not world_assets.is_dir():
     raise SystemExit("KayKit world asset directory missing")
