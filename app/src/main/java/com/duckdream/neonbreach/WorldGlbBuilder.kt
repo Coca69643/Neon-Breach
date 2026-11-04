@@ -5,12 +5,23 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import kotlin.math.*
 
+/** Four offline terrain materials; each albedo/normal pair is embedded into the world GLB. */
+internal data class TerrainTextureSet(val albedo: List<ByteArray>, val normal: List<ByteArray>) {
+    init {
+        require(albedo.size == 4 && normal.size == 4) {
+            "Terrain requires grass, moss, soil and rock albedo/normal maps"
+        }
+        require((albedo + normal).all { it.isNotEmpty() }) { "Terrain texture maps cannot be empty" }
+    }
+}
+
 /** Runtime terrain, lane surfaces and a shallow river. Environment props are CC0 glTF instances loaded by FilamentGameRenderer. */
 internal object WorldGlbBuilder {
     private data class Part(val name:String, val material:Int,
         val tx:Float = 0f, val ty:Float = 0f, val tz:Float = 0f,
         val p:MutableList<Float> = ArrayList(),
         val n:MutableList<Float> = ArrayList(),
+        val uv:MutableList<Float> = ArrayList(),
         val ix:MutableList<Int> = ArrayList()) {
         fun vertex(x:Float,y:Float,z:Float,nx:Float,ny:Float,nz:Float):Int {
             val id=p.size/3
@@ -20,6 +31,13 @@ internal object WorldGlbBuilder {
             val normalLength = sqrt(scaledNx * scaledNx + ny * ny + scaledNz * scaledNz).coerceAtLeast(0.00001f)
             p.add(x * scale);p.add(y);p.add(z * scale)
             n.add(scaledNx / normalLength);n.add(ny / normalLength);n.add(scaledNz / normalLength)
+            if (material == 0 || material == 1 || material == 2 || material == 9 || material == 10) {
+                val tileSize = 3.8f
+                val u = x / tileSize
+                val v = z / tileSize
+                uv.add(u - floor(u))
+                uv.add(v - floor(v))
+            }
             return id
         }
         fun tri(a:Int,b:Int,c:Int){ix.add(a);ix.add(b);ix.add(c)}
@@ -410,7 +428,7 @@ internal object WorldGlbBuilder {
     private fun intBytes(v:List<Int>)=ByteBuffer.allocate(v.size*4).order(ByteOrder.LITTLE_ENDIAN).apply{v.forEach{putInt(it)}}.array()
     private fun align(out:ByteArrayOutputStream){while(out.size()%4!=0)out.write(0)}
 
-    fun build():ByteArray {
+    fun build(terrainTextures: TerrainTextureSet? = null):ByteArray {
         parts.clear()
         terrain=part("meadow_terrain",0)
         grassLight=part("sunlit_grass",1)
@@ -512,22 +530,44 @@ internal object WorldGlbBuilder {
             align(bin);val po=bin.size();val pb=floatBytes(p.p);bin.write(pb)
             align(bin);val no=bin.size();val nb=floatBytes(p.n);bin.write(nb)
             align(bin);val io=bin.size();val ib=intBytes(p.ix);bin.write(ib)
+            val hasUv = p.uv.size == (p.p.size / 3) * 2
+            var uo = 0
+            var ub = ByteArray(0)
+            if (hasUv) {
+                align(bin);uo=bin.size();ub=floatBytes(p.uv);bin.write(ub)
+            }
             if(views.isNotEmpty())views.append(',')
-            views.append("{\"buffer\":0,\"byteOffset\":$po,\"byteLength\":${pb.size},\"target\":34962}")
-            views.append(",{\"buffer\":0,\"byteOffset\":$no,\"byteLength\":${nb.size},\"target\":34962}")
-            views.append(",{\"buffer\":0,\"byteOffset\":$io,\"byteLength\":${ib.size},\"target\":34963}")
+            views.append("{\"buffer\":0,\"byteOffset\":$po,\"byteLength\":\${pb.size},\"target\":34962}")
+            views.append(",{\"buffer\":0,\"byteOffset\":$no,\"byteLength\":\${nb.size},\"target\":34962}")
+            views.append(",{\"buffer\":0,\"byteOffset\":$io,\"byteLength\":\${ib.size},\"target\":34963}")
+            if (hasUv) views.append(",{\"buffer\":0,\"byteOffset\":$uo,\"byteLength\":\${ub.size},\"target\":34962}")
             val xs=p.p.filterIndexed{i,_->i%3==0};val ys=p.p.filterIndexed{i,_->i%3==1};val zs=p.p.filterIndexed{i,_->i%3==2}
             val mn=listOf(xs.minOrNull()?:0f,ys.minOrNull()?:0f,zs.minOrNull()?:0f)
             val mx=listOf(xs.maxOrNull()?:0f,ys.maxOrNull()?:0f,zs.maxOrNull()?:0f)
             if(accessors.isNotEmpty())accessors.append(',')
-            accessors.append("{\"bufferView\":$vi,\"componentType\":5126,\"count\":${p.p.size/3},\"type\":\"VEC3\",\"min\":[${mn.joinToString()}],\"max\":[${mx.joinToString()}]}")
-            accessors.append(",{\"bufferView\":${vi+1},\"componentType\":5126,\"count\":${p.n.size/3},\"type\":\"VEC3\"}")
-            accessors.append(",{\"bufferView\":${vi+2},\"componentType\":5125,\"count\":${p.ix.size},\"type\":\"SCALAR\"}")
+            accessors.append("{\"bufferView\":$vi,\"componentType\":5126,\"count\":\${p.p.size/3},\"type\":\"VEC3\",\"min\":[\${mn.joinToString()}],\"max\":[\${mx.joinToString()}]}")
+            accessors.append(",{\"bufferView\":\${vi+1},\"componentType\":5126,\"count\":\${p.n.size/3},\"type\":\"VEC3\"}")
+            accessors.append(",{\"bufferView\":\${vi+2},\"componentType\":5125,\"count\":\${p.ix.size},\"type\":\"SCALAR\"}")
+            if (hasUv) accessors.append(",{\"bufferView\":\${vi+3},\"componentType\":5126,\"count\":\${p.uv.size/2},\"type\":\"VEC2\"}")
             if(meshes.isNotEmpty())meshes.append(',')
-            meshes.append("{\"name\":\"" + p.name + "\",\"primitives\":[{\"attributes\":{\"POSITION\":$ai,\"NORMAL\":${ai+1}},\"indices\":${ai+2},\"material\":${p.material}}]}")
+            val uvAttribute = if (hasUv) ",\"TEXCOORD_0\":\${ai+3}" else ""
+            meshes.append("{\"name\":\"" + p.name + "\",\"primitives\":[{\"attributes\":{\"POSITION\":$ai,\"NORMAL\":\${ai+1}$uvAttribute},\"indices\":\${ai+2},\"material\":\${p.material}}]}")
             if(nodes.isNotEmpty())nodes.append(',')
             nodes.append("{\"name\":\"" + p.name + "\",\"mesh\":" + index + ",\"translation\":[" + p.tx + "," + p.ty + "," + p.tz + "]}")
-            vi+=3;ai+=3
+            vi += if (hasUv) 4 else 3
+            ai += if (hasUv) 4 else 3
+        }
+        val imageViews = ArrayList<Int>()
+        if (terrainTextures != null) {
+            val allImages = terrainTextures.albedo + terrainTextures.normal
+            for (image in allImages) {
+                align(bin)
+                val offset = bin.size()
+                bin.write(image)
+                if (views.isNotEmpty()) views.append(',')
+                views.append("{\"buffer\":0,\"byteOffset\":$offset,\"byteLength\":\${image.size}}")
+                imageViews.add(vi++)
+            }
         }
         val names=listOf("Old meadow","Sunlit grass","Deep grass","Limestone road","Roadside stone","River water","Island rock","Pulse aura","Shield aura","Packed earth","Exposed stone","Neutral camp markers","River objective markers","Forest soil","Ruined masonry","Objective shrine","Surrounding water","River shallows","River sandbanks","Water shimmer")
         val colors=listOf(
@@ -556,11 +596,26 @@ internal object WorldGlbBuilder {
         }
         val materials=names.mapIndexed{i,name->
             val roughness=when(i){5->0.22f;17->0.30f;19->0.18f;7,8->0.42f;else->0.88f}
-            "{\"name\":\"$name\",\"pbrMetallicRoughness\":{\"baseColorFactor\":[${colors[i].joinToString()}],\"metallicFactor\":0.02,\"roughnessFactor\":$roughness}}"
+            val textureSlot = when(i){0,1->0;2->1;9->2;10->3;else->-1}
+            val pbr = "{\"baseColorFactor\":[\${colors[i].joinToString()}],\"metallicFactor\":0.0,\"roughnessFactor\":$roughness" +
+                (if (terrainTextures != null && textureSlot >= 0) ",\"baseColorTexture\":{\"index\":$textureSlot}" else "") + "}"
+            val normal = if (terrainTextures != null && textureSlot >= 0) ",\"normalTexture\":{\"index\":\${textureSlot + 4},\"scale\":0.68}" else ""
+            "{\"name\":\"$name\",\"pbrMetallicRoughness\":$pbr$normal}"
         }.joinToString(",")
         align(bin);val payload=bin.toByteArray()
         val nodeIds=parts.indices.filter{parts[it].ix.isNotEmpty()}.joinToString(",")
-        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.15"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],"buffers":[{"byteLength":${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
+        val imagesJson = if (terrainTextures == null) "" else {
+            val names = listOf("grass_albedo","moss_albedo","soil_albedo","rock_albedo",
+                "grass_normal","moss_normal","soil_normal","rock_normal")
+            "\"images\":[" + names.mapIndexed { index, imageName ->
+                "{\"name\":\"$imageName\",\"bufferView\":\${imageViews[index]},\"mimeType\":\"image/png\"}"
+            }.joinToString(",") + "],"
+        }
+        val texturesJson = if (terrainTextures == null) "" else {
+            "\"textures\":[" + (0..7).joinToString(",") { index -> "{\"sampler\":0,\"source\":$index}" } + "]," +
+                "\"samplers\":[{\"magFilter\":9729,\"minFilter\":9987,\"wrapS\":10497,\"wrapT\":10497}],"
+        }
+        val json="""{"asset":{"version":"2.0","generator":"DuckDreamStudios-World-0.16"},"scene":0,"scenes":[{"nodes":[$nodeIds]}],"nodes":[$nodes],"meshes":[$meshes],"materials":[$materials],$imagesJson$texturesJson"buffers":[{"byteLength":\${payload.size}}],"bufferViews":[$views],"accessors":[$accessors]}"""
         val raw=json.toByteArray(Charsets.UTF_8);val pad=(4-raw.size%4)%4;val jsonBytes=raw+ByteArray(pad){0x20}
         val binPad=(4-payload.size%4)%4;val total=12+8+jsonBytes.size+8+payload.size+binPad
         return ByteBuffer.allocate(total).order(ByteOrder.LITTLE_ENDIAN).apply{
