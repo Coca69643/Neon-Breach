@@ -76,6 +76,8 @@ jobs:
           test -d "$SDK_ROOT/platforms/android-37.0"
           ln -sfn android-37.0 "$SDK_ROOT/platforms/android-37"
           test -d "$SDK_ROOT/platforms/android-37"
+      - name: Validate Python asset pipeline syntax
+        run: python3 -m py_compile tools/fetch_cc0_life_assets.py tools/fetch_cc0_nature_assets.py tools/generate_terrain_materials.py tools/verify_project.py
       - name: Fetch and verify pinned CC0 life assets
         run: python3 tools/fetch_cc0_life_assets.py
       - name: Bake pinned CC0 nature assets into static GLBs
