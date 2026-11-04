@@ -109,47 +109,47 @@ jobs:
         run: |
           APK="app/build/outputs/apk/debug/app-debug.apk"
           BADGING="$("$ANDROID_HOME/build-tools/37.0.0/aapt" dump badging "$APK")"
-          echo "$BADGING" | grep -F "package: name='com.duckdream.projectarena' versionCode='59' versionName='0.16.0'"
+          echo "$BADGING" | grep -F "package: name='com.duckdream.projectarena' versionCode='170' versionName='1.7.0'"
           "$ANDROID_HOME/build-tools/37.0.0/apksigner" verify --verbose --print-certs "$APK"
       - name: Prepare versioned APK and checksum
         run: |
-          cp app/build/outputs/apk/debug/app-debug.apk Project-Arena-0.16.0.apk
-          sha256sum Project-Arena-0.16.0.apk > Project-Arena-0.16.0.apk.sha256
+          cp app/build/outputs/apk/debug/app-debug.apk Project-Arena-1.7.0.apk
+          sha256sum Project-Arena-1.7.0.apk > Project-Arena-1.7.0.apk.sha256
       - name: Upload signed update APK
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v7
         with:
-          name: project-arena-0.16.0-update
+          name: project-arena-1.7.0-update
           path: |
             Project-Arena-0.16.0.apk
             Project-Arena-0.16.0.apk.sha256
           if-no-files-found: error
           retention-days: 14
-      - name: Publish Project Arena 0.16.0 tester release
+      - name: Publish Project Arena 1.7.0 tester release
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-0.16.0
+          tag_name: project-arena-1.7.0
           target_commitish: ${{ github.sha }}
-          name: Projeto Arena 0.16.0 — build de teste
+          name: Projeto Arena 1.7.0 — build de teste
           body: |
-            Projeto Arena 0.16.0 para Android — pré-lançamento para testes.
-            - Vale das Coroas reconstruído com rio de largura variável, vegetação CC0 e superfícies PBR.
-            - Iluminação ambiental refinada com sombras, oclusão de contato e névoa de distância.
-            - Lyra, Bastion e Kairo agora fornecem os corpos CC0 do jogador, 9 bots e 48 minions.
-            - Bots e minions usam animações Idle/Walk/Run originais, variação de silhuetas e paletas por material.
+            Projeto Arena 1.7.0 para Android — build de teste da reconstrução de mundo.
+            - Campo de batalha aberto, com rotas legíveis e bolsões de selva localizados.
+            - Pontos de interesse ambientais posicionados por gerador procedural offline e seed reproduzível.
+            - Paleta individual da Lyra e equipamentos visuais dos minions anexados aos rigs.
+            - Corrigidas as referências compactas de nós e meshes no GLB; teste Kotlin valida o grafo glTF.
             - Mantido o funcionamento offline e o applicationId com.duckdream.projectarena.
-            versionCode: 59
+            versionCode: 170
             Commit: ${{ github.sha }}
             APK compilado, assinado e validado pelo GitHub Actions.
-            Teste visual, FPS sustentado e temperatura ainda precisam de validação no aparelho.
+            A inicialização 3D exige smoke test em aparelho; CI não substitui inspeção visual e de desempenho no Realme C53.
           draft: false
           prerelease: true
           make_latest: false
           overwrite_files: true
           files: |
-            Project-Arena-0.16.0.apk
-            Project-Arena-0.16.0.apk.sha256
+            Project-Arena-1.7.0.apk
+            Project-Arena-1.7.0.apk.sha256
       - name: Publish tester release
         if: github.event_name != 'pull_request' && github.ref == 'refs/heads/rebuild/project-arena-0.15.0-visual-overhaul'
         uses: softprops/action-gh-release@v2
