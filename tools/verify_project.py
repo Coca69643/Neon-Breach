@@ -133,6 +133,8 @@ checks = [
      "terrainAlignedTransform(x, z, playerYaw + Math.PI.toFloat()" not in renderer,
      "playable heroes must face the actual movement vector without a second half-turn"),
     ("applyHeroPalette(hero)" in renderer and "HeroMaterialPalette.forHero(hero)" in renderer and
+     "0.70f, 0.18f, 0.11f" in read("app/src/main/java/com/duckdream/neonbreach/HeroPresentation.kt") and
+     "colorForMaterial(\"Shirt\", lyra)!!.r > 0.6f" in presentation_tests and
      "showcaseYaw = HeroFacing.SHOWCASE_YAW + sin(animationClock * 0.42f) * 0.14f" in renderer and
      "gameplayYawMatchesAllFourWorldDirections" in presentation_tests and
      "eachHeroHasDistinctNamedPaletteMatchingItsGlbMaterials" in presentation_tests,
@@ -248,6 +250,10 @@ checks = [
     ("Compile and run native physics tests" in workflow and "tests/arena_physics_tests.cpp" in workflow, "CI does not compile/run native physics tests"),
     ("applyNpcMaterialPalette" in renderer and "material.name" in renderer and
      "HeroMaterialPalette.forNpc" in renderer and "colorForMaterial" in renderer and
+     "createHeroGear()" in renderer and "minionBones.add(captureHumanoidRig" in renderer and
+     "minionGearInstances[index]" in renderer and "NpcVisualCatalog.minionGearStyle(index)" in renderer and
+     "fun minionGearStyle(index: Int)" in npc_catalog and
+     "minionRolesResolveToFourDifferentArmorSilhouettes" in read("app/src/test/java/com/duckdream/neonbreach/NpcVisualCatalogTest.kt") and
      "actor.animator.applyAnimation(clip, actor.animationClock)" in renderer and
      "NpcVisualCatalog.locomotion" in renderer,
      "NPCs need material-name palettes and authored idle/walk/run animation clips"),
