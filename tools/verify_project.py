@@ -268,7 +268,7 @@ checks = [
      "riverShallowPaint" in main and "campAlertPaint" in main and "snapshot[312 + index]" in main,
      "minimap is not aligned with the expanded battlefield, layered river or camp combat state"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
-    ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
+    ("ArenaMovementInput.fromScreenStick" in main and "moveZ = worldInput.z" in main, "joystick screen axes must be converted through the camera-space input contract"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
     ("WorldPlacement(\"flag_blue\"" not in renderer and "WorldPlacement(\"flag_red\"" not in renderer, "objective/camp flags still used as map geometry"),
     ("result[116 + it]" in main and "result[104]" in main and "result[106]" in main, "HUD objective and three-tier tower fields missing"),
