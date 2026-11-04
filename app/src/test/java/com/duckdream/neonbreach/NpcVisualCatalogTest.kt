@@ -23,6 +23,13 @@ class NpcVisualCatalogTest {
     }
 
     @Test
+    fun minionRolesResolveToFourDifferentArmorSilhouettes() {
+        assertEquals(setOf(0, 1, 3, 4), (0 until 4).map(NpcVisualCatalog::minionGearStyle).toSet())
+        assertEquals(NpcVisualCatalog.minionGearStyle(0), NpcVisualCatalog.minionGearStyle(4))
+        assertNotEquals(NpcVisualCatalog.minionGearStyle(0), NpcVisualCatalog.minionGearStyle(1))
+    }
+
+    @Test
     fun minionSilhouettesHaveDifferentProportions() {
         val widths = (0 until 4).map(NpcVisualCatalog::minionWidthFactor)
         val heights = (0 until 4).map(NpcVisualCatalog::minionHeightFactor)

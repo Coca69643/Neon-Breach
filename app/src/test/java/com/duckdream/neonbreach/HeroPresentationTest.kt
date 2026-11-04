@@ -39,7 +39,8 @@ class HeroPresentationTest {
             }
         }
         assertTrue(HeroMaterialPalette.colorForMaterial("Skin", lyra)!!.r > 0.75f)
-        assertTrue(HeroMaterialPalette.colorForMaterial("Shirt", lyra)!!.b > 0.5f)
+        assertTrue(HeroMaterialPalette.colorForMaterial("Shirt", lyra)!!.r > 0.6f)
+        assertTrue(HeroMaterialPalette.colorForMaterial("Shirt", lyra)!!.r > HeroMaterialPalette.colorForMaterial("Shirt", lyra)!!.b)
         assertEquals(lyra["skin"], HeroMaterialPalette.colorForMaterial("Skin", lyra))
     }
 

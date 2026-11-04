@@ -22,6 +22,13 @@ internal object NpcVisualCatalog {
         else -> if ((index / 4).mod(2) == 0) 0 else 2 // alternating ranged silhouette
     }
 
+    fun minionGearStyle(index: Int): Int = when (minionSlot(index)) {
+        0 -> 1 // Heavy vanguard.
+        1 -> 0 // Mantled support.
+        2 -> 4 // Hooded scout.
+        else -> 3 // Raised-collar ranged unit.
+    }
+
     fun minionWidthFactor(index: Int): Float = when (minionSlot(index)) {
         0 -> 1.10f
         1 -> 0.98f

@@ -88,6 +88,8 @@ internal class FilamentGameRenderer(
     private val heroGearInstances = ArrayList<FilamentInstance>(20)
     private val botGearInstances = arrayOfNulls<FilamentInstance>(9)
     private val botGearStyles = IntArray(9) { -1 }
+    private val minionGearInstances = arrayOfNulls<FilamentInstance>(48)
+    private val minionGearStyles = IntArray(48) { -1 }
     private val playerGearInstances = arrayOfNulls<FilamentInstance>(3)
     private var equippedPlayerGear = -1
     private var playerInstance: FilamentInstance? = null
@@ -357,6 +359,7 @@ internal class FilamentGameRenderer(
         loadBakedNatureEnvironment()
         Log.i(TAG, "Startup stage: characters and rigs")
         loadCharacter()
+        createHeroGear()
         Log.i(TAG, "Startup stage: wildlife and camp guardians")
         loadLivingWorld()
         updateCamera(16f / 9f)
@@ -793,6 +796,8 @@ internal class FilamentGameRenderer(
             val modelIndex = NpcVisualCatalog.botModel(index)
             val team = if (index < 4) 0 else 1
             val actor = createNpc(modelIndex, "bot-$index", 0.94f + (index % 4) * 0.045f)
+            val sourceHero = playableHeroes[modelIndex] ?: error("Missing bot source hero")
+            botBones.add(captureHumanoidRig(actor.instance, "bot-$index", sourceHero.asset))
             botVisuals.add(actor)
             botInstances.add(actor.instance)
             botAnimators.add(actor.animator)
@@ -808,6 +813,8 @@ internal class FilamentGameRenderer(
             val team = if (index < 24) 0 else 1
             val variation = NpcVisualCatalog.minionSlot(index)
             val actor = createNpc(modelIndex, "minion-$index", 0.92f + variation * 0.055f)
+            val sourceHero = playableHeroes[modelIndex] ?: error("Missing minion source hero")
+            minionBones.add(captureHumanoidRig(actor.instance, "minion-$index", sourceHero.asset))
             minionVisuals.add(actor)
             minionInstances.add(actor.instance)
             minionAnimators.add(actor.animator)
@@ -1028,13 +1035,13 @@ internal class FilamentGameRenderer(
             "gear_boot_l" to "foot_l",
             "gear_boot_r" to "foot_r"
         )
-        fun createAttached(style: Int, team: Int, rig: Map<String, BonePose>): FilamentInstance {
+        fun createAttached(style: Int, team: Int, rig: Map<String, BonePose>, visible: Boolean = true): FilamentInstance {
             val asset = assets[team * 5 + style]
                 ?: error("Missing hero gear asset style=$style team=$team")
             val instance = loader.createInstance(asset)
                 ?: throw IllegalStateException("Could not instantiate hero gear style=$style team=$team")
             heroGearInstances.add(instance)
-            viewer.scene.addEntities(instance.entities)
+            if (visible) viewer.scene.addEntities(instance.entities)
             for (entity in instance.entities) {
                 val partName = asset.getName(entity)?.trim().orEmpty()
                 val parentName = parentByPart[partName] ?: continue
@@ -1049,7 +1056,15 @@ internal class FilamentGameRenderer(
         // Bone-attached role geometry remains exclusively in the bot pipeline.
         equippedPlayerGear = -1
         rebuildBotGearForHero()
-        Log.i(TAG, "AI role silhouettes loaded; playable hero gear overlays are disabled")
+        for (index in minionBones.indices) {
+            val team = if (index < 24) 0 else 1
+            val style = NpcVisualCatalog.minionGearStyle(index)
+            val gear = createAttached(style, team, minionBones[index], visible = false)
+            minionGearInstances[index] = gear
+            minionGearStyles[index] = style
+        }
+        Log.i(TAG, "Distinct bone-attached minion armor loaded: " +
+            minionGearInstances.count { it != null } + "/48")
     }
 
     private fun botStyleForRole(role: Int): Int = when (role.coerceIn(0, 4)) {
@@ -1431,6 +1446,10 @@ internal class FilamentGameRenderer(
             if (minionRendered[index] != shouldRender) {
                 if (shouldRender) viewer.scene.addEntities(instance.entities)
                 else viewer.scene.removeEntities(instance.entities)
+                minionGearInstances[index]?.let { gear ->
+                    if (shouldRender) viewer.scene.addEntities(gear.entities)
+                    else viewer.scene.removeEntities(gear.entities)
+                }
                 minionRendered[index] = shouldRender
             }
         }
@@ -1521,6 +1540,7 @@ internal class FilamentGameRenderer(
             if (!alive) {
                 if (minionRendered[index]) {
                     viewer.scene.removeEntities(minionInstances[index].entities)
+                    minionGearInstances[index]?.let { viewer.scene.removeEntities(it.entities) }
                     minionRendered[index] = false
                 }
                 continue
@@ -1760,6 +1780,8 @@ internal class FilamentGameRenderer(
             minionRendered.fill(false)
             minionAnimators.clear()
             minionBones.clear()
+            minionGearInstances.fill(null)
+            minionGearStyles.fill(-1)
             lifeActors.forEach { actor -> viewer.scene.removeEntities(actor.instance.entities) }
             lifeActors.clear()
             lifeAssets.values.forEach { asset -> characterLoader?.destroyAsset(asset) }

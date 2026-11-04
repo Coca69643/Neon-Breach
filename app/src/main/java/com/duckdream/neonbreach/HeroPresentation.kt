@@ -30,13 +30,13 @@ internal data class HeroSrgbColor(
  */
 internal object HeroMaterialPalette {
     private val lyra = linkedMapOf(
-        "shirt" to HeroSrgbColor(0.16f, 0.30f, 0.62f), // Sapphire field jacket
+        "shirt" to HeroSrgbColor(0.70f, 0.18f, 0.11f), // Vermilion field jacket
         "skin" to HeroSrgbColor(0.88f, 0.68f, 0.54f), // Warm natural skin
-        "pants" to HeroSrgbColor(0.17f, 0.14f, 0.27f), // Deep violet trousers
-        "shoes" to HeroSrgbColor(0.16f, 0.10f, 0.07f), // Brown leather
-        "socks" to HeroSrgbColor(0.66f, 0.53f, 0.31f),
-        "hairbase" to HeroSrgbColor(0.28f, 0.12f, 0.06f),
-        "hair" to HeroSrgbColor(0.53f, 0.20f, 0.09f),
+        "pants" to HeroSrgbColor(0.12f, 0.18f, 0.20f), // Charcoal teal trousers
+        "shoes" to HeroSrgbColor(0.22f, 0.13f, 0.08f), // Dark leather
+        "socks" to HeroSrgbColor(0.78f, 0.64f, 0.40f),
+        "hairbase" to HeroSrgbColor(0.08f, 0.055f, 0.04f),
+        "hair" to HeroSrgbColor(0.22f, 0.10f, 0.055f),
         "eyes" to HeroSrgbColor(0.035f, 0.025f, 0.02f)
     )
     private val bastion = linkedMapOf(
