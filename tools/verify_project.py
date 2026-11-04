@@ -110,16 +110,22 @@ native_trees = extract_pairs(
 if kotlin_trees != native_trees:
     raise SystemExit("Kotlin and C++ tree blocker coordinates differ")
 
-kotlin_river = extract_pairs(
-    map_kotlin, "val riverCenterline = listOf(", "val camps = listOf(",
-    r"Point\(\s*(-?\d+(?:\.\d+)?)f?\s*,\s*(-?\d+(?:\.\d+)?)f?\s*\)"
+def extract_river_points(source, start, end, pattern):
+    block = source.split(start, 1)[1].split(end, 1)[0]
+    return [tuple(float(value) for value in match) for match in re.findall(pattern, block)]
+
+kotlin_river = extract_river_points(
+    map_kotlin, "val riverCenterline = listOf(", "private fun riverSegment",
+    r"RiverPoint\(\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*,\s*(\d+(?:\.\d+)?)f\s*\)"
 )
-native_river = extract_pairs(
-    map_native, "kRiverCenterline{{", "kCampPositions",
+native_river = extract_river_points(
+    map_native, "kRiverCenterline{{", "inline int riverSegment",
     r"\{\s*(-?\d+(?:\.\d+)?)f\s*,\s*(-?\d+(?:\.\d+)?)f\s*\}"
 )
 if kotlin_river != native_river:
-    raise SystemExit("Kotlin and C++ river centerline coordinates differ")
+    raise SystemExit("Kotlin and C++ river centerline/width profile differ")
+if max(point[2] for point in kotlin_river) - min(point[2] for point in kotlin_river) < 1.0:
+    raise SystemExit("River channel must have a meaningful variable-width profile")
 
 kotlin_scale = float(map_kotlin.split("const val WORLD_SCALE = ", 1)[1].split("f", 1)[0])
 native_scale = float(map_native.split("kWorldScale = ", 1)[1].split("f", 1)[0])
@@ -224,6 +230,11 @@ checks = [
     ("ArenaNavigation.h" in native and "arena_navigation::nextWaypoint" in native and
      "moveActorOnMap" in native and "testArenaNavigationGraph" in read("tests/arena_physics_tests.cpp"),
      "MOBA bots are not using the lane/jungle navigation graph"),
+    ("riverHalfWidth" in world and "riverHalfWidth" in physics and
+     "bankDistance" in world and "bankDistance" in physics and
+     "arena_map::riverHalfWidth" in physics and "arena_map::riverCenterZ" in physics and
+     "buildRiverChannel(water, riverShallows, riverSandbanks" in world,
+     "Kotlin and native terrain must share the sculpted variable-width riverbed"),
     ("ArenaCampCombat.h" in native and "arena_camp::canAggro" in native and
      "arena_camp::canStrike" in native and "values[static_cast<std::size_t>(312 + i)]" in native and
      "attackTokens" in life_catalog and "snapshot?.getOrNull(312 + spawn.campIndex)" in renderer,
@@ -233,10 +244,10 @@ checks = [
      "moveActorOnMap(bot.position, bot.velocity, objective" in native,
      "jungle AI must rotate to its side's neutral objective through map navigation"),
     ("ArenaMapDefinition.WORLD_SCALE" in main and "ArenaMapDefinition.camps.forEachIndexed" in main and
-     "ArenaMapDefinition.objectives.forEachIndexed" in main and "ArenaMapDefinition.riverCenterline" in main and
+     "ArenaMapDefinition.objectives.forEachIndexed" in main and "riverOutline(0.86f)" in main and
      "ArenaMapDefinition.riverCenterline" in world and "ArenaMapDefinition.laneCenterX" in main and
-     "campAlertPaint" in main and "snapshot[312 + index]" in main,
-     "minimap is not aligned with the expanded canonical battlefield or camp combat state"),
+     "riverShallowPaint" in main and "campAlertPaint" in main and "snapshot[312 + index]" in main,
+     "minimap is not aligned with the expanded battlefield, layered river or camp combat state"),
     ("deadZone = 1.85f" in renderer and "hero yaw never rotates the camera" in renderer, "fixed-heading dead-zone camera missing"),
     ("moveZ = (-z * scale)" in main, "joystick vertical axis is not screen-aligned"),
     ("private fun terrainHeight(x: Float, z: Float): Float = WorldGlbBuilder.heightAt(x, z)" in renderer, "terrain/renderer height functions diverged"),
