@@ -591,11 +591,16 @@ class MainActivity : Activity() {
                 topMargin = dp(10)
             })
 
-        val stick = TouchStick(this) { x, z ->
-            val scale = sensitivityLevels[sensitivityIndex]
-            moveX = (x * scale).coerceIn(-1f, 1f)
-            // Touch coordinates grow downward; world +Z is toward the upper screen.
-            moveZ = (-z * scale).coerceIn(-1f, 1f)
+        val stick = TouchStick(this) { screenX, screenY ->
+            val worldInput = ArenaMovementInput.fromScreenStick(
+                screenX = screenX,
+                screenY = screenY,
+                sensitivity = sensitivityLevels[sensitivityIndex]
+            )
+            // The camera looks from world -Z toward +Z, so screen-right maps to world -X.
+            // This same world-space vector is used by movement and directional dash.
+            moveX = worldInput.x
+            moveZ = worldInput.z
         }
         layer.addView(stick, FrameLayout.LayoutParams(dp(116), dp(116), Gravity.BOTTOM or Gravity.START).apply {
             marginStart = dp(14)
