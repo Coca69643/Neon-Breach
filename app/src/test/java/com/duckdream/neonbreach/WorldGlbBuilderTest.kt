@@ -68,17 +68,16 @@ class WorldGlbBuilderTest {
     }
 
     @Test
-    fun riverGlbContainsIndependentWaterShallowsSandbanksAndFlowHighlights() {
+    fun riverUsesNaturalBanksWithoutBrightGlintsOrIslandMoat() {
         val bytes = WorldGlbBuilder.build()
         val glb = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         val jsonLength = glb.getInt(12)
         val json = String(bytes, 20, jsonLength, Charsets.UTF_8)
-        listOf("crossing_river", "river_shallows", "river_sandbanks", "river_flow_glints")
+        listOf("crossing_river", "river_shallows", "river_sandbanks")
             .forEach { layer -> assertTrue("Missing river geometry layer: $layer", json.contains(layer)) }
-        assertTrue(json.contains("\"name\":\"River water\""))
-        assertTrue(json.contains("\"name\":\"River shallows\""))
-        assertTrue(json.contains("\"name\":\"River sandbanks\""))
-        assertTrue(json.contains("\"name\":\"Water shimmer\""))
+        assertFalse("Bright river glint ribbons must be removed", json.contains("\"name\":\"river_flow_glints\""))
+        assertFalse("Island moat geometry must be removed", json.contains("\"name\":\"surrounding_water\""))
+        assertFalse("Island rim geometry must be removed", json.contains("\"name\":\"island_rock_rim\""))
     }
 
     @Test
