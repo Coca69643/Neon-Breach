@@ -642,7 +642,7 @@ internal object WorldGlbBuilder {
         // Wind-bent reeds line selected river bends; low-poly blades are batched by material.
         for (i in 0 until 14) {
             val x = -28f + i * 4.3f
-            val centerZ = riverCenterZ(x)
+            val centerZ = ArenaMapDefinition.riverCenterZ(x)
             fern(fernLeaves,x,centerZ-2.45f,0.86f,i*0.37f)
             fern(fernLeaves,x+1.15f,centerZ+2.35f,0.74f,i*0.51f)
         }
