@@ -8,7 +8,6 @@
 namespace arena_world_17 {
 struct Point { float x; float z; };
 struct ElevationControl { std::string_view id; Point position; float height; float radius; };
-struct Gate { std::string_view id; Point position; };
 struct Base { std::string_view id; int team; Point position; std::array<Point, 3> gates; };
 struct Lane { std::string_view id; float width; std::array<Point, 8> waypoints; };
 struct RiverPoint { Point position; float halfWidth; };
@@ -20,13 +19,13 @@ struct NavigationNode { std::string_view id; Point position; };
 struct NavigationLink { std::string_view from; std::string_view to; };
 
 inline constexpr std::string_view kWorldId = "project_arena_1_7";
-inline constexpr float kHalfWidthM = 90f;
-inline constexpr float kHalfDepthM = 80f;
+inline constexpr float kHalfWidthM = 90.0f;
+inline constexpr float kHalfDepthM = 80.0f;
 inline constexpr int kTerrainVerticesX = 193;
 inline constexpr int kTerrainVerticesZ = 177;
-inline constexpr float kMinHeightM = -4f;
-inline constexpr float kMaxHeightM = 22f;
-inline constexpr float kMaxWalkableSlopeDegrees = 28f;
+inline constexpr float kMinHeightM = -4.0f;
+inline constexpr float kMaxHeightM = 22.0f;
+inline constexpr float kMaxWalkableSlopeDegrees = 28.0f;
 inline constexpr float kRiverValleyDepthM = 5.5f;
 inline constexpr unsigned int kBroadNoiseSeed = 1701;
 inline constexpr unsigned int kDetailNoiseSeed = 1702;
@@ -36,86 +35,86 @@ inline constexpr std::string_view kArtTheme = "stylized_medieval_fantasy";
 inline constexpr std::string_view kEnvironmentStyle = "organic_sculpted_world";
 
 inline constexpr std::array<ElevationControl, 7> kElevationControls{{
-    {"southwest_ridge", {-74f, -38f}, 18f, 25f},
-    {"northwest_ridge", {-72f, 42f}, 17f, 26f},
-    {"southeast_ridge", {74f, -36f}, 20f, 26f},
-    {"northeast_ridge", {73f, 42f}, 18.5f, 25f},
-    {"west_jungle_highland", {-35f, 8f}, 9f, 28f},
-    {"east_jungle_highland", {35f, -8f}, 10f, 28f},
-    {"central_river_valley", {0f, 3f}, -3f, 40f}
+    {"southwest_ridge", Point{-74.0f, -38.0f}, 18.0f, 25.0f},
+    {"northwest_ridge", Point{-72.0f, 42.0f}, 17.0f, 26.0f},
+    {"southeast_ridge", Point{74.0f, -36.0f}, 20.0f, 26.0f},
+    {"northeast_ridge", Point{73.0f, 42.0f}, 18.5f, 25.0f},
+    {"west_jungle_highland", Point{-35.0f, 8.0f}, 9.0f, 28.0f},
+    {"east_jungle_highland", Point{35.0f, -8.0f}, 10.0f, 28.0f},
+    {"central_river_valley", Point{0.0f, 3.0f}, -3.0f, 40.0f}
 }};
 inline constexpr std::array<Base, 2> kBases{{
-    {"blue_base", 0, {0f, -73f}, {{{-57f, -72f}, {0f, -72f}, {57f, -72f}}}},
-    {"red_base", 1, {0f, 73f}, {{{-56f, 72f}, {0f, 72f}, {60f, 72f}}}}
+    {"blue_base", 0, Point{0.0f, -73.0f}, std::array<Point, 3>{Point{-57.0f, -72.0f}, Point{0.0f, -72.0f}, Point{57.0f, -72.0f}}},
+    {"red_base", 1, Point{0.0f, 73.0f}, std::array<Point, 3>{Point{-56.0f, 72.0f}, Point{0.0f, 72.0f}, Point{60.0f, 72.0f}}}
 }};
 inline constexpr std::array<Lane, 3> kLanes{{
-    {"west", 9.5f, {{{x.waypoints.map(cPoint).join(", ")}}}},
-    {"center", 10f, {{{x.waypoints.map(cPoint).join(", ")}}}},
-    {"east", 9.5f, {{{x.waypoints.map(cPoint).join(", ")}}}}
+    {"west", 9.5f, std::array<Point, 8>{Point{-57.0f, -72.0f}, Point{-60.0f, -54.0f}, Point{-56.0f, -36.0f}, Point{-51.0f, -16.0f}, Point{-52.0f, 4.0f}, Point{-58.0f, 24.0f}, Point{-60.0f, 48.0f}, Point{-56.0f, 72.0f}}},
+    {"center", 10.0f, std::array<Point, 8>{Point{0.0f, -72.0f}, Point{3.0f, -54.0f}, Point{5.0f, -36.0f}, Point{1.0f, -16.0f}, Point{-3.0f, 4.0f}, Point{1.0f, 24.0f}, Point{4.0f, 48.0f}, Point{0.0f, 72.0f}}},
+    {"east", 9.5f, std::array<Point, 8>{Point{57.0f, -72.0f}, Point{55.0f, -54.0f}, Point{54.0f, -36.0f}, Point{60.0f, -16.0f}, Point{63.0f, 4.0f}, Point{58.0f, 24.0f}, Point{55.0f, 48.0f}, Point{60.0f, 72.0f}}}
 }};
 inline constexpr std::array<RiverPoint, 13> kRiver{{
-    {{-88f, -4f}, 4.5f},
-    {{-72f, -7f}, 5.5f},
-    {{-58f, -9f}, 6.5f},
-    {{-44f, -6f}, 7.2f},
-    {{-30f, -2f}, 8f},
-    {{-15f, 2f}, 8.5f},
-    {{0f, 4f}, 8f},
-    {{15f, 2f}, 8.5f},
-    {{30f, -2f}, 8f},
-    {{44f, -5f}, 7.2f},
-    {{60f, -4f}, 6.5f},
-    {{75f, 1f}, 5.5f},
-    {{88f, 5f}, 4.5f}
+    {Point{-88.0f, -4.0f}, 4.5f},
+    {Point{-72.0f, -7.0f}, 5.5f},
+    {Point{-58.0f, -9.0f}, 6.5f},
+    {Point{-44.0f, -6.0f}, 7.2f},
+    {Point{-30.0f, -2.0f}, 8.0f},
+    {Point{-15.0f, 2.0f}, 8.5f},
+    {Point{0.0f, 4.0f}, 8.0f},
+    {Point{15.0f, 2.0f}, 8.5f},
+    {Point{30.0f, -2.0f}, 8.0f},
+    {Point{44.0f, -5.0f}, 7.2f},
+    {Point{60.0f, -4.0f}, 6.5f},
+    {Point{75.0f, 1.0f}, 5.5f},
+    {Point{88.0f, 5.0f}, 4.5f}
 }};
 inline constexpr std::array<Crossing, 3> kCrossings{{
-    {"west_bridge", "west", {-52f, -8f}, 9.5f, 20f},
-    {"center_bridge", "center", {-1.5f, 3.8f}, 10f, 22f},
-    {"east_bridge", "east", {61f, -3.7f}, 9.5f, 18f}
+    {"west_bridge", "west", Point{-52.0f, -8.0f}, 9.5f, 20.0f},
+    {"center_bridge", "center", Point{-1.5f, 3.8f}, 10.0f, 22.0f},
+    {"east_bridge", "east", Point{61.0f, -3.7f}, 9.5f, 18.0f}
 }};
 inline constexpr std::array<JungleRegion, 2> kJungles{{
-    {"west_jungle", {{{x.boundary.map(cPoint).join(", ")}}}},
-    {"east_jungle", {{{x.boundary.map(cPoint).join(", ")}}}}
+    {"west_jungle", std::array<Point, 10>{Point{-48.0f, -46.0f}, Point{-22.0f, -52.0f}, Point{-12.0f, -31.0f}, Point{-15.0f, -10.0f}, Point{-12.0f, 12.0f}, Point{-22.0f, 40.0f}, Point{-35.0f, 48.0f}, Point{-49.0f, 40.0f}, Point{-54.0f, 14.0f}, Point{-51.0f, -14.0f}}},
+    {"east_jungle", std::array<Point, 10>{Point{48.0f, -46.0f}, Point{22.0f, -52.0f}, Point{12.0f, -31.0f}, Point{15.0f, -10.0f}, Point{12.0f, 12.0f}, Point{22.0f, 40.0f}, Point{35.0f, 48.0f}, Point{49.0f, 40.0f}, Point{54.0f, 14.0f}, Point{51.0f, -14.0f}}}
 }};
 inline constexpr std::array<Camp, 12> kCamps{{
-    {"west_camp_01", "west_jungle", {-34f, -38f}, 1},
-    {"west_camp_02", "west_jungle", {-26f, -28f}, 1},
-    {"west_camp_03", "west_jungle", {-41f, -12f}, 2},
-    {"west_camp_04", "west_jungle", {-25f, 12f}, 1},
-    {"west_camp_05", "west_jungle", {-35f, 32f}, 2},
-    {"west_camp_06", "west_jungle", {-29f, 40f}, 1},
-    {"east_camp_01", "east_jungle", {34f, -38f}, 1},
-    {"east_camp_02", "east_jungle", {26f, -28f}, 1},
-    {"east_camp_03", "east_jungle", {41f, -12f}, 2},
-    {"east_camp_04", "east_jungle", {25f, 12f}, 1},
-    {"east_camp_05", "east_jungle", {35f, 32f}, 2},
-    {"east_camp_06", "east_jungle", {29f, 40f}, 1}
+    {"west_camp_01", "west_jungle", Point{-34.0f, -38.0f}, 1},
+    {"west_camp_02", "west_jungle", Point{-26.0f, -28.0f}, 1},
+    {"west_camp_03", "west_jungle", Point{-41.0f, -12.0f}, 2},
+    {"west_camp_04", "west_jungle", Point{-25.0f, 12.0f}, 1},
+    {"west_camp_05", "west_jungle", Point{-35.0f, 32.0f}, 2},
+    {"west_camp_06", "west_jungle", Point{-29.0f, 40.0f}, 1},
+    {"east_camp_01", "east_jungle", Point{34.0f, -38.0f}, 1},
+    {"east_camp_02", "east_jungle", Point{26.0f, -28.0f}, 1},
+    {"east_camp_03", "east_jungle", Point{41.0f, -12.0f}, 2},
+    {"east_camp_04", "east_jungle", Point{25.0f, 12.0f}, 1},
+    {"east_camp_05", "east_jungle", Point{35.0f, 32.0f}, 2},
+    {"east_camp_06", "east_jungle", Point{29.0f, 40.0f}, 1}
 }};
 inline constexpr std::array<Objective, 2> kObjectives{{
-    {"west_neutral_objective", {-22f, -13f}, 7f},
-    {"east_neutral_objective", {22f, 13f}, 7f}
+    {"west_neutral_objective", Point{-22.0f, -13.0f}, 7.0f},
+    {"east_neutral_objective", Point{22.0f, 13.0f}, 7.0f}
 }};
 inline constexpr std::array<float, 3> kTowerDepthsFromBase{{
-    18f, 38f, 58f
+    18.0f, 38.0f, 58.0f
 }};
 inline constexpr std::array<NavigationNode, 17> kNavigationNodes{{
-    {"blue_base", {0f, -73f}},
-    {"red_base", {0f, 73f}},
-    {"west_south", {-57f, -56f}},
-    {"west_bridge", {-52f, -8f}},
-    {"west_north", {-58f, 48f}},
-    {"center_south", {2f, -56f}},
-    {"center_bridge", {-1.5f, 3.8f}},
-    {"center_north", {2f, 48f}},
-    {"east_south", {56f, -56f}},
-    {"east_bridge", {61f, -3.7f}},
-    {"east_north", {57f, 48f}},
-    {"west_jungle_south", {-34f, -34f}},
-    {"west_jungle_north", {-34f, 33f}},
-    {"east_jungle_south", {34f, -34f}},
-    {"east_jungle_north", {34f, 33f}},
-    {"west_objective", {-22f, -13f}},
-    {"east_objective", {22f, 13f}}
+    {"blue_base", Point{0.0f, -73.0f}},
+    {"red_base", Point{0.0f, 73.0f}},
+    {"west_south", Point{-57.0f, -56.0f}},
+    {"west_bridge", Point{-52.0f, -8.0f}},
+    {"west_north", Point{-58.0f, 48.0f}},
+    {"center_south", Point{2.0f, -56.0f}},
+    {"center_bridge", Point{-1.5f, 3.8f}},
+    {"center_north", Point{2.0f, 48.0f}},
+    {"east_south", Point{56.0f, -56.0f}},
+    {"east_bridge", Point{61.0f, -3.7f}},
+    {"east_north", Point{57.0f, 48.0f}},
+    {"west_jungle_south", Point{-34.0f, -34.0f}},
+    {"west_jungle_north", Point{-34.0f, 33.0f}},
+    {"east_jungle_south", Point{34.0f, -34.0f}},
+    {"east_jungle_north", Point{34.0f, 33.0f}},
+    {"west_objective", Point{-22.0f, -13.0f}},
+    {"east_objective", Point{22.0f, 13.0f}}
 }};
 inline constexpr std::array<NavigationLink, 26> kNavigationLinks{{
     {"blue_base", "west_south"},
