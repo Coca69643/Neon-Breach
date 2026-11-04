@@ -46,9 +46,9 @@ struct NeutralCamp {
 };
 constexpr int kBotCount = 9;
 constexpr int kLaneUnitCount = 48;
-constexpr int kCampCount = 8;
+constexpr int kCampCount = static_cast<int>(arena_world_17::kCamps.size());
 constexpr int kTowerCount = 18;
-constexpr int kSnapshotCount = 320;
+constexpr int kSnapshotCount = 332;
 constexpr float kTowerMaxHealth = 820.0f;
 constexpr float kCoreMaxHealth = 2200.0f;
 constexpr float kWalkSpeed = 5.6f;
@@ -72,7 +72,7 @@ std::array<float, 2> gTeamKills{{0.0f, 0.0f}};
 std::array<float, 2> gTeamGold{{500.0f, 500.0f}};
 std::array<float, 2> gTeamXp{{0.0f, 0.0f}};
 std::array<float, 2> gTeamSiegeBuff{};
-Vec2 gPlayerPosition{-14.0f * arena_map::kWorldScale, -25.0f * arena_map::kWorldScale};
+Vec2 gPlayerPosition{0.0f, -68.0f};
 Vec2 gPlayerVelocity{};
 Vec2 gLastMove{0.0f, 1.0f};
 Vec2 gDashDirection{0.0f, 1.0f};
@@ -155,7 +155,7 @@ Vec2 towerPosition(int team, int lane, int tier) {
     const arena_map::Point point = arena_map::towerPosition(team, lane, tier);
     return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
 }
-Vec2 corePosition(int team) { return {0.0f, (team == 0 ? -27.2f : 27.2f) * arena_map::kWorldScale}; }
+Vec2 corePosition(int team) { const auto &base = arena_world_17::kBases[static_cast<std::size_t>(team)]; return {base.position.x, base.position.z}; }
 Vec2 campPosition(int index) {
     const arena_map::Point point = arena_map::kCampPositions[static_cast<std::size_t>(index)];
     return {point.x * arena_map::kWorldScale, point.z * arena_map::kWorldScale};
@@ -197,9 +197,9 @@ void awardTeam(int team, float gold, float xp) {
     }
 }
 void resetBot(Bot &bot, int index) {
-    const float homeZ = (bot.team == 0 ? -25.0f : 25.0f) * arena_map::kWorldScale;
+    const float homeZ = (bot.team == 0 ? -66.0f : 66.0f) * arena_map::kWorldScale;
     if (bot.role == 1) {
-        bot.position = campEntryPosition(bot.team == 0 ? 0 : 5, bot.team == 0 ? -1.0f : 1.0f);
+        bot.position = campEntryPosition(bot.team == 0 ? 0 : 4, bot.team == 0 ? -1.0f : 1.0f);
     } else {
         const int lane = bot.lane;
         const float z = homeZ + (bot.team == 0 ? 2.0f : -2.0f) * arena_map::kWorldScale;
@@ -218,7 +218,7 @@ void spawnLaneUnit(LaneUnit &unit, int team, int lane, int slot, int waveGroup) 
     unit.lane = lane;
     unit.slot = slot;
     unit.waveGroup = waveGroup;
-    const float z = (team == 0 ? -28.0f - waveGroup * 1.35f : 28.0f + waveGroup * 1.35f) * arena_map::kWorldScale;
+    const float z = (team == 0 ? -68.0f - waveGroup * 1.35f : 68.0f + waveGroup * 1.35f) * arena_map::kWorldScale;
     const float side = slot == 0 ? -0.86f : (slot == 1 ? 0.0f : (slot == 2 ? 0.86f : 1.45f));
     unit.position = lanePoint(lane, z, side);
     unit.velocity = {0.0f, 0.0f};
@@ -236,7 +236,7 @@ void initializeCamps() {
         camp.attackCooldown = 0.0f;
         camp.attackPulse = 0.0f;
         camp.aggroTime = 0.0f;
-        camp.kind = i % 2;
+        camp.kind = arena_world_17::kCamps[static_cast<std::size_t>(i)].tier <= 1 ? 0 : 1;
     }
 }
 void initializeLaneUnits() {
@@ -290,8 +290,8 @@ void resetSimulation() {
     gElapsed = 0.0f;
     gSimulationAccumulator = 0.0f;
     gPlayerSelectedHero = std::clamp(gPlayerSelectedHero, 0, 2);
-    gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f * arena_map::kWorldScale) :
-                      (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
+    gPlayerPosition = playerRole() == 0 ? lanePoint(0, -67.0f) :
+                      (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -67.0f, 1.8f));
     gPlayerVelocity = {0.0f, 0.0f};
     gLastMove = {0.0f, 1.0f};
     gDashDirection = {0.0f, 1.0f};
@@ -397,7 +397,8 @@ int nearestCamp(Vec2 position, int team, float range) {
     float nearest = range;
     for (int i = 0; i < kCampCount; ++i) {
         const NeutralCamp &camp = gCamps[static_cast<std::size_t>(i)];
-        if (camp.health <= 0.0f || ((i < 4) != (team == 0))) continue;
+        const bool onHomeHalf = (camp.position.z < 0.0f) == (team == 0);
+        if (camp.health <= 0.0f || !onHomeHalf) continue;
         const float d = distance(position, camp.position);
         if (d < nearest) { nearest = d; target = i; }
     }
@@ -575,8 +576,8 @@ void updatePlayerTimers(float dt) {
         gPlayerVelocity = {0.0f, 0.0f};
         if (gPlayerRespawnTime <= 0.0f) {
             gPlayerHealth = gPlayerMaxHealth;
-            gPlayerPosition = playerRole() == 0 ? lanePoint(0, -25.0f * arena_map::kWorldScale) :
-                              (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -25.0f * arena_map::kWorldScale, 1.8f));
+            gPlayerPosition = playerRole() == 0 ? lanePoint(0, -67.0f) :
+                              (playerRole() == 1 ? campEntryPosition(0, -1.0f) : lanePoint(2, -67.0f, 1.8f));
             gPlayerDisrupted = 0.9f;
         }
     }
@@ -813,7 +814,7 @@ void updateBots(float dt) {
         }
         const int lane = bot.lane;
         // Lane roles follow their own wave front and rotate only to nearby contests.
-        float frontZ = (bot.team == 0 ? -24.0f : 24.0f) * arena_map::kWorldScale;
+        float frontZ = (bot.team == 0 ? -66.0f : 66.0f) * arena_map::kWorldScale;
         for (const LaneUnit &unit : gLaneUnits) {
             if (unit.team == bot.team && unit.lane == lane && unit.health > 0.0f) {
                 if (bot.team == 0) frontZ = std::max(frontZ, unit.position.z);
@@ -1191,7 +1192,7 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
         std::max(0.0f, std::max(gObjectiveTwoSpawnAt, gObjectiveTwoRespawnAt) - gElapsed);
     values[106] = gObjectiveTwoHealth;
     for (int i = 0; i < kTowerCount; ++i) values[static_cast<std::size_t>(107 + i)] = gTowerHealth[static_cast<std::size_t>(i)];
-    // Extended snapshot layout (320 floats): 48 minion positions/health, then camps and economy.
+    // Extended snapshot preserves the first eight camp slots and appends four slots per signal.
     for (int i = 0; i < kLaneUnitCount; ++i) {
         const LaneUnit &unit = gLaneUnits[static_cast<std::size_t>(i)];
         values[static_cast<std::size_t>(126 + i * 2)] = unit.position.x;
@@ -1199,9 +1200,14 @@ Java_com_duckdream_neonbreach_MainActivity_nativeStep(JNIEnv *env, jobject, jflo
         values[static_cast<std::size_t>(222 + i)] = unit.health;
     }
     for (int i = 0; i < kCampCount; ++i) {
-        values[static_cast<std::size_t>(270 + i)] = gCamps[static_cast<std::size_t>(i)].health;
-        values[static_cast<std::size_t>(278 + i)] = gCamps[static_cast<std::size_t>(i)].respawnTime;
-        values[static_cast<std::size_t>(312 + i)] = gCamps[static_cast<std::size_t>(i)].attackPulse;
+        const NeutralCamp &camp = gCamps[static_cast<std::size_t>(i)];
+        const std::size_t extra = static_cast<std::size_t>(std::max(0, i - 8));
+        const std::size_t healthIndex = i < 8 ? static_cast<std::size_t>(270 + i) : 320u + extra;
+        const std::size_t respawnIndex = i < 8 ? static_cast<std::size_t>(278 + i) : 324u + extra;
+        const std::size_t pulseIndex = i < 8 ? static_cast<std::size_t>(312 + i) : 328u + extra;
+        values[healthIndex] = camp.health;
+        values[respawnIndex] = camp.respawnTime;
+        values[pulseIndex] = camp.attackPulse;
     }
     values[286] = static_cast<float>(gItemCounts[0]);
     values[287] = static_cast<float>(gItemCounts[1]);

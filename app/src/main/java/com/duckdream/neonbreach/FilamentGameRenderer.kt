@@ -481,14 +481,18 @@ internal class FilamentGameRenderer(
 
         val placements = buildList {
             val mapScale = ArenaMapDefinition.WORLD_SCALE
-            add(WorldPlacement("castle_blue", 0f, -27.3f * mapScale, 1.0f))
-            add(WorldPlacement("castle_red", 0f, 27.3f * mapScale, 1.0f, Math.PI.toFloat()))
-            add(WorldPlacement("home_blue", -4.5f * mapScale, -24.0f * mapScale, 2.05f))
-            add(WorldPlacement("home_blue", 4.5f * mapScale, -24.0f * mapScale, 2.05f))
-            add(WorldPlacement("home_red", -4.5f * mapScale, 24.0f * mapScale, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("home_red", 4.5f * mapScale, 24.0f * mapScale, 2.05f, Math.PI.toFloat()))
-            add(WorldPlacement("church_blue", -8.0f * mapScale, -25.3f * mapScale, 1.55f))
-            add(WorldPlacement("church_red", 8.0f * mapScale, 25.3f * mapScale, 1.55f, Math.PI.toFloat()))
+            ArenaWorld17Generated.bases.forEach { base ->
+                val team = base.team
+                val castle = if (team == 0) "castle_blue" else "castle_red"
+                val home = if (team == 0) "home_blue" else "home_red"
+                val church = if (team == 0) "church_blue" else "church_red"
+                val yaw = if (team == 0) 0f else Math.PI.toFloat()
+                add(WorldPlacement(castle, base.position.x, base.position.z, 1.0f, yaw))
+                base.gates.forEach { gate ->
+                    add(WorldPlacement(home, gate.position.x, gate.position.z, 1.28f, yaw))
+                }
+                add(WorldPlacement(church, base.position.x + 9.0f, base.position.z, 1.18f, yaw))
+            }
 
             // Tower transforms are generated from the canonical battlefield catalog.
             for (team in 0..1) {
@@ -501,9 +505,21 @@ internal class FilamentGameRenderer(
                     }
                 }
             }
-            for (lane in ArenaMapDefinition.lanes) {
-                val crossing = lane.points.minByOrNull { kotlin.math.abs(it.z) } ?: continue
-                add(WorldPlacement("bridge_a", crossing.x * mapScale, crossing.z * mapScale, 1.42f))
+            ArenaWorld17Generated.crossings.forEach { crossing ->
+                val lane = ArenaWorld17Generated.lanes.first { it.id == crossing.laneId }
+                val nearest = lane.waypoints.indices.minByOrNull { index ->
+                    val point = lane.waypoints[index]
+                    val dx = point.x - crossing.position.x
+                    val dz = point.z - crossing.position.z
+                    dx * dx + dz * dz
+                } ?: 0
+                val before = lane.waypoints[(nearest - 1).coerceAtLeast(0)]
+                val after = lane.waypoints[(nearest + 1).coerceAtMost(lane.waypoints.lastIndex)]
+                val yaw = kotlin.math.atan2(after.x - before.x, after.z - before.z)
+                add(WorldPlacement(
+                    "bridge_a", crossing.position.x, crossing.position.z,
+                    (crossing.deckWidth / 4.8f).coerceIn(1.85f, 2.25f), yaw
+                ))
             }
             ArenaNatureCatalog.trees.forEach { tree ->
                 add(WorldPlacement(tree.model, tree.x * mapScale, tree.z * mapScale,
@@ -542,14 +558,17 @@ internal class FilamentGameRenderer(
             transforms.setTransform(root, matrix)
             if (placement.model == "tower_blue" || placement.model == "tower_red") {
                 val team = if (placement.model == "tower_blue") 0 else 1
-                val lane = (0..2).minByOrNull { kotlin.math.abs(laneCenterX(it, placement.z) - placement.x) } ?: 1
-                val mapScale = ArenaMapDefinition.WORLD_SCALE
-                val tier = when {
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 8f * mapScale) < 1f -> 0
-                    kotlin.math.abs(kotlin.math.abs(placement.z) - 15f * mapScale) < 1f -> 1
-                    else -> 2
-                }
-                val towerIndex = team * 9 + lane * 3 + tier
+                val tower = (0..2).flatMap { lane ->
+                    (0..2).map { tier ->
+                        val point = ArenaMapDefinition.towerPosition(team, lane, tier)
+                        Triple(lane, tier, point)
+                    }
+                }.minByOrNull { candidate ->
+                    val dx = candidate.third.x - placement.x
+                    val dz = candidate.third.z - placement.z
+                    dx * dx + dz * dz
+                } ?: Triple(1, 1, ArenaMapDefinition.towerPosition(team, 1, 1))
+                val towerIndex = team * 9 + tower.first * 3 + tower.second
                 towerRootInstances[towerIndex] = root
                 towerBaseTransforms[towerIndex] = matrix.copyOf()
                 towerHidden[towerIndex] = false
@@ -670,7 +689,7 @@ internal class FilamentGameRenderer(
         for (actor in lifeActors) {
             val spawn = actor.spawn
             val campAlive = if (spawn.kind == LifeActorKind.CAMP_GUARDIAN) {
-                snapshot?.getOrNull(270 + spawn.campIndex)?.let { it > 0f } ?: true
+                snapshot?.getOrNull(ArenaSnapshotLayout.campHealth(spawn.campIndex))?.let { it > 0f } ?: true
             } else true
             // Cull against the actor's current path position, not its original anchor.
             // A moving animal may have wandered several metres from its spawn point.
@@ -692,7 +711,7 @@ internal class FilamentGameRenderer(
 
             val profile = ArenaLifeCatalog.species.getValue(spawn.species)
             val attacking = spawn.kind == LifeActorKind.CAMP_GUARDIAN &&
-                snapshot?.getOrNull(312 + spawn.campIndex)?.let { it > 0f } == true
+                snapshot?.getOrNull(ArenaSnapshotLayout.campAttackPulse(spawn.campIndex))?.let { it > 0f } == true
             val usingAttackClip = attacking && actor.attackClip >= 0
             val usingMoveClip = !usingAttackClip && sample.moving
             val clip = when {
@@ -807,7 +826,7 @@ internal class FilamentGameRenderer(
             val slot = localInLane % 4
             val group = localInLane / 4
             val mapScale = ArenaMapDefinition.WORLD_SCALE
-            val z = (if (team == 0) -28f - group * 1.25f else 28f + group * 1.25f) * mapScale
+            val z = (if (team == 0) -68f - group * 1.25f else 68f + group * 1.25f) * mapScale
             val side = when (slot) { 0 -> -0.86f; 1 -> 0f; 2 -> 0.86f; else -> 1.45f } * mapScale
             setMinionTransform(index, laneCenterX(lane, z) + side, z, if (team == 0) 0f else Math.PI.toFloat())
         }
@@ -1674,9 +1693,11 @@ internal class FilamentGameRenderer(
         overviewCamera = overview
         val mapScale = ArenaMapDefinition.WORLD_SCALE
         val spawn = when (activeHero) {
-            1 -> laneCenterX(0, -25f * mapScale) to -25f * mapScale
-            2 -> -8.2f * mapScale to -14.5f * mapScale
-            else -> laneCenterX(2, -25f * mapScale) + 1.8f * mapScale to -25f * mapScale
+            1 -> laneCenterX(0, -67f * mapScale) to -67f * mapScale
+            2 -> ArenaMapDefinition.camps.first().let {
+                (it.position.x + 3.6f) * mapScale to it.position.z * mapScale
+            }
+            else -> laneCenterX(2, -67f * mapScale) + 1.8f * mapScale to -67f * mapScale
         }
         if (overview) {
             cameraX = spawn.first

@@ -69,7 +69,7 @@ class MainActivity : Activity() {
     private var selectedHero = 0
     private var sensitivityIndex = 1
     private val sensitivityLevels = floatArrayOf(0.78f, 1.0f, 1.22f)
-    private var lastSnapshot = FloatArray(320)
+    private var lastSnapshot = FloatArray(ArenaSnapshotLayout.SIZE)
 
     private external fun nativeReset()
     private external fun nativeSelectHero(hero: Int)
@@ -90,7 +90,7 @@ class MainActivity : Activity() {
 
             if (state == AppState.RUNNING) {
                 val result = nativeStep(moveX, moveZ, dt)
-                if (result.size >= 320) {
+                if (result.size >= ArenaSnapshotLayout.SIZE) {
                     lastSnapshot = result
                     renderer.updatePlayerSignals(result)
                     renderer.update(result[0], result[1], result[2], result[34], result[35], dt)
@@ -525,7 +525,7 @@ class MainActivity : Activity() {
         renderer.resetHeroAnimationState()
         moveX = 0f
         moveZ = 0f
-        lastSnapshot = FloatArray(320)
+        lastSnapshot = FloatArray(ArenaSnapshotLayout.SIZE)
         transition(AppState.RUNNING)
         showHud()
     }
@@ -667,7 +667,7 @@ class MainActivity : Activity() {
         }
         fun refreshShop() {
             val data = nativeStep(0f, 0f, 0f)
-            if (data.size >= 320) lastSnapshot = data
+            if (data.size >= ArenaSnapshotLayout.SIZE) lastSnapshot = data
             val gold = lastSnapshot[98].toInt()
             val level = lastSnapshot[96].toInt()
             val skill = lastSnapshot[289].toInt()
@@ -906,7 +906,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         color = Color.WHITE
         style = Paint.Style.FILL
     }
-    private var snapshot = FloatArray(320)
+    private var snapshot = FloatArray(ArenaSnapshotLayout.SIZE)
 
     fun setSnapshot(values: FloatArray) {
         snapshot = values.copyOf()
@@ -936,7 +936,7 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         for (lane in 0..2) {
             val line = Path()
             for (step in 0..30) {
-                val rawZ = -31f + step * (62f / 30f)
+                val rawZ = -72f + step * (144f / 30f)
                 val worldZ = rawZ * mapScale
                 val x = px(laneX(lane, worldZ))
                 val y = py(worldZ)
@@ -980,18 +980,15 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
         }
         canvas.drawPath(river, riverPaint)
 
-        if (snapshot.size >= 320) {
+        if (snapshot.size >= ArenaSnapshotLayout.SIZE) {
             // All 18 defensive towers: three tiers per lane, mirrored by team.
             for (team in 0..1) {
                 for (lane in 0..2) {
                     for (tier in 0..2) {
                         val index = team * 9 + lane * 3 + tier
-                        val z = (if (team == 0) -1f else 1f) * when (tier) {
-                            0 -> 8f
-                            1 -> 15f
-                            else -> 22f
-                        } * mapScale
-                        val x = laneX(lane, z)
+                        val tower = ArenaMapDefinition.towerPosition(team, lane, tier)
+                        val x = tower.x * mapScale
+                        val z = tower.z * mapScale
                         val alive = snapshot[107 + index] > 0f
                         val paint = if (!alive) destroyedTowerPaint else if (team == 0) blueTowerPaint else redTowerPaint
                         canvas.drawCircle(px(x), py(z), 2.5f, paint)
@@ -1001,8 +998,8 @@ private class TacticalMapView(context: android.content.Context) : View(context) 
 
             // Neutral camps appear only while their creatures are alive.
             ArenaMapDefinition.camps.forEachIndexed { index, camp ->
-                if (snapshot[270 + index] > 0f) {
-                    val paint = if (snapshot[312 + index] > 0f) campAlertPaint else campPaint
+                if (snapshot[ArenaSnapshotLayout.campHealth(index)] > 0f) {
+                    val paint = if (snapshot[ArenaSnapshotLayout.campAttackPulse(index)] > 0f) campAlertPaint else campPaint
                     canvas.drawCircle(
                         px(camp.position.x * mapScale), py(camp.position.z * mapScale),
                         2.4f, paint
