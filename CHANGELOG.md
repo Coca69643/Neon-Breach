@@ -1,5 +1,19 @@
 # Changelog — Projeto Arena
 
+## [0.16.0 — em desenvolvimento]
+
+### Superfície do terreno com materiais PBR
+- Introduz quatro superfícies tileable: grama, musgo, terra compactada e rocha exposta, cada uma com albedo e normal map.
+- Os oito PNGs de 256×256 são gerados deterministicamente no CI e embutidos no GLB do mundo; não há geração de textura em runtime nem dependência online.
+- UVs usam repetição em escala de mundo. A malha, o relevo, a escavação do rio, as rotas e as colisões nativas permanecem inalterados.
+- Quatro pares de textura são reutilizados pelos cinco materiais visuais do terreno; não são adicionadas malhas nem entidades decorativas.
+
+### Natureza e vegetação ambiental
+- Substitui a vegetação e as rochas procedurais por dois GLBs estáticos, texturizados e autocontidos.
+- As malhas ambientais ficam agrupadas em cinco lotes de material, com limite de 100 mil vértices e validação de integridade do pack CC0.
+- Aguardando validação visual e de desempenho sustentado no Realme C53.
+
+## [0.15.12] — 2026-11-03
 ## [0.15.12] — 2026-11-03
 
 ### Orientação e identidade visual dos heróis
