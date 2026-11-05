@@ -102,18 +102,18 @@ jobs:
       - name: Prepare versioned APK and checksum
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.5-arm64.apk
-          sha256sum Project-Arena-1.7.4-arm64.apk > Project-Arena-1.7.5-arm64.apk.sha256
+          sha256sum Project-Arena-1.7.5-arm64.apk > Project-Arena-1.7.5-arm64.apk.sha256
       - name: Upload signed ARM64 APK artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: project-arena-1.7.5-arm64
           path: |
-            flutter/Project-Arena-1.7.4-arm64.apk
-            flutter/Project-Arena-1.7.4-arm64.apk.sha256
+            flutter/Project-Arena-1.7.5-arm64.apk
+            flutter/Project-Arena-1.7.5-arm64.apk.sha256
           if-no-files-found: error
           retention-days: 30
-      - name: Publish Projeto Arena 1.7.4 tester release
+      - name: Publish Projeto Arena 1.7.5 stable tester release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
