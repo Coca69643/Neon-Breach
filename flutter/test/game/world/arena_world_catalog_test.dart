@@ -39,6 +39,21 @@ void main() {
       }
     });
 
+    test('tower footprints can be ignored by lane units without weakening player collision', () {
+      expect(
+        ArenaWorldCatalog.isWalkable(-36, -52),
+        isFalse,
+        reason: 'players must not walk through towers',
+      );
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          -36, -52, includeTowerCollision: false,
+        ),
+        isTrue,
+        reason: 'bots and minions need to pass their own tower rows',
+      );
+    });
+
     test('canal blocks traversal except at the three avenue crossings', () {
       for (final x in const [-36.0, 0.0, 36.0]) {
         expect(ArenaWorldCatalog.isWalkable(x, 0), isTrue);
