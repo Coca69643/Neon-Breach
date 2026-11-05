@@ -26,6 +26,8 @@ class ArenaHeroPreview extends StatelessWidget {
         ),
       ),
       child: SceneView.declarative(
+        // Cap the 3D render target at logical resolution on mobile.
+        pixelRatio: 1.0,
         cameraBuilder: (_) => PerspectiveCamera(
           position: vm.Vector3(0, 1.25, 5.2),
           target: vm.Vector3(0, 1.0, 0),
