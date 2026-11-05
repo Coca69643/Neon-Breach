@@ -1,7 +1,7 @@
 name: project_arena_flutter
 description: Base Flutter do Projeto Arena, sem dependência de engine.
 publish_to: none
-version: 0.1.0+1
+version: 0.17.0+60
 
 environment:
   sdk: ">=3.5.0 <4.0.0"
