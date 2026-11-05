@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart';
 import 'package:vector_math/vector_math.dart' as vm;
@@ -26,27 +28,21 @@ class ArenaHeroPreview extends StatelessWidget {
         ),
       ),
       child: SceneView.declarative(
-        // Cap the 3D render target at logical resolution on mobile.
+        // Keep the preview crisp without rendering above the device pixel budget.
         pixelRatio: 1.0,
         cameraBuilder: (_) => PerspectiveCamera(
-          position: vm.Vector3(0, 1.25, 5.2),
-          target: vm.Vector3(0, 1.0, 0),
+          fovRadiansY: 38 * math.pi / 180,
+          position: vm.Vector3(0, 1.15, 5.0),
+          target: vm.Vector3(0, 1.08, 0),
         ),
-        loadingBuilder: (context, progress) => Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const CircularProgressIndicator(strokeWidth: 2),
-              const SizedBox(height: 12),
-              Text(
-                'CARREGANDO MODELO 3D  ${(progress * 100).round()}%',
-                style: const TextStyle(
-                  color: Color(0xFFB8C9CB),
-                  fontSize: 10,
-                  letterSpacing: 1.4,
-                ),
-              ),
-            ],
+        loadingBuilder: (context, progress) => const Center(
+          child: SizedBox(
+            width: 22,
+            height: 22,
+            child: CircularProgressIndicator(
+              strokeWidth: 2,
+              color: Color(0xFF79D6BD),
+            ),
           ),
         ),
         children: [
@@ -55,7 +51,13 @@ class ArenaHeroPreview extends StatelessWidget {
             key: ValueKey(heroId),
             name: 'playable_hero_$heroId',
             position: vm.Vector3(0, 0, 0),
-            scale: vm.Vector3.all(0.46),
+            // The bundled GLBs are presenting their rear to the camera in the
+            // current runtime; turn the character toward the preview camera.
+            rotation: vm.Quaternion.axisAngle(
+              vm.Vector3(0, 1, 0),
+              math.pi,
+            ),
+            scale: vm.Vector3.all(0.52),
             animations: [
               SceneAnimationSpec(model.idle, loop: true, speed: 1),
             ],
