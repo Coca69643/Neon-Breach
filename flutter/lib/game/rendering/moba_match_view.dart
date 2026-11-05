@@ -4,7 +4,7 @@ import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_scene/scene.dart';
+import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../match/moba_match_simulation.dart';
@@ -168,8 +168,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final bridge in _bridges)
         SceneModel(
           'assets/match/bridge_a.glb',
-          key: ValueKey('match-bridge-' + bridge.$1),
-          name: 'lane_bridge_' + bridge.$1,
+          key: ValueKey('match-bridge-${bridge.$1}'),
+          name: 'lane_bridge_${bridge.$1}',
           position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
           rotation: vm.Quaternion.axisAngle(
             vm.Vector3(0, 1, 0),
@@ -183,18 +183,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               ? 'assets/match/tower_blue.glb'
               : 'assets/match/tower_red.glb',
           key: ValueKey(
-            'tower-' +
-                tower.team.name +
-                '-' +
-                tower.lane.name +
-                '-' +
-                tower.tier.toString(),
+            'tower-${tower.team.name}-${tower.lane.name}-${tower.tier}',
           ),
-          name: tower.team.name +
-              '_' +
-              tower.lane.name +
-              '_tower_' +
-              (tower.tier + 1).toString(),
+          name:
+              '${tower.team.name}_${tower.lane.name}_tower_${tower.tier + 1}',
           position: _worldPosition(tower.position),
           scale: vm.Vector3.all(2.05),
         ),
@@ -204,7 +196,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       SceneModel(
         _heroAsset(snapshot.heroId),
         key: const ValueKey('match-player-hero'),
-        name: 'player_' + snapshot.heroId.id,
+        name: 'player_${snapshot.heroId.id}',
         position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
         rotation: _facing(MobaTeam.blue),
         scale: vm.Vector3.all(0.48),
@@ -227,8 +219,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       team == MobaTeam.blue
           ? 'assets/match/castle_blue.glb'
           : 'assets/match/castle_red.glb',
-      key: ValueKey('match-base-' + team.name),
-      name: team.name + '_team_base',
+      key: ValueKey('match-base-${team.name}'),
+      name: '${team.name}_team_base',
       position: _worldPosition(point),
       rotation: _facing(team),
       scale: vm.Vector3.all(1.75),
@@ -252,7 +244,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   Widget _buildBot(MobaBotSnapshot bot) {
     return SceneModel(
       _heroAsset(bot.heroId),
-      key: ValueKey('match-bot-' + bot.id),
+      key: ValueKey('match-bot-${bot.id}'),
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _facing(bot.team),
@@ -273,12 +265,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final scale = minion.ranged ? 0.31 : 0.33;
     return SceneModel(
       asset,
-      key: ValueKey('match-minion-' + minion.id.toString()),
-      name: minion.team.name +
-          '_' +
-          minion.lane.name +
-          '_minion_' +
-          minion.id.toString(),
+      key: ValueKey('match-minion-${minion.id}'),
+      name:
+          '${minion.team.name}_${minion.lane.name}_minion_${minion.id}',
       position: _worldPosition(minion.position, heightOffset: 0.02),
       rotation: _facing(minion.team),
       scale: vm.Vector3.all(scale),
@@ -397,9 +386,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     left: side,
                     child: _TopLeftHud(
                       time: _clock(snapshot.elapsedSeconds),
-                      kills: snapshot.blueTeamKills.toString() +
-                          '  :  ' +
-                          snapshot.redTeamKills.toString(),
+                      kills: '${snapshot.blueTeamKills}  :  ${snapshot.redTeamKills}',
                     ),
                   ),
                   Positioned(
@@ -679,7 +666,7 @@ class _PlayerHud extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                'NÍVEL ' + snapshot.playerLevel.toString(),
+                'NÍVEL ${snapshot.playerLevel}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
@@ -689,7 +676,7 @@ class _PlayerHud extends StatelessWidget {
               ),
               const SizedBox(width: 9),
               Text(
-                snapshot.playerGold.floor().toString() + ' G',
+                '${snapshot.playerGold.floor()} G',
                 style: const TextStyle(
                   color: Color(0xFFFFD68E),
                   fontSize: 10,
@@ -706,9 +693,7 @@ class _PlayerHud extends StatelessWidget {
             Padding(
               padding: const EdgeInsets.only(top: 4),
               child: Text(
-                'RETORNO ' +
-                    snapshot.playerRespawnSeconds.toStringAsFixed(1) +
-                    's',
+                'RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
                 style: const TextStyle(
                   color: Color(0xFFFFD68E),
                   fontSize: 9,
