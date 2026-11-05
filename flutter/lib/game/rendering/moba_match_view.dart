@@ -838,28 +838,28 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       ),
                     ),
                   ),
+                  if (nearbyNpc != null)
+                    Positioned(
+                      left: side,
+                      top: 108,
+                      child: _NpcPrompt(
+                        label: nearbyNpc.label,
+                        onTap: () => setState(() => _activeNpcId = nearbyNpc.id),
+                      ),
+                    ),
+                  if (showNpcDialogue)
+                    Positioned(
+                      left: viewport.maxWidth * 0.28,
+                      right: viewport.maxWidth * 0.28,
+                      bottom: compact ? 94 : 108,
+                      child: _NpcDialogue(
+                        npc: nearbyNpc!,
+                        onClose: () => setState(() => _activeNpcId = null),
+                      ),
+                    ),
                   Positioned(
                     top: 8,
-                    if (nearbyNpc != null)
-                     Positioned(
-                       left: side,
-                       top: 108,
-                       child: _NpcPrompt(
-                         label: nearbyNpc.label,
-                         onTap: () => setState(() => _activeNpcId = nearbyNpc.id),
-                       ),
-                     ),
-                   if (showNpcDialogue)
-                     Positioned(
-                       left: viewport.maxWidth * 0.28,
-                       right: viewport.maxWidth * 0.28,
-                       bottom: compact ? 94 : 108,
-                       child: _NpcDialogue(
-                         npc: nearbyNpc!,
-                         onClose: () => setState(() => _activeNpcId = null),
-                       ),
-                     ),
-                   right: side,
+                    right: side,
                     child: Row(
                       children: [
                         _MiniMap(snapshot: snapshot),
