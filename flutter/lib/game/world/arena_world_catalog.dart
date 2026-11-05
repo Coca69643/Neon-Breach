@@ -39,7 +39,7 @@ abstract final class ArenaWorldCatalog {
 
   /// Four open flank yards. They are reachable map space, not neutral camps.
   static const sideApproachAnchors = <(double, double)>[
-    (-41, -24), (41, -24), (-41, 24), (41, 24),
+    (-39, -24.3), (39, -24.3), (-39, 15.7), (39, 15.7),
   ];
 
   static const _river = <(double, double, double)>[
