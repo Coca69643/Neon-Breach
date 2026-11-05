@@ -53,7 +53,7 @@ A câmera usa pointer tracking independente na zona central/direita. O joystick 
 
 A auditoria de Kairo confirmou que o GLB legado na branch antiga continha clipes Female. O pipeline agora baixa um segundo modelo masculino distinto do Quaternius Animated Men Pack (Man-fjHyMd5Wxw, CC0), aplica paleta própria, exige Man_Idle/Man_Walk/Man_SwordSlash e o verificador inspeciona o GLB efetivamente empacotado no APK. O seletor e a partida usam Man_Idle/Man_Walk para Kairo. A inspeção visual final do modelo ainda depende de execução no Realme C53.
 
-O ataque básico aciona o clipe SwordSlash e usa alcance/intervalo específicos por herói. A revisão 1.7.6 importa três espadas CC0 distintas e as anexa ao nó `Palm.R` dos rigs Lyra, Bastion e Kairo. `HeroWeaponSocket` mantém um Future por variante, importa cada template uma vez e clona o grafo para heróis e bots; a arma acompanha as animações do osso da mão. O pipeline verifica hashes de origem e exige `Palm.R` nos três modelos. Efeitos de impacto, seleção de alvo e inspeção visual no aparelho continuam pendentes.
+O ataque básico aciona o clipe SwordSlash e usa alcance/intervalo específicos por herói. A revisão 1.7.6 importa três espadas CC0 distintas e as anexa ao nó `Palm.R` dos rigs Lyra, Bastion e Kairo. `HeroWeaponSocket` mantém um Future por variante, importa cada template uma vez e clona o grafo para heróis e bots; a arma acompanha as animações do osso da mão. O pipeline verifica hashes de origem e exige `Palm.R` nos três modelos. A seleção touch de alvo, HUD contextual e confirmação de acerto foram adicionadas na 1.7.7; efeitos de impacto específicos por classe e inspeção visual no aparelho continuam pendentes.
 
 O catálogo urbano adiciona dois mezaninos em lados opostos. `MobaPoint.elevation`, `resolveNavigationElevation` e `isWalkable(elevation:)` obrigam a subir pela rampa em passos contínuos e mantêm entidades em pisos diferentes fora de alcance umas das outras. O objetivo é manter um só mapa de navegação e um orçamento de entidades adequado ao mobile.
 
@@ -70,7 +70,7 @@ As duas entradas dos mezaninos têm coberturas destrutíveis com HP, dano por at
 
 ## Identidade Android
 
-Preservar applicationId com.duckdream.projectarena e usar versionCode 68 para a próxima APK instalável. Esta fundação usa 1.7.6+68 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
+Preservar applicationId com.duckdream.projectarena e usar versionCode 69 para a próxima APK instalável. Esta fundação usa 1.7.7+69 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
 
 ## Critérios de aceite
 
