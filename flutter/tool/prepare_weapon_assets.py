@@ -76,7 +76,7 @@ def fetch(url: str, attempts: int = 4) -> bytes:
 
 
 def git_blob_sha1(payload: bytes) -> str:
-    header = f"blob {len(payload)}\\0".encode("ascii")
+    header = f"blob {len(payload)}\0".encode("ascii")
     return hashlib.sha1(header + payload).hexdigest()
 
 
