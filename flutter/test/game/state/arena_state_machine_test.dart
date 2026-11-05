@@ -29,6 +29,7 @@ void main() {
     machine.dispatch(const OpenHeroSelection());
     machine.dispatch(const SelectHero('lyra'));
     machine.dispatch(const ConfirmHeroSelection());
+    machine.dispatch(const StartRunFromHub());
   }
 
   test('boot exige validação antes de liberar o menu', () {
@@ -89,8 +90,12 @@ void main() {
 
     final decision = machine.dispatch(const ConfirmHeroSelection());
     expect(decision.accepted, isTrue);
-    expect(machine.snapshot.phase, ArenaPhase.matchLoading);
+    expect(machine.snapshot.phase, ArenaPhase.mainMenu);
     expect(machine.snapshot.selectedHeroId, 'kairo');
+
+    final start = machine.dispatch(const StartRunFromHub());
+    expect(start.accepted, isTrue);
+    expect(machine.snapshot.phase, ArenaPhase.matchLoading);
   });
 
   test('recusa IDs de herói desconhecidos sem perder a seleção atual', () {
