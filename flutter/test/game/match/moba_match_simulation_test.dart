@@ -31,6 +31,24 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('roaming bots use a lateral flank route instead of one straight lane', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      final before = simulation.snapshot.bots.firstWhere(
+        (bot) => bot.id == 'blue_bot_3',
+      );
+
+      advanceFor(simulation, 4.0);
+
+      final after = simulation.snapshot.bots.firstWhere(
+        (bot) => bot.id == 'blue_bot_3',
+      );
+      expect(
+        after.position.x,
+        lessThan(before.position.x - 3.0),
+        reason: 'the flank role must enter the side street before rejoining its lane',
+      );
+    });
+
     test('minion waves keep four readable formation slots per lane', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
 
