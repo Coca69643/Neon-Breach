@@ -24,6 +24,7 @@ flutter:
   assets:
     - assets/data/arena_manifest.json
     - assets/heroes/
+    - assets/weapons/
     - assets/match/
     - assets/world/
     - assets/world/city/
