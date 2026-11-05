@@ -260,9 +260,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // The character source rigs use -Z as their forward axis.
-    // Keep the simulation's +Z-forward world vector consistent across all rigs.
-    final yaw = math.atan2(facingX, facingZ) + math.pi;
+    // The bundled Quaternius and Kenney humanoid rigs face local +Z.
+    // Do not add a half-turn: +Z movement must make the character face +Z.
+    final yaw = math.atan2(facingX, facingZ);
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -351,7 +351,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       ..._staticSceneChildren,
       for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
-        SceneModel(
+        if (tower.health > 0)
+          SceneModel(
           _towerAsset(tower.lane.index, tower.tier),
           key: ValueKey(
             'tower-${tower.team.name}-${tower.lane.name}-${tower.tier}',
@@ -598,9 +599,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       scale: vm.Vector3.all(0.84),
       animations: [
         SceneAnimationSpec(
-          bot.moving ? 'walk' : 'idle',
-          loop: true,
-          speed: bot.moving ? 0.98 : 0.82,
+          bot.attackSeconds > 0
+              ? 'attack-melee-right'
+              : (bot.moving ? 'walk' : 'idle'),
+          loop: bot.attackSeconds <= 0,
+          speed: bot.attackSeconds > 0
+              ? 1.0
+              : (bot.moving ? 0.98 : 0.82),
         ),
       ],
       children: [_teamRing(bot.team)],
@@ -619,9 +624,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       scale: vm.Vector3.all(scale),
       animations: [
         SceneAnimationSpec(
-          minion.moving ? 'walk' : 'idle',
-          loop: true,
-          speed: minion.moving ? (minion.ranged ? 0.92 : 1.0) : 0.82,
+          minion.attackSeconds > 0
+              ? (minion.ranged ? 'holding-both-shoot' : 'attack-melee-right')
+              : (minion.moving ? 'walk' : 'idle'),
+          loop: minion.attackSeconds <= 0,
+          speed: minion.attackSeconds > 0
+              ? 1.0
+              : (minion.moving ? (minion.ranged ? 0.92 : 1.0) : 0.82),
         ),
       ],
       children: [_teamRing(minion.team)],
@@ -1663,7 +1672,7 @@ class _MiniMapPainter extends CustomPainter {
       ..color = const Color(0xFF65767A)
       ..strokeWidth = 2.2
       ..style = PaintingStyle.stroke;
-    for (final laneX in [-22.5, 0.0, 22.5]) {
+    for (final laneX in [-36.0, 0.0, 36.0]) {
       final x = ((laneX + ArenaWorldCatalog.halfWidth) /
               (ArenaWorldCatalog.halfWidth * 2)) *
           size.width;
@@ -1716,7 +1725,7 @@ class _MiniMapPainter extends CustomPainter {
       );
     }
 
-    for (final tower in snapshot.towers) {
+    for (final tower in snapshot.towers.where((item) => item.health > 0)) {
       final paint = Paint()
         ..color = tower.team == MobaTeam.blue
             ? const Color(0xFF75BDEB)
