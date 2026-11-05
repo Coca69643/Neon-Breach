@@ -1,5 +1,33 @@
 # Changelog — Projeto Arena
 
+## [1.7.2] — 2026-11-05
+
+### Plataforma e runtime
+- Migração do runtime de aplicação para Flutter 3.47 / Dart 3.10.
+- Flutter Scene 0.24.3 integrado ao Flutter GPU / Impeller para renderização 3D.
+- Máquina de estados da aplicação implementada em Dart.
+- Aplicativo Android offline, landscape, minSdk 24 e pacote `com.duckdream.projectarena`.
+- APK ARM64 versionado como `1.7.2+64`, com assinatura persistente para atualização.
+
+### Interface e personagens
+- Hub principal 3D com atalhos periféricos.
+- Seletor de heróis separado do menu principal.
+- Pré-visualização 3D de Lyra, Bastion e Kairo com clipes Idle.
+- Corrigida a persistência do herói selecionado ao navegar entre menu e seletor.
+- Corrigida a transição do menu para a prévia ambiental.
+
+### Vale das Coroas
+- Pipeline de assets offline para terreno GLB e vegetação CC0.
+- Footprint retangular orgânico, três rotas curvas, rio em S, três pontes, bases opostas e clareiras de selva.
+- Prévia de mundo é visualização; não representa gameplay MOBA funcional.
+
+### Build e validação
+- Flutter Analyze e testes unitários aprovados no GitHub Actions.
+- APK ARM64 compilado, identidade Android, assets de cena e assinatura verificados pelo CI.
+- FPS sustentado, temperatura, controles, renderização visual e atualização no Realme C53 ainda dependem de teste físico.
+
+## Histórico legado
+
 ## [0.16.0 — build de teste]
 
 ### Build Android
@@ -362,3 +390,4 @@
 - Câmera em perspectiva próxima ao herói, follow camera, menu imersivo e HUD compacto.
 - Campo retangular com rotas de captura, IA de bots baseada em waypoints, habilidades de suporte/impulso/escudo.
 - Assinatura persistente e build 0.6.0 verificada (run #177).
+
