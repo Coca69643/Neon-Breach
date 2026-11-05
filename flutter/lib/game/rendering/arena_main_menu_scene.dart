@@ -60,7 +60,7 @@ class ArenaMainMenuScene extends StatelessWidget {
                 ),
               ),
             ),
-            children: const [
+            children: [
               SceneModel(
                 _hubAsset,
                 key: ValueKey('arena-menu-hub-model'),
