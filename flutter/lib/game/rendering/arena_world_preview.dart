@@ -186,7 +186,7 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                 OutlinedButton.icon(
                   onPressed: widget.onBack,
                   icon: const Icon(Icons.arrow_back_rounded, size: 16),
-                  label: const Text('HERÓIS'),
+                  label: const Text('MENU'),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: Colors.white,
                     side: const BorderSide(color: Color(0x889BD9C7)),
