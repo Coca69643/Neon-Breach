@@ -31,6 +31,22 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('all bots spawn on walkable ground outside tower collision footprints', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+
+      for (final bot in simulation.snapshot.bots) {
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            bot.position.x,
+            bot.position.z,
+            elevation: bot.position.elevation,
+          ),
+          isTrue,
+          reason: '${bot.id} must not spawn inside a tower, wall or blocked terrain',
+        );
+      }
+    });
+
     test('roaming bots use a lateral flank route instead of one straight lane', () {
       // Bastion occupies role 0, so the blue team has an active role-3 flanker.
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
@@ -46,7 +62,16 @@ void main() {
       expect(
         after.position.x,
         greaterThan(before.position.x + 3.0),
-        reason: 'the flank role must enter the east side street before rejoining its lane',
+        reason: 'the flank role must leave its spawn lane and enter the east side street',
+      );
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          after.position.x,
+          after.position.z,
+          elevation: after.position.elevation,
+        ),
+        isTrue,
+        reason: 'the flanker must remain on valid ground while routing around the city',
       );
     });
 
