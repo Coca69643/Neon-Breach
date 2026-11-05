@@ -1,17 +1,15 @@
-name: Flutter Foundation
+name: Flutter Scene Foundation
 
 on:
   push:
     branches:
-      - migration/flutter-state-machine-v0.1
+      - migration/flutter-scene-mobile-v0.1
     paths:
       - "flutter/**"
-      - "native/arena_runtime/**"
       - ".github/workflows/flutter-foundation.yml"
   pull_request:
     paths:
       - "flutter/**"
-      - "native/arena_runtime/**"
       - ".github/workflows/flutter-foundation.yml"
   workflow_dispatch:
 
@@ -27,33 +25,17 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-
-      - name: Install Flutter stable
+      - name: Install Flutter 3.47 stable
         uses: subosito/flutter-action@v2
         with:
+          flutter-version: "3.47.0"
           channel: stable
           cache: true
-
       - name: Resolve dependencies
         run: flutter pub get
-
       - name: Static analysis
         run: flutter analyze
-
       - name: Unit tests
         run: flutter test --reporter expanded
-
-  native-agent-fsm:
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Configure native state machine
-        run: cmake -S native/arena_runtime -B build/arena-agent-fsm -DCMAKE_BUILD_TYPE=Release
-
-      - name: Compile native state machine
-        run: cmake --build build/arena-agent-fsm --parallel 2
-
-      - name: Run native tests
-        run: ctest --test-dir build/arena-agent-fsm --output-on-failure
+      - name: Build Android release
+        run: flutter build apk --release --enable-flutter-gpu
