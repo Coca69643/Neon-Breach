@@ -144,10 +144,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         team == MobaTeam.blue ? 0 : math.pi,
       );
 
+  vm.Quaternion _playerFacing(MobaMatchSnapshot snapshot) {
+    final yaw = math.atan2(snapshot.playerFacingX, snapshot.playerFacingZ);
+    return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
+  }
+
   static const _bridges = <(String, double, double)>[
-    ('top', -15, 1.25),
-    ('middle', 0, 10.7),
-    ('bottom', 15, 11.8),
+    ('top', -22.5, 0.0),
+    ('middle', 0.0, 15.0),
+    ('bottom', 22.5, 13.1),
   ];
 
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
@@ -197,8 +202,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         key: const ValueKey('match-player-hero'),
         name: 'player_${snapshot.heroId.id}',
         position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
-        rotation: _facing(MobaTeam.blue),
-        scale: vm.Vector3.all(0.68),
+        rotation: _playerFacing(snapshot),
+        scale: vm.Vector3.all(0.82),
         animations: [
           SceneAnimationSpec(
             snapshot.playerMoving
@@ -213,7 +218,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildBase(MobaTeam team) {
-    final point = MobaPoint(0, team == MobaTeam.blue ? -26.0 : 26.0);
+    final point = MobaPoint(0, team == MobaTeam.blue ? -35.5 : 35.5);
     return SceneModel(
       team == MobaTeam.blue
           ? 'assets/match/castle_blue.glb'
@@ -247,7 +252,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _facing(bot.team),
-      scale: vm.Vector3.all(0.59),
+      scale: vm.Vector3.all(0.68),
       animations: [
         SceneAnimationSpec(_heroWalk(bot.heroId), loop: true, speed: 0.94),
       ],
@@ -261,7 +266,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final asset = useQuaternius ? _minionAsset : _heroAsset(fallbackHero);
     final animation =
         useQuaternius ? _minionWalkClip! : _heroWalk(fallbackHero);
-    final scale = minion.ranged ? 0.39 : 0.42;
+    final scale = minion.ranged ? 0.45 : 0.48;
     return SceneModel(
       asset,
       key: ValueKey('match-minion-${minion.id}'),
@@ -337,19 +342,32 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               maxFrameRate: 30,
               cameraBuilder: (elapsed) {
                 final player = snapshot.playerPosition;
+                final facingX = snapshot.playerFacingX;
+                final facingZ = snapshot.playerFacingZ;
                 final x = player.x * _worldScale;
                 final z = player.z * _worldScale;
-                // Lower, closer 3/4 chase framing: the selected hero must
-                // occupy the visual foreground, not read as a map token.
-                final cameraHeight = compact ? 14.5 : 15.5;
-                final followDistance = compact ? 23.0 : 24.5;
-                final lookAhead = compact ? 3.8 : 4.2;
+                // Action camera: low trailing perspective, not a battlefield
+                // overview. Facing is driven by the last movement direction.
+                final cameraHeight = compact ? 8.2 : 8.8;
+                final followDistance = compact ? 12.0 : 13.5;
+                final lookAhead = compact ? 4.5 : 5.2;
+                final cameraBob = math.sin(
+                  elapsed.inMicroseconds / 1000000.0 * 1.4,
+                ) * 0.045;
                 return PerspectiveCamera(
-                  fovRadiansY: 44 * math.pi / 180,
-                  position: vm.Vector3(x, cameraHeight, z - followDistance),
-                  target: vm.Vector3(x, 1.15, z + lookAhead),
-                  fovNear: 0.1,
-                  fovFar: 180,
+                  fovRadiansY: 52 * math.pi / 180,
+                  position: vm.Vector3(
+                    x - facingX * followDistance,
+                    cameraHeight + cameraBob,
+                    z - facingZ * followDistance,
+                  ),
+                  target: vm.Vector3(
+                    x + facingX * lookAhead,
+                    1.35,
+                    z + facingZ * lookAhead,
+                  ),
+                  fovNear: 0.08,
+                  fovFar: 220,
                 );
               },
               onTick: _onSceneTick,
