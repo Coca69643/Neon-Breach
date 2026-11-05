@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
-"""Prepare the offline, textured Vale das Coroas scene for Flutter Scene.
+"""Bake Vale das Coroas as a broad MOBA arena, not an oval island.
 
-The source trees are pinned CC0 GLBs already stored in the repository as base64.
-The terrain is baked once at build time into one textured GLB: smooth heightfield,
-variable-width river, material zones, and a low polygon-count island edge.
+The offline GLB has a rounded-rectangle footprint, three curved lanes, a diagonal
+S-river, three bridges, opposing bases and jungle clearings.
 """
 from __future__ import annotations
 
@@ -28,20 +27,20 @@ GRID_X = 120
 GRID_Z = 108
 
 RIVER = [
-    (-34.0, 1.10, 0.78), (-28.0, 0.55, 1.15),
-    (-21.0, 0.05, 1.48), (-15.0, -0.45, 1.68),
-    (-9.0, -0.22, 1.92), (-3.0, 0.25, 1.58),
-    (4.0, 0.38, 1.82), (10.0, 0.02, 1.95),
-    (16.0, -0.38, 1.62), (23.0, -0.18, 1.62),
-    (29.0, 0.22, 1.15), (34.0, 0.80, 0.78),
+    (-34.0, -16.0, 0.90), (-28.0, -13.5, 1.20),
+    (-22.0, -9.5, 1.45), (-16.0, -5.0, 1.62),
+    (-10.0, 1.5, 1.74), (-4.0, 8.0, 1.88),
+    (3.0, 13.0, 1.92), (10.0, 14.0, 1.78),
+    (17.0, 9.0, 1.62), (24.0, 2.0, 1.42),
+    (30.0, -5.0, 1.15), (34.0, -9.5, 0.92),
 ]
 LANES = [
-    [(-14.2, -31), (-15.2, -23), (-14.6, -15), (-13.4, -7), (-13, 0),
-     (-13.7, 8), (-14.8, 16), (-14.2, 24), (-14.2, 31)],
-    [(0.5, -31), (0.1, -23), (-0.1, -15), (-0.25, -7), (0.5, 0),
-     (0.3, 8), (-0.2, 16), (0.4, 24), (0.5, 31)],
-    [(14.2, -31), (15.2, -23), (14.6, -15), (13.4, -7), (13, 0),
-     (13.7, 8), (14.8, 16), (14.2, 24), (14.2, 31)],
+    [(-15.0, -30), (-15.5, -22), (-14.8, -14), (-15.2, -6), (-14.7, 2),
+     (-15.1, 10), (-14.8, 18), (-15.0, 30)],
+    [(0.0, -30), (0.6, -22), (-0.5, -14), (0.2, -6), (-0.2, 2),
+     (0.4, 10), (-0.4, 18), (0.0, 30)],
+    [(15.0, -30), (15.5, -22), (14.8, -14), (15.2, -6), (14.7, 2),
+     (15.1, 10), (14.8, 18), (15.0, 30)],
 ]
 
 
@@ -117,15 +116,21 @@ def normal_at(x: float, z: float) -> tuple[float, float, float]:
     return nx / length, ny / length, nz / length
 
 
-def inside_island(x: float, z: float) -> bool:
-    angle = math.atan2(z / HALF_Z, x / HALF_X)
-    edge = (
-        1.0 + 0.035 * math.sin(angle * 5.0)
-        + 0.020 * math.sin(angle * 9.0 + 1.4)
-        + 0.012 * math.cos(angle * 13.0)
+def edge_wobble(angle: float) -> float:
+    return (
+        1.0 + 0.022 * math.sin(angle * 5.0)
+        + 0.014 * math.sin(angle * 9.0 + 1.4)
+        + 0.010 * math.cos(angle * 13.0)
+        + 0.006 * math.sin(angle * 17.0 + 0.8)
     )
-    radius = math.sqrt((x / HALF_X) ** 2 + (z / HALF_Z) ** 2)
-    return radius <= edge
+
+
+def inside_island(x: float, z: float) -> bool:
+    exponent = 4.2
+    angle = math.atan2(z / HALF_Z, x / HALF_X)
+    edge = edge_wobble(angle)
+    extent = (abs(x) / HALF_X) ** exponent + (abs(z) / HALF_Z) ** exponent
+    return extent <= edge ** exponent
 
 
 def point_segment_distance(px: float, pz: float, a: tuple[float, float],
@@ -319,11 +324,43 @@ def build_terrain_glb(output: Path) -> None:
     normals: list[float] = []
     texcoords: list[float] = []
     groups: dict[str, list[int]] = {
-        "grass": [], "moss": [], "soil": [], "rock": [],
-        "water": [],
+        "grass": [], "moss": [], "soil": [], "rock": [], "water": [],
+        "stone": [], "accent_blue": [], "accent_gold": [],
     }
-    material_names = ["grass", "moss", "soil", "rock", "water"]
+    material_names = [
+        "grass", "moss", "soil", "rock", "water",
+        "stone", "accent_blue", "accent_gold",
+    ]
     vertex_rows = GRID_X + 1
+
+    def add_box(group_name: str, cx: float, cy: float, cz: float,
+                sx: float, sy: float, sz: float, yaw: float = 0.0) -> None:
+        cosine, sine = math.cos(yaw), math.sin(yaw)
+        hx, hy, hz = sx * 0.5, sy * 0.5, sz * 0.5
+
+        def point(px: float, py: float, pz: float) -> tuple[float, float, float]:
+            return (cx + px * cosine + pz * sine, cy + py,
+                    cz - px * sine + pz * cosine)
+
+        faces = (
+            (((-hx,-hy,hz),(hx,-hy,hz),(hx,hy,hz),(-hx,hy,hz)), (0,0,1)),
+            (((hx,-hy,-hz),(-hx,-hy,-hz),(-hx,hy,-hz),(hx,hy,-hz)), (0,0,-1)),
+            (((hx,-hy,hz),(hx,-hy,-hz),(hx,hy,-hz),(hx,hy,hz)), (1,0,0)),
+            (((-hx,-hy,-hz),(-hx,-hy,hz),(-hx,hy,hz),(-hx,hy,-hz)), (-1,0,0)),
+            (((-hx,hy,hz),(hx,hy,hz),(hx,hy,-hz),(-hx,hy,-hz)), (0,1,0)),
+            (((-hx,-hy,-hz),(hx,-hy,-hz),(hx,-hy,hz),(-hx,-hy,hz)), (0,-1,0)),
+        )
+        for vertices, local_normal in faces:
+            nx, ny, nz = local_normal
+            normal = (nx * cosine + nz * sine, ny, -nx * sine + nz * cosine)
+            base = len(positions) // 3
+            for px, py, pz in vertices:
+                wx, wy, wz = point(px, py, pz)
+                positions.extend((wx * WORLD_SCALE, wy, wz * WORLD_SCALE))
+                normals.extend(normal)
+                texcoords.extend((wx / 3.8, wz / 3.8))
+            groups[group_name].extend((base, base + 1, base + 2,
+                                       base, base + 2, base + 3))
 
     for zi in range(GRID_Z + 1):
         z = -HALF_Z + (2.0 * HALF_Z * zi / GRID_Z)
@@ -381,13 +418,11 @@ def build_terrain_glb(output: Path) -> None:
         a1 = 2.0 * math.pi * (i + 1) / skirt_segments
 
         def edge_point(angle: float) -> tuple[float, float, float]:
-            wobble = (
-                1.0 + 0.035 * math.sin(angle * 5.0)
-                + 0.020 * math.sin(angle * 9.0 + 1.4)
-                + 0.012 * math.cos(angle * 13.0)
-            )
-            x = HALF_X * wobble * math.cos(angle)
-            z = HALF_Z * wobble * math.sin(angle)
+            exponent = 2.0 / 4.2
+            wobble = edge_wobble(angle)
+            cosine, sine = math.cos(angle), math.sin(angle)
+            x = HALF_X * math.copysign(abs(cosine) ** exponent, cosine) * wobble
+            z = HALF_Z * math.copysign(abs(sine) ** exponent, sine) * wobble
             return x, height(x, z) - 0.02, z
 
         top_a = edge_point(a0)
@@ -480,6 +515,34 @@ def build_terrain_glb(output: Path) -> None:
                 add_up_triangle(group_name, prev[3], cur[3], cur[2])
             previous[group_name] = tuple(current_indices)
 
+    # Three crossings connect the lanes across the diagonal river.
+    for lane_x in (-15.0, 0.0, 15.0):
+        river_z = river_center_z(lane_x)
+        river_width = river_half_width(lane_x)
+        bank_a = height(lane_x, river_z - river_width - 1.25)
+        bank_b = height(lane_x, river_z + river_width + 1.25)
+        deck_y = max(bank_a, bank_b) + 0.28
+        deck_length = river_width * 2.0 + 3.5
+        add_box("stone", lane_x, deck_y, river_z, 4.4, 0.42, deck_length)
+        add_box("stone", lane_x - 2.02, deck_y + 0.34, river_z,
+                0.28, 0.55, deck_length)
+        add_box("stone", lane_x + 2.02, deck_y + 0.34, river_z,
+                0.28, 0.55, deck_length)
+
+    # Opposing base compounds at the north and south ends.
+    for base_z, accent_group in ((-25.2, "accent_blue"), (25.2, "accent_gold")):
+        base_y = height(0.0, base_z) + 0.24
+        add_box("stone", 0.0, base_y, base_z, 14.0, 0.52, 10.5)
+        add_box("stone", 0.0, base_y + 0.52, base_z, 8.6, 0.42, 6.8, math.pi / 4)
+        add_box("stone", 0.0, base_y + 1.18, base_z, 5.2, 0.92, 4.5)
+        add_box(accent_group, 0.0, base_y + 1.95, base_z, 2.0, 1.1, 2.0)
+
+    # Jungle objective clearings.
+    for camp_x, camp_z in ((-8.4, 15.8), (8.4, -15.8)):
+        camp_y = height(camp_x, camp_z) + 0.18
+        add_box("stone", camp_x, camp_y, camp_z, 5.8, 0.32, 5.8, math.pi / 4)
+        add_box("accent_blue", camp_x, camp_y + 0.22, camp_z, 1.15, 0.2, 1.15)
+
     # Pack GPU buffers and GLB accessors.
     binary = bytearray()
     buffer_views: list[dict] = []
@@ -530,6 +593,7 @@ def build_terrain_glb(output: Path) -> None:
 
     primitive_materials = {
         "grass": 0, "moss": 1, "soil": 2, "rock": 3, "water": 4,
+        "stone": 5, "accent_blue": 6, "accent_gold": 7,
     }
     primitives = []
     for group_name in material_names:
@@ -597,6 +661,35 @@ def build_terrain_glb(output: Path) -> None:
         },
         "doubleSided": True,
     })
+    materials.append({
+        "name": "Carved Base Stone",
+        "pbrMetallicRoughness": {
+            "baseColorFactor": [0.40, 0.44, 0.48, 1.0],
+            "metallicFactor": 0.08,
+            "roughnessFactor": 0.78,
+        },
+        "doubleSided": True,
+    })
+    materials.append({
+        "name": "Blue Base Core",
+        "pbrMetallicRoughness": {
+            "baseColorFactor": [0.08, 0.32, 0.56, 1.0],
+            "metallicFactor": 0.18,
+            "roughnessFactor": 0.28,
+        },
+        "emissiveFactor": [0.05, 0.28, 0.72],
+        "doubleSided": True,
+    })
+    materials.append({
+        "name": "Gold Base Core",
+        "pbrMetallicRoughness": {
+            "baseColorFactor": [0.66, 0.34, 0.09, 1.0],
+            "metallicFactor": 0.34,
+            "roughnessFactor": 0.32,
+        },
+        "emissiveFactor": [0.55, 0.18, 0.025],
+        "doubleSided": True,
+    })
 
     document = {
         "asset": {
@@ -618,6 +711,10 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
+            "mapShape": "rounded-rectangle-organic",
+            "laneCount": 3,
+            "bridgeCount": 3,
+            "baseCount": 2,
             "dynamicShadows": False,
         },
     }
@@ -641,8 +738,8 @@ def build_terrain_glb(output: Path) -> None:
     magic, version, declared_length = struct.unpack_from("<4sII", glb, 0)
     if magic != b"glTF" or version != 2 or declared_length != len(glb):
         raise RuntimeError("Generated terrain GLB failed its container checks.")
-    if len(primitives) != 5 or len(images) != 8 or any(not groups[name] for name in material_names):
-        raise RuntimeError("Terrain GLB is missing a material group or embedded texture.")
+    if len(primitives) != 8 or len(images) != 8 or any(not groups[name] for name in material_names):
+        raise RuntimeError("Terrain GLB is missing a material group, route structure or embedded texture.")
 
 
 def main() -> None:
