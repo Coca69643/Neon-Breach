@@ -1,5 +1,40 @@
 import 'dart:math' as math;
 
+class ArenaVerticalAccess {
+  const ArenaVerticalAccess({
+    required this.id,
+    required this.x,
+    required this.z,
+  });
+
+  final String id;
+  final double x;
+  final double z;
+
+  static const double rampRun = 5.014;
+  static const double upperHeight = 3.35;
+  static const double platformLength = 5.0;
+  static const double platformDepth = 2.3;
+  static const double corridorMinOffset = 1.2;
+  static const double corridorMaxOffset = 3.5;
+
+  double get rampStartX => x - rampRun;
+  double get rampEndX => x;
+  double get platformEndX => x + platformLength;
+  double get corridorMinZ => z + corridorMinOffset;
+  double get corridorMaxZ => z + corridorMaxOffset;
+
+  double? localSurfaceHeight(double px, double pz) {
+    if (pz < corridorMinZ || pz > corridorMaxZ) return null;
+    if (px >= rampStartX && px <= rampEndX) {
+      final t = ((px - rampStartX) / rampRun).clamp(0.0, 1.0).toDouble();
+      return upperHeight * t;
+    }
+    if (px > rampEndX && px <= platformEndX) return upperHeight;
+    return null;
+  }
+}
+
 class ArenaWorldPlacement {
   const ArenaWorldPlacement({
     required this.asset,
@@ -33,6 +68,13 @@ abstract final class ArenaWorldCatalog {
     ('east_south', 63.0, -38.0),
     ('west_north', -63.0, 38.0),
     ('east_north', 63.0, 38.0),
+  ];
+
+  /// Two opposing mezzanine routes create a real height layer without
+  /// introducing a second navigation grid or increasing entity budgets.
+  static const verticalAccesses = <ArenaVerticalAccess>[
+    ArenaVerticalAccess(id: 'west_south', x: -63.0, z: -38.0),
+    ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
   static const commercialBlocks = <(String, double, double, double)>[
@@ -170,7 +212,11 @@ abstract final class ArenaWorldCatalog {
       if ((dx - 5.8).abs() <= 0.42 && dz.abs() <= 4.5) return true;
       // Counter and shelving are physical interior obstacles.
       if (dx <= 1.95 && (z - (cz + 1.35)).abs() <= 0.52) return true;
-      if ((dx - 4.35).abs() <= 0.48 &&
+        final hasVerticalAccess = verticalAccesses.any(
+        (access) => access.id == building.$1,
+      );
+      if (!hasVerticalAccess &&
+          (dx - 4.35).abs() <= 0.48 &&
           (z - (cz + 2.1)).abs() <= 1.35) {
         return true;
       }
@@ -197,8 +243,51 @@ abstract final class ArenaWorldCatalog {
         (z - riverZ).abs() <= channelHalfWidth + 2.0);
   }
 
-  static bool isWalkable(double x, double z, {bool includeTreeCollision = true}) {
-    if (!contains(x, z)) return false;
+  static ArenaVerticalAccess? _accessForPoint(double x, double z) {
+    for (final access in verticalAccesses) {
+      if (access.localSurfaceHeight(x, z) != null) return access;
+    }
+    return null;
+  }
+
+  /// Returns the vertical offset required by the stair or mezzanine surface.
+  /// A player can only change elevation by following the stair run incrementally.
+  static double? resolveNavigationElevation(
+    double x,
+    double z,
+    double currentElevation,
+  ) {
+    final access = _accessForPoint(x, z);
+    if (access == null) {
+      return currentElevation <= 0.22 ? 0.0 : null;
+    }
+
+    final target = access.localSurfaceHeight(x, z)!;
+    // The short per-step tolerance allows normal mobile movement while
+    // preventing a ground-floor unit from snapping directly onto the deck.
+    if ((target - currentElevation).abs() > 0.24) return null;
+    if (x > access.rampEndX && currentElevation < access.upperHeight - 0.28) {
+      return null;
+    }
+    return target;
+  }
+
+  static bool _isVerticalSurface(double x, double z, double elevation) {
+    final access = _accessForPoint(x, z);
+    if (access == null) return elevation <= 0.22;
+    final expected = access.localSurfaceHeight(x, z)!;
+    return (elevation - expected).abs() <= 0.24;
+  }
+
+  static bool isWalkable(
+    double x,
+    double z, {
+    bool includeTreeCollision = true,
+    double elevation = 0,
+  }) {
+    if (!contains(x, z) || !_isVerticalSurface(x, z, elevation)) {
+      return false;
+    }
     final riverDistance = (z - _riverCenterZ(x)).abs();
     final channelWidth = _riverHalfWidth(x) + riverBankMargin;
     if (riverDistance < channelWidth && !_isOnBridge(x, z)) return false;
@@ -218,13 +307,21 @@ abstract final class ArenaWorldCatalog {
     return true;
   }
 
-  static double navigationHeightAt(double x, double z) {
-    if (!_isOnBridge(x, z)) return heightAt(x, z);
+  static double navigationHeightAt(
+    double x,
+    double z, {
+    double elevation = 0,
+  }) {
+    final base = heightAt(x, z) + elevation;
+    final access = _accessForPoint(x, z);
+    if (access != null) return base;
+    if (!_isOnBridge(x, z)) return base;
     final riverZ = _riverCenterZ(x);
     final bankOffset = _riverHalfWidth(x) + 1.25;
     final nearBank = heightAt(x, riverZ - bankOffset);
     final farBank = heightAt(x, riverZ + bankOffset);
-    return math.max(heightAt(x, z), math.max(nearBank, farBank) + 0.28);
+    return math.max(heightAt(x, z) + elevation,
+        math.max(nearBank, farBank) + 0.28 + elevation);
   }
 
   static double heightAt(double x, double z) {
