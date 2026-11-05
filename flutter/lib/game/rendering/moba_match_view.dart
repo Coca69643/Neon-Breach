@@ -97,6 +97,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _cameraX = x - facingX * 13.5;
     _cameraY = 8.8;
     _cameraZ = z - facingZ * 13.5;
+    _cameraYaw = 0;
+    _cameraPitch = 0;
     _lookX = x + facingX * 5.2;
     _lookY = 1.35;
     _lookZ = z + facingZ * 5.2;
@@ -107,12 +109,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final facingZ = snapshot.playerFacingZ;
     final x = snapshot.playerPosition.x * _worldScale;
     final z = snapshot.playerPosition.z * _worldScale;
-    final desiredX = x - facingX * 13.5;
-    final desiredY = 8.8;
-    final desiredZ = z - facingZ * 13.5;
-    final desiredLookX = x + facingX * 5.2;
-    final desiredLookY = 1.35;
-    final desiredLookZ = z + facingZ * 5.2;
+    final yawCos = math.cos(_cameraYaw);
+    final yawSin = math.sin(_cameraYaw);
+    final orbitX = facingX * yawCos + facingZ * yawSin;
+    final orbitZ = facingZ * yawCos - facingX * yawSin;
+    final desiredX = x - orbitX * 13.5;
+    final desiredY = 8.8 + _cameraPitch;
+    final desiredZ = z - orbitZ * 13.5;
+    final desiredLookX = x + orbitX * 5.2;
+    final desiredLookY = 1.35 + _cameraPitch * 0.28;
+    final desiredLookZ = z + orbitZ * 5.2;
     final blend = 1.0 - math.exp(-5.5 * deltaSeconds);
 
     _cameraX += (desiredX - _cameraX) * blend;
@@ -154,6 +160,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         if (mounted) widget.onFinished(next.winner!);
       });
     }
+  }
+
+  void _rotateCamera(DragUpdateDetails details) {
+    // Camera look is deliberately isolated from the left-side movement stick.
+    // A drag in the central/right playfield rotates yaw and adjusts elevation.
+    setState(() {
+      _cameraYaw = (_cameraYaw - details.delta.dx * 0.0065) %
+          (2 * math.pi);
+      _cameraPitch = (_cameraPitch + details.delta.dy * 0.018)
+          .clamp(-2.2, 3.4)
+          .toDouble();
+    });
   }
 
   void _markWorldReady() {
@@ -418,6 +436,17 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 ),
               ),
               children: _buildSceneChildren(snapshot),
+            ),
+            Positioned(
+              left: viewport.maxWidth * 0.34,
+              right: 0,
+              top: 66,
+              bottom: compact ? 104 : 124,
+              child: GestureDetector(
+                behavior: HitTestBehavior.translucent,
+                onPanUpdate: _rotateCamera,
+                child: const SizedBox.expand(),
+              ),
             ),
             const IgnorePointer(
               child: DecoratedBox(
