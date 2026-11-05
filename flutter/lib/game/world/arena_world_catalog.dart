@@ -21,9 +21,9 @@ class ArenaWorldPlacement {
 /// Shared terrain, route and vegetation data for the offline MOBA battlefield.
 abstract final class ArenaWorldCatalog {
   static const double worldScale = 1.15;
-  static const double halfWidth = 35.0;
-  static const double halfDepth = 31.0;
-  static const double footprintExponent = 4.2;
+  static const double halfWidth = 44.0;
+  static const double halfDepth = 29.0;
+  static const double footprintExponent = 9.0;
 
   static const _treeBlockers = <(double, double)>[
     (-25, -24), (-22, -18), (-25, -9), (-22, 2),
@@ -43,12 +43,12 @@ abstract final class ArenaWorldCatalog {
   ];
 
   static const _river = <(double, double, double)>[
-    (-34.0, -16.0, 0.90), (-28.0, -13.5, 1.20),
-    (-22.0, -9.5, 1.45), (-16.0, -5.0, 1.62),
-    (-10.0, 1.5, 1.74), (-4.0, 8.0, 1.88),
-    (3.0, 13.0, 1.92), (10.0, 14.0, 1.78),
-    (17.0, 9.0, 1.62), (24.0, 2.0, 1.42),
-    (30.0, -5.0, 1.15), (34.0, -9.5, 0.92),
+    (-43.0, -13.0, 1.05), (-35.0, -10.5, 1.25),
+    (-27.0, -7.0, 1.50), (-19.0, -2.5, 1.72),
+    (-11.0, 3.0, 1.90), (-3.0, 9.0, 2.05),
+    (5.0, 13.5, 2.10), (13.0, 13.0, 1.95),
+    (21.0, 8.0, 1.75), (29.0, 1.0, 1.55),
+    (37.0, -6.0, 1.30), (43.0, -11.0, 1.05),
   ];
 
   static const _lanes = <List<(double, double)>>[
