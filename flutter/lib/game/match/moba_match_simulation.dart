@@ -7,7 +7,7 @@ enum MobaTeam { blue, red }
 extension MobaTeamRules on MobaTeam {
   MobaTeam get enemy => this == MobaTeam.blue ? MobaTeam.red : MobaTeam.blue;
   double get forward => this == MobaTeam.blue ? 1.0 : -1.0;
-  double get homeZ => this == MobaTeam.blue ? -34.0 : 34.0;
+  double get homeZ => this == MobaTeam.blue ? -63.0 : 63.0;
   int get index => this == MobaTeam.blue ? 0 : 1;
 }
 
@@ -26,6 +26,18 @@ extension MobaHeroRules on MobaHeroId {
         MobaHeroId.bastion => 48.0,
         MobaHeroId.kairo => 34.0,
         MobaHeroId.lyra => 39.0,
+      };
+
+  double get basicRange => switch (this) {
+        MobaHeroId.lyra => 6.2,
+        MobaHeroId.bastion => 4.0,
+        MobaHeroId.kairo => 3.5,
+      };
+
+  double get basicAttackCooldown => switch (this) {
+        MobaHeroId.lyra => 0.86,
+        MobaHeroId.bastion => 0.78,
+        MobaHeroId.kairo => 0.54,
       };
 
   String get id => name;
@@ -282,7 +294,7 @@ class MobaMatchSimulation {
   double _playerPower = 1;
   int _playerLevel = 1;
   int _nextMinionId = 0;
-  MobaPoint _playerPosition = const MobaPoint(0, -34);
+  MobaPoint _playerPosition = const MobaPoint(0, -63);
   MobaTeam? _winner;
   double _lastMoveX = 0;
   double _lastMoveZ = 1;
@@ -372,7 +384,7 @@ class MobaMatchSimulation {
           lane: lane,
           role: role,
           heroId: _heroForRole(role),
-          position: MobaPoint(_laneX(lane, -32), -32 + allyIndex * 0.55),
+          position: MobaPoint(_laneX(lane, -57), -57 + allyIndex * 1.2),
         ),
       );
       allyIndex++;
@@ -388,8 +400,8 @@ class MobaMatchSimulation {
           role: role,
           heroId: _heroForRole(role),
           position: MobaPoint(
-            _laneX(lane, 32),
-            32 - role * 0.45,
+            _laneX(lane, 57),
+            57 - role * 1.2,
           ),
         ),
       );
@@ -505,15 +517,15 @@ class MobaMatchSimulation {
     // The action always has a visible response, even when no target is in range.
     // Damage remains server-independent and is applied only to valid nearby MOBA
     // targets; the renderer plays a short, unarmed character animation.
-    _playerAttackPulseSeconds = 0.34;
-    _playerAttackCooldown = 0.72;
+    _playerAttackPulseSeconds = 0.46;
+    _playerAttackCooldown = heroId.basicAttackCooldown;
 
     final damage = heroId.basicDamage * _playerPower;
     final lane = _nearestLane(_playerPosition);
     final enemyBot = _nearestBot(
       _playerPosition,
       MobaTeam.red,
-      maxRange: 3.9,
+      maxRange: heroId.basicRange,
     );
     if (enemyBot != null) {
       _damageBot(enemyBot, MobaTeam.blue, damage);
@@ -524,7 +536,7 @@ class MobaMatchSimulation {
       _playerPosition,
       MobaTeam.red,
       lane,
-      maxRange: 3.6,
+      maxRange: heroId.basicRange,
     );
     if (minion != null) {
       _damageMinion(minion, MobaTeam.blue, damage);
@@ -533,14 +545,14 @@ class MobaMatchSimulation {
 
     final tower = _activeTower(MobaTeam.red, lane);
     if (tower != null &&
-        _playerPosition.distanceTo(tower.position) <= 3.6 &&
+        _playerPosition.distanceTo(tower.position) <= heroId.basicRange &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
       _damageTower(tower, MobaTeam.blue, damage);
       return;
     }
 
     if (_laneOpen(MobaTeam.red, lane) &&
-        _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= 4.5) {
+        _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= heroId.basicRange + 0.8) {
       _damageCore(MobaTeam.red, damage, lane);
     }
   }
@@ -607,7 +619,7 @@ class MobaMatchSimulation {
     // rather than exhausting the first 48 object instances over time.
     _minions.removeWhere((unit) => !unit.alive);
     if (_minions.length + 4 > maxMinions) return;
-    final z = team.homeZ + team.forward * (group.isEven ? 0 : 1.3);
+    final z = team.homeZ + team.forward * (group.isEven ? 4.0 : 5.3);
     for (var slot = 0; slot < 4; slot++) {
       if (_minions.length >= maxMinions) break;
       final ranged = slot == 3;
@@ -1003,11 +1015,11 @@ class MobaMatchSimulation {
 
   double _laneX(MobaLane lane, double z) {
     final base = switch (lane) {
-      MobaLane.top => -22.5,
+      MobaLane.top => -36.0,
       MobaLane.middle => 0.0,
-      MobaLane.bottom => 22.5,
+      MobaLane.bottom => 36.0,
     };
-    return base + math.sin(z * 0.055) * 0.42;
+    return base + math.sin(z * 0.025) * 0.5;
   }
 
   MobaLane _nearestLane(MobaPoint point) {
@@ -1024,12 +1036,12 @@ class MobaMatchSimulation {
   }
 
   MobaPoint _towerPosition(MobaTeam team, MobaLane lane, int tier) {
-    final z = team == MobaTeam.blue ? -10.0 - tier * 8.0 : 10.0 + tier * 8.0;
+    final z = team == MobaTeam.blue ? -20.0 - tier * 16.0 : 20.0 + tier * 16.0;
     return MobaPoint(_laneX(lane, z), z);
   }
 
   MobaPoint _corePosition(MobaTeam team) =>
-      MobaPoint(0, team == MobaTeam.blue ? -36.0 : 36.0);
+      MobaPoint(0, team == MobaTeam.blue ? -66.0 : 66.0);
 
   MobaMatchSnapshot _makeSnapshot() {
     final minions = _minions
