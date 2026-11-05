@@ -71,7 +71,7 @@ void main() {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
       final healthBefore = simulation.snapshot.playerHealth;
 
-      simulation.step(1 / 60, basicAttack: true);
+      simulation.step(1 / 30, basicAttack: true);
 
       expect(simulation.snapshot.playerAttackSeconds, greaterThan(0));
       expect(simulation.snapshot.playerHealth, healthBefore);
