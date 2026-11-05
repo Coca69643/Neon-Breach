@@ -1,5 +1,6 @@
 import 'dart:convert';
 import 'dart:math' as math;
+import 'dart:ui' show FontFeature;
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -299,8 +300,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final length = delta.distance;
     final limited = length > radius ? delta * (radius / length) : delta;
     setState(() {
-      _moveX = (limited.dx / radius).clamp(-1.0, 1.0);
-      _moveZ = (-limited.dy / radius).clamp(-1.0, 1.0);
+      _moveX = (limited.dx / radius).clamp(-1.0, 1.0).toDouble();
+      _moveZ = (-limited.dy / radius).clamp(-1.0, 1.0).toDouble();
     });
   }
 
@@ -630,7 +631,7 @@ class _CoreBar extends StatelessWidget {
             Align(
               alignment: blue ? Alignment.centerLeft : Alignment.centerRight,
               child: FractionallySizedBox(
-                widthFactor: value.clamp(0.0, 1.0),
+                widthFactor: value.clamp(0.0, 1.0).toDouble(),
                 child: ColoredBox(
                   color: blue
                       ? const Color(0xFF65B7EA)
@@ -652,9 +653,12 @@ class _PlayerHud extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final health =
-        (snapshot.playerHealth / snapshot.playerMaxHealth).clamp(0.0, 1.0);
-    final xp = (snapshot.playerXp / snapshot.xpForNextLevel).clamp(0.0, 1.0);
+    final health = (snapshot.playerHealth / snapshot.playerMaxHealth)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final xp = (snapshot.playerXp / snapshot.xpForNextLevel)
+        .clamp(0.0, 1.0)
+        .toDouble();
     final hero = snapshot.heroId.name.toUpperCase();
 
     return _HudPlate(
