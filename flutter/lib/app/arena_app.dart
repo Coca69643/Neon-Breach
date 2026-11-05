@@ -6,7 +6,6 @@ import '../game/rendering/arena_hero_preview.dart';
 import '../game/rendering/arena_main_menu_scene.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/rendering/arena_scene_runtime.dart';
-import '../game/rendering/arena_world_preview.dart';
 import '../game/state/arena_state_machine.dart';
 import '../game/match/moba_match_simulation.dart';
 
