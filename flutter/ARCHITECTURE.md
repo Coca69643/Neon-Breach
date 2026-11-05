@@ -58,7 +58,7 @@ MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY
 
 ## Identidade Android
 
-Preservar applicationId com.duckdream.projectarena, minSdk 23 e usar versionCode maior que 59 na próxima APK instalável. A versão do pacote Flutter permanece 0.17.0+60 nesta fundação.
+Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 59 na próxima APK instalável. Esta fundação usa 0.17.0+60 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
 
 ## Critérios de aceite
 
