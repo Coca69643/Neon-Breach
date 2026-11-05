@@ -1,11 +1,13 @@
 import 'dart:math' as math;
 
+import '../world/arena_world_catalog.dart';
+
 enum MobaTeam { blue, red }
 
 extension MobaTeamRules on MobaTeam {
   MobaTeam get enemy => this == MobaTeam.blue ? MobaTeam.red : MobaTeam.blue;
   double get forward => this == MobaTeam.blue ? 1.0 : -1.0;
-  double get homeZ => this == MobaTeam.blue ? -28.0 : 28.0;
+  double get homeZ => this == MobaTeam.blue ? -36.0 : 36.0;
   int get index => this == MobaTeam.blue ? 0 : 1;
 }
 
@@ -122,6 +124,8 @@ class MobaMatchSnapshot {
     required this.playerSkillCooldown,
     required this.playerRespawnSeconds,
     required this.playerMoving,
+    required this.playerFacingX,
+    required this.playerFacingZ,
     required this.blueTeamKills,
     required this.redTeamKills,
     required this.blueCoreHealth,
@@ -150,6 +154,8 @@ class MobaMatchSnapshot {
   final double playerSkillCooldown;
   final double playerRespawnSeconds;
   final bool playerMoving;
+  final double playerFacingX;
+  final double playerFacingZ;
   final int blueTeamKills;
   final int redTeamKills;
   final double blueCoreHealth;
@@ -273,7 +279,7 @@ class MobaMatchSimulation {
   double _playerPower = 1;
   int _playerLevel = 1;
   int _nextMinionId = 0;
-  MobaPoint _playerPosition = const MobaPoint(0, -24);
+  MobaPoint _playerPosition = const MobaPoint(0, -36);
   MobaTeam? _winner;
   double _lastMoveX = 0;
   double _lastMoveZ = 1;
@@ -362,7 +368,7 @@ class MobaMatchSimulation {
           lane: lane,
           role: role,
           heroId: _heroForRole(role),
-          position: MobaPoint(_laneX(lane, -24), -24 + allyIndex * 0.55),
+          position: MobaPoint(_laneX(lane, -32), -32 + allyIndex * 0.55),
         ),
       );
       allyIndex++;
@@ -378,8 +384,8 @@ class MobaMatchSimulation {
           role: role,
           heroId: _heroForRole(role),
           position: MobaPoint(
-            _laneX(lane, 24),
-            24 - role * 0.45,
+            _laneX(lane, 32),
+            32 - role * 0.45,
           ),
         ),
       );
@@ -468,13 +474,25 @@ class MobaMatchSimulation {
     final nz = length > 1 ? z / length : z;
     _lastMoveX = nx;
     _lastMoveZ = nz;
-    final nextX = (_playerPosition.x + nx * playerMoveSpeed * dt)
-        .clamp(-39.5, 39.5)
-        .toDouble();
-    final nextZ = (_playerPosition.z + nz * playerMoveSpeed * dt)
-        .clamp(-27.5, 27.5)
-        .toDouble();
-    _playerPosition = MobaPoint(nextX, nextZ);
+    _tryMovePlayer(nx * playerMoveSpeed * dt, nz * playerMoveSpeed * dt);
+  }
+
+  void _tryMovePlayer(double dx, double dz) {
+    final nextX = _playerPosition.x + dx;
+    final nextZ = _playerPosition.z + dz;
+    if (ArenaWorldCatalog.isWalkable(nextX, nextZ)) {
+      _playerPosition = MobaPoint(nextX, nextZ);
+      return;
+    }
+
+    // Axis sliding prevents a diagonal input from sticking against a bank,
+    // tree trunk or terrain boundary.
+    if (ArenaWorldCatalog.isWalkable(nextX, _playerPosition.z)) {
+      _playerPosition = MobaPoint(nextX, _playerPosition.z);
+    }
+    if (ArenaWorldCatalog.isWalkable(_playerPosition.x, nextZ)) {
+      _playerPosition = MobaPoint(_playerPosition.x, nextZ);
+    }
   }
 
   void _playerAttack() {
@@ -541,10 +559,7 @@ class MobaMatchSimulation {
         final length = math.sqrt(_lastMoveX * _lastMoveX + _lastMoveZ * _lastMoveZ);
         final dx = length > 0 ? _lastMoveX / length : 0;
         final dz = length > 0 ? _lastMoveZ / length : 1;
-        _playerPosition = MobaPoint(
-          (_playerPosition.x + dx * 5).clamp(-39.5, 39.5).toDouble(),
-          (_playerPosition.z + dz * 5).clamp(-27.5, 27.5).toDouble(),
-        );
+        _tryMovePlayer(dx * 5, dz * 5);
         final target = _nearestBot(
           _playerPosition,
           MobaTeam.red,
@@ -980,9 +995,9 @@ class MobaMatchSimulation {
 
   double _laneX(MobaLane lane, double z) {
     final base = switch (lane) {
-      MobaLane.top => -15.0,
+      MobaLane.top => -22.5,
       MobaLane.middle => 0.0,
-      MobaLane.bottom => 15.0,
+      MobaLane.bottom => 22.5,
     };
     return base + math.sin(z * 0.055) * 0.42;
   }
@@ -1001,12 +1016,12 @@ class MobaMatchSimulation {
   }
 
   MobaPoint _towerPosition(MobaTeam team, MobaLane lane, int tier) {
-    final z = team == MobaTeam.blue ? -8.0 - tier * 7.0 : 8.0 + tier * 7.0;
+    final z = team == MobaTeam.blue ? -10.0 - tier * 10.0 : 10.0 + tier * 10.0;
     return MobaPoint(_laneX(lane, z), z);
   }
 
   MobaPoint _corePosition(MobaTeam team) =>
-      MobaPoint(0, team == MobaTeam.blue ? -27.0 : 27.0);
+      MobaPoint(0, team == MobaTeam.blue ? -36.0 : 36.0);
 
   MobaMatchSnapshot _makeSnapshot() {
     final minions = _minions
@@ -1064,6 +1079,8 @@ class MobaMatchSimulation {
       playerSkillCooldown: _playerSkillCooldown,
       playerRespawnSeconds: _playerRespawn,
       playerMoving: _playerMoving,
+      playerFacingX: _lastMoveX,
+      playerFacingZ: _lastMoveZ,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
       redTeamKills: _teamKills[MobaTeam.red.index].toInt(),
       blueCoreHealth: _coreHealth[MobaTeam.blue.index],
