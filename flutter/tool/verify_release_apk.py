@@ -207,7 +207,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=0.17.2+{version_code}, minSdk={min_sdk}, "
+        f"version=1.7.2+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )
