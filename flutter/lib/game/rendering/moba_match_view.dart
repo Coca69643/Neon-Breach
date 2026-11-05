@@ -33,6 +33,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   static const String _minionAsset = 'assets/match/quaternius_minion.glb';
 
   late MobaMatchSnapshot _snapshot;
+  double _cameraYaw = 0;
+  double _cameraPitch = 0.46;
   double _moveX = 0;
   double _moveZ = 0;
   bool _basicAttackHeld = false;
@@ -92,36 +94,37 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   void _initialiseCameraRig(MobaMatchSnapshot snapshot) {
-    final facingX = snapshot.playerFacingX;
-    final facingZ = snapshot.playerFacingZ;
     final x = snapshot.playerPosition.x * _worldScale;
     final z = snapshot.playerPosition.z * _worldScale;
-    _cameraX = x - facingX * 13.5;
-    _cameraY = 8.8;
-    _cameraZ = z - facingZ * 13.5;
-    _cameraYaw = 0;
-    _cameraPitch = 0;
-    _lookX = x + facingX * 5.2;
-    _lookY = 1.35;
-    _lookZ = z + facingZ * 5.2;
+    final forwardX = math.sin(_cameraYaw);
+    final forwardZ = math.cos(_cameraYaw);
+    final horizontalDistance = 13.5 * math.cos(_cameraPitch);
+    final ground = _groundHeight(snapshot.playerPosition);
+
+    _cameraX = x - forwardX * horizontalDistance;
+    _cameraY = ground + 1.35 + 13.5 * math.sin(_cameraPitch);
+    _cameraZ = z - forwardZ * horizontalDistance;
+    _lookX = x + forwardX * 4.4;
+    _lookY = ground + 1.35;
+    _lookZ = z + forwardZ * 4.4;
   }
 
   void _advanceCameraRig(MobaMatchSnapshot snapshot, double deltaSeconds) {
-    final facingX = snapshot.playerFacingX;
-    final facingZ = snapshot.playerFacingZ;
     final x = snapshot.playerPosition.x * _worldScale;
     final z = snapshot.playerPosition.z * _worldScale;
-    final yawCos = math.cos(_cameraYaw);
-    final yawSin = math.sin(_cameraYaw);
-    final orbitX = facingX * yawCos + facingZ * yawSin;
-    final orbitZ = facingZ * yawCos - facingX * yawSin;
-    final desiredX = x - orbitX * 13.5;
-    final desiredY = 8.8 + _cameraPitch;
-    final desiredZ = z - orbitZ * 13.5;
-    final desiredLookX = x + orbitX * 5.2;
-    final desiredLookY = 1.35 + _cameraPitch * 0.28;
-    final desiredLookZ = z + orbitZ * 5.2;
-    final blend = 1.0 - math.exp(-5.5 * deltaSeconds);
+    final forwardX = math.sin(_cameraYaw);
+    final forwardZ = math.cos(_cameraYaw);
+    final horizontalDistance = 13.5 * math.cos(_cameraPitch);
+    final ground = _groundHeight(snapshot.playerPosition);
+
+    // Camera yaw/pitch are controlled only by the right-side drag zone.
+    final desiredX = x - forwardX * horizontalDistance;
+    final desiredY = ground + 1.35 + 13.5 * math.sin(_cameraPitch);
+    final desiredZ = z - forwardZ * horizontalDistance;
+    final desiredLookX = x + forwardX * 4.4;
+    final desiredLookY = ground + 1.35;
+    final desiredLookZ = z + forwardZ * 4.4;
+    final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
     _cameraX += (desiredX - _cameraX) * blend;
     _cameraY += (desiredY - _cameraY) * blend;
@@ -133,12 +136,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   void _onSceneTick(Duration elapsed, double deltaSeconds) {
     if (!mounted) return;
-    // Joystick input is camera-relative: up moves toward the camera's
-    // look direction and right moves across the screen, even after turning.
-    final facingX = _snapshot.playerFacingX;
-    final facingZ = _snapshot.playerFacingZ;
-    final worldMoveX = _moveX * facingZ + _moveZ * facingX;
-    final worldMoveZ = -_moveX * facingX + _moveZ * facingZ;
+    // Movement is camera-relative but never feeds back into camera yaw.
+    final forwardX = math.sin(_cameraYaw);
+    final forwardZ = math.cos(_cameraYaw);
+    final rightX = math.cos(_cameraYaw);
+    final rightZ = -math.sin(_cameraYaw);
+    final worldMoveX = _moveX * rightX + _moveZ * forwardX;
+    final worldMoveZ = _moveX * rightZ + _moveZ * forwardZ;
     widget.simulation.step(
       deltaSeconds,
       moveX: worldMoveX,
@@ -168,10 +172,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     // Camera look is deliberately isolated from the left-side movement stick.
     // A drag in the central/right playfield rotates yaw and adjusts elevation.
     setState(() {
-      _cameraYaw = (_cameraYaw - details.delta.dx * 0.0065) %
-          (2 * math.pi);
-      _cameraPitch = (_cameraPitch + details.delta.dy * 0.018)
-          .clamp(-2.2, 3.4)
+      _cameraYaw =
+          (_cameraYaw + details.delta.dx * 0.008).remainder(2 * math.pi);
+      _cameraPitch = (_cameraPitch - details.delta.dy * 0.006)
+          .clamp(0.22, 0.92)
           .toDouble();
     });
   }
@@ -188,13 +192,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       };
 
   String _heroIdle(MobaHeroId hero) => switch (hero) {
-        MobaHeroId.lyra || MobaHeroId.kairo => 'Female_Idle',
-        MobaHeroId.bastion => 'Man_Idle',
+        MobaHeroId.lyra => 'HumanArmature|Female_Idle',
+        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Idle',
       };
 
   String _heroWalk(MobaHeroId hero) => switch (hero) {
-        MobaHeroId.lyra || MobaHeroId.kairo => 'Female_Walk',
-        MobaHeroId.bastion => 'Man_Walk',
+        MobaHeroId.lyra => 'HumanArmature|Female_Walk',
+        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Walk',
+      };
+
+  String _heroAttack(MobaHeroId hero) => switch (hero) {
+        MobaHeroId.lyra => 'HumanArmature|Female_Punch',
+        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Punch',
       };
 
   double _groundHeight(MobaPoint point) =>
@@ -274,11 +283,17 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         scale: vm.Vector3.all(0.82),
         animations: [
           SceneAnimationSpec(
-            snapshot.playerMoving
-                ? _heroWalk(snapshot.heroId)
-                : _heroIdle(snapshot.heroId),
-            loop: true,
-            speed: snapshot.playerMoving ? 1.05 : 0.78,
+            snapshot.playerAttackSeconds > 0
+                ? _heroAttack(snapshot.heroId)
+                : snapshot.playerMoving
+                    ? _heroWalk(snapshot.heroId)
+                    : _heroIdle(snapshot.heroId),
+            loop: snapshot.playerAttackSeconds <= 0,
+            speed: snapshot.playerAttackSeconds > 0
+                ? 1.12
+                : snapshot.playerMoving
+                    ? 1.05
+                    : 0.78,
           ),
         ],
       ),
@@ -440,10 +455,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               children: _buildSceneChildren(snapshot),
             ),
             Positioned(
-              left: viewport.maxWidth * 0.34,
-              right: 0,
-              top: 66,
-              bottom: compact ? 104 : 124,
+              left: viewport.maxWidth * 0.48,
+              right: side + 158,
+              top: compact ? 92 : 104,
+              bottom: compact ? 104 : 116,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onPanUpdate: _rotateCamera,
