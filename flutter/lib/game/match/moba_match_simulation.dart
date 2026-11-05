@@ -130,6 +130,9 @@ class MobaMinionSnapshot {
     required this.lane,
     required this.ranged,
     required this.position,
+    required this.facingX,
+    required this.facingZ,
+    required this.moving,
     required this.health,
     required this.maxHealth,
   });
@@ -139,6 +142,9 @@ class MobaMinionSnapshot {
   final MobaLane lane;
   final bool ranged;
   final MobaPoint position;
+  final double facingX;
+  final double facingZ;
+  final bool moving;
   final double health;
   final double maxHealth;
 }
@@ -150,6 +156,9 @@ class MobaBotSnapshot {
     required this.lane,
     required this.heroId,
     required this.position,
+    required this.facingX,
+    required this.facingZ,
+    required this.moving,
     required this.health,
     required this.maxHealth,
     required this.respawnSeconds,
@@ -160,6 +169,9 @@ class MobaBotSnapshot {
   final MobaLane lane;
   final MobaHeroId heroId;
   final MobaPoint position;
+  final double facingX;
+  final double facingZ;
+  final bool moving;
   final double health;
   final double maxHealth;
   final double respawnSeconds;
@@ -320,7 +332,8 @@ class _Minion {
     required this.ranged,
     required this.position,
   })  : maxHealth = ranged ? 92.0 : 145.0,
-        health = ranged ? 92.0 : 145.0;
+        health = ranged ? 92.0 : 145.0,
+        facingZ = team.forward;
 
   final int id;
   final MobaTeam team;
@@ -328,6 +341,9 @@ class _Minion {
   final bool ranged;
   final double maxHealth;
   MobaPoint position;
+  double facingX = 0;
+  double facingZ;
+  bool moving = false;
   double health;
   double attackCooldown = 0.25;
   double spawnDelay = 0.08;
@@ -342,7 +358,7 @@ class _Bot {
     required this.role,
     required this.heroId,
     required this.position,
-  });
+  }) : facingZ = team.forward;
 
   final String id;
   final MobaTeam team;
@@ -350,6 +366,9 @@ class _Bot {
   final int role;
   final MobaHeroId heroId;
   MobaPoint position;
+  double facingX = 0;
+  double facingZ;
+  bool moving = false;
   double health = 420.0;
   double attackCooldown = 0.4;
   double respawnSeconds = 0;
@@ -467,7 +486,7 @@ class MobaMatchSimulation {
         0 => MobaHeroId.bastion,
         1 => MobaHeroId.kairo,
         2 => MobaHeroId.lyra,
-        3 => MobaHeroId.lyra,
+        3 => MobaHeroId.kairo,
         _ => MobaHeroId.bastion,
       };
 
@@ -1025,12 +1044,109 @@ class MobaMatchSimulation {
   }
 
   void _moveMinion(_Minion unit, MobaPoint target, double speed, double dt) {
-    final next = unit.position.moveToward(target, speed * dt);
-    unit.position = MobaPoint(_laneX(unit.lane, next.z), next.z);
+    final before = unit.position;
+    final next = before.moveToward(target, speed * dt);
+    final constrained = MobaPoint(_laneX(unit.lane, next.z), next.z);
+    final dx = constrained.x - before.x;
+    final dz = constrained.z - before.z;
+    if (dx.abs() + dz.abs() > 0.0001) {
+      unit.facingX = dx;
+      unit.facingZ = dz;
+      unit.moving = true;
+    }
+    unit.position = constrained;
+  }
+
+  void _moveBot(_Bot bot, MobaPoint target, double speed, double dt) {
+    final dx = target.x - bot.position.x;
+    final dz = target.z - bot.position.z;
+    final distance = math.sqrt(dx * dx + dz * dz);
+    if (distance < 0.001) return;
+
+    final step = math.min(distance, speed * dt);
+    final baseAngle = math.atan2(dx, dz);
+    const offsets = <double>[0, 0.62, -0.62, 1.15, -1.15, math.pi / 2, -math.pi / 2];
+    MobaPoint? best;
+    var bestDistance = double.infinity;
+
+    for (final offset in offsets) {
+      final angle = baseAngle + offset;
+      final candidate = MobaPoint(
+        bot.position.x + math.sin(angle) * step,
+        bot.position.z + math.cos(angle) * step,
+        elevation: bot.position.elevation,
+      );
+      if (!ArenaWorldCatalog.isWalkable(
+        candidate.x,
+        candidate.z,
+        elevation: candidate.elevation,
+      )) {
+        continue;
+      }
+      final remaining = candidate.distanceTo(target);
+      if (remaining < bestDistance) {
+        best = candidate;
+        bestDistance = remaining;
+      }
+    }
+
+    // If the direct sweep is blocked, permit axis sliding around the obstacle.
+    if (best == null) {
+      final candidates = <MobaPoint>[
+        MobaPoint(bot.position.x + dx.sign * step, bot.position.z,
+            elevation: bot.position.elevation),
+        MobaPoint(bot.position.x, bot.position.z + dz.sign * step,
+            elevation: bot.position.elevation),
+      ];
+      for (final candidate in candidates) {
+        if (ArenaWorldCatalog.isWalkable(
+          candidate.x,
+          candidate.z,
+          elevation: candidate.elevation,
+        )) {
+          final remaining = candidate.distanceTo(target);
+          if (remaining < bestDistance) {
+            best = candidate;
+            bestDistance = remaining;
+          }
+        }
+      }
+    }
+
+    if (best == null) return;
+    final movedX = best.x - bot.position.x;
+    final movedZ = best.z - bot.position.z;
+    bot.position = best;
+    if (movedX.abs() + movedZ.abs() > 0.0001) {
+      bot.facingX = movedX;
+      bot.facingZ = movedZ;
+      bot.moving = true;
+    }
+  }
+
+  MobaPoint _botRouteWaypoint(_Bot bot, MobaPoint laneGoal) {
+    // The middle role rotates through the central relay instead of remaining
+    // locked to one straight lane. Side roles enter through real flank corridors.
+    if (bot.role == 2 &&
+        _objectiveOwner != bot.team &&
+        bot.position.distanceTo(_objectivePosition) > objectiveRadius + 2.0) {
+      return _objectivePosition;
+    }
+
+    if (bot.role == 3 || bot.role == 4) {
+      final side = bot.lane == MobaLane.top ? -1.0 : 1.0;
+      final waypoint = MobaPoint(
+        side * (bot.role == 3 ? 56.0 : 68.0),
+        bot.team.homeZ + bot.team.forward * (bot.role == 3 ? 22.0 : 12.0),
+      );
+      if (bot.position.distanceTo(waypoint) > 3.2) return waypoint;
+    }
+    return laneGoal;
   }
 
   void _updateBots(double dt) {
     for (final bot in _bots) {
+      bot.moving = false;
       if (bot.respawnSeconds > 0) {
         bot.respawnSeconds = math.max(0, bot.respawnSeconds - dt);
         if (bot.respawnSeconds <= 0) {
@@ -1039,6 +1155,8 @@ class MobaMatchSimulation {
             _laneX(bot.lane, bot.team.homeZ - bot.team.forward * 2),
             bot.team.homeZ - bot.team.forward * 2,
           );
+          bot.facingX = 0;
+          bot.facingZ = bot.team.forward;
         }
         continue;
       }
@@ -1058,7 +1176,7 @@ class MobaMatchSimulation {
           : bot.position.distanceTo(enemyHero.position);
       if (playerDistance <= 5.8 && playerDistance < botDistance) {
         if (playerDistance > 2.25) {
-          bot.position = bot.position.moveToward(_playerPosition, 3.15 * dt);
+          _moveBot(bot, _playerPosition, 3.15, dt);
         } else if (bot.attackCooldown <= 0) {
           _damagePlayer(10);
           bot.attackCooldown = 1.05;
@@ -1068,7 +1186,7 @@ class MobaMatchSimulation {
       if (enemyHero != null) {
         final distance = bot.position.distanceTo(enemyHero.position);
         if (distance > 2.25) {
-          bot.position = bot.position.moveToward(enemyHero.position, 3.15 * dt);
+          _moveBot(bot, enemyHero.position, 3.15, dt);
         } else if (bot.attackCooldown <= 0) {
           _damageBot(enemyHero, bot.team, 15);
           bot.attackCooldown = 1.0;
@@ -1085,7 +1203,7 @@ class MobaMatchSimulation {
       if (enemyMinion != null) {
         final distance = bot.position.distanceTo(enemyMinion.position);
         if (distance > 2.2) {
-          bot.position = bot.position.moveToward(enemyMinion.position, 3.15 * dt);
+          _moveBot(bot, enemyMinion.position, 3.15, dt);
         } else if (bot.attackCooldown <= 0) {
           _damageMinion(enemyMinion, bot.team, 22);
           bot.attackCooldown = 0.94;
@@ -1102,7 +1220,8 @@ class MobaMatchSimulation {
           (_laneOpen(bot.team.enemy, bot.lane)
               ? _corePosition(bot.team.enemy)
               : MobaPoint(_laneX(bot.lane, targetZ), targetZ));
-      bot.position = bot.position.moveToward(goal, 2.9 * dt);
+      final routeGoal = _botRouteWaypoint(bot, goal);
+      _moveBot(bot, routeGoal, 2.9, dt);
 
       if (tower != null &&
           bot.position.distanceTo(tower.position) <= 4.4 &&
@@ -1437,6 +1556,9 @@ class MobaMatchSimulation {
             lane: unit.lane,
             ranged: unit.ranged,
             position: unit.position,
+            facingX: unit.facingX,
+            facingZ: unit.facingZ,
+            moving: unit.moving,
             health: unit.health,
             maxHealth: unit.maxHealth,
           ),
@@ -1450,6 +1572,9 @@ class MobaMatchSimulation {
             lane: bot.lane,
             heroId: bot.heroId,
             position: bot.position,
+            facingX: bot.facingX,
+            facingZ: bot.facingZ,
+            moving: bot.moving,
             health: bot.health,
             maxHealth: _Bot.maxHealth,
             respawnSeconds: bot.respawnSeconds,
