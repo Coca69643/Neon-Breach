@@ -57,9 +57,7 @@ class ArenaHeroPreview extends StatelessWidget {
             animations: [
               SceneAnimationSpec(model.idle, loop: true, speed: 1),
             ],
-            error: (context, error) => SceneNode(
-              children: const [],
-            ),
+            onLoaded: (_) => debugPrint('Hero GLB loaded: $heroId'),
           ),
         ],
       ),
