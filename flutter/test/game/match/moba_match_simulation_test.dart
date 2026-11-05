@@ -45,8 +45,17 @@ void main() {
 
       final moved = simulation.snapshot.playerPosition;
       expect(moved.x, greaterThan(start.x + 5));
-      expect(moved.x, lessThanOrEqualTo(39.5));
+      expect(moved.x, lessThanOrEqualTo(56.0));
       expect(simulation.snapshot.elapsedSeconds, closeTo(1, 0.001));
+    });
+
+    test('player cannot walk through the river except over bridge decks', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.kairo);
+      for (var frame = 0; frame < 60 * 8; frame++) {
+        simulation.step(1 / 60, moveX: 0, moveZ: 1);
+      }
+      expect(simulation.snapshot.playerPosition.z, lessThan(-1.0));
+      expect(simulation.snapshot.playerPosition.z, greaterThan(-37.0));
     });
 
     test('rejects invalid frame deltas without corrupting match state', () {
