@@ -227,7 +227,9 @@ def main() -> None:
 
     # NPC actors must be real, textured GLBs with the locomotion clips used by
     # the match renderer. This catches missing raw assets before release.
-    required_npc_clips = {"idle", "walk", "sprint"}
+    required_npc_clips = {
+        "idle", "walk", "sprint", "attack-melee-right", "holding-both-shoot",
+    }
     for filename, payload in npc_raw.items():
         require(len(payload) >= 20, f"{filename} is truncated.")
         magic, glb_version, declared_length, json_length, json_type = (
