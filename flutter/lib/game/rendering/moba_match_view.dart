@@ -310,6 +310,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           position: _worldPosition(tower.position),
           scale: vm.Vector3.all(4.8),
         ),
+      for (final cover in snapshot.covers)
+        if (!cover.isDestroyed) _buildCover(cover),
       for (final bot in snapshot.bots)
         if (bot.respawnSeconds <= 0) _buildBot(bot),
       for (final minion in snapshot.minions) _buildMinion(minion),
@@ -497,6 +499,19 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         placement.yaw,
       ),
       scale: vm.Vector3.all(placement.scale),
+    );
+  }
+
+  Widget _buildCover(MobaCoverSnapshot cover) {
+    final isFence = cover.variant == 'fence';
+    return SceneModel(
+      isFence
+          ? 'assets/world/city/construction_fence.glb'
+          : 'assets/world/city/construction_barrier.glb',
+      key: ValueKey('match-cover-${cover.id}'),
+      name: 'destructible_cover_${cover.id}',
+      position: _worldPosition(cover.position, heightOffset: 0.025),
+      scale: vm.Vector3.all(isFence ? 1.05 : 1.35),
     );
   }
 
