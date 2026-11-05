@@ -66,11 +66,11 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
             maxFrameRate: 30,
             cameraBuilder: (elapsed) {
               final seconds = elapsed.inMicroseconds / 1000000.0;
-              final drift = math.sin(seconds * 0.075) * 1.2;
+              final drift = math.sin(seconds * 0.055) * 0.72;
               return PerspectiveCamera(
-                fovRadiansY: 36 * math.pi / 180,
-                position: vm.Vector3(drift, 52, 66),
-                target: vm.Vector3(0, 0.25, 0),
+                fovRadiansY: 42 * math.pi / 180,
+                position: vm.Vector3(drift, 61, 67),
+                target: vm.Vector3(0, 0.1, 0),
                 fovNear: 0.1,
                 fovFar: 220,
               );
@@ -173,7 +173,7 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        'Terreno contínuo • Rio orgânico • Vegetação CC0',
+                        '3 rotas • Rio diagonal • Bases opostas • Selva',
                         style: TextStyle(
                           color: Color(0xFFD5DFDE),
                           fontSize: 12,
