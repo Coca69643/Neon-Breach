@@ -271,7 +271,7 @@ class _ArenaScreen extends StatelessWidget {
                         _HubShortcut(
                           label: 'DESAFIOS',
                           icon: Icons.flag_outlined,
-                          width: 116 * scale,
+                          width: 132 * scale,
                           height: 46 * scale,
                           locked: true,
                         ),
@@ -284,7 +284,7 @@ class _ArenaScreen extends StatelessWidget {
                     child: _HubShortcut(
                       label: 'MERCADOR',
                       icon: Icons.storefront_outlined,
-                      width: 126 * scale,
+                      width: 142 * scale,
                       height: 49 * scale,
                       locked: true,
                     ),
@@ -501,6 +501,77 @@ class _ArenaScreen extends StatelessWidget {
       description: snapshot.errorMessage ?? 'Erro não identificado.',
       actionLabel: 'TENTAR NOVAMENTE',
       onAction: onRetry,
+    );
+  }
+}
+
+class _HeroChoiceTile extends StatelessWidget {
+  const _HeroChoiceTile({
+    required this.label,
+    required this.selected,
+    required this.height,
+    required this.onTap,
+  });
+
+  final String label;
+  final bool selected;
+  final double height;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = selected
+        ? const Color(0xFF79D6BD)
+        : const Color(0xFF46545E);
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(7),
+      side: BorderSide(
+        color: accent.withValues(alpha: selected ? 0.95 : 0.58),
+        width: selected ? 1.6 : 1,
+      ),
+    );
+
+    return Material(
+      color: selected
+          ? const Color(0x263C8D7C)
+          : const Color(0x141E2A31),
+      shape: shape,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: shape,
+        child: SizedBox(
+          width: double.infinity,
+          height: height,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    label,
+                    style: TextStyle(
+                      color: selected
+                          ? const Color(0xFF9BE4D1)
+                          : const Color(0xFFE0E6E8),
+                      fontSize: 15,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ),
+                Icon(
+                  selected ? Icons.check_circle : Icons.circle_outlined,
+                  size: 18,
+                  color: selected
+                      ? const Color(0xFF79D6BD)
+                      : const Color(0xFF71808B),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
