@@ -21,26 +21,42 @@ FLUTTER_ASSETS = ROOT / "flutter" / "assets" / "world"
 NATURE_SOURCE = ROOT / "app/src/main/assets/world/nature"
 TERRAIN_SOURCE = ROOT / "app/src/main/assets/world/terrain"
 WORLD_SCALE = 1.15
-HALF_X = 44.0
-HALF_Z = 29.0
-GRID_X = 144
-GRID_Z = 96
+# The old 88 x 58 oval is replaced by a 120 x 84 super-rectangle.
+# Grid density stays close to the previous mobile vertex density.
+HALF_X = 60.0
+HALF_Z = 42.0
+GRID_X = 180
+GRID_Z = 126
+FOOTPRINT_EXPONENT = 5.2
 
 RIVER = [
-    (-43.0, -13.0, 1.05), (-35.0, -10.5, 1.25),
-    (-27.0, -7.0, 1.50), (-19.0, -2.5, 1.72),
-    (-11.0, 3.0, 1.90), (-3.0, 9.0, 2.05),
-    (5.0, 13.5, 2.10), (13.0, 13.0, 1.95),
-    (21.0, 8.0, 1.75), (29.0, 1.0, 1.55),
-    (37.0, -6.0, 1.30), (43.0, -11.0, 1.05),
+    (-59.0, -17.0, 1.75), (-48.0, -13.0, 2.05),
+    (-36.0, -8.0, 2.35), (-24.0, -1.0, 2.65),
+    (-12.0, 7.0, 2.95), (0.0, 15.0, 3.15),
+    (12.0, 17.0, 3.10), (24.0, 12.5, 2.85),
+    (36.0, 4.5, 2.55), (48.0, -6.5, 2.15),
+    (59.0, -14.0, 1.75),
 ]
 LANES = [
-    [(-15.0, -30), (-15.5, -22), (-14.8, -14), (-15.2, -6), (-14.7, 2),
-     (-15.1, 10), (-14.8, 18), (-15.0, 30)],
-    [(0.0, -30), (0.6, -22), (-0.5, -14), (0.2, -6), (-0.2, 2),
-     (0.4, 10), (-0.4, 18), (0.0, 30)],
-    [(15.0, -30), (15.5, -22), (14.8, -14), (15.2, -6), (14.7, 2),
-     (15.1, 10), (14.8, 18), (15.0, 30)],
+    [(-22.5, -40), (-22.9, -30), (-22.2, -20), (-22.7, -10),
+     (-22.1, 0), (-22.6, 10), (-22.2, 20), (-22.5, 30), (-22.5, 40)],
+    [(0.0, -40), (0.5, -30), (-0.4, -20), (0.3, -10),
+     (-0.3, 0), (0.4, 10), (-0.4, 20), (0.3, 30), (0.0, 40)],
+    [(22.5, -40), (22.9, -30), (22.2, -20), (22.7, -10),
+     (22.1, 0), (22.6, 10), (22.2, 20), (22.5, 30), (22.5, 40)],
+]
+
+# Secondary traversable flank paths create side approaches and open courtyards;
+# they are not jungle camps and carry no survival/resource loop.
+ACCESS_PATHS = [
+    [(-22.5, -33), (-31, -34), (-40, -31), (-47, -25), (-48, -19),
+     (-43, -15), (-34, -15), (-22.5, -18)],
+    [(22.5, -33), (31, -34), (40, -31), (47, -25), (48, -19),
+     (43, -15), (34, -15), (22.5, -18)],
+    [(-22.5, 33), (-31, 34), (-40, 31), (-47, 25), (-48, 19),
+     (-43, 15), (-34, 15), (-22.5, 18)],
+    [(22.5, 33), (31, 34), (40, 31), (47, 25), (48, 19),
+     (43, 15), (34, 15), (22.5, 18)],
 ]
 
 
@@ -72,38 +88,40 @@ def river_half_width(x: float) -> float:
 
 
 def height(x: float, z: float) -> float:
-    west_ridge = 2.35 * math.exp(-((x + 24.0) ** 2) / 44.0) * (
-        0.58 + 0.42 * math.cos(z * 0.075)
+    # Two long side ridges frame the lanes without enclosing the side routes.
+    west_ridge = 2.65 * math.exp(-((x + 38.0) ** 2) / 92.0) * (
+        0.64 + 0.36 * math.cos(z * 0.052)
     )
-    east_ridge = 2.18 * math.exp(-((x - 24.0) ** 2) / 48.0) * (
-        0.58 + 0.42 * math.cos(z * 0.07)
+    east_ridge = 2.45 * math.exp(-((x - 38.0) ** 2) / 98.0) * (
+        0.64 + 0.36 * math.cos(z * 0.049)
     )
-    south_highland = 1.55 * math.exp(-((z + 27.0) ** 2) / 36.0) * math.exp(
-        -(x * x) / 420.0
+    south_highland = 1.35 * math.exp(-((z + 36.0) ** 2) / 68.0) * math.exp(
+        -(x * x) / 860.0
     )
-    north_highland = 1.55 * math.exp(-((z - 27.0) ** 2) / 36.0) * math.exp(
-        -(x * x) / 420.0
+    north_highland = 1.45 * math.exp(-((z - 36.0) ** 2) / 72.0) * math.exp(
+        -(x * x) / 900.0
     )
-    jungle_knolls = 0.78 * math.exp(-((abs(x) - 8.5) ** 2) / 8.5) * math.exp(
-        -((abs(z) - 14.0) ** 2) / 42.0
+    flank_mounds = 0.58 * math.exp(-((abs(x) - 31.5) ** 2) / 20.0) * math.exp(
+        -((abs(z) - 21.0) ** 2) / 90.0
     )
     river_distance = abs(z - river_center_z(x))
     river_width = river_half_width(x)
-    river_bed = -0.76 * math.exp(
-        -(river_distance * river_distance) / (river_width * river_width * 0.82)
+    river_bed = -0.92 * math.exp(
+        -(river_distance * river_distance) / (river_width * river_width * 0.92)
     )
-    bank_distance = river_distance - (river_width + 0.66)
-    river_bank = 0.48 * math.exp(-(bank_distance * bank_distance) / 2.4)
+    bank_distance = river_distance - (river_width + 0.82)
+    river_bank = 0.54 * math.exp(-(bank_distance * bank_distance) / 3.2)
     rolling = (
-        0.26 * math.sin(x * 0.18) * math.cos(z * 0.14)
-        + 0.16 * math.sin((x + z) * 0.29)
+        0.34 * math.sin(x * 0.12) * math.cos(z * 0.105)
+        + 0.22 * math.sin((x + z) * 0.18)
+        + 0.12 * math.cos((x - z) * 0.24)
     )
-    shelf = 0.52 * math.exp(-((abs(x) - 18.5) ** 2) / 5.5) * math.exp(
-        -((abs(z) - 13.0) ** 2) / 110.0
+    terrace = 0.34 * math.exp(-((abs(x) - 23.0) ** 2) / 18.0) * math.exp(
+        -((abs(z) - 11.0) ** 2) / 220.0
     )
     return (
         rolling + west_ridge + east_ridge + south_highland + north_highland
-        + jungle_knolls + river_bed + river_bank + shelf
+        + flank_mounds + river_bed + river_bank + terrace
     )
 
 
@@ -126,7 +144,7 @@ def edge_wobble(angle: float) -> float:
 
 
 def inside_island(x: float, z: float) -> bool:
-    exponent = 9.0
+    exponent = FOOTPRINT_EXPONENT
     angle = math.atan2(z / HALF_Z, x / HALF_X)
     edge = edge_wobble(angle)
     extent = (abs(x) / HALF_X) ** exponent + (abs(z) / HALF_Z) ** exponent
@@ -384,17 +402,22 @@ def build_terrain_glb(output: Path) -> None:
 
             river_distance = abs(cz - river_center_z(cx))
             river_width = river_half_width(cx)
-            if river_distance < river_width + 0.82 and abs(cx) < 34.2:
+            if river_distance < river_width + 1.0 and abs(cx) < 57.0:
                 continue
 
             nx, _, nz = normal_at(cx, cz)
             slope = math.sqrt(nx * nx + nz * nz)
             noise = math.sin(cx * 0.43 + cz * 0.17) + math.cos(cz * 0.31 - cx * 0.12)
             lane_dist = lane_distance(cx, cz)
+            access_dist = min(
+                point_segment_distance(cx, cz, path[i], path[i + 1])
+                for path in ACCESS_PATHS
+                for i in range(len(path) - 1)
+            )
 
-            if slope > 0.30 or (abs(cx) > 18 and abs(cz) < 23 and noise > 0.25):
+            if slope > 0.33 or (abs(cx) > 32 and abs(cz) < 31 and noise > 0.55):
                 material = "rock"
-            elif lane_dist < 2.25 + 0.22 * noise:
+            elif lane_dist < 3.0 + 0.24 * noise or access_dist < 1.75:
                 material = "soil"
             elif (
                 river_distance < river_width + 5.5 and noise < 0.75
@@ -418,7 +441,7 @@ def build_terrain_glb(output: Path) -> None:
         a1 = 2.0 * math.pi * (i + 1) / skirt_segments
 
         def edge_point(angle: float) -> tuple[float, float, float]:
-            exponent = 4.2
+            exponent = FOOTPRINT_EXPONENT
             wobble = edge_wobble(angle)
             cosine, sine = math.cos(angle), math.sin(angle)
             norm = (abs(cosine) ** exponent + abs(sine) ** exponent) ** (1.0 / exponent)
@@ -517,8 +540,8 @@ def build_terrain_glb(output: Path) -> None:
                 add_up_triangle(group_name, prev[3], cur[3], cur[2])
             previous[group_name] = tuple(current_indices)
 
-    # Three crossings connect the lanes across the diagonal river.
-    for lane_x in (-15.0, 0.0, 15.0):
+    # Three wide, walkable crossings connect each route across the river.
+    for lane_x in (-22.5, 0.0, 22.5):
         river_z = river_center_z(lane_x)
         river_width = river_half_width(lane_x)
         bank_a = height(lane_x, river_z - river_width - 1.25)
@@ -531,19 +554,16 @@ def build_terrain_glb(output: Path) -> None:
         add_box("stone", lane_x + 2.02, deck_y + 0.34, river_z,
                 0.28, 0.55, deck_length)
 
-    # Opposing base compounds at the north and south ends.
-    for base_z, accent_group in ((-25.2, "accent_blue"), (25.2, "accent_gold")):
+    # Opposing base compounds sit farther apart at the expanded north/south ends.
+    for base_z, accent_group in ((-35.5, "accent_blue"), (35.5, "accent_gold")):
         base_y = height(0.0, base_z) + 0.24
         add_box("stone", 0.0, base_y, base_z, 14.0, 0.52, 10.5)
         add_box("stone", 0.0, base_y + 0.52, base_z, 8.6, 0.42, 6.8, math.pi / 4)
         add_box("stone", 0.0, base_y + 1.18, base_z, 5.2, 0.92, 4.5)
         add_box(accent_group, 0.0, base_y + 1.95, base_z, 2.0, 1.1, 2.0)
 
-    # Jungle objective clearings.
-    for camp_x, camp_z in ((-8.4, 15.8), (8.4, -15.8)):
-        camp_y = height(camp_x, camp_z) + 0.18
-        add_box("stone", camp_x, camp_y, camp_z, 5.8, 0.32, 5.8, math.pi / 4)
-        add_box("accent_blue", camp_x, camp_y + 0.22, camp_z, 1.15, 0.2, 1.15)
+    # Flank approaches remain open and traversable. They are secondary
+    # routes through the side courtyards, not jungle camps/objectives.
 
     # Pack GPU buffers and GLB accessors.
     binary = bytearray()
@@ -713,10 +733,12 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "wide three-lane MOBA arena with S-river, opposing bases and jungle pockets",
-            "mapShape": "wide-clipped-rectangle-organic",
+            "layout": "expanded 120x84 rounded-rectangle MOBA arena with three lanes, side approaches and diagonal S-river",
+            "mapShape": "expanded-rounded-rectangle-superellipse",
             "laneCount": 3,
             "bridgeCount": 3,
+            "sideApproachCount": 4,
+            "walkableSideCourtyards": True,
             "baseCount": 2,
             "dynamicShadows": False,
         },
