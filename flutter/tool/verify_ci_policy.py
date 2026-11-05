@@ -33,7 +33,8 @@ def main() -> None:
             "ARM64 release build must run in CI.")
     require("tool/verify_release_apk.py" in workflow,
             "release APK verifier must run in CI.")
-    require("apksigner verify --verbose --print-certs" in workflow,
+    require("verify --verbose --print-certs" in workflow and
+            "APKSIGNER=" in workflow,
             "APK signature must be verified in CI.")
 
     signing_step = workflow.split("Load persistent Project Arena signing key", 1)
