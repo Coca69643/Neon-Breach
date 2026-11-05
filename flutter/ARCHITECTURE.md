@@ -51,7 +51,7 @@ A revisão 1.7.5 substitui a ilha medieval por um distrito urbano de 180 × 140 
 
 A câmera usa pointer tracking independente na zona central/direita. O joystick esquerdo altera apenas o vetor de movimento; o ponteiro direito altera yaw e pitch. Follow distance 9.4, look-ahead 3.0, pitch inicial 0.34 rad e FOV vertical 49°. Estes são parâmetros de configuração, não medições de enquadramento ou desempenho.
 
-A auditoria de Kairo confirmou que o GLB legado na branch antiga continha clipes Female. O pipeline atual gera Kairo a partir do rig masculino de Bastion, exige Man_Idle/Man_Walk/Man_SwordSlash e o verificador inspeciona o GLB efetivamente empacotado no APK. O seletor e a partida usam Man_Idle/Man_Walk para Kairo. A inspeção visual final do modelo ainda depende de execução no Realme C53.
+A auditoria de Kairo confirmou que o GLB legado na branch antiga continha clipes Female. O pipeline agora baixa um segundo modelo masculino distinto do Quaternius Animated Men Pack (Man-fjHyMd5Wxw, CC0), aplica paleta própria, exige Man_Idle/Man_Walk/Man_SwordSlash e o verificador inspeciona o GLB efetivamente empacotado no APK. O seletor e a partida usam Man_Idle/Man_Walk para Kairo. A inspeção visual final do modelo ainda depende de execução no Realme C53.
 
 O ataque básico agora aciona o clipe SwordSlash e usa alcance/intervalo específicos por herói. Ainda falta integrar armas visíveis, acopladas ao rig, e feedback de impacto/seleção de alvo mais claro. Não anunciar o combate como finalizado até validar o modelo equipado e a resposta no aparelho.
 
