@@ -176,6 +176,31 @@ abstract final class ArenaWorldCatalog {
     return nearest;
   }
 
+  static bool _insideBuildingWall(double x, double z) {
+    const buildings = <(double, double)>[
+      (-39, -20), (39, -20), (-39, 20), (39, 20),
+    ];
+    for (final building in buildings) {
+      final dx = (x - building.$1).abs();
+      final dz = (z - building.$2).abs();
+      // Rear wall and side walls. The south facade has a 3.2-unit doorway.
+      if (dx <= 6.0 && (dz - 4.3).abs() <= 0.42) {
+        final southDoor = z < building.$2 && dx <= 1.6;
+        if (!southDoor) return true;
+      }
+      if (dz <= 4.5 && (dx - 5.8).abs() <= 0.42) return true;
+      // Service counter and side shelving inside each room.
+      if (dx <= 1.95 && (z - (building.$2 + 1.35)).abs() <= 0.52) {
+        return true;
+      }
+      if ((dx - 4.35).abs() <= 0.48 &&
+          (z - (building.$2 + 2.1)).abs() <= 1.35) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   static bool _insideTowerFootprint(double x, double z) {
     const lanes = <double>[-22.5, 0.0, 22.5];
     const towerRows = <double>[-26.0, -18.0, -10.0, 10.0, 18.0, 26.0];
@@ -211,7 +236,9 @@ abstract final class ArenaWorldCatalog {
       return false;
     }
 
-    if (_insideTowerFootprint(x, z)) return false;
+    if (_insideTowerFootprint(x, z) || _insideBuildingWall(x, z)) {
+      return false;
+    }
 
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
