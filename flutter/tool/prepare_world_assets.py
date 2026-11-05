@@ -20,43 +20,42 @@ ROOT = Path(__file__).resolve().parents[2]
 FLUTTER_ASSETS = ROOT / "flutter" / "assets" / "world"
 NATURE_SOURCE = ROOT / "app/src/main/assets/world/nature"
 TERRAIN_SOURCE = ROOT / "app/src/main/assets/world/terrain"
-WORLD_SCALE = 1.15
-# The old 88 x 58 oval is replaced by a 120 x 84 super-rectangle.
-# Grid density stays close to the previous mobile vertex density.
-HALF_X = 60.0
-HALF_Z = 42.0
+WORLD_SCALE = 1.0
+# A large urban combat district: 180 x 140 world units.
+HALF_X = 90.0
+HALF_Z = 70.0
 GRID_X = 180
-GRID_Z = 126
-FOOTPRINT_EXPONENT = 5.2
+GRID_Z = 140
+FOOTPRINT_EXPONENT = 8.5
 
+# A narrow east-west city canal separates districts; all three main avenues
+# cross it at raised pedestrian/vehicle crossings.
 RIVER = [
-    (-59.0, -17.0, 1.75), (-48.0, -13.0, 2.05),
-    (-36.0, -8.0, 2.35), (-24.0, -1.0, 2.65),
-    (-12.0, 7.0, 2.95), (0.0, 15.0, 3.15),
-    (12.0, 17.0, 3.10), (24.0, 12.5, 2.85),
-    (36.0, 4.5, 2.55), (48.0, -6.5, 2.15),
-    (59.0, -14.0, 1.75),
+    (-90.0, 0.0, 1.55), (-60.0, 0.2, 1.85),
+    (-30.0, -0.15, 2.05), (0.0, 0.1, 2.15),
+    (30.0, -0.1, 2.05), (60.0, 0.15, 1.85),
+    (90.0, 0.0, 1.55),
 ]
 LANES = [
-    [(-22.5, -40), (-22.9, -30), (-22.2, -20), (-22.7, -10),
-     (-22.1, 0), (-22.6, 10), (-22.2, 20), (-22.5, 30), (-22.5, 40)],
-    [(0.0, -40), (0.5, -30), (-0.4, -20), (0.3, -10),
-     (-0.3, 0), (0.4, 10), (-0.4, 20), (0.3, 30), (0.0, 40)],
-    [(22.5, -40), (22.9, -30), (22.2, -20), (22.7, -10),
-     (22.1, 0), (22.6, 10), (22.2, 20), (22.5, 30), (22.5, 40)],
+    [(-36.0, -70), (-36.5, -52), (-35.8, -35), (-36.2, -18),
+     (-35.8, 0), (-36.2, 18), (-35.8, 35), (-36.5, 52), (-36.0, 70)],
+    [(0.0, -70), (0.4, -52), (-0.3, -35), (0.3, -18),
+     (-0.2, 0), (0.3, 18), (-0.3, 35), (0.4, 52), (0.0, 70)],
+    [(36.0, -70), (36.5, -52), (35.8, -35), (36.2, -18),
+     (35.8, 0), (36.2, 18), (35.8, 35), (36.5, 52), (36.0, 70)],
 ]
 
-# Secondary traversable flank paths create side approaches and open courtyards;
-# they are not jungle camps and carry no survival/resource loop.
+# District connectors form real alternate routes between the avenues and
+# the four ground-floor interiors; they are navigation paths, not resource loops.
 ACCESS_PATHS = [
-    [(-22.5, -33), (-31, -34), (-40, -31), (-47, -25), (-48, -19),
-     (-43, -15), (-34, -15), (-22.5, -18)],
-    [(22.5, -33), (31, -34), (40, -31), (47, -25), (48, -19),
-     (43, -15), (34, -15), (22.5, -18)],
-    [(-22.5, 33), (-31, 34), (-40, 31), (-47, 25), (-48, 19),
-     (-43, 15), (-34, 15), (-22.5, 18)],
-    [(22.5, 33), (31, 34), (40, 31), (47, 25), (48, 19),
-     (43, 15), (34, 15), (22.5, 18)],
+    [(-36, -36), (-46, -36), (-56, -36), (-64, -36)],
+    [(36, -36), (46, -36), (56, -36), (64, -36)],
+    [(-36, 36), (-46, 36), (-56, 36), (-64, 36)],
+    [(36, 36), (46, 36), (56, 36), (64, 36)],
+    [(-64, -36), (-70, -26), (-70, -12), (-56, -8), (-36, -8)],
+    [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
+    [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
+    [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
 ]
 
 
@@ -88,41 +87,24 @@ def river_half_width(x: float) -> float:
 
 
 def height(x: float, z: float) -> float:
-    # Two long side ridges frame the lanes without enclosing the side routes.
-    west_ridge = 2.65 * math.exp(-((x + 38.0) ** 2) / 92.0) * (
-        0.64 + 0.36 * math.cos(z * 0.052)
-    )
-    east_ridge = 2.45 * math.exp(-((x - 38.0) ** 2) / 98.0) * (
-        0.64 + 0.36 * math.cos(z * 0.049)
-    )
-    south_highland = 1.35 * math.exp(-((z + 36.0) ** 2) / 68.0) * math.exp(
-        -(x * x) / 860.0
-    )
-    north_highland = 1.45 * math.exp(-((z - 36.0) ** 2) / 72.0) * math.exp(
-        -(x * x) / 900.0
-    )
-    flank_mounds = 0.58 * math.exp(-((abs(x) - 31.5) ** 2) / 20.0) * math.exp(
-        -((abs(z) - 21.0) ** 2) / 90.0
+    # Broad urban grade with shallow drainage to the canal; no island cliffs.
+    rolling = (
+        0.045 * math.sin(x * 0.085) * math.cos(z * 0.072)
+        + 0.028 * math.sin((x + z) * 0.12)
+        + 0.018 * math.cos((x - z) * 0.16)
     )
     river_distance = abs(z - river_center_z(x))
     river_width = river_half_width(x)
-    river_bed = -0.92 * math.exp(
-        -(river_distance * river_distance) / (river_width * river_width * 0.92)
+    canal_bed = -0.42 * math.exp(
+        -(river_distance * river_distance) / (river_width * river_width * 1.8)
     )
-    bank_distance = river_distance - (river_width + 0.82)
-    river_bank = 0.54 * math.exp(-(bank_distance * bank_distance) / 3.2)
-    rolling = (
-        0.34 * math.sin(x * 0.12) * math.cos(z * 0.105)
-        + 0.22 * math.sin((x + z) * 0.18)
-        + 0.12 * math.cos((x - z) * 0.24)
+    curb_bank = 0.12 * math.exp(
+        -((river_distance - river_width - 0.75) ** 2) / 2.8
     )
-    terrace = 0.34 * math.exp(-((abs(x) - 23.0) ** 2) / 18.0) * math.exp(
-        -((abs(z) - 11.0) ** 2) / 220.0
+    road_drain = -0.035 * math.exp(
+        -(lane_distance(x, z) ** 2) / 9.0
     )
-    return (
-        rolling + west_ridge + east_ridge + south_highland + north_highland
-        + flank_mounds + river_bed + river_bank + terrace
-    )
+    return rolling + canal_bed + curb_bank + road_drain
 
 
 def normal_at(x: float, z: float) -> tuple[float, float, float]:
@@ -415,14 +397,12 @@ def build_terrain_glb(output: Path) -> None:
                 for i in range(len(path) - 1)
             )
 
-            if lane_dist < 3.0 + 0.24 * noise or access_dist < 1.75:
+            if lane_dist < 4.8 or access_dist < 3.0:
                 material = "soil"
-            elif slope > 0.33 or (abs(cx) > 32 and abs(cz) < 31 and noise > 0.55):
+            elif river_distance < river_width + 2.8:
                 material = "rock"
             elif (
-                river_distance < river_width + 5.5 and noise < 0.75
-            ) or (
-                math.sin(cx * 0.21 - cz * 0.33) + math.cos(cx * 0.37 + cz * 0.28) < -0.86
+                math.sin(cx * 0.11 - cz * 0.17) + math.cos(cx * 0.19 + cz * 0.13) < -0.55
             ):
                 material = "moss"
             else:
@@ -541,7 +521,7 @@ def build_terrain_glb(output: Path) -> None:
             previous[group_name] = tuple(current_indices)
 
     # Three wide, walkable crossings connect each route across the river.
-    for lane_x in (-22.5, 0.0, 22.5):
+    for lane_x in (-36.0, 0.0, 36.0):
         river_z = river_center_z(lane_x)
         river_width = river_half_width(lane_x)
         bank_a = height(lane_x, river_z - river_width - 1.25)
@@ -555,45 +535,17 @@ def build_terrain_glb(output: Path) -> None:
                 0.28, 0.55, deck_length)
 
     # Opposing base compounds sit farther apart at the expanded north/south ends.
-    for base_z, accent_group in ((-35.5, "accent_blue"), (35.5, "accent_gold")):
+    for base_z, accent_group in ((-63.0, "accent_blue"), (63.0, "accent_gold")):
         base_y = height(0.0, base_z) + 0.24
-        add_box("stone", 0.0, base_y, base_z, 14.0, 0.52, 10.5)
-        add_box("stone", 0.0, base_y + 0.52, base_z, 8.6, 0.42, 6.8, math.pi / 4)
-        add_box("stone", 0.0, base_y + 1.18, base_z, 5.2, 0.92, 4.5)
-        add_box(accent_group, 0.0, base_y + 1.95, base_z, 2.0, 1.1, 2.0)
+        add_box("stone", 0.0, base_y, base_z, 18.0, 0.28, 13.0)
+        add_box("stone", 0.0, base_y + 0.2, base_z, 12.0, 0.18, 8.0)
+        add_box(accent_group, 0.0, base_y + 0.55, base_z, 2.4, 0.85, 2.4)
 
     # Flank approaches remain open and traversable. They are secondary
     # routes through the side courtyards, not jungle camps/objectives.
 
-    # Four enterable urban service buildings replace empty medieval clearings.
-    # The roofs stay open in this first gameplay pass so the player and camera
-    # can read the interior from the mobile third-person view.
-    def add_enterable_building(cx: float, cz: float, accent: str) -> None:
-        ground = height(cx, cz)
-        wall_h = 4.8
-        wall_y = ground + wall_h * 0.5
-        # Interior floor and four walls. The south facade has a 3.2-unit door.
-        add_box("stone", cx, ground + 0.12, cz, 12.0, 0.24, 9.0)
-        add_box("rock", cx, wall_y, cz + 4.3, 12.0, wall_h, 0.42)
-        add_box("rock", cx - 5.8, wall_y, cz, 0.42, wall_h, 8.6)
-        add_box("rock", cx + 5.8, wall_y, cz, 0.42, wall_h, 8.6)
-        add_box("rock", cx - 4.15, wall_y, cz - 4.3, 3.7, wall_h, 0.42)
-        add_box("rock", cx + 4.15, wall_y, cz - 4.3, 3.7, wall_h, 0.42)
-        add_box("rock", cx, ground + wall_h - 0.22, cz - 4.3, 4.6, 0.44, 0.42)
-        # Visible interior fixtures and a service counter create readable rooms.
-        add_box("stone", cx, ground + 0.78, cz + 1.35, 3.6, 1.05, 0.85)
-        add_box("stone", cx - 4.35, ground + 1.25, cz + 2.1, 0.72, 2.1, 2.6)
-        add_box("stone", cx + 4.35, ground + 1.25, cz + 2.1, 0.72, 2.1, 2.6)
-        add_box(accent, cx, ground + 3.65, cz + 4.04, 2.3, 0.68, 0.12)
-        # Low parapet pieces make the open roof edge legible without hiding play.
-        add_box("stone", cx, ground + 4.98, cz + 4.3, 12.0, 0.36, 0.55)
-        add_box("stone", cx - 5.8, ground + 4.98, cz, 0.55, 0.36, 8.6)
-        add_box("stone", cx + 5.8, ground + 4.98, cz, 0.55, 0.36, 8.6)
-
-    add_enterable_building(-39.0, -20.0, "accent_blue")
-    add_enterable_building(39.0, -20.0, "accent_gold")
-    add_enterable_building(-39.0, 20.0, "accent_blue")
-    add_enterable_building(39.0, 20.0, "accent_gold")
+    # Enterable interiors are composed from real CC0 modular wall/floor assets
+    # by MobaMatchView. Keep the terrain shell clear so the doors remain visible.
 
     # Pack GPU buffers and GLB accessors.
     binary = bytearray()
@@ -763,11 +715,13 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "expanded 120x84 rounded-rectangle MOBA arena with three lanes, side approaches and diagonal S-river",
-            "mapShape": "expanded-rounded-rectangle-superellipse",
+            "layout": "180x140 urban MOBA arena with three avenues, an east-west canal, four districts and enterable interiors",
+            "mapShape": "large-urban-superrectangle",
             "laneCount": 3,
             "bridgeCount": 3,
-            "sideApproachCount": 4,
+            "districtCount": 4,
+            "enterableGroundFloorCount": 4,
+            "sideApproachCount": 8,
             "walkableSideCourtyards": True,
             "baseCount": 2,
             "dynamicShadows": False,
