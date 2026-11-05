@@ -205,13 +205,17 @@ void main() {
     test('target cycle selects a nearby enemy and confirms a real hit', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
-        spawnPosition: const MobaPoint(0, 50),
+        spawnPosition: const MobaPoint(0, 55.0),
       );
 
       simulation.cyclePlayerTarget();
       final target = simulation.snapshot.selectedTarget;
       expect(target, isNotNull);
       expect(target!.team, MobaTeam.red);
+      expect(
+        simulation.snapshot.playerPosition.distanceTo(target.position),
+        lessThanOrEqualTo(MobaHeroId.bastion.basicRange),
+      );
 
       simulation.step(1 / 30, basicAttack: true);
 
