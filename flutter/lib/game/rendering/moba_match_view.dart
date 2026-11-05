@@ -997,16 +997,22 @@ class _MiniMapPainter extends CustomPainter {
     );
 
     Offset project(MobaPoint point) => Offset(
-          ((point.x + 44) / 88) * size.width,
-          ((point.z + 29) / 58) * size.height,
+          ((point.x + ArenaWorldCatalog.halfWidth) /
+                  (ArenaWorldCatalog.halfWidth * 2)) *
+              size.width,
+          ((point.z + ArenaWorldCatalog.halfDepth) /
+                  (ArenaWorldCatalog.halfDepth * 2)) *
+              size.height,
         );
 
     final lanePaint = Paint()
       ..color = const Color(0xFF65767A)
       ..strokeWidth = 2.2
       ..style = PaintingStyle.stroke;
-    for (final laneX in [-15.0, 0.0, 15.0]) {
-      final x = size.width * 0.5 + laneX * 0.35;
+    for (final laneX in [-22.5, 0.0, 22.5]) {
+      final x = ((laneX + ArenaWorldCatalog.halfWidth) /
+              (ArenaWorldCatalog.halfWidth * 2)) *
+          size.width;
       final path = Path()
         ..moveTo(x, 0)
         ..cubicTo(x, size.height * 0.34, x, size.height * 0.66, x, size.height);
