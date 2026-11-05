@@ -32,7 +32,8 @@ void main() {
     });
 
     test('roaming bots use a lateral flank route instead of one straight lane', () {
-      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      // Bastion occupies role 0, so the blue team has an active role-3 flanker.
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
       final before = simulation.snapshot.bots.firstWhere(
         (bot) => bot.id == 'blue_bot_3',
       );
@@ -44,8 +45,8 @@ void main() {
       );
       expect(
         after.position.x,
-        lessThan(before.position.x - 3.0),
-        reason: 'the flank role must enter the side street before rejoining its lane',
+        greaterThan(before.position.x + 3.0),
+        reason: 'the flank role must enter the east side street before rejoining its lane',
       );
     });
 
