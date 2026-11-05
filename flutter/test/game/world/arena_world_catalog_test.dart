@@ -56,6 +56,10 @@ void main() {
 
     test('commercial blocks and park dressing are deterministic', () {
       expect(ArenaWorldCatalog.commercialBlocks, hasLength(4));
+      for (final block in ArenaWorldCatalog.commercialBlocks) {
+        expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
+            reason: 'commercial block must have a collision footprint');
+      }
       expect(ArenaWorldCatalog.trees, hasLength(8));
       expect(ArenaWorldCatalog.bushes, hasLength(4));
       for (final placement in [
