@@ -4,6 +4,7 @@ import 'package:flutter/services.dart';
 import '../game/manifest/arena_manifest_validator.dart';
 import '../game/rendering/arena_hero_preview.dart';
 import '../game/rendering/arena_scene_runtime.dart';
+import '../game/rendering/arena_world_preview.dart';
 import '../game/state/arena_state_machine.dart';
 
 class ArenaApp extends StatefulWidget {
@@ -168,7 +169,7 @@ class _ArenaScreen extends StatelessWidget {
       case ArenaPhase.heroSelection:
         return _heroSelection();
       case ArenaPhase.matchLoading:
-        return _runtimeFoundation();
+        return _worldPreview();
       case ArenaPhase.inMatch:
         return const _StatusView(
           eyebrow: 'PARTIDA',
@@ -351,16 +352,11 @@ class _ArenaScreen extends StatelessWidget {
       ],
     );
   }
-  Widget _runtimeFoundation() {
-    return _StatusView(
-      eyebrow: 'ETAPA 01  /  FLUXO VALIDADO',
-      title: 'Herói selecionado',
-      description:
-          'A máquina de estados chegou a MATCH_LOADING. '
-          'O runtime Flutter Scene ainda está em integração; '
-          'esta etapa não apresenta uma partida fictícia.',
-      actionLabel: 'VOLTAR À SELEÇÃO',
-      onAction: () => onEvent(const CancelMatchLoading()),
+  Widget _worldPreview() {
+    return SizedBox.expand(
+      child: ArenaWorldPreview(
+        onBack: () => onEvent(const CancelMatchLoading()),
+      ),
     );
   }
 
