@@ -1,0 +1,19 @@
+Projeto Arena
+Versão 1.7.8
+
+NOVIDADES
+- Identificação visual das equipes nos heróis controlados pela IA e nas tropas.
+- Quatro locais internos com NPCs sinalizados no minimapa.
+- Tropas organizadas em formações mais abertas nas rotas.
+
+ALTERAÇÕES
+- Confirmar o herói agora retorna ao hub.
+- A partida começa somente ao selecionar ASCENDER.
+- Corrigida a orientação dos personagens durante a seleção e a movimentação.
+- Reduzida a escala das armas equipadas.
+- Ajustado o painel de interação com NPCs.
+
+EXCLUSÕES
+- Removido o início automático da partida ao confirmar o herói.
+- Removida a inversão de direção que causava o moonwalk.
+- Eliminada a escala exagerada das armas.
