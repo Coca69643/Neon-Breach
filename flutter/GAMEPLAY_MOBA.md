@@ -1,0 +1,72 @@
+# Projeto Arena — Gameplay MOBA
+
+## Direção obrigatória
+
+Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop principal é disputa de rotas, combate entre heróis e tropas, controle de estruturas, progressão durante a partida e destruição do núcleo adversário.
+
+## Loop de partida
+
+1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base da equipe.
+2. As três rotas recebem ondas periódicas de tropas aliadas e adversárias.
+3. Heróis, bots e tropas disputam espaço, experiência, ouro e estruturas.
+4. Torres protegem cada rota; uma torre só pode ser atacada com pressão de tropas aliadas.
+5. Destruir as três torres de uma rota abre o acesso ao núcleo daquela equipe.
+6. A equipe que destrói o núcleo inimigo vence.
+
+## Campo de batalha
+
+- Três rotas: superior, central e inferior.
+- Formação sem jungler: distribuição 2–1–2, com flex para reforçar rota.
+- Três torres por rota e por equipe: externas, intermediárias e internas (18 no total).
+- Núcleo de cada equipe.
+- Rio e travessias são elementos táticos de rotação; acampamentos da selva ficam fora do escopo atual.
+- Orçamento de tropas ativo limitado a 48 unidades.
+
+## Sistemas de gameplay
+
+- Movimento do herói por controle touch e colisão com o cenário.
+- Ataque básico, alcance, intervalo de ataque e seleção de alvo.
+- Três kits de habilidade com função distinta:
+  - Lyra: suporte e recuperação de aliados.
+  - Bastion: linha de frente e mitigação.
+  - Kairo: mobilidade e pressão de curta duração.
+- Ondas: três unidades corpo a corpo e uma unidade de distância por formação.
+- Bots aliados e rivais com objetivos de rota, combate e retorno após eliminação.
+- Torres com prioridade de alvo e proteção por tropas.
+- Ouro, experiência, níveis, atributos e loja de itens.
+- Vitória/derrota pelo estado do núcleo; pausa e retomada preservam a simulação.
+
+## Fora do escopo
+
+Não adicionar mecânicas de sobrevivência:
+- fome, sede, sono ou temperatura corporal;
+- coleta de madeira, pedra, minério ou alimentos;
+- crafting, ferramentas de coleta ou durabilidade;
+- construção de abrigo, base ou fogueira;
+- inventário de sobrevivência, loot aleatório ou progressão por grind de recursos.
+
+O ouro de partida é economia MOBA, não recurso de sobrevivência.
+
+## Arquitetura técnica atual
+
+- Flutter/Dart mantém interface, estado da partida e simulação determinística.
+- Flutter Scene renderiza terreno, personagens, tropas, estruturas e efeitos 3D.
+- Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho.
+- Renderização e simulação são separadas: um frame perdido não altera a velocidade lógica da partida.
+- Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
+
+## Estado desta implementação
+
+Implementado no branch atual:
+- Simulação Dart isolada com três rotas, ondas, 18 torres, bots, economia básica, XP, níveis, habilidades iniciais, respawn e bloqueio do núcleo.
+- Testes unitários para roster, estruturas, input, cooldowns e limite de tropas.
+
+Ainda não implementado como partida visual jogável:
+- vincular os snapshots da simulação a modelos/instâncias da cena 3D;
+- controles touch finais e HUD de combate;
+- seleção de alvo e feedback de alcance/recarga;
+- loja e itens MOBA;
+- objetivos neutros de rio, posteriores ao loop de rotas;
+- validação física de FPS, temperatura e resposta de toque.
+
+Não anunciar gameplay completo enquanto esses itens de integração e validação não estiverem concluídos.
