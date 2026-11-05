@@ -12,85 +12,92 @@ namespace {
 
 bool check(const bool condition, const char* message) {
     if (!condition) {
-        std::cerr << "FAIL: " << message << '\n';
+        std::cerr << "FAIL: " << message << '\\n';
         return false;
     }
     return true;
 }
 
+bool send(
+    AgentStateMachine& machine,
+    const AgentEvent event,
+    const char* message
+) {
+    return check(machine.dispatch(event).changed, message);
+}
+
 bool test_minion_patrol_and_target_loop() {
     AgentStateMachine minion(AgentKind::Minion);
 
-    if (!check(
-            minion.dispatch(AgentEvent::BeginPatrol).changed &&
-                minion.state() == AgentState::Patrol,
-            "minion should enter patrol")) {
+    if (!send(minion, AgentEvent::BeginPatrol, "minion enters patrol")) {
+        return false;
+    }
+    if (!send(minion, AgentEvent::TargetDetected, "minion detects target")) {
+        return false;
+    }
+    if (!send(minion, AgentEvent::TargetConfirmed, "minion confirms target")) {
+        return false;
+    }
+    if (!send(minion, AgentEvent::TargetInRange, "minion enters attack range")) {
+        return false;
+    }
+    if (!check(minion.state() == AgentState::Attack, "minion enters attack")) {
+        return false;
+    }
+    if (!send(minion, AgentEvent::TargetLost, "minion loses target")) {
         return false;
     }
 
-    minion.dispatch(AgentEvent::TargetDetected);
-    if (!check(
-            minion.state() == AgentState::AcquireTarget,
-            "minion should acquire a detected target")) {
-        return false;
-    }
-
-    minion.dispatch(AgentEvent::TargetConfirmed);
-    minion.dispatch(AgentEvent::TargetInRange);
-    if (!check(
-            minion.state() == AgentState::Attack,
-            "minion should attack after entering range")) {
-        return false;
-    }
-
-    minion.dispatch(AgentEvent::TargetLost);
     return check(
         minion.state() == AgentState::Patrol,
-        "minion should return to patrol when target is lost"
+        "minion returns to patrol when target is lost"
     );
 }
 
 bool test_bot_retreat_and_recovery() {
     AgentStateMachine bot(AgentKind::Bot);
-    bot.dispatch(AgentEvent::BeginPatrol);
-    bot.dispatch(AgentEvent::TargetDetected);
-    bot.dispatch(AgentEvent::TargetConfirmed);
-    bot.dispatch(AgentEvent::TargetInRange);
 
-    bot.dispatch(AgentEvent::HealthCritical);
-    if (!check(
-            bot.state() == AgentState::Retreat,
-            "bot should retreat at critical health")) {
+    if (!send(bot, AgentEvent::BeginPatrol, "bot enters patrol")) return false;
+    if (!send(bot, AgentEvent::TargetDetected, "bot detects target")) return false;
+    if (!send(bot, AgentEvent::TargetConfirmed, "bot confirms target")) return false;
+    if (!send(bot, AgentEvent::TargetInRange, "bot enters attack range")) return false;
+    if (!send(bot, AgentEvent::HealthCritical, "bot enters retreat")) return false;
+
+    if (!check(bot.state() == AgentState::Retreat, "bot retreats at critical health")) {
         return false;
     }
+    if (!send(bot, AgentEvent::Recovered, "bot recovery completes")) return false;
 
-    bot.dispatch(AgentEvent::Recovered);
     return check(
         bot.state() == AgentState::Idle,
-        "bot should return to idle after recovery"
+        "bot returns to idle after recovery"
     );
 }
 
 bool test_minion_does_not_use_bot_retreat_policy() {
     AgentStateMachine minion(AgentKind::Minion);
-    minion.dispatch(AgentEvent::BeginPatrol);
+    if (!send(minion, AgentEvent::BeginPatrol, "minion enters patrol")) {
+        return false;
+    }
 
     const auto result = minion.dispatch(AgentEvent::HealthCritical);
     return check(
         !result.changed && minion.state() == AgentState::Patrol,
-        "minion should reject the bot-only retreat transition"
+        "minion rejects the bot-only retreat transition"
     );
 }
 
 bool test_dead_is_terminal() {
     AgentStateMachine bot(AgentKind::Bot);
-    bot.dispatch(AgentEvent::LethalDamage);
+    if (!send(bot, AgentEvent::LethalDamage, "bot enters terminal dead state")) {
+        return false;
+    }
 
-    const auto after_death = bot.dispatch(AgentEvent::BeginPatrol);
+    const auto afterDeath = bot.dispatch(AgentEvent::BeginPatrol);
     return check(
         bot.is_terminal() &&
             bot.state() == AgentState::Dead &&
-            !after_death.changed,
+            !afterDeath.changed,
         "dead agent must reject all later transitions"
     );
 }
@@ -121,6 +128,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    std::cout << "All agent state machine tests passed.\n";
+    std::cout << "All agent state machine tests passed.\\n";
     return EXIT_SUCCESS;
 }
