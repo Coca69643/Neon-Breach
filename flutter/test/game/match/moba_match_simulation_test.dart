@@ -187,17 +187,36 @@ void main() {
       );
     });
 
-    test('basic attack has visible feedback even with no target in range', () {
+    test('basic attack shows swing feedback but no hit confirm out of range', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
       final healthBefore = simulation.snapshot.playerHealth;
 
       simulation.step(1 / 30, basicAttack: true);
 
       expect(simulation.snapshot.playerAttackSeconds, greaterThan(0));
+      expect(simulation.snapshot.playerHitConfirmSeconds, 0);
       expect(simulation.snapshot.playerHealth, healthBefore);
 
       advanceFor(simulation, 0.5);
       expect(simulation.snapshot.playerAttackSeconds, 0);
+      expect(simulation.snapshot.playerHitConfirmSeconds, 0);
+    });
+
+    test('target cycle selects a nearby enemy and confirms a real hit', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: const MobaPoint(0, 50),
+      );
+
+      simulation.cyclePlayerTarget();
+      final target = simulation.snapshot.selectedTarget;
+      expect(target, isNotNull);
+      expect(target!.team, MobaTeam.red);
+
+      simulation.step(1 / 30, basicAttack: true);
+
+      expect(simulation.snapshot.playerHitConfirmSeconds, greaterThan(0));
+      expect(simulation.snapshot.playerAttackSeconds, greaterThan(0));
     });
 
     test('rejects invalid frame deltas without corrupting match state', () {
