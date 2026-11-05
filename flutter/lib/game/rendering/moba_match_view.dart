@@ -1686,18 +1686,16 @@ class _MiniMapPainter extends CustomPainter {
       ..color = const Color(0xFF4D9EC1)
       ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke;
+    // Keep the tactical map aligned with ArenaWorldCatalog's actual
+    // canal centreline rather than drawing a second, unrelated S-curve.
     const riverPoints = <MobaPoint>[
-      MobaPoint(-59, -17),
-      MobaPoint(-48, -13),
-      MobaPoint(-36, -8),
-      MobaPoint(-24, -1),
-      MobaPoint(-12, 7),
-      MobaPoint(0, 15),
-      MobaPoint(12, 17),
-      MobaPoint(24, 12.5),
-      MobaPoint(36, 4.5),
-      MobaPoint(48, -6.5),
-      MobaPoint(59, -14),
+      MobaPoint(-90, 0),
+      MobaPoint(-60, 0.2),
+      MobaPoint(-30, -0.15),
+      MobaPoint(0, 0.1),
+      MobaPoint(30, -0.1),
+      MobaPoint(60, 0.15),
+      MobaPoint(90, 0),
     ];
     final river = Path();
     for (var index = 0; index < riverPoints.length; index++) {
