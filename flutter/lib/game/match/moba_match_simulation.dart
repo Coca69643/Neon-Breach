@@ -968,6 +968,7 @@ class MobaMatchSimulation {
 
   void _updateMinions(double dt) {
     for (final minion in _minions.where((unit) => unit.alive)) {
+      minion.moving = false;
       minion.attackCooldown = math.max(0, minion.attackCooldown - dt);
       if (minion.spawnDelay > 0) {
         minion.spawnDelay = math.max(0, minion.spawnDelay - dt);

@@ -1,9 +1,7 @@
 import 'dart:async';
-import 'dart:convert';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
@@ -29,10 +27,62 @@ class MobaMatchView extends StatefulWidget {
   State<MobaMatchView> createState() => _MobaMatchViewState();
 }
 
+class _AmbientNpc {
+  const _AmbientNpc({
+    required this.id,
+    required this.label,
+    required this.asset,
+    required this.x,
+    required this.z,
+    required this.dialogue,
+  });
+
+  final String id;
+  final String label;
+  final String asset;
+  final double x;
+  final double z;
+  final String dialogue;
+}
+
 class _MobaMatchViewState extends State<MobaMatchView> {
   static const double _worldScale = ArenaWorldCatalog.worldScale;
   static const String _terrainAsset = 'assets/world/arena_terrain.glb';
-  static const String _minionAsset = 'assets/match/quaternius_minion.glb';
+
+  static const _ambientNpcs = <_AmbientNpc>[
+    _AmbientNpc(
+      id: 'dispatcher',
+      label: 'Central de Operações',
+      asset: 'assets/npcs/business-man.glb',
+      x: -63.0,
+      z: -38.0,
+      dialogue: 'As três rotas estão ativas. Observe o minimapa antes de avançar.',
+    ),
+    _AmbientNpc(
+      id: 'mechanic',
+      label: 'Técnico de Campo',
+      asset: 'assets/npcs/worker.glb',
+      x: 63.0,
+      z: -38.0,
+      dialogue: 'As passagens laterais permitem contornar os bloqueios da avenida.',
+    ),
+    _AmbientNpc(
+      id: 'gardener',
+      label: 'Responsável pelo Parque',
+      asset: 'assets/npcs/farmer.glb',
+      x: -63.0,
+      z: 38.0,
+      dialogue: 'O canal só pode ser atravessado pelas três pontes sinalizadas.',
+    ),
+    _AmbientNpc(
+      id: 'resident',
+      label: 'Morador do Distrito',
+      asset: 'assets/npcs/hoodie-character.glb',
+      x: 63.0,
+      z: 38.0,
+      dialogue: 'O reator central muda o ritmo da disputa quando uma equipe o controla.',
+    ),
+  ];
 
   late MobaMatchSnapshot _snapshot;
   double _cameraYaw = 0;
@@ -47,8 +97,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   bool _worldReady = false;
   bool _readySent = false;
   bool _finishSent = false;
-  String? _minionWalkClip;
-  bool _minionAssetHasWalk = false;
+  String? _activeNpcId;
   late double _cameraX;
   late double _cameraY;
   late double _cameraZ;
@@ -61,39 +110,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     super.initState();
     _snapshot = widget.simulation.snapshot;
     _initialiseCameraRig(_snapshot);
-    _loadMinionAnimationManifest();
-  }
-
-  Future<void> _loadMinionAnimationManifest() async {
-    try {
-      final raw = await rootBundle.loadString(
-        'assets/match/match-asset-manifest.json',
-      );
-      final manifest = jsonDecode(raw) as Map<String, dynamic>;
-      final character = manifest['character'] as Map<String, dynamic>;
-      final clips = (character['animations'] as List<dynamic>)
-          .whereType<String>()
-          .toList(growable: false);
-      String? walk;
-      for (final clip in clips) {
-        if (clip.toLowerCase().contains('walk') ||
-            clip.toLowerCase().contains('run')) {
-          walk = clip;
-          break;
-        }
-      }
-      if (!mounted) return;
-      setState(() {
-        _minionWalkClip = walk;
-        _minionAssetHasWalk = walk != null;
-      });
-    } catch (_) {
-      if (!mounted) return;
-      setState(() {
-        _minionWalkClip = null;
-        _minionAssetHasWalk = false;
-      });
-    }
   }
 
   void _initialiseCameraRig(MobaMatchSnapshot snapshot) {
@@ -234,10 +250,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         team == MobaTeam.blue ? 0 : math.pi,
       );
 
-  vm.Quaternion _playerFacing(MobaMatchSnapshot snapshot) {
-    final yaw = math.atan2(snapshot.playerFacingX, snapshot.playerFacingZ);
+  vm.Quaternion _entityFacing(double facingX, double facingZ) {
+    // The imported Quaternius character rigs face local -Z.
+    final yaw = math.atan2(facingX, facingZ) + math.pi;
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
+
+  vm.Quaternion _playerFacing(MobaMatchSnapshot snapshot) =>
+      _entityFacing(snapshot.playerFacingX, snapshot.playerFacingZ);
 
   static const _bridges = <(String, double, double)>[
     ('west', -36.0, 0.0),
@@ -319,6 +339,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
     return <Widget>[
       ..._staticSceneChildren,
+      for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
         SceneModel(
           _towerAsset(tower.lane.index, tower.tier),
@@ -548,38 +569,76 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         unawaited(HeroWeaponSocket.attach(modelRoot, bot.heroId));
       },
       position: _worldPosition(bot.position, heightOffset: 0.03),
-      rotation: _facing(bot.team),
+      rotation: _entityFacing(bot.facingX, bot.facingZ),
       scale: vm.Vector3.all(0.86),
       animations: [
-        SceneAnimationSpec(_heroWalk(bot.heroId), loop: true, speed: 0.94),
+        SceneAnimationSpec(
+          bot.moving ? _heroWalk(bot.heroId) : _heroIdle(bot.heroId),
+          loop: true,
+          speed: bot.moving ? 0.98 : 0.82,
+        ),
       ],
     );
   }
 
+  String _minionAssetFor(int id) => switch (id % 4) {
+        0 => 'assets/npcs/business-man.glb',
+        1 => 'assets/npcs/worker.glb',
+        2 => 'assets/npcs/farmer.glb',
+        _ => 'assets/npcs/hoodie-character.glb',
+      };
+
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final fallbackHero =
-        MobaHeroId.values[minion.id % MobaHeroId.values.length];
-    final useQuaternius = _minionAssetHasWalk && _minionWalkClip != null;
-    final asset = useQuaternius ? _minionAsset : _heroAsset(fallbackHero);
-    final animation =
-        useQuaternius ? _minionWalkClip! : _heroWalk(fallbackHero);
-    final scale = minion.ranged ? 0.54 : 0.58;
+    final scale = minion.ranged ? 0.42 : 0.46;
     return SceneModel(
-      asset,
+      _minionAssetFor(minion.id),
       key: ValueKey('match-minion-${minion.id}'),
       name:
           '${minion.team.name}_${minion.lane.name}_minion_${minion.id}',
       position: _worldPosition(minion.position, heightOffset: 0.02),
-      rotation: _facing(minion.team),
+      rotation: _entityFacing(minion.facingX, minion.facingZ),
       scale: vm.Vector3.all(scale),
       animations: [
         SceneAnimationSpec(
-          animation,
+          minion.moving ? 'CharacterArmature|Walk' : 'CharacterArmature|Idle',
           loop: true,
-          speed: minion.ranged ? 0.84 : 1.0,
+          speed: minion.moving ? (minion.ranged ? 0.88 : 1.0) : 0.82,
         ),
       ],
     );
+  }
+
+  Widget _buildAmbientNpc(_AmbientNpc npc, MobaMatchSnapshot snapshot) {
+    final activeNpc = _nearestAmbientNpc(snapshot.playerPosition);
+    final interacting = activeNpc?.id == npc.id && _activeNpcId == npc.id;
+    final point = MobaPoint(npc.x, npc.z);
+    return SceneModel(
+      npc.asset,
+      key: ValueKey('ambient-npc-${npc.id}'),
+      name: 'ambient_npc_${npc.id}',
+      position: _worldPosition(point, heightOffset: 0.015),
+      scale: vm.Vector3.all(0.96),
+      animations: [
+        SceneAnimationSpec(
+          interacting ? 'CharacterArmature|Wave' : 'CharacterArmature|Idle',
+          loop: !interacting,
+          speed: interacting ? 1.0 : 0.84,
+        ),
+      ],
+    );
+  }
+
+  _AmbientNpc? _nearestAmbientNpc(MobaPoint player) {
+    _AmbientNpc? nearest;
+    var nearestDistance = 4.8;
+    for (final npc in _ambientNpcs) {
+      final distance = player.distanceTo(MobaPoint(npc.x, npc.z));
+      if (distance <= nearestDistance) {
+        nearest = npc;
+        nearestDistance = distance;
+      }
+    }
+    return nearest;
   }
 
   void _updateJoystick(Offset localPosition) {
@@ -617,6 +676,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       builder: (context, viewport) {
         final compact = viewport.maxHeight < 430;
         final side = compact ? 12.0 : 18.0;
+        final nearbyNpc = _nearestAmbientNpc(snapshot.playerPosition);
+        final showNpcDialogue =
+            nearbyNpc != null && _activeNpcId == nearbyNpc.id;
         return Stack(
           fit: StackFit.expand,
           children: [
@@ -778,7 +840,26 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   ),
                   Positioned(
                     top: 8,
-                    right: side,
+                    if (nearbyNpc != null)
+                     Positioned(
+                       left: side,
+                       top: 108,
+                       child: _NpcPrompt(
+                         label: nearbyNpc.label,
+                         onTap: () => setState(() => _activeNpcId = nearbyNpc.id),
+                       ),
+                     ),
+                   if (showNpcDialogue)
+                     Positioned(
+                       left: viewport.maxWidth * 0.28,
+                       right: viewport.maxWidth * 0.28,
+                       bottom: compact ? 94 : 108,
+                       child: _NpcDialogue(
+                         npc: nearbyNpc!,
+                         onClose: () => setState(() => _activeNpcId = null),
+                       ),
+                     ),
+                   right: side,
                     child: Row(
                       children: [
                         _MiniMap(snapshot: snapshot),
@@ -1654,6 +1735,102 @@ class _HudPlate extends StatelessWidget {
         border: Border.all(color: const Color(0x587CABB0), width: 0.9),
       ),
       child: Padding(padding: padding, child: child),
+    );
+  }
+}
+
+
+class _NpcPrompt extends StatelessWidget {
+  const _NpcPrompt({required this.label, required this.onTap});
+
+  final String label;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: const Color(0xE51A2C34),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.chat_bubble_outline, size: 16,
+                  color: Color(0xFF8BDCC7)),
+              const SizedBox(width: 7),
+              Text(
+                'CONVERSAR  ·  $label',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 10,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NpcDialogue extends StatelessWidget {
+  const _NpcDialogue({required this.npc, required this.onClose});
+
+  final _AmbientNpc npc;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 11, 10, 10),
+      decoration: BoxDecoration(
+        color: const Color(0xED15232B),
+        border: Border.all(color: const Color(0xFF6CBFAE), width: 1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.center,
+        children: [
+          const Icon(Icons.forum_outlined, color: Color(0xFF8BDCC7), size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(npc.label,
+                    style: const TextStyle(
+                      color: Color(0xFF8BDCC7),
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      letterSpacing: 0.8,
+                    )),
+                const SizedBox(height: 4),
+                Text(npc.dialogue,
+                    maxLines: 2,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 11,
+                      height: 1.25,
+                    )),
+              ],
+            ),
+          ),
+          IconButton(
+            onPressed: onClose,
+            icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+            visualDensity: VisualDensity.compact,
+            tooltip: 'Fechar conversa',
+          ),
+        ],
+      ),
     );
   }
 }

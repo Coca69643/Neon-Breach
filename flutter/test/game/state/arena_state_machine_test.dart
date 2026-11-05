@@ -29,8 +29,6 @@ void main() {
     machine.dispatch(const OpenHeroSelection());
     machine.dispatch(const SelectHero('lyra'));
     machine.dispatch(const ConfirmHeroSelection());
-    expect(machine.snapshot.phase, ArenaPhase.mainMenu);
-    machine.dispatch(const StartRunFromHub());
   }
 
   test('boot exige validação antes de liberar o menu', () {
@@ -91,10 +89,6 @@ void main() {
 
     final decision = machine.dispatch(const ConfirmHeroSelection());
     expect(decision.accepted, isTrue);
-    expect(machine.snapshot.phase, ArenaPhase.mainMenu);
-    expect(machine.snapshot.selectedHeroId, 'kairo');
-
-    machine.dispatch(const StartRunFromHub());
     expect(machine.snapshot.phase, ArenaPhase.matchLoading);
     expect(machine.snapshot.selectedHeroId, 'kairo');
   });

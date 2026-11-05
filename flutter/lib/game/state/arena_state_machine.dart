@@ -242,9 +242,9 @@ class ArenaStateMachine extends ChangeNotifier {
         current.phase == ArenaPhase.heroSelection &&
         current.selectedHeroId != null) {
       return current.copyWith(
-        phase: ArenaPhase.mainMenu,
+        phase: ArenaPhase.matchLoading,
         clearErrorMessage: true,
-        clearRecoveryPhase: true,
+        clearMatchOutcome: true,
       );
     }
 

@@ -41,7 +41,7 @@ class ArenaHeroPreview extends StatelessWidget {
         pixelRatio: 1.0,
         cameraBuilder: (_) => PerspectiveCamera(
           fovRadiansY: 38 * math.pi / 180,
-          position: vm.Vector3(0, 1.15, 5.0),
+          position: vm.Vector3(0, 1.15, -5.0),
           target: vm.Vector3(0, 1.08, 0),
         ),
         loadingBuilder: (context, progress) => const Center(
@@ -60,7 +60,7 @@ class ArenaHeroPreview extends StatelessWidget {
             key: ValueKey(heroId),
             name: 'playable_hero_$heroId',
             position: vm.Vector3(0, 0, 0),
-            // The baked GLB front already faces scene +Z, toward this camera.
+            // The imported Quaternius rigs present their front on local -Z.
             scale: vm.Vector3.all(0.52),
             animations: [
               SceneAnimationSpec(model.idle, loop: true, speed: 1),
