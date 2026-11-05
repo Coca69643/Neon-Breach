@@ -196,7 +196,7 @@ abstract final class ArenaWorldCatalog {
     return _bridges.any(
       (bridgeX) =>
           (x - bridgeX).abs() <= 3.4 &&
-          (z - riverZ).abs() <= channelHalfWidth + 2.6,
+          (z - riverZ).abs() <= channelHalfWidth + 1.75,
     );
   }
 
@@ -222,6 +222,17 @@ abstract final class ArenaWorldCatalog {
       }
     }
     return true;
+  }
+
+  /// Matches the baked bridge-deck height so units stand on the crossing,
+  /// not at the lower river-bed elevation beneath it.
+  static double navigationHeightAt(double x, double z) {
+    if (!_isOnBridge(x, z)) return heightAt(x, z);
+    final riverZ = _riverCenterZ(x);
+    final bankOffset = _riverHalfWidth(x) + 1.25;
+    final nearBank = heightAt(x, riverZ - bankOffset);
+    final farBank = heightAt(x, riverZ + bankOffset);
+    return math.max(heightAt(x, z), math.max(nearBank, farBank) + 0.28);
   }
 
   static double heightAt(double x, double z) {
