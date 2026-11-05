@@ -85,12 +85,13 @@ def prepare_model(source: Path, destination: Path, *, kairo: bool = False) -> st
         if animation.get("name") in ALLOWED_CLIPS
     ]
     required = (
-        {"HumanArmature|Man_Idle", "HumanArmature|Man_Walk", "HumanArmature|Man_Run"}
+        {"HumanArmature|Man_Idle", "HumanArmature|Man_Walk", "HumanArmature|Man_Run", "HumanArmature|Man_SwordSlash"}
         if source.name == "bastion.glb" or kairo
         else {
             "HumanArmature|Female_Idle",
             "HumanArmature|Female_Walk",
             "HumanArmature|Female_Run",
+            "HumanArmature|Female_SwordSlash",
         }
     )
     present = {animation.get("name") for animation in filtered}
