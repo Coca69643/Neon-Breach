@@ -107,6 +107,10 @@ final class ConfirmHeroSelection extends ArenaEvent {
   const ConfirmHeroSelection();
 }
 
+final class StartRunFromHub extends ArenaEvent {
+  const StartRunFromHub();
+}
+
 final class CancelMatchLoading extends ArenaEvent {
   const CancelMatchLoading();
 }
@@ -198,7 +202,10 @@ class ArenaStateMachine extends ChangeNotifier {
     if (event is ManifestValidationCompleted &&
         current.phase == ArenaPhase.assetValidation) {
       if (event.valid) {
-        return const ArenaSnapshot(phase: ArenaPhase.mainMenu);
+        return const ArenaSnapshot(
+          phase: ArenaPhase.mainMenu,
+          selectedHeroId: 'lyra',
+        );
       }
       return ArenaSnapshot(
         phase: ArenaPhase.recoverableError,
@@ -294,9 +301,17 @@ class ArenaStateMachine extends ChangeNotifier {
 
     if (event is ReturnToMenu &&
         (current.phase == ArenaPhase.heroSelection ||
+            current.phase == ArenaPhase.matchLoading ||
             current.phase == ArenaPhase.paused ||
             current.phase == ArenaPhase.matchResult)) {
-      return const ArenaSnapshot(phase: ArenaPhase.mainMenu);
+      return current.copyWith(
+        phase: ArenaPhase.mainMenu,
+        clearErrorMessage: true,
+        clearRecoveryPhase: true,
+        clearMatchOutcome: true,
+        clearResumePhase: true,
+        clearPauseOrigin: true,
+      );
     }
 
     if (event is RetryRecovery &&
