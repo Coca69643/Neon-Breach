@@ -103,33 +103,33 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
       - name: Prepare versioned APK and checksum
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.6-arm64.apk
-          sha256sum Project-Arena-1.7.6-arm64.apk > Project-Arena-1.7.6-arm64.apk.sha256
+          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.7-arm64.apk
+          sha256sum Project-Arena-1.7.7-arm64.apk > Project-Arena-1.7.7-arm64.apk.sha256
       - name: Upload signed ARM64 APK artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: project-arena-1.7.6-arm64
+          name: project-arena-1.7.7-arm64
           path: |
-            flutter/Project-Arena-1.7.6-arm64.apk
-            flutter/Project-Arena-1.7.6-arm64.apk.sha256
+            flutter/Project-Arena-1.7.7-arm64.apk
+            flutter/Project-Arena-1.7.7-arm64.apk.sha256
           if-no-files-found: error
           retention-days: 30
-      - name: Publish Projeto Arena 1.7.6 stable tester release
+      - name: Publish Projeto Arena 1.7.7 stable tester release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-1.7.6
+          tag_name: project-arena-1.7.7
           target_commitish: ${{ github.sha }}
-          name: Projeto Arena 1.7.6 — build de teste
+          name: Projeto Arena 1.7.7 — build de teste
           body: |
-            Projeto Arena 1.7.6 para Android ARM64.
+            Projeto Arena 1.7.7 para Android ARM64.
             - Runtime Flutter + Flutter Scene 0.24.3.
             - Máquina de estados Dart e aplicativo offline em landscape.
             - Prévia 3D de Lyra, Bastion e Kairo.
             - Distrito urbano 180 × 140 com três avenidas, ruas, quatro interiores acessíveis e três travessias.
             - Câmera com arrasto independente; escadas/mezaninos com elevação real; coberturas destrutíveis; reator central com controle de território e bônus de dano; armas CC0 presas ao osso Palm.R; Kairo com GLB masculino distinto.
-            - versionName 1.7.6 / versionCode 68.
+            - versionName 1.7.7 / versionCode 69.
             - APK compilado, assets conferidos e assinatura verificada pelo GitHub Actions.
             - Renderização visual, FPS sustentado, temperatura e atualização precisam de validação no Realme C53.
           draft: false
@@ -137,5 +137,5 @@ jobs:
           make_latest: true
           overwrite_files: true
           files: |
-            flutter/Project-Arena-1.7.6-arm64.apk
-            flutter/Project-Arena-1.7.6-arm64.apk.sha256
+            flutter/Project-Arena-1.7.7-arm64.apk
+            flutter/Project-Arena-1.7.7-arm64.apk.sha256
