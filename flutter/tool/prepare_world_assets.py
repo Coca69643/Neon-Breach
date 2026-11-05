@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bake Vale das Coroas as a broad MOBA arena, not an oval island.
+"""Bake a broad urban MOBA district with roads, alleys and a central canal.
 
-The offline GLB has an expanded rounded-rectangle footprint, three curved lanes,
-a diagonal S-river, three walkable bridges and four open flank approaches.
+The offline GLB has a 180 × 140 urban footprint, three avenues, a straight canal,
+three walkable crossings and eight alternate alley approaches.
 """
 from __future__ import annotations
 
@@ -414,37 +414,7 @@ def build_terrain_glb(output: Path) -> None:
             i11 = i01 + 1
             groups[material].extend((i00, i01, i10, i10, i01, i11))
 
-    # A short, textured cliff skirt closes the irregular edge of the island.
-    skirt_segments = 220
-    for i in range(skirt_segments):
-        a0 = 2.0 * math.pi * i / skirt_segments
-        a1 = 2.0 * math.pi * (i + 1) / skirt_segments
-
-        def edge_point(angle: float) -> tuple[float, float, float]:
-            exponent = FOOTPRINT_EXPONENT
-            wobble = edge_wobble(angle)
-            cosine, sine = math.cos(angle), math.sin(angle)
-            norm = (abs(cosine) ** exponent + abs(sine) ** exponent) ** (1.0 / exponent)
-            scale = wobble / norm
-            x = HALF_X * scale * cosine
-            z = HALF_Z * scale * sine
-            return x, height(x, z) - 0.02, z
-
-        top_a = edge_point(a0)
-        top_b = edge_point(a1)
-        bottom_a = (top_a[0] * 1.025, -3.8, top_a[2] * 1.025)
-        bottom_b = (top_b[0] * 1.025, -3.8, top_b[2] * 1.025)
-        center_angle = (a0 + a1) * 0.5
-        outward = (math.cos(center_angle), 0.0, math.sin(center_angle))
-        base_index = len(positions) // 3
-        for vertex, v in enumerate((top_a, top_b, bottom_a, bottom_b)):
-            positions.extend((v[0] * WORLD_SCALE, v[1], v[2] * WORLD_SCALE))
-            normals.extend(outward)
-            texcoords.extend((i / 18.0, 0.0 if vertex < 2 else 1.0))
-        groups["rock"].extend((
-            base_index, base_index + 1, base_index + 2,
-            base_index + 1, base_index + 3, base_index + 2,
-        ))
+    # No cliff skirt: the urban district meets its surrounding city plane.
 
     # The river is built as three continuous ribbons: a single water surface
     # and two independent banks on each side. All triangles are wound upward.
