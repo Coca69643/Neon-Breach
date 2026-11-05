@@ -98,6 +98,63 @@ void main() {
       );
     });
 
+    test('bots and minions remain on navigable ground while approaching objectives', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+
+      advanceFor(simulation, 45);
+
+      for (final bot in simulation.snapshot.bots.where(
+        (unit) => unit.respawnSeconds <= 0,
+      )) {
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            bot.position.x,
+            bot.position.z,
+            includeTowerCollision: false,
+            elevation: bot.position.elevation,
+          ),
+          isTrue,
+          reason: '${bot.id} must not leave the playable ground while navigating',
+        );
+      }
+      for (final minion in simulation.snapshot.minions) {
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            minion.position.x,
+            minion.position.z,
+            includeTowerCollision: false,
+            elevation: minion.position.elevation,
+          ),
+          isTrue,
+          reason: 'minion ${minion.id} must remain on traversable terrain',
+        );
+      }
+    });
+
+    test('Kairo dash stops at a wall instead of tunnelling through it', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.kairo,
+        spawnPosition: const MobaPoint(-63, -38),
+      );
+
+      simulation.step(1 / 60, moveX: 1);
+      simulation.step(1 / 60, castSkill: true);
+
+      expect(
+        simulation.snapshot.playerPosition.x,
+        lessThan(-57.4),
+        reason: 'the swept dash must stop before the building side wall',
+      );
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          simulation.snapshot.playerPosition.x,
+          simulation.snapshot.playerPosition.z,
+          elevation: simulation.snapshot.playerPosition.elevation,
+        ),
+        isTrue,
+      );
+    });
+
     test('minion waves keep four readable formation slots per lane', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
 
