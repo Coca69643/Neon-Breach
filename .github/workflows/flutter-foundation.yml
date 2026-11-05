@@ -41,3 +41,9 @@ jobs:
         run: flutter test --reporter expanded
       - name: Build Android release
         run: flutter build apk --release
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-arena-flutter-scene-apk
+          path: flutter/build/app/outputs/flutter-apk/app-release.apk
+          if-no-files-found: error
