@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:math' as math;
 
@@ -7,6 +8,7 @@ import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../match/moba_match_simulation.dart';
+import 'hero_weapon_socket.dart';
 import '../world/arena_world_catalog.dart';
 
 class MobaMatchView extends StatefulWidget {
@@ -337,6 +339,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         _heroAsset(snapshot.heroId),
         key: const ValueKey('match-player-hero'),
         name: 'player_${snapshot.heroId.id}',
+        onLoaded: (modelRoot) {
+          unawaited(HeroWeaponSocket.attach(modelRoot, snapshot.heroId));
+        },
         position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
         rotation: _playerFacing(snapshot),
         scale: vm.Vector3.all(1.0),
@@ -539,6 +544,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _heroAsset(bot.heroId),
       key: ValueKey('match-bot-${bot.id}'),
       name: bot.id,
+      onLoaded: (modelRoot) {
+        unawaited(HeroWeaponSocket.attach(modelRoot, bot.heroId));
+      },
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _facing(bot.team),
       scale: vm.Vector3.all(0.86),
