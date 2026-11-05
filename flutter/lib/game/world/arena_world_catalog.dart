@@ -267,7 +267,7 @@ abstract final class ArenaWorldCatalog {
     // The short per-step tolerance allows normal mobile movement while
     // preventing a ground-floor unit from snapping directly onto the deck.
     if ((target - currentElevation).abs() > 0.24) return null;
-    if (x > access.rampEndX && currentElevation < access.upperHeight - 0.28) {
+    if (x > access.rampEndX && currentElevation < ArenaVerticalAccess.upperHeight - 0.28) {
       return null;
     }
     return target;
