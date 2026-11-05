@@ -1057,7 +1057,7 @@ class MobaMatchSimulation {
     };
     final laneCenter = _laneX(unit.lane, next.z);
     final desiredX = laneCenter + formationOffset;
-    final lateralBlend = (dt * speed * 1.4).clamp(0.0, 1.0);
+    final lateralBlend = (dt * speed * 1.4).clamp(0.0, 1.0).toDouble();
     final constrained = MobaPoint(
       before.x + (desiredX - before.x) * lateralBlend,
       next.z,
