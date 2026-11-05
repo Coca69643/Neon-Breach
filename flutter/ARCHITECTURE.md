@@ -41,6 +41,9 @@ A IA dos bots e minions será implementada em Dart com FSMs determinísticas, de
 
 ## Integração Flutter Scene
 
+A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra/Kairo e Man_Idle para Bastion. A seleção troca o GLB sem reconstruir a aplicação. Isso valida o caminho de importação e animação; ainda não representa o mapa nem uma partida jogável.
+
+
 1. Habilitar Flutter GPU no AndroidManifest com io.flutter.embedding.android.EnableFlutterGPU=true.
 2. Aguardar Scene.initializeStaticResources() antes de criar materiais e geometria que dependam desses recursos.
 3. Pré-processar modelos e materiais incluídos no APK pelo build hook.
