@@ -44,7 +44,7 @@ void main() {
         expect(ArenaWorldCatalog.isWalkable(x, 0), isTrue);
       }
       expect(ArenaWorldCatalog.isWalkable(18, 0), isFalse);
-      expect(ArenaWorldCatalog.isWalkable(0, 3.5), isFalse);
+      expect(ArenaWorldCatalog.isWalkable(18, 2.5), isFalse);
     });
 
     test('side alleys connect the avenues to the city blocks', () {
