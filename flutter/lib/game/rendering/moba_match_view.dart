@@ -34,7 +34,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   late MobaMatchSnapshot _snapshot;
   double _cameraYaw = 0;
-  double _cameraPitch = 0.46;
+  double _cameraPitch = 0.34;
+  int? _cameraPointerId;
+  Offset? _lastCameraPointer;
   double _moveX = 0;
   double _moveZ = 0;
   bool _basicAttackHeld = false;
@@ -96,15 +98,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final z = snapshot.playerPosition.z * _worldScale;
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
-    final horizontalDistance = 13.5 * math.cos(_cameraPitch);
+    final horizontalDistance = 9.4 * math.cos(_cameraPitch);
     final ground = _groundHeight(snapshot.playerPosition);
 
     _cameraX = x - forwardX * horizontalDistance;
-    _cameraY = ground + 1.35 + 13.5 * math.sin(_cameraPitch);
+    _cameraY = ground + 1.25 + 9.4 * math.sin(_cameraPitch);
     _cameraZ = z - forwardZ * horizontalDistance;
-    _lookX = x + forwardX * 4.4;
-    _lookY = ground + 1.35;
-    _lookZ = z + forwardZ * 4.4;
+    _lookX = x + forwardX * 3.0;
+    _lookY = ground + 1.2;
+    _lookZ = z + forwardZ * 3.0;
   }
 
   void _advanceCameraRig(MobaMatchSnapshot snapshot, double deltaSeconds) {
@@ -117,7 +119,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
     // Camera yaw/pitch are controlled only by the right-side drag zone.
     final desiredX = x - forwardX * horizontalDistance;
-    final desiredY = ground + 1.35 + 13.5 * math.sin(_cameraPitch);
+    final desiredY = ground + 1.25 + 9.4 * math.sin(_cameraPitch);
     final desiredZ = z - forwardZ * horizontalDistance;
     final desiredLookX = x + forwardX * 4.4;
     final desiredLookY = ground + 1.35;
@@ -166,15 +168,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     }
   }
 
-  void _rotateCamera(DragUpdateDetails details) {
-    // Camera look is deliberately isolated from the left-side movement stick.
-    // A drag in the central/right playfield rotates yaw and adjusts elevation.
+  void _applyCameraDrag(Offset delta) {
+    // Only the dedicated right-side pointer zone changes camera orientation.
+    // The left joystick writes _moveX/_moveZ and never mutates camera yaw.
     setState(() {
-      _cameraYaw =
-          (_cameraYaw + details.delta.dx * 0.008).remainder(2 * math.pi);
-      _cameraPitch = (_cameraPitch - details.delta.dy * 0.006)
-          .clamp(0.22, 0.92)
-          .toDouble();
+      _cameraYaw = (_cameraYaw + delta.dx * 0.008).remainder(2 * math.pi);
+      _cameraPitch = (_cameraPitch - delta.dy * 0.005)
+          .clamp(0.24, 0.68).toDouble();
     });
   }
 
@@ -199,6 +199,19 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Walk',
       };
 
+  String _heroAttack(MobaHeroId hero) => switch (hero) {
+        MobaHeroId.lyra => 'HumanArmature|Female_SwordSlash',
+        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
+      };
+
+  String _towerAsset(int laneIndex, int tier) {
+    const variants = [
+      'commercial_low_a.glb', 'commercial_low_b.glb',
+      'commercial_low_c.glb', 'commercial_low_d.glb',
+    ];
+    return 'assets/world/city/${variants[(laneIndex + tier) % variants.length]}';
+  }
+
   double _groundHeight(MobaPoint point) =>
       ArenaWorldCatalog.navigationHeightAt(point.x, point.z) + 0.035;
 
@@ -220,9 +233,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   static const _bridges = <(String, double, double)>[
-    ('top', -22.5, 0.0),
-    ('middle', 0.0, 15.0),
-    ('bottom', 22.5, 13.1),
+    ('west', -36.0, 0.0),
+    ('central', 0.0, 0.1),
+    ('east', 36.0, -0.1),
   ];
 
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
@@ -237,11 +250,33 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
       for (var i = 0; i < ArenaWorldCatalog.bushes.length; i++)
         _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
+      for (final building in ArenaWorldCatalog.cityInteriors)
+        ..._buildCityInterior(building),
+      for (final block in ArenaWorldCatalog.commercialBlocks)
+        _buildCommercialBlock(block),
+      for (final laneX in const [-36.0, 0.0, 36.0])
+        for (final roadZ in const [-60.0, -40.0, -20.0, 20.0, 40.0, 60.0])
+          SceneModel(
+            'assets/world/city/road_straight.glb',
+            key: ValueKey('street-$laneX-$roadZ'),
+            name: 'urban_avenue_${laneX}_$roadZ',
+            position: _worldPosition(MobaPoint(laneX, roadZ)),
+            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi / 2),
+            scale: vm.Vector3(12.0, 1.0, 20.0),
+          ),
+      for (final laneX in const [-36.0, 0.0, 36.0])
+        SceneModel(
+          'assets/world/city/road_crossroad.glb',
+          key: ValueKey('crossroad-$laneX'),
+          name: 'canal_crossing_$laneX',
+          position: _worldPosition(MobaPoint(laneX, 0)),
+          scale: vm.Vector3(12.0, 1.0, 12.0),
+        ),
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
       for (final bridge in _bridges)
         SceneModel(
-          'assets/match/bridge_a.glb',
+          'assets/world/city/road_straight.glb',
           key: ValueKey('match-bridge-${bridge.$1}'),
           name: 'lane_bridge_${bridge.$1}',
           position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
@@ -249,20 +284,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
             vm.Vector3(0, 1, 0),
             math.pi / 2,
           ),
-          scale: vm.Vector3.all(2.0),
+          scale: vm.Vector3(8.0, 1.0, 9.0),
         ),
       for (final tower in snapshot.towers)
         SceneModel(
-          tower.team == MobaTeam.blue
-              ? 'assets/match/tower_blue.glb'
-              : 'assets/match/tower_red.glb',
+          _towerAsset(tower.lane.index, tower.tier),
           key: ValueKey(
             'tower-${tower.team.name}-${tower.lane.name}-${tower.tier}',
           ),
           name:
               '${tower.team.name}_${tower.lane.name}_tower_${tower.tier + 1}',
           position: _worldPosition(tower.position),
-          scale: vm.Vector3.all(2.05),
+          scale: vm.Vector3.all(4.8),
         ),
       for (final bot in snapshot.bots)
         if (bot.respawnSeconds <= 0) _buildBot(bot),
@@ -273,14 +306,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         name: 'player_${snapshot.heroId.id}',
         position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
         rotation: _playerFacing(snapshot),
-        scale: vm.Vector3.all(0.82),
+        scale: vm.Vector3.all(1.0),
         animations: [
           SceneAnimationSpec(
-            snapshot.playerMoving
-                ? _heroWalk(snapshot.heroId)
-                : _heroIdle(snapshot.heroId),
-            loop: true,
-            speed: snapshot.playerMoving ? 1.05 : 0.78,
+            snapshot.playerAttackSeconds > 0
+                ? _heroAttack(snapshot.heroId)
+                : (snapshot.playerMoving
+                    ? _heroWalk(snapshot.heroId)
+                    : _heroIdle(snapshot.heroId)),
+            loop: snapshot.playerAttackSeconds <= 0,
+            speed: snapshot.playerAttackSeconds > 0
+                ? 1.2
+                : (snapshot.playerMoving ? 1.08 : 0.78),
           ),
         ],
       ),
@@ -288,17 +325,73 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildBase(MobaTeam team) {
-    final point = MobaPoint(0, team == MobaTeam.blue ? -35.5 : 35.5);
+    final point = MobaPoint(0, team == MobaTeam.blue ? -66.0 : 66.0);
     return SceneModel(
       team == MobaTeam.blue
-          ? 'assets/match/castle_blue.glb'
-          : 'assets/match/castle_red.glb',
+          ? 'assets/world/city/commercial_building_a.glb'
+          : 'assets/world/city/commercial_building_e.glb',
       key: ValueKey('match-base-${team.name}'),
-      name: '${team.name}_team_base',
+      name: '${team.name}_urban_command_base',
       position: _worldPosition(point),
       rotation: _facing(team),
-      scale: vm.Vector3.all(1.75),
+      scale: vm.Vector3.all(8.0),
     );
+  }
+
+  Widget _buildCommercialBlock((String, double, double, double) block) {
+    return SceneModel(
+      'assets/world/city/${block.$1}',
+      key: ValueKey('city-block-${block.$1}-${block.$2}-${block.$3}'),
+      name: 'city_block_${block.$1.replaceAll('.', '_')}',
+      position: _worldPosition(MobaPoint(block.$2, block.$3)),
+      scale: vm.Vector3.all(block.$4),
+    );
+  }
+
+  List<Widget> _buildCityInterior((String, double, double) building) {
+    final id = building.$1, x = building.$2, z = building.$3;
+    final ground = _groundHeight(MobaPoint(x, z));
+    vm.Vector3 p(double px, double py, double pz) =>
+        vm.Vector3(px * _worldScale, ground + py, pz * _worldScale);
+    vm.Quaternion yaw(double angle) =>
+        vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
+    return [
+      SceneModel('assets/world/city/interior_floor.glb',
+        key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
+        position: p(x - 6, 0.02, z + 4.5), scale: vm.Vector3(12, 1, 9)),
+      SceneModel('assets/world/city/interior_wall.glb',
+        key: ValueKey('interior-back-$id'), name: 'interior_back_wall_$id',
+        position: p(x - 6, 0, z + 4.3), scale: vm.Vector3(12, 2.5, 1)),
+      SceneModel('assets/world/city/interior_wall.glb',
+        key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
+        position: p(x - 5.8, 0, z + 4.3), rotation: yaw(math.pi / 2),
+        scale: vm.Vector3(8.6, 2.5, 1)),
+      SceneModel('assets/world/city/interior_wall.glb',
+        key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
+        position: p(x + 5.8, 0, z - 4.3), rotation: yaw(-math.pi / 2),
+        scale: vm.Vector3(8.6, 2.5, 1)),
+      SceneModel('assets/world/city/interior_wall.glb',
+        key: ValueKey('interior-front-left-$id'), name: 'interior_front_left_$id',
+        position: p(x - 6, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
+      SceneModel('assets/world/city/interior_wall.glb',
+        key: ValueKey('interior-front-right-$id'), name: 'interior_front_right_$id',
+        position: p(x + 1.6, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
+      SceneModel('assets/world/city/interior_doorway_wide.glb',
+        key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
+        position: p(x - 1.6, 0, z - 4.3), scale: vm.Vector3(3.2, 2.5, 1)),
+      SceneModel('assets/world/city/interior_desk.glb',
+        key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
+        position: p(x - 1.8, 0, z + 1.7), scale: vm.Vector3(3.2, 2, 2)),
+      SceneModel('assets/world/city/interior_chair.glb',
+        key: ValueKey('interior-chair-$id'), name: 'interior_chair_$id',
+        position: p(x + 1.4, 0, z + 1.5), scale: vm.Vector3.all(2)),
+      SceneModel('assets/world/city/interior_computer_screen.glb',
+        key: ValueKey('interior-screen-$id'), name: 'interior_terminal_$id',
+        position: p(x - 0.6, 0.78, z + 1.5), scale: vm.Vector3.all(2)),
+      SceneModel('assets/world/city/interior_bench.glb',
+        key: ValueKey('interior-bench-$id'), name: 'interior_cover_bench_$id',
+        position: p(x + 2.7, 0, z - 1.8), scale: vm.Vector3(4, 2, 2)),
+    ];
   }
 
   Widget _buildWorldProp(ArenaWorldPlacement placement, String key) {
@@ -322,7 +415,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _facing(bot.team),
-      scale: vm.Vector3.all(0.68),
+      scale: vm.Vector3.all(0.86),
       animations: [
         SceneAnimationSpec(_heroWalk(bot.heroId), loop: true, speed: 0.94),
       ],
@@ -336,7 +429,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final asset = useQuaternius ? _minionAsset : _heroAsset(fallbackHero);
     final animation =
         useQuaternius ? _minionWalkClip! : _heroWalk(fallbackHero);
-    final scale = minion.ranged ? 0.45 : 0.48;
+    final scale = minion.ranged ? 0.54 : 0.58;
     return SceneModel(
       asset,
       key: ValueKey('match-minion-${minion.id}'),
@@ -417,7 +510,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   elapsed.inMicroseconds / 1000000.0 * 1.35,
                 ) * 0.035;
                 return PerspectiveCamera(
-                  fovRadiansY: 52 * math.pi / 180,
+                  fovRadiansY: 49 * math.pi / 180,
                   position: vm.Vector3(
                     _cameraX,
                     _cameraY + cameraBob,
@@ -442,13 +535,36 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               children: _buildSceneChildren(snapshot),
             ),
             Positioned(
-              left: viewport.maxWidth * 0.50,
-              right: side + 170,
-              top: compact ? 100 : 112,
-              bottom: compact ? 112 : 124,
-              child: GestureDetector(
+              left: viewport.maxWidth * 0.42,
+              right: side + 138,
+              top: compact ? 88 : 96,
+              bottom: compact ? 104 : 112,
+              child: Listener(
                 behavior: HitTestBehavior.translucent,
-                onPanUpdate: _rotateCamera,
+                onPointerDown: (event) {
+                  if (event.position.dx < viewport.maxWidth * 0.42) return;
+                  _cameraPointerId = event.pointer;
+                  _lastCameraPointer = event.position;
+                },
+                onPointerMove: (event) {
+                  if (event.pointer != _cameraPointerId) return;
+                  final previous = _lastCameraPointer;
+                  if (previous == null) return;
+                  _lastCameraPointer = event.position;
+                  _applyCameraDrag(event.position - previous);
+                },
+                onPointerUp: (event) {
+                  if (event.pointer == _cameraPointerId) {
+                    _cameraPointerId = null;
+                    _lastCameraPointer = null;
+                  }
+                },
+                onPointerCancel: (event) {
+                  if (event.pointer == _cameraPointerId) {
+                    _cameraPointerId = null;
+                    _lastCameraPointer = null;
+                  }
+                },
                 child: const SizedBox.expand(),
               ),
             ),
