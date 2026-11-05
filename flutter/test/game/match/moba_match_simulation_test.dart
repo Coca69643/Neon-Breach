@@ -31,6 +31,29 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('AI heroes and minions use independent NPC appearance variants', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      final state = simulation.snapshot;
+
+      expect(
+        state.bots.map((bot) => bot.visualId).toSet(),
+        hasLength(6),
+        reason: 'bot appearances must not be selected from Lyra, Bastion or Kairo',
+      );
+      for (final team in MobaTeam.values) {
+        final wave = state.minions
+            .where((unit) =>
+                unit.team == team && unit.lane == MobaLane.top)
+            .toList();
+        expect(wave, hasLength(4));
+        expect(
+          wave.map((unit) => unit.visualId).toSet(),
+          hasLength(4),
+          reason: 'each lane wave must have four distinct visual bodies',
+        );
+      }
+    });
+
     test('all bots spawn on walkable ground outside tower collision footprints', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
