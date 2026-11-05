@@ -124,6 +124,7 @@ class MobaMatchSnapshot {
     required this.playerSkillCooldown,
     required this.playerRespawnSeconds,
     required this.playerMoving,
+    required this.playerAttackSeconds,
     required this.playerFacingX,
     required this.playerFacingZ,
     required this.blueTeamKills,
@@ -154,6 +155,7 @@ class MobaMatchSnapshot {
   final double playerSkillCooldown;
   final double playerRespawnSeconds;
   final bool playerMoving;
+  final double playerAttackSeconds;
   final double playerFacingX;
   final double playerFacingZ;
   final int blueTeamKills;
@@ -272,6 +274,7 @@ class MobaMatchSimulation {
   double _playerMaxHealth = playerMaxHealthBase;
   double _playerRespawn = 0;
   double _playerAttackCooldown = 0;
+  double _playerAttackPulseSeconds = 0;
   double _playerSkillCooldown = 0;
   double _playerShieldTime = 0;
   double _playerXp = 0;
@@ -311,6 +314,7 @@ class MobaMatchSimulation {
     _playerMaxHealth = playerMaxHealthBase;
     _playerRespawn = 0;
     _playerAttackCooldown = 0;
+    _playerAttackPulseSeconds = 0;
     _playerSkillCooldown = 0;
     _playerShieldTime = 0;
     _playerXp = 0;
@@ -445,6 +449,8 @@ class MobaMatchSimulation {
   }) {
     _elapsed += dt;
     _playerAttackCooldown = math.max(0, _playerAttackCooldown - dt);
+    _playerAttackPulseSeconds =
+        math.max(0, _playerAttackPulseSeconds - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
     _playerShieldTime = math.max(0, _playerShieldTime - dt);
     final wasRespawning = _playerRespawn > 0;
@@ -496,44 +502,46 @@ class MobaMatchSimulation {
   }
 
   void _playerAttack() {
+    // The action always has a visible response, even when no target is in range.
+    // Damage remains server-independent and is applied only to valid nearby MOBA
+    // targets; the renderer plays a short, unarmed character animation.
+    _playerAttackPulseSeconds = 0.34;
+    _playerAttackCooldown = 0.72;
+
+    final damage = heroId.basicDamage * _playerPower;
+    final lane = _nearestLane(_playerPosition);
     final enemyBot = _nearestBot(
       _playerPosition,
       MobaTeam.red,
-      maxRange: 2.7,
-      lane: _nearestLane(_playerPosition),
+      maxRange: 3.9,
     );
     if (enemyBot != null) {
-      _damageBot(enemyBot, MobaTeam.blue, heroId.basicDamage * _playerPower);
-      _playerAttackCooldown = 0.72;
+      _damageBot(enemyBot, MobaTeam.blue, damage);
       return;
     }
 
-    final lane = _nearestLane(_playerPosition);
     final minion = _nearestMinion(
       _playerPosition,
       MobaTeam.red,
       lane,
-      maxRange: 2.6,
+      maxRange: 3.6,
     );
     if (minion != null) {
-      _damageMinion(minion, MobaTeam.blue, heroId.basicDamage * _playerPower);
-      _playerAttackCooldown = 0.72;
+      _damageMinion(minion, MobaTeam.blue, damage);
       return;
     }
 
     final tower = _activeTower(MobaTeam.red, lane);
     if (tower != null &&
-        _playerPosition.distanceTo(tower.position) <= 3.25 &&
+        _playerPosition.distanceTo(tower.position) <= 3.6 &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
-      _damageTower(tower, MobaTeam.blue, heroId.basicDamage * _playerPower);
-      _playerAttackCooldown = 0.72;
+      _damageTower(tower, MobaTeam.blue, damage);
       return;
     }
 
     if (_laneOpen(MobaTeam.red, lane) &&
-        _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= 4) {
-      _damageCore(MobaTeam.red, heroId.basicDamage * _playerPower, lane);
-      _playerAttackCooldown = 0.72;
+        _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= 4.5) {
+      _damageCore(MobaTeam.red, damage, lane);
     }
   }
 
@@ -1079,6 +1087,7 @@ class MobaMatchSimulation {
       playerSkillCooldown: _playerSkillCooldown,
       playerRespawnSeconds: _playerRespawn,
       playerMoving: _playerMoving,
+      playerAttackSeconds: _playerAttackPulseSeconds,
       playerFacingX: _lastMoveX,
       playerFacingZ: _lastMoveZ,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
