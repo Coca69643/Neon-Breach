@@ -68,9 +68,9 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
               final seconds = elapsed.inMicroseconds / 1000000.0;
               final drift = math.sin(seconds * 0.055) * 0.72;
               return PerspectiveCamera(
-                fovRadiansY: 42 * math.pi / 180,
-                position: vm.Vector3(drift, 61, 67),
-                target: vm.Vector3(0, 0.1, 0),
+                fovRadiansY: 49 * math.pi / 180,
+                position: vm.Vector3(drift, 73, 39),
+                target: vm.Vector3(0, 0.0, 0),
                 fovNear: 0.1,
                 fovFar: 220,
               );
@@ -173,7 +173,7 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        '3 rotas • Rio diagonal • Bases opostas • Selva',
+                        '3 rotas • Rio em S • Pontes • Bases • Selva',
                         style: TextStyle(
                           color: Color(0xFFD5DFDE),
                           fontSize: 12,
