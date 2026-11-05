@@ -11,17 +11,14 @@ on:
       - "app/src/main/res/drawable/ic_launcher.xml"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
-  pull_request:
-    paths:
-      - "flutter/**"
-      - "app/src/main/assets/world/nature/**"
-      - "app/src/main/res/drawable/ic_launcher.xml"
-      - "tools/generate_terrain_materials.py"
-      - ".github/workflows/flutter-foundation.yml"
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: project-arena-ci-${{ github.ref }}
+  cancel-in-progress: true
 
 jobs:
   flutter-checks:
