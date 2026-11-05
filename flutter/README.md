@@ -20,10 +20,10 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - PBR com iluminação de ambiente controlada e materiais bem trabalhados.
 - Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
 - Meta inicial: 30 FPS sustentados no Realme C53.
-- Campo 120 × 84 unidades, três lanes, quatro side approaches e três pontes.
-- Navegação usa footprint super-retangular, river-blocking fora dos bridges, colisões de árvore e torre.
-- Câmera de ação traseira: altura 8.8, follow 13.5, look-ahead 5.2, FOV vertical 52°, suavização exponencial.
-- Câmera de ação traseira: altura 8.8, follow distance 13.5, look-ahead 5.2, FOV vertical 52°, suavização e controles relativos à câmera.
+- Arena em transição de ilha medieval para distritos urbanos-fantásticos, com quatro edifícios de serviço de telhado aberto e interiores básicos acessíveis.
+- Navegação com colisão de paredes e mobiliário, portas abertas, rio bloqueado fora das pontes e testes de acesso interno.
+- Câmera follow de ação traseira com gesto de arrasto independente na área central/direita; joystick esquerdo reservado ao movimento.
+- Próximo conteúdo obrigatório: fachadas urbanas, interiores completos, rotas verticais, arma/ataque com feedback e novo GLB masculino para Kairo.
 - Escalas de leitura: herói 0.82, bots 0.68, minions 0.45–0.48.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
