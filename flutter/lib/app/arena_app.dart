@@ -119,8 +119,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
 
   TransitionDecision _dispatch(ArenaEvent event) {
     final selectedHero = _machine.snapshot.selectedHeroId;
-    final startsMatch =
-        event is StartRunFromHub || event is ConfirmHeroSelection;
+    final startsMatch = event is StartRunFromHub;
     final decision = _machine.dispatch(event);
     if (!decision.accepted) return decision;
 
