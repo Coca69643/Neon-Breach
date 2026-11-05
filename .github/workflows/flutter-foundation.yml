@@ -51,6 +51,8 @@ jobs:
         run: python3 tool/prepare_hero_assets.py
       - name: Prepare offline CC0 city and interior assets
         run: python3 tool/prepare_city_assets.py
+      - name: Prepare pinned CC0 NPC models for bots, minions and city NPCs
+        run: python3 tool/prepare_npc_assets.py
       - name: Prepare offline MOBA character and structure assets
         run: python3 tool/prepare_match_assets.py
       - name: Prepare pinned Quaternius CC0 hero weapons
@@ -100,40 +102,40 @@ jobs:
           "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
       - name: Prepare versioned APK and checksum
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.8-arm64.apk
-          sha256sum Project-Arena-1.7.8-arm64.apk > Project-Arena-1.7.8-arm64.apk.sha256
+          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.9-arm64.apk
+          sha256sum Project-Arena-1.7.9-arm64.apk > Project-Arena-1.7.9-arm64.apk.sha256
       - name: Upload signed ARM64 APK artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: project-arena-1.7.8-arm64
+          name: project-arena-1.7.9-arm64
           path: |
-            flutter/Project-Arena-1.7.8-arm64.apk
-            flutter/Project-Arena-1.7.8-arm64.apk.sha256
-            flutter/Project-Arena-1.7.8-Changelog.txt
+            flutter/Project-Arena-1.7.9-arm64.apk
+            flutter/Project-Arena-1.7.9-arm64.apk.sha256
+            flutter/Project-Arena-1.7.9-Changelog.txt
           if-no-files-found: error
           retention-days: 30
-      - name: Publish Projeto Arena 1.7.8 stable tester release
+      - name: Publish Projeto Arena 1.7.9 stable tester release
         if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-1.7.8
+          tag_name: project-arena-1.7.9
           target_commitish: ${{ github.sha }}
-          name: Projeto Arena 1.7.8 — build de teste
+          name: Projeto Arena 1.7.9 — build de teste
           body: |
-            Projeto Arena 1.7.8 para Android ARM64.
-            - Runtime Flutter + Flutter Scene 0.24.3.
-            - Máquina de estados Dart e aplicativo offline em landscape.
-            - Prévia 3D de Lyra, Bastion e Kairo.
-            - Distrito urbano 180 × 140 com três avenidas, ruas, quatro interiores acessíveis e três travessias.
-            - Câmera com arrasto independente; escadas/mezaninos com elevação real; coberturas destrutíveis; reator central com controle de território e bônus de dano; armas CC0 presas ao osso Palm.R; Kairo com GLB masculino distinto.
-            - versionName 1.7.8 / versionCode 70.
+            Projeto Arena 1.7.9 para Android ARM64.
+            - Aplicativo offline em landscape, compilado para Android ARM64.
+            - Seis aparências CC0 independentes dos heróis jogáveis para bots, tropas e NPCs.
+            - Animações de locomoção e interação social incluídas nos modelos de NPC.
+            - Entradas dos interiores alinhadas com a abertura de colisão.
+            - NPCs do distrito incluídos no pacote offline.
+            - versionName 1.7.9 / versionCode 71.
             - APK compilado, assets conferidos e assinatura verificada pelo GitHub Actions.
-            - Renderização visual, FPS sustentado, temperatura e atualização precisam de validação no Realme C53.
+            - Orientação visual, exploração e desempenho sustentado ainda precisam de validação no Realme C53.
           draft: false
           prerelease: false
           make_latest: true
           overwrite_files: true
           files: |
-            flutter/Project-Arena-1.7.8-arm64.apk
-            flutter/Project-Arena-1.7.8-arm64.apk.sha256
+            flutter/Project-Arena-1.7.9-arm64.apk
+            flutter/Project-Arena-1.7.9-arm64.apk.sha256
