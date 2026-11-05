@@ -176,6 +176,20 @@ abstract final class ArenaWorldCatalog {
     return nearest;
   }
 
+  static bool _insideTowerFootprint(double x, double z) {
+    const lanes = <double>[-22.5, 0.0, 22.5];
+    const towerRows = <double>[-30.0, -20.0, -10.0, 10.0, 20.0, 30.0];
+    const radiusSquared = 2.2 * 2.2;
+    for (final laneX in lanes) {
+      for (final rowZ in towerRows) {
+        final dx = x - laneX;
+        final dz = z - rowZ;
+        if (dx * dx + dz * dz < radiusSquared) return true;
+      }
+    }
+    return false;
+  }
+
   static bool _isOnBridge(double x, double z) {
     final riverZ = _riverCenterZ(x);
     final channelHalfWidth = _riverHalfWidth(x) + riverBankMargin;
@@ -196,6 +210,8 @@ abstract final class ArenaWorldCatalog {
     if (riverDistance < channelWidth && !_isOnBridge(x, z)) {
       return false;
     }
+
+    if (_insideTowerFootprint(x, z)) return false;
 
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
