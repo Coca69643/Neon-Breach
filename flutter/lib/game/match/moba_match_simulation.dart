@@ -7,7 +7,7 @@ enum MobaTeam { blue, red }
 extension MobaTeamRules on MobaTeam {
   MobaTeam get enemy => this == MobaTeam.blue ? MobaTeam.red : MobaTeam.blue;
   double get forward => this == MobaTeam.blue ? 1.0 : -1.0;
-  double get homeZ => this == MobaTeam.blue ? -63.0 : 63.0;
+  double get homeZ => this == MobaTeam.blue ? -60.0 : 60.0;
   int get index => this == MobaTeam.blue ? 0 : 1;
 }
 
@@ -516,7 +516,7 @@ class MobaMatchSimulation {
   void _playerAttack() {
     // The action always has a visible response, even when no target is in range.
     // Damage remains server-independent and is applied only to valid nearby MOBA
-    // targets; the renderer plays a short, unarmed character animation.
+    // targets; the renderer plays the rig's SwordSlash combat clip.
     _playerAttackPulseSeconds = 0.46;
     _playerAttackCooldown = heroId.basicAttackCooldown;
 
