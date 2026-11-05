@@ -117,6 +117,98 @@ void main() {
       );
     });
 
+    test('minion waves recycle defeated entities after reaching the mobile cap', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      var observedRecycledId = false;
+
+      for (var frame = 0; frame < 150 * 60; frame++) {
+        simulation.step(1 / 60);
+        final state = simulation.snapshot;
+        expect(
+          state.minions.length,
+          lessThanOrEqualTo(MobaMatchSimulation.maxMinions),
+        );
+        if (state.minions.any((unit) => unit.id >= 48)) {
+          observedRecycledId = true;
+          break;
+        }
+      }
+
+      expect(
+        observedRecycledId,
+        isTrue,
+        reason: 'new waves must continue spawning after defeated minions are pruned',
+      );
+    });
+
+    test('player movement cannot pass through a building side wall', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: const MobaPoint(-63, -38),
+      );
+
+      for (var frame = 0; frame < 120; frame++) {
+        simulation.step(1 / 60, moveX: 1);
+        final position = simulation.snapshot.playerPosition;
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            position.x,
+            position.z,
+            elevation: position.elevation,
+          ),
+          isTrue,
+        );
+      }
+
+      expect(
+        simulation.snapshot.playerPosition.x,
+        lessThan(-57.4),
+        reason: 'the hero must stop before crossing the interior side wall',
+      );
+    });
+
+    test('player stays on the island while moving diagonally toward the border', () {
+      final spawn = const MobaPoint(80, 24);
+      expect(ArenaWorldCatalog.isWalkable(spawn.x, spawn.z), isTrue);
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.kairo,
+        spawnPosition: spawn,
+      );
+
+      for (var frame = 0; frame < 240; frame++) {
+        simulation.step(1 / 60, moveX: 0.8, moveZ: 0.6);
+        final position = simulation.snapshot.playerPosition;
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            position.x,
+            position.z,
+            elevation: position.elevation,
+          ),
+          isTrue,
+          reason: 'every committed movement substep must stay on walkable terrain',
+        );
+      }
+    });
+
+    test('AI and minion attacks expose a short non-locomotion animation window', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      var botAttackSeen = false;
+      var minionAttackSeen = false;
+
+      for (var frame = 0; frame < 80 * 60; frame++) {
+        simulation.step(1 / 60);
+        final state = simulation.snapshot;
+        botAttackSeen |= state.bots.any((bot) => bot.attackSeconds > 0);
+        minionAttackSeen |= state.minions.any((unit) => unit.attackSeconds > 0);
+        if (botAttackSeen && minionAttackSeen) break;
+      }
+
+      expect(botAttackSeen, isTrue,
+          reason: 'AI strikes must be visible to the renderer');
+      expect(minionAttackSeen, isTrue,
+          reason: 'minion strikes must be visible to the renderer');
+    });
+
     test('core stays protected until one complete lane loses all towers', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
