@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../game/manifest/arena_manifest_validator.dart';
 import '../game/rendering/arena_hero_preview.dart';
+import '../game/rendering/arena_scene_runtime.dart';
 import '../game/state/arena_state_machine.dart';
 
 class ArenaApp extends StatefulWidget {
@@ -25,7 +26,23 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
 
   Future<void> _bootstrap() async {
     _machine.dispatch(const BootCompleted());
-    await _validateManifest();
+    await _initializeFoundation();
+  }
+
+  Future<void> _initializeFoundation() async {
+    try {
+      // GPU resources must be ready before the first declarative SceneView.
+      await ArenaSceneRuntime.initialize();
+      await _validateManifest();
+    } catch (error) {
+      if (!mounted) return;
+      _machine.dispatch(
+        ManifestValidationCompleted(
+          valid: false,
+          reason: 'Falha ao inicializar o runtime 3D: $error',
+        ),
+      );
+    }
   }
 
   Future<void> _validateManifest() async {
@@ -90,7 +107,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   Future<void> _retry() async {
     _machine.dispatch(const RetryRecovery());
     if (_machine.snapshot.phase == ArenaPhase.assetValidation) {
-      await _validateManifest();
+      await _initializeFoundation();
     }
   }
 }
@@ -143,8 +160,8 @@ class _ArenaScreen extends StatelessWidget {
       case ArenaPhase.assetValidation:
         return const _StatusView(
           eyebrow: 'VERIFICAÇÃO',
-          title: 'Validando conteúdo',
-          description: 'Conferindo o manifesto local da aplicação.',
+          title: 'Preparando runtime 3D',
+          description: 'Inicializando shaders, materiais e conteúdo offline.',
         );
       case ArenaPhase.mainMenu:
         return _mainMenu();
@@ -193,7 +210,7 @@ class _ArenaScreen extends StatelessWidget {
         ),
         const SizedBox(height: 16),
         const Text(
-          'Base Flutter + runtime nativo próprio.\n'
+          'Flutter + Flutter Scene.\n'
           'Offline • Landscape • Máquina de estados ativa',
           style: TextStyle(color: Color(0xFFB7C2CA), height: 1.5),
         ),
@@ -205,7 +222,7 @@ class _ArenaScreen extends StatelessWidget {
         ),
         const SizedBox(height: 22),
         const Text(
-          'FUNDAÇÃO 0.1  /  PARTIDA 3D AINDA NÃO INTEGRADA',
+          'FUNDAÇÃO 0.2  /  PARTIDA 3D AINDA NÃO INTEGRADA',
           style: TextStyle(
             color: Color(0xFF71808B),
             fontSize: 10,
