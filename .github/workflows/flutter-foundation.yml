@@ -40,4 +40,4 @@ jobs:
       - name: Unit tests
         run: flutter test --reporter expanded
       - name: Build Android release
-        run: flutter build apk --release --enable-flutter-gpu
+        run: flutter build apk --release
