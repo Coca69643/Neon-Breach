@@ -86,7 +86,7 @@ void main() {
 
         var elevation = 0.0;
         for (var step = 1; step <= 25; step++) {
-          final x = startX + access.rampRun * step / 25;
+          final x = startX + ArenaVerticalAccess.rampRun * step / 25;
           final next = ArenaWorldCatalog.resolveNavigationElevation(
             x, z, elevation,
           );
@@ -98,10 +98,10 @@ void main() {
           ), isTrue);
         }
 
-        expect(elevation, closeTo(access.upperHeight, 0.001));
-        final deckX = access.x + access.platformLength * 0.5;
+        expect(elevation, closeTo(ArenaVerticalAccess.upperHeight, 0.001));
+        final deckX = access.x + ArenaVerticalAccess.platformLength * 0.5;
         expect(ArenaWorldCatalog.isWalkable(
-          deckX, z, elevation: access.upperHeight,
+          deckX, z, elevation: ArenaVerticalAccess.upperHeight,
         ), isTrue);
         expect(ArenaWorldCatalog.isWalkable(deckX, z), isFalse,
             reason: 'ground-floor movement must not snap through the deck');
@@ -109,7 +109,7 @@ void main() {
           deckX, z, 0,
         ), isNull);
         expect(ArenaWorldCatalog.resolveNavigationElevation(
-          deckX + 0.4, z, access.upperHeight,
+          deckX + 0.4, z, ArenaVerticalAccess.upperHeight,
         ), isNull, reason: 'the elevated route must remain bounded');
       }
     });
