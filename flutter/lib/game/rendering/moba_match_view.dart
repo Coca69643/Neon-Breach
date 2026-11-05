@@ -7,9 +7,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
-import 'hero_weapon_socket.dart';
 import '../match/moba_match_simulation.dart';
 import '../world/arena_world_catalog.dart';
+import 'hero_weapon_socket.dart';
 
 class MobaMatchView extends StatefulWidget {
   const MobaMatchView({
