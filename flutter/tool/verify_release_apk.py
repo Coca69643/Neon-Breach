@@ -181,6 +181,16 @@ def main() -> None:
         "assets/flutter_assets/assets/heroes/kairo.glb",
         "assets/flutter_assets/assets/world/arena_terrain.glb",
         "assets/flutter_assets/assets/world/arena_menu_hub.glb",
+        "assets/flutter_assets/assets/match/quaternius_minion.glb",
+        "assets/flutter_assets/assets/match/tower_blue.glb",
+        "assets/flutter_assets/assets/match/tower_red.glb",
+        "assets/flutter_assets/assets/match/castle_blue.glb",
+        "assets/flutter_assets/assets/match/castle_red.glb",
+        "assets/flutter_assets/assets/match/home_blue.glb",
+        "assets/flutter_assets/assets/match/home_red.glb",
+        "assets/flutter_assets/assets/match/bridge_a.glb",
+        "assets/flutter_assets/assets/match/KAYKIT-CC0-LICENSE.txt",
+        "assets/flutter_assets/assets/match/match-asset-manifest.json",
     )
     for asset in expected_raw_assets:
         require(asset in names, f"required runtime asset is missing: {asset}")
@@ -188,7 +198,8 @@ def main() -> None:
     compiled_scenes = (
         "lyra", "bastion", "kairo", "arena_terrain",
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
-        "arena_menu_hub",
+        "arena_menu_hub", "quaternius_minion", "tower_blue", "tower_red",
+        "castle_blue", "castle_red", "home_blue", "home_red", "bridge_a",
     )
     for scene in compiled_scenes:
         prefix = f"assets/flutter_assets/flutter_scene_generated/scene.{scene}."
