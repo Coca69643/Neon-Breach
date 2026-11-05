@@ -1,7 +1,7 @@
 name: project_arena_flutter
 description: Projeto Arena — MOBA 3D mobile com Flutter Scene.
 publish_to: none
-version: 1.7.4+66
+version: 1.7.5+67
 
 environment:
   sdk: ">=3.10.0 <4.0.0"
