@@ -39,6 +39,10 @@ void main() {
         );
       }
       expect(ArenaWorldCatalog.isWalkable(0, 15), isTrue);
+      expect(
+        ArenaWorldCatalog.navigationHeightAt(0, 15),
+        greaterThan(ArenaWorldCatalog.heightAt(0, 15) + 1.0),
+      );
       expect(ArenaWorldCatalog.isWalkable(8, 16), isFalse);
       expect(ArenaWorldCatalog.isWalkable(0, -10), isFalse);
       expect(ArenaWorldCatalog.isWalkable(4, -10), isTrue);
