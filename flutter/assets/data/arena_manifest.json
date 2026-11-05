@@ -5,8 +5,8 @@
   "orientation": "landscape",
   "offline": true,
   "runtime": {
-    "kind": "custom_native",
-    "status": "foundation_only",
-    "graphicsApiTarget": "OpenGL ES 3.0"
+    "kind": "flutter_scene",
+    "status": "scene_integration",
+    "graphicsRuntime": "Flutter GPU / Impeller"
   }
 }
