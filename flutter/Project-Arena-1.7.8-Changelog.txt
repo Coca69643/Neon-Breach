@@ -12,6 +12,9 @@ ALTERAÇÕES
 - Corrigida a orientação dos personagens durante a seleção e a movimentação.
 - Reduzida a escala das armas equipadas.
 - Ajustado o painel de interação com NPCs.
+- Corrigido o posicionamento inicial dos bots para evitar bloqueio nas colisões das torres.
+- Bots das rotas laterais agora priorizam o caminho de flanco antes de perseguir tropas.
+- Corrigida a checagem de versão do APK para 1.7.8+70.
 
 EXCLUSÕES
 - Removido o início automático da partida ao confirmar o herói.
