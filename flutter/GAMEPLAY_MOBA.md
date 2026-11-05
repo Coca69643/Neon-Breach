@@ -15,16 +15,16 @@ Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop prin
 
 ## Campo de batalha
 
-- Três rotas: superior, central e inferior.
+- Três rotas: superior, central e inferior, estendidas por um campo de 120 × 84 unidades.
 - Formação sem jungler: distribuição 2–1–2, com flex para reforçar rota.
 - Três torres por rota e por equipe: externas, intermediárias e internas (18 no total).
 - Núcleo de cada equipe.
-- Rio e travessias são elementos táticos de rotação; acampamentos da selva ficam fora do escopo atual.
+- Rio em S, três pontes e quatro acessos laterais abertos com pátios percorríveis; acampamentos da selva ficam fora do escopo atual.
 - Orçamento de tropas ativo limitado a 48 unidades.
 
 ## Sistemas de gameplay
 
-- Movimento do herói por controle touch e colisão com o cenário.
+- Movimento do herói por controle touch, colisão com o limite do mapa, canal do rio, troncos e footprints de torres.
 - Ataque básico, alcance, intervalo de ataque e seleção de alvo.
 - Três kits de habilidade com função distinta:
   - Lyra: suporte e recuperação de aliados.
@@ -53,6 +53,7 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 - Flutter Scene renderiza terreno, personagens, tropas, estruturas e efeitos 3D.
 - Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho.
 - Renderização e simulação são separadas: um frame perdido não altera a velocidade lógica da partida.
+- A câmera de combate é traseira, baixa e orientada pela direção do jogador; a visão geral estratégica fica no minimapa, não numa câmera top-down fixa.
 - Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
 - Câmera de combate usa perspectiva 3/4, acompanhando o jogador por trás e um pouco acima; não usar enquadramento de mapa inteiro durante a luta.
 - Configuração inicial: altura 15.5, follow distance 24.5, look-ahead 4.2 e FOV vertical 44° (valores em espaço de cena; adaptar para tela compacta).
@@ -73,3 +74,11 @@ Ainda não implementado como partida visual jogável:
 - validação física de FPS, temperatura e resposta de toque.
 
 Não anunciar gameplay completo enquanto esses itens de integração e validação não estiverem concluídos.
+
+## Arena e câmera — revisão 1.7.4
+
+- Footprint 120 × 84, super-retângulo orgânico com contorno suavemente irregular.
+- Três rotas em x ≈ -22.5 / 0 / +22.5 e z ≈ -40…+40.
+- Quatro acessos laterais percorríveis; sem camps ou mecânicas de coleta.
+- O rio bloqueia o movimento fora das três pontes; árvores e torres têm footprints de colisão.
+- Câmera de ação traseira com altura 8.8, follow distance 13.5, look-ahead 5.2, FOV 52° e suavização exponencial. O minimapa preserva a visão macro.
