@@ -277,9 +277,20 @@ def build_terrain_glb(output: Path) -> None:
             base_index + 1, base_index + 3, base_index + 2,
         ))
 
-    # The river is built as three continuous ribbons: reflective water, shallow
-    # margins, and irregular sand/mud banks. The ground mesh leaves this channel open.
-    previous: dict[str, tuple[int, int]] = {}
+    # The river is built as three continuous ribbons: a single water surface
+    # and two independent banks on each side. All triangles are wound upward.
+    previous: dict[str, tuple[int, ...]] = {}
+
+    def add_up_triangle(group_name: str, a: int, b: int, c: int) -> None:
+        ax, az = positions[a * 3], positions[a * 3 + 2]
+        bx, bz = positions[b * 3], positions[b * 3 + 2]
+        cx, cz = positions[c * 3], positions[c * 3 + 2]
+        normal_y = (bz - az) * (cx - ax) - (bx - ax) * (cz - az)
+        if normal_y >= 0.0:
+            groups[group_name].extend((a, b, c))
+        else:
+            groups[group_name].extend((a, c, b))
+
     for sample_index in range(181):
         t = sample_index / 180.0
         cx, cz, half_width = catmull_rom(RIVER, t)
@@ -290,59 +301,55 @@ def build_terrain_glb(output: Path) -> None:
         side_x, side_z = -dz / tangent_length, dx / tangent_length
         water_y = height(cx, cz) + 0.56
 
-        bands = {
-            "water": (0.0, half_width * 0.70),
-            "moss": (half_width * 0.70, half_width * 0.92),
-            "soil": (half_width * 0.92, half_width + 0.82),
-        }
+        # Water: one continuous strip from left bank to right bank.
+        water_indices = []
+        water_half_width = half_width * 0.70
+        for side in (1.0, -1.0):
+            x = cx + side_x * water_half_width * side
+            z = cz + side_z * water_half_width * side
+            water_indices.append(len(positions) // 3)
+            positions.extend((x * WORLD_SCALE, water_y, z * WORLD_SCALE))
+            normals.extend((0.0, 1.0, 0.0))
+            texcoords.extend((sample_index / 32.0, 0.0 if side > 0 else 1.0))
 
-        for group_name, (inner, outer) in bands.items():
+        if "water" in previous:
+            prev = previous["water"]
+            add_up_triangle("water", prev[0], water_indices[0], prev[1])
+            add_up_triangle("water", water_indices[0], water_indices[1], prev[1])
+        previous["water"] = tuple(water_indices)
+
+        # Moss and soil each form two strips, one on either side of the channel.
+        bands = (
+            ("moss", half_width * 0.70, half_width * 0.92, water_y - 0.035, 0.07),
+            ("soil", half_width * 0.92, half_width + 0.82, 0.07, 0.035),
+        )
+        for group_name, inner, outer, inner_lift, outer_lift in bands:
             current_indices = []
             for side in (1.0, -1.0):
-                inner_x = cx + side_x * inner * side
-                inner_z = cz + side_z * inner * side
-                outer_x = cx + side_x * outer * side
-                outer_z = cz + side_z * outer * side
-
-                if group_name == "water":
-                    inner_y = outer_y = water_y
-                elif group_name == "moss":
-                    inner_y = water_y - 0.035
-                    outer_y = height(outer_x, outer_z) + 0.07
-                else:
-                    inner_y = height(inner_x, inner_z) + 0.07
-                    outer_y = height(outer_x, outer_z) + 0.035
-
-                # Append the two band edges in left/right order.
-                for x, y, z, side_v in (
-                    (inner_x, inner_y, inner_z, 0.0),
-                    (outer_x, outer_y, outer_z, 1.0),
-                ):
-                    vertex_index = len(positions) // 3
+                for distance, lift in ((inner, inner_lift), (outer, outer_lift)):
+                    x = cx + side_x * distance * side
+                    z = cz + side_z * distance * side
+                    y = (
+                        water_y + lift
+                        if group_name == "moss" and lift < 0.0
+                        else height(x, z) + lift
+                    )
+                    current_indices.append(len(positions) // 3)
                     positions.extend((x * WORLD_SCALE, y, z * WORLD_SCALE))
                     normals.extend((0.0, 1.0, 0.0))
-                    texcoords.extend((sample_index / 32.0, side_v))
-                    current_indices.append(vertex_index)
+                    texcoords.extend((sample_index / 32.0, 0.0 if distance == inner else 1.0))
 
-            # current order: left-inner, left-outer, right-inner, right-outer
+            # left-inner, left-outer, right-inner, right-outer
             if group_name in previous:
                 prev = previous[group_name]
                 cur = current_indices
-                groups[group_name].extend((
-                    prev[0], cur[0], prev[2],
-                    cur[0], cur[2], prev[2],
-                ))
-                # Outer half of the same ribbon.
-                groups[group_name].extend((
-                    prev[1], cur[1], prev[0],
-                    cur[1], cur[0], prev[0],
-                    prev[2], cur[2], prev[3],
-                    cur[2], cur[3], prev[3],
-                ))
-            previous[group_name] = (
-                current_indices[0], current_indices[1],
-                current_indices[2], current_indices[3],
-            )
+                # Left bank quad.
+                add_up_triangle(group_name, prev[0], cur[0], prev[1])
+                add_up_triangle(group_name, cur[0], cur[1], prev[1])
+                # Right bank quad.
+                add_up_triangle(group_name, prev[2], prev[3], cur[2])
+                add_up_triangle(group_name, prev[3], cur[3], cur[2])
+            previous[group_name] = tuple(current_indices)
 
     # Pack GPU buffers and GLB accessors.
     binary = bytearray()
@@ -505,7 +512,7 @@ def build_terrain_glb(output: Path) -> None:
     magic, version, declared_length = struct.unpack_from("<4sII", glb, 0)
     if magic != b"glTF" or version != 2 or declared_length != len(glb):
         raise RuntimeError("Generated terrain GLB failed its container checks.")
-    if len(primitives) != 5 or len(images) != 8:
+    if len(primitives) != 5 or len(images) != 8 or any(not groups[name] for name in material_names):
         raise RuntimeError("Terrain GLB is missing a material group or embedded texture.")
 
 
