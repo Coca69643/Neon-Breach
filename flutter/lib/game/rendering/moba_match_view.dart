@@ -853,7 +853,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       right: viewport.maxWidth * 0.28,
                       bottom: compact ? 94 : 108,
                       child: _NpcDialogue(
-                        npc: nearbyNpc!,
+                        npc: nearbyNpc,
                         onClose: () => setState(() => _activeNpcId = null),
                       ),
                     ),
