@@ -50,6 +50,10 @@ jobs:
         run: python3 tool/prepare_world_assets.py
       - name: Bake original tower hub scene
         run: python3 tool/prepare_menu_hub.py
+      - name: Prepare independent male/female playable hero models
+        run: python3 tool/prepare_hero_assets.py
+      - name: Prepare offline CC0 city and interior assets
+        run: python3 tool/prepare_city_assets.py
       - name: Prepare offline MOBA character and structure assets
         run: python3 tool/prepare_match_assets.py
       - name: Load persistent Project Arena signing key
