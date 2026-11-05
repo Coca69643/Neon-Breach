@@ -43,7 +43,7 @@ ASSETS = {
     ),
     "commercial_low_c.glb": (
         "packs/city-kit-commercial/low-detail-building-c.glb",
-        "edc6434291b3d0f88d0db97e4507ae32dbde58e2",
+        "edc6434291d3b0f88d0db97e4507ae32dbde58e2",
     ),
     "commercial_low_d.glb": (
         "packs/city-kit-commercial/low-detail-building-d.glb",
