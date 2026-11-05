@@ -98,6 +98,36 @@ void main() {
       }
     });
 
+    test('central relay ownership persists until the meter reaches neutral', () {
+      final relay = MobaObjectiveControl();
+
+      expect(
+        relay.update(6, blue: 2, red: 0),
+        MobaTeam.blue,
+      );
+      expect(relay.owner, MobaTeam.blue);
+      expect(relay.control, 100);
+
+      expect(relay.update(1, blue: 0, red: 1), isNull);
+      expect(relay.control, 91);
+      expect(relay.owner, MobaTeam.blue,
+          reason: 'first lost progress must not instantly remove the team bonus');
+
+      final contestedAt = relay.control;
+      expect(relay.update(2, blue: 1, red: 1), isNull);
+      expect(relay.control, contestedAt);
+      expect(relay.owner, MobaTeam.blue);
+
+      expect(relay.update(10.2, blue: 0, red: 1), isNull);
+      expect(relay.control, lessThan(0));
+      expect(relay.owner, isNull,
+          reason: 'the previous owner loses the relay only at neutral');
+
+      expect(relay.update(12, blue: 0, red: 1), MobaTeam.red);
+      expect(relay.control, -100);
+      expect(relay.owner, MobaTeam.red);
+    });
+
     test('central relay is captured only by uncontested presence', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
