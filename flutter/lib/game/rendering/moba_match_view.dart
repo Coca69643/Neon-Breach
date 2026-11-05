@@ -3,6 +3,7 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
+import 'package:flutter_scene/scene.dart' show RingGeometry, UnlitMaterial;
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../match/moba_match_simulation.dart';
@@ -47,6 +48,15 @@ class _AmbientNpc {
 
 class _MobaMatchViewState extends State<MobaMatchView> {
   static const double _worldScale = ArenaWorldCatalog.worldScale;
+  static final RingGeometry _teamRingGeometry = RingGeometry(
+    innerRadius: 0.82,
+    outerRadius: 1.0,
+    segments: 24,
+  );
+  static final UnlitMaterial _blueTeamRingMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.16, 0.62, 0.98, 1);
+  static final UnlitMaterial _redTeamRingMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.98, 0.28, 0.30, 1);
   static const String _terrainAsset = 'assets/world/arena_terrain.glb';
 
   static const _ambientNpcs = <_AmbientNpc>[
@@ -560,6 +570,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     );
   }
 
+  Widget _teamRing(MobaTeam team) => SceneMesh(
+        name: 'team_identity_ring_${team.name}',
+        geometry: _teamRingGeometry,
+        material: team == MobaTeam.blue
+            ? _blueTeamRingMaterial
+            : _redTeamRingMaterial,
+        position: vm.Vector3(0, 0.025, 0),
+      );
+
   Widget _buildBot(MobaBotSnapshot bot) {
     return SceneModel(
       _heroAsset(bot.heroId),
@@ -578,20 +597,25 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           speed: bot.moving ? 0.98 : 0.82,
         ),
       ],
+      children: [_teamRing(bot.team)],
     );
   }
 
-  String _minionAssetFor(int id) => switch (id % 4) {
-        0 => 'assets/npcs/business-man.glb',
-        1 => 'assets/npcs/worker.glb',
-        2 => 'assets/npcs/farmer.glb',
-        _ => 'assets/npcs/hoodie-character.glb',
-      };
+  String _minionAssetFor(MobaMinionSnapshot minion) {
+    if (minion.team == MobaTeam.blue) {
+      return minion.ranged
+          ? 'assets/npcs/worker.glb'
+          : 'assets/npcs/business-man.glb';
+    }
+    return minion.ranged
+        ? 'assets/npcs/hoodie-character.glb'
+        : 'assets/npcs/farmer.glb';
+  }
 
   Widget _buildMinion(MobaMinionSnapshot minion) {
     final scale = minion.ranged ? 0.42 : 0.46;
     return SceneModel(
-      _minionAssetFor(minion.id),
+      _minionAssetFor(minion),
       key: ValueKey('match-minion-${minion.id}'),
       name:
           '${minion.team.name}_${minion.lane.name}_minion_${minion.id}',
@@ -605,6 +629,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           speed: minion.moving ? (minion.ranged ? 0.88 : 1.0) : 0.82,
         ),
       ],
+      children: [_teamRing(minion.team)],
     );
   }
 
