@@ -565,6 +565,36 @@ def build_terrain_glb(output: Path) -> None:
     # Flank approaches remain open and traversable. They are secondary
     # routes through the side courtyards, not jungle camps/objectives.
 
+    # Four enterable urban service buildings replace empty medieval clearings.
+    # The roofs stay open in this first gameplay pass so the player and camera
+    # can read the interior from the mobile third-person view.
+    def add_enterable_building(cx: float, cz: float, accent: str) -> None:
+        ground = height(cx, cz)
+        wall_h = 4.8
+        wall_y = ground + wall_h * 0.5
+        # Interior floor and four walls. The south facade has a 3.2-unit door.
+        add_box("stone", cx, ground + 0.12, cz, 12.0, 0.24, 9.0)
+        add_box("rock", cx, wall_y, cz + 4.3, 12.0, wall_h, 0.42)
+        add_box("rock", cx - 5.8, wall_y, cz, 0.42, wall_h, 8.6)
+        add_box("rock", cx + 5.8, wall_y, cz, 0.42, wall_h, 8.6)
+        add_box("rock", cx - 4.15, wall_y, cz - 4.3, 3.7, wall_h, 0.42)
+        add_box("rock", cx + 4.15, wall_y, cz - 4.3, 3.7, wall_h, 0.42)
+        add_box("rock", cx, ground + wall_h - 0.22, cz - 4.3, 4.6, 0.44, 0.42)
+        # Visible interior fixtures and a service counter create readable rooms.
+        add_box("stone", cx, ground + 0.78, cz + 1.35, 3.6, 1.05, 0.85)
+        add_box("stone", cx - 4.35, ground + 1.25, cz + 2.1, 0.72, 2.1, 2.6)
+        add_box("stone", cx + 4.35, ground + 1.25, cz + 2.1, 0.72, 2.1, 2.6)
+        add_box(accent, cx, ground + 3.65, cz + 4.04, 2.3, 0.68, 0.12)
+        # Low parapet pieces make the open roof edge legible without hiding play.
+        add_box("stone", cx, ground + 4.98, cz + 4.3, 12.0, 0.36, 0.55)
+        add_box("stone", cx - 5.8, ground + 4.98, cz, 0.55, 0.36, 8.6)
+        add_box("stone", cx + 5.8, ground + 4.98, cz, 0.55, 0.36, 8.6)
+
+    add_enterable_building(-39.0, -20.0, "accent_blue")
+    add_enterable_building(39.0, -20.0, "accent_gold")
+    add_enterable_building(-39.0, 20.0, "accent_blue")
+    add_enterable_building(39.0, 20.0, "accent_gold")
+
     # Pack GPU buffers and GLB accessors.
     binary = bytearray()
     buffer_views: list[dict] = []
