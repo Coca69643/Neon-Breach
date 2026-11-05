@@ -198,7 +198,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         name: 'player_${snapshot.heroId.id}',
         position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
         rotation: _facing(MobaTeam.blue),
-        scale: vm.Vector3.all(0.48),
+        scale: vm.Vector3.all(0.68),
         animations: [
           SceneAnimationSpec(
             snapshot.playerMoving
@@ -247,7 +247,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _facing(bot.team),
-      scale: vm.Vector3.all(0.43),
+      scale: vm.Vector3.all(0.59),
       animations: [
         SceneAnimationSpec(_heroWalk(bot.heroId), loop: true, speed: 0.94),
       ],
@@ -261,7 +261,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final asset = useQuaternius ? _minionAsset : _heroAsset(fallbackHero);
     final animation =
         useQuaternius ? _minionWalkClip! : _heroWalk(fallbackHero);
-    final scale = minion.ranged ? 0.31 : 0.33;
+    final scale = minion.ranged ? 0.39 : 0.42;
     return SceneModel(
       asset,
       key: ValueKey('match-minion-${minion.id}'),
@@ -339,10 +339,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 final player = snapshot.playerPosition;
                 final x = player.x * _worldScale;
                 final z = player.z * _worldScale;
+                // Lower, closer 3/4 chase framing: the selected hero must
+                // occupy the visual foreground, not read as a map token.
+                final cameraHeight = compact ? 14.5 : 15.5;
+                final followDistance = compact ? 23.0 : 24.5;
+                final lookAhead = compact ? 3.8 : 4.2;
                 return PerspectiveCamera(
-                  fovRadiansY: 47 * math.pi / 180,
-                  position: vm.Vector3(x, 41, z - 46),
-                  target: vm.Vector3(x, 0.6, z + 7.5),
+                  fovRadiansY: 44 * math.pi / 180,
+                  position: vm.Vector3(x, cameraHeight, z - followDistance),
+                  target: vm.Vector3(x, 1.15, z + lookAhead),
                   fovNear: 0.1,
                   fovFar: 180,
                 );
