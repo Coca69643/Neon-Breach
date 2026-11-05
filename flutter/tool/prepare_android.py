@@ -10,7 +10,7 @@ ANDROID = ROOT / 'android'
 
 subprocess.run(
     [
-        'flutter', 'create', '--platforms=android',
+        'flutter', 'create', '--platforms=android', '--no-pub',
         '--org', 'com.duckdream',
         '--project-name', 'project_arena_flutter',
         str(ROOT),
@@ -55,16 +55,26 @@ if gradle is None:
     raise SystemExit('Android app Gradle file was not generated')
 
 content = gradle.read_text(encoding='utf-8')
-content = re.sub(
+content, app_id_replacements = re.subn(
     r'applicationId\s*(?:=\s*)?["\']com\.duckdream\.project_arena_flutter["\']',
     'applicationId = "com.duckdream.projectarena"' if gradle.suffix == '.kts'
     else 'applicationId "com.duckdream.projectarena"',
     content,
 )
-if gradle.suffix == '.kts':
-    content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23', content)
-else:
-    content = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 23', content)
-gradle.write_text(content, encoding='utf-8')
+if app_id_replacements != 1:
+    raise SystemExit(
+        'Could not set the expected Android applicationId; refusing an incompatible APK.'
+    )
 
+if gradle.suffix == '.kts':
+    content, min_sdk_replacements = re.subn(
+        r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23', content
+    )
+else:
+    content, min_sdk_replacements = re.subn(
+        r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 23', content
+    )
+if min_sdk_replacements != 1:
+    raise SystemExit('Could not enforce minSdk 23 in the generated Android host.')
+gradle.write_text(content, encoding='utf-8')
 print('Android host prepared: applicationId=com.duckdream.projectarena, minSdk=23, Flutter GPU enabled, landscape.')
