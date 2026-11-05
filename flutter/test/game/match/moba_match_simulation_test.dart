@@ -235,6 +235,43 @@ void main() {
       expect(simulation.snapshot.playerXp, greaterThan(0));
     });
 
+    test('all four interior entrances remain reachable without a barricade blocking the door', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+
+      for (final building in ArenaWorldCatalog.cityInteriors) {
+        final door = MobaPoint(building.$2, building.$3 - 4.3);
+        final blockingCover = simulation.snapshot.covers.any(
+          (cover) => cover.position.distanceTo(door) < 1.8,
+        );
+        expect(
+          blockingCover,
+          isFalse,
+          reason: '${building.$1} must not have a cover over the entrance',
+        );
+
+        final approach = MobaMatchSimulation(
+          heroId: MobaHeroId.bastion,
+          spawnPosition: MobaPoint(building.$2, building.$3 - 5.4),
+        );
+        for (var frame = 0; frame < 47; frame++) {
+          approach.step(1 / 60, moveZ: 1);
+        }
+        expect(
+          approach.snapshot.playerPosition.z,
+          greaterThan(building.$3 - 1.6),
+          reason: 'player must cross the doorway into ${building.$1}',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            approach.snapshot.playerPosition.x,
+            approach.snapshot.playerPosition.z,
+            elevation: approach.snapshot.playerPosition.elevation,
+          ),
+          isTrue,
+        );
+      }
+    });
+
     test('construction cover blocks a doorway until destroyed', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
