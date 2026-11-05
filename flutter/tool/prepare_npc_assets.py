@@ -48,7 +48,10 @@ ASSETS = {
 }
 
 # Keep only safe locomotion and social response clips in the runtime assets.
-ALLOWED_CLIPS = {"static", "idle", "walk", "sprint", "emote-yes"}
+ALLOWED_CLIPS = {
+    "static", "idle", "walk", "sprint", "emote-yes",
+    "attack-melee-right", "holding-both-shoot",
+}
 
 
 def fetch(url: str, attempts: int = 4) -> bytes:
