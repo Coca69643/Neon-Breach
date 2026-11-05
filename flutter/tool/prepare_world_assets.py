@@ -21,18 +21,18 @@ FLUTTER_ASSETS = ROOT / "flutter" / "assets" / "world"
 NATURE_SOURCE = ROOT / "app/src/main/assets/world/nature"
 TERRAIN_SOURCE = ROOT / "app/src/main/assets/world/terrain"
 WORLD_SCALE = 1.15
-HALF_X = 35.0
-HALF_Z = 31.0
-GRID_X = 120
-GRID_Z = 108
+HALF_X = 44.0
+HALF_Z = 29.0
+GRID_X = 144
+GRID_Z = 96
 
 RIVER = [
-    (-34.0, -16.0, 0.90), (-28.0, -13.5, 1.20),
-    (-22.0, -9.5, 1.45), (-16.0, -5.0, 1.62),
-    (-10.0, 1.5, 1.74), (-4.0, 8.0, 1.88),
-    (3.0, 13.0, 1.92), (10.0, 14.0, 1.78),
-    (17.0, 9.0, 1.62), (24.0, 2.0, 1.42),
-    (30.0, -5.0, 1.15), (34.0, -9.5, 0.92),
+    (-43.0, -13.0, 1.05), (-35.0, -10.5, 1.25),
+    (-27.0, -7.0, 1.50), (-19.0, -2.5, 1.72),
+    (-11.0, 3.0, 1.90), (-3.0, 9.0, 2.05),
+    (5.0, 13.5, 2.10), (13.0, 13.0, 1.95),
+    (21.0, 8.0, 1.75), (29.0, 1.0, 1.55),
+    (37.0, -6.0, 1.30), (43.0, -11.0, 1.05),
 ]
 LANES = [
     [(-15.0, -30), (-15.5, -22), (-14.8, -14), (-15.2, -6), (-14.7, 2),
@@ -126,7 +126,7 @@ def edge_wobble(angle: float) -> float:
 
 
 def inside_island(x: float, z: float) -> bool:
-    exponent = 4.2
+    exponent = 9.0
     angle = math.atan2(z / HALF_Z, x / HALF_X)
     edge = edge_wobble(angle)
     extent = (abs(x) / HALF_X) ** exponent + (abs(z) / HALF_Z) ** exponent
@@ -713,7 +713,8 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "mapShape": "rounded-rectangle-organic",
+            "layout": "wide three-lane MOBA arena with S-river, opposing bases and jungle pockets",
+            "mapShape": "wide-clipped-rectangle-organic",
             "laneCount": 3,
             "bridgeCount": 3,
             "baseCount": 2,
