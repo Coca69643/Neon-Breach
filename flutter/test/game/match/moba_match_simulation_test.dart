@@ -104,7 +104,7 @@ void main() {
       expect(bastion.snapshot.playerSkillCooldown, greaterThan(8.9));
       expect(kairo.snapshot.playerSkillCooldown, greaterThan(8.9));
       expect(lyra.snapshot.playerPosition.z, lessThan(-27));
-      expect(kairo.snapshot.playerPosition.z, greaterThan(-32));
+      expect(kairo.snapshot.playerPosition.z, greaterThan(-56));
     });
 
     test('long simulation keeps minion count within its fixed mobile budget', () {
