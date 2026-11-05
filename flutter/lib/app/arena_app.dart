@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/manifest/arena_manifest_validator.dart';
+import '../game/rendering/arena_hero_preview.dart';
 import '../game/state/arena_state_machine.dart';
 
 class ArenaApp extends StatefulWidget {
@@ -221,95 +222,125 @@ class _ArenaScreen extends StatelessWidget {
       ('bastion', 'BASTION', 'Linha de frente'),
       ('kairo', 'KAIRO', 'Controle'),
     ];
+    final selectedId = snapshot.selectedHeroId ?? 'lyra';
 
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const Text(
-          'SELEÇÃO DE HERÓI',
-          style: TextStyle(
-            color: Color(0xFF79D6BD),
-            letterSpacing: 2,
-            fontSize: 12,
-            fontWeight: FontWeight.w700,
+        Expanded(
+          flex: 6,
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: ArenaHeroPreview(heroId: selectedId),
           ),
         ),
-        const SizedBox(height: 12),
-        const Text(
-          'Escolha seu operador',
-          style: TextStyle(fontSize: 34, fontWeight: FontWeight.w800),
-        ),
-        const SizedBox(height: 24),
-        Wrap(
-          spacing: 12,
-          runSpacing: 12,
-          children: heroes.map((hero) {
-            final selected = snapshot.selectedHeroId == hero.$1;
-            return SizedBox(
-              width: 190,
-              child: OutlinedButton(
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.all(18),
-                  side: BorderSide(
-                    color: selected
-                        ? const Color(0xFF79D6BD)
-                        : const Color(0xFF46545E),
-                    width: selected ? 2 : 1,
-                  ),
-                  backgroundColor: selected
-                      ? const Color(0x2679D6BD)
-                      : const Color(0x1479D6BD),
-                ),
-                onPressed: () => onEvent(SelectHero(hero.$1)),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      hero.$2,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.w900,
-                        letterSpacing: 1.1,
-                      ),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      hero.$3,
-                      style: const TextStyle(color: Color(0xFFB7C2CA)),
-                    ),
-                  ],
+        const SizedBox(width: 28),
+        Expanded(
+          flex: 4,
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Text(
+                'SELEÇÃO DE HERÓI  /  01',
+                style: TextStyle(
+                  color: Color(0xFF79D6BD),
+                  letterSpacing: 2,
+                  fontSize: 11,
+                  fontWeight: FontWeight.w700,
                 ),
               ),
-            );
-          }).toList(),
-        ),
-        const SizedBox(height: 24),
-        Row(
-          children: [
-            TextButton(
-              onPressed: () => onEvent(const ReturnToMenu()),
-              child: const Text('VOLTAR'),
-            ),
-            const SizedBox(width: 12),
-            FilledButton(
-              onPressed: snapshot.selectedHeroId == null
-                  ? null
-                  : () => onEvent(const ConfirmHeroSelection()),
-              child: const Text('CONTINUAR'),
-            ),
-          ],
+              const SizedBox(height: 10),
+              const Text(
+                'Escolha seu operador',
+                style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Modelos 3D independentes com animação em tempo real.',
+                style: TextStyle(color: Color(0xFFB7C2CA), height: 1.4),
+              ),
+              const SizedBox(height: 22),
+              for (final hero in heroes) ...[
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      alignment: Alignment.centerLeft,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16, vertical: 13,
+                      ),
+                      side: BorderSide(
+                        color: selectedId == hero.$1
+                            ? const Color(0xFF79D6BD)
+                            : const Color(0xFF46545E),
+                        width: selectedId == hero.$1 ? 2 : 1,
+                      ),
+                      backgroundColor: selectedId == hero.$1
+                          ? const Color(0x2679D6BD)
+                          : const Color(0x1479D6BD),
+                    ),
+                    onPressed: () => onEvent(SelectHero(hero.$1)),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                hero.$2,
+                                style: const TextStyle(
+                                  fontWeight: FontWeight.w900,
+                                  letterSpacing: 1.1,
+                                ),
+                              ),
+                              const SizedBox(height: 3),
+                              Text(
+                                hero.$3,
+                                style: const TextStyle(
+                                  color: Color(0xFFB7C2CA), fontSize: 12,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        if (selectedId == hero.$1)
+                          const Icon(Icons.check_circle, color: Color(0xFF79D6BD)),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 8),
+              ],
+              const Spacer(),
+              Row(
+                children: [
+                  TextButton(
+                    onPressed: () => onEvent(const ReturnToMenu()),
+                    child: const Text('VOLTAR'),
+                  ),
+                  const SizedBox(width: 12),
+                  FilledButton(
+                    onPressed: snapshot.selectedHeroId == null
+                        ? null
+                        : () => onEvent(const ConfirmHeroSelection()),
+                    child: const Text('CONTINUAR'),
+                  ),
+                ],
+              ),
+            ],
+          ),
         ),
       ],
     );
   }
-
   Widget _runtimeFoundation() {
     return _StatusView(
       eyebrow: 'ETAPA 01  /  FLUXO VALIDADO',
       title: 'Herói selecionado',
       description:
           'A máquina de estados chegou a MATCH_LOADING. '
-          'O renderizador C++/OpenGL ES ainda não está conectado; '
+          'O runtime Flutter Scene ainda está em integração; '
           'esta etapa não apresenta uma partida fictícia.',
       actionLabel: 'VOLTAR À SELEÇÃO',
       onAction: () => onEvent(const CancelMatchLoading()),
