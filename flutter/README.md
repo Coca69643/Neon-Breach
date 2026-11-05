@@ -41,7 +41,8 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Pipeline offline do Vale das Coroas: terreno GLB texturizado, rio curvo e quatro modelos CC0.
+- Mapa do Vale das Coroas reconstruído: footprint retangular orgânico, três rotas curvas, rio diagonal em S, três pontes, bases opostas e clareiras de selva.
+- Pipeline offline do terreno GLB texturizado e quatro modelos CC0 de vegetação.
 - Prévia do mundo em MATCH_LOADING: integrada como visualização, explicitamente sem gameplay.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, build ARM64 e verificação da assinatura.
