@@ -10,9 +10,18 @@ class ArenaHeroPreview extends StatelessWidget {
   final String heroId;
 
   static const _models = <String, ({String asset, String idle})>{
-    'lyra': (asset: 'assets/heroes/lyra.glb', idle: 'Female_Idle'),
-    'bastion': (asset: 'assets/heroes/bastion.glb', idle: 'Man_Idle'),
-    'kairo': (asset: 'assets/heroes/kairo.glb', idle: 'Female_Idle'),
+    'lyra': (
+      asset: 'assets/heroes/lyra.glb',
+      idle: 'HumanArmature|Female_Idle',
+    ),
+    'bastion': (
+      asset: 'assets/heroes/bastion.glb',
+      idle: 'HumanArmature|Man_Idle',
+    ),
+    'kairo': (
+      asset: 'assets/heroes/kairo.glb',
+      idle: 'HumanArmature|Man_Idle',
+    ),
   };
 
   @override
@@ -51,12 +60,7 @@ class ArenaHeroPreview extends StatelessWidget {
             key: ValueKey(heroId),
             name: 'playable_hero_$heroId',
             position: vm.Vector3(0, 0, 0),
-            // The bundled GLBs are presenting their rear to the camera in the
-            // current runtime; turn the character toward the preview camera.
-            rotation: vm.Quaternion.axisAngle(
-              vm.Vector3(0, 1, 0),
-              math.pi,
-            ),
+            // The baked GLB front already faces scene +Z, toward this camera.
             scale: vm.Vector3.all(0.52),
             animations: [
               SceneAnimationSpec(model.idle, loop: true, speed: 1),
