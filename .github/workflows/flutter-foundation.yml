@@ -8,13 +8,28 @@ on:
     paths:
       - "flutter/**"
       - "app/src/main/assets/world/nature/**"
+      - "app/src/main/assets/world/kaykit/**"
+      - "app/src/main/assets/characters/quaternius-character.glb.b64"
+      - "ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt"
+      - "app/src/main/res/drawable/ic_launcher.xml"
+      - "tools/generate_terrain_materials.py"
+      - ".github/workflows/flutter-foundation.yml"
+  pull_request:
+    branches:
+      - main
+    paths:
+      - "flutter/**"
+      - "app/src/main/assets/world/nature/**"
+      - "app/src/main/assets/world/kaykit/**"
+      - "app/src/main/assets/characters/quaternius-character.glb.b64"
+      - "ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt"
       - "app/src/main/res/drawable/ic_launcher.xml"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   workflow_dispatch:
 
 permissions:
-  contents: write
+  contents: read
 
 concurrency:
   group: project-arena-ci-${{ github.ref }}
@@ -58,7 +73,7 @@ jobs:
       - name: Prepare pinned Quaternius CC0 hero weapons
         run: python3 tool/prepare_weapon_assets.py
       - name: Load persistent Project Arena signing key
-        if: github.event_name != 'pull_request'
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         env:
           NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
           NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
@@ -104,7 +119,7 @@ jobs:
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.9-arm64.apk
           sha256sum Project-Arena-1.7.9-arm64.apk > Project-Arena-1.7.9-arm64.apk.sha256
-      - name: Upload signed ARM64 APK artifact
+      - name: Upload ARM64 verification artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
@@ -115,8 +130,31 @@ jobs:
             flutter/Project-Arena-1.7.9-Changelog.txt
           if-no-files-found: error
           retention-days: 30
+
+
+  publish-release:
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+    needs: flutter-checks
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - name: Download verified ARM64 build
+        uses: actions/download-artifact@v4
+        with:
+          name: project-arena-1.7.9-arm64
+          path: release
+      - name: Refuse to overwrite an existing version tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/project-arena-1.7.9" >/dev/null 2>&1; then
+            echo "::error::Tag project-arena-1.7.9 already exists; refusing to replace a published build."
+            exit 1
+          fi
       - name: Publish Projeto Arena 1.7.9 stable tester release
-        if: github.event_name != 'pull_request'
         uses: softprops/action-gh-release@v2
         with:
           tag_name: project-arena-1.7.9
@@ -135,7 +173,7 @@ jobs:
           draft: false
           prerelease: false
           make_latest: true
-          overwrite_files: true
+          overwrite_files: false
           files: |
-            flutter/Project-Arena-1.7.9-arm64.apk
-            flutter/Project-Arena-1.7.9-arm64.apk.sha256
+            release/Project-Arena-1.7.9-arm64.apk
+            release/Project-Arena-1.7.9-arm64.apk.sha256
