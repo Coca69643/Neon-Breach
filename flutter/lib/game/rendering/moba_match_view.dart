@@ -214,7 +214,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   double _groundHeight(MobaPoint point) =>
-      ArenaWorldCatalog.navigationHeightAt(point.x, point.z) + 0.035;
+      ArenaWorldCatalog.navigationHeightAt(
+        point.x,
+        point.z,
+        elevation: point.elevation,
+      ) + 0.035;
 
   vm.Vector3 _worldPosition(MobaPoint point, {double heightOffset = 0}) =>
       vm.Vector3(
@@ -253,6 +257,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
       for (final building in ArenaWorldCatalog.cityInteriors)
         ..._buildCityInterior(building),
+      for (final access in ArenaWorldCatalog.verticalAccesses)
+        ..._buildVerticalAccess(access),
       for (final block in ArenaWorldCatalog.commercialBlocks)
         _buildCommercialBlock(block),
       for (final laneX in const [-36.0, 0.0, 36.0])
@@ -357,11 +363,19 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   List<Widget> _buildCityInterior((String, double, double) building) {
     final id = building.$1, x = building.$2, z = building.$3;
+    final hasVerticalAccess = ArenaWorldCatalog.verticalAccesses.any(
+      (access) => access.id == id,
+    );
     final ground = _groundHeight(MobaPoint(x, z));
     vm.Vector3 p(double px, double py, double pz) =>
         vm.Vector3(px * _worldScale, ground + py, pz * _worldScale);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
+    final deskZ = hasVerticalAccess ? z - 1.8 : z + 1.7;
+    final chairZ = hasVerticalAccess ? z - 1.8 : z + 1.5;
+    final screenZ = hasVerticalAccess ? z - 1.8 : z + 1.5;
+    final benchZ = hasVerticalAccess ? z - 3.1 : z - 1.8;
+
     return [
       SceneModel('assets/world/city/interior_floor.glb',
         key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
@@ -388,16 +402,92 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: p(x - 1.6, 0, z - 4.3), scale: vm.Vector3(3.2, 2.5, 1)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
-        position: p(x - 1.8, 0, z + 1.7), scale: vm.Vector3(3.2, 2, 2)),
+        position: p(x - 1.8, 0, deskZ), scale: vm.Vector3(3.2, 2, 2)),
       SceneModel('assets/world/city/interior_chair.glb',
         key: ValueKey('interior-chair-$id'), name: 'interior_chair_$id',
-        position: p(x + 1.4, 0, z + 1.5), scale: vm.Vector3.all(2)),
+        position: p(x + 1.4, 0, chairZ), scale: vm.Vector3.all(2)),
       SceneModel('assets/world/city/interior_computer_screen.glb',
         key: ValueKey('interior-screen-$id'), name: 'interior_terminal_$id',
-        position: p(x - 0.6, 0.78, z + 1.5), scale: vm.Vector3.all(2)),
+        position: p(x - 0.6, 0.78, screenZ), scale: vm.Vector3.all(2)),
       SceneModel('assets/world/city/interior_bench.glb',
         key: ValueKey('interior-bench-$id'), name: 'interior_cover_bench_$id',
-        position: p(x + 2.7, 0, z - 1.8), scale: vm.Vector3(4, 2, 2)),
+        position: p(x + 2.7, 0, benchZ), scale: vm.Vector3(4, 2, 2)),
+    ];
+  }
+
+  List<Widget> _buildVerticalAccess(ArenaVerticalAccess access) {
+    final base = ArenaWorldCatalog.heightAt(access.x, access.z) + 0.035;
+    final top = base + access.upperHeight;
+    final railYaw = vm.Quaternion.axisAngle(
+      vm.Vector3(0, 1, 0),
+      math.pi / 2,
+    );
+    final frontYaw = vm.Quaternion.axisAngle(
+      vm.Vector3(0, 1, 0),
+      math.pi,
+    );
+    return [
+      SceneModel(
+        'assets/world/city/interior_stairs.glb',
+        key: ValueKey('mezzanine-stairs-${access.id}'),
+        name: '${access.id}_mezzanine_stairs',
+        position: vm.Vector3(
+          access.rampStartX,
+          base,
+          access.z + access.corridorMaxOffset,
+        ),
+        scale: vm.Vector3(2.75, 2.5, 2.9),
+      ),
+      SceneModel(
+        'assets/world/city/interior_floor.glb',
+        key: ValueKey('mezzanine-floor-${access.id}'),
+        name: '${access.id}_upper_walkway',
+        position: vm.Vector3(
+          access.x,
+          top,
+          access.z + access.corridorMaxOffset,
+        ),
+        scale: vm.Vector3(
+          access.platformLength,
+          1,
+          access.platformDepth,
+        ),
+      ),
+      SceneModel(
+        'assets/world/city/interior_wall.glb',
+        key: ValueKey('mezzanine-back-rail-${access.id}'),
+        name: '${access.id}_upper_back_rail',
+        position: vm.Vector3(
+          access.x,
+          top,
+          access.z + access.corridorMaxOffset,
+        ),
+        scale: const vm.Vector3(5.0, 0.35, 0.65),
+      ),
+      SceneModel(
+        'assets/world/city/interior_wall.glb',
+        key: ValueKey('mezzanine-side-rail-${access.id}'),
+        name: '${access.id}_upper_side_rail',
+        position: vm.Vector3(
+          access.platformEndX,
+          top,
+          access.z + access.corridorMaxOffset,
+        ),
+        rotation: railYaw,
+        scale: const vm.Vector3(2.3, 0.35, 0.65),
+      ),
+      SceneModel(
+        'assets/world/city/interior_wall.glb',
+        key: ValueKey('mezzanine-front-rail-${access.id}'),
+        name: '${access.id}_upper_front_rail',
+        position: vm.Vector3(
+          access.x + 0.7,
+          top,
+          access.z + access.corridorMinOffset,
+        ),
+        rotation: frontYaw,
+        scale: const vm.Vector3(4.3, 0.35, 0.65),
+      ),
     ];
   }
 
