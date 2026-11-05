@@ -114,16 +114,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final z = snapshot.playerPosition.z * _worldScale;
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
-    final horizontalDistance = 13.5 * math.cos(_cameraPitch);
+    final horizontalDistance = 9.4 * math.cos(_cameraPitch);
     final ground = _groundHeight(snapshot.playerPosition);
 
     // Camera yaw/pitch are controlled only by the right-side drag zone.
     final desiredX = x - forwardX * horizontalDistance;
     final desiredY = ground + 1.25 + 9.4 * math.sin(_cameraPitch);
     final desiredZ = z - forwardZ * horizontalDistance;
-    final desiredLookX = x + forwardX * 4.4;
-    final desiredLookY = ground + 1.35;
-    final desiredLookZ = z + forwardZ * 4.4;
+    final desiredLookX = x + forwardX * 3.0;
+    final desiredLookY = ground + 1.2;
+    final desiredLookZ = z + forwardZ * 3.0;
     final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
     _cameraX += (desiredX - _cameraX) * blend;
@@ -325,7 +325,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildBase(MobaTeam team) {
-    final point = MobaPoint(0, team == MobaTeam.blue ? -66.0 : 66.0);
+    final point = MobaPoint(0, team == MobaTeam.blue ? -64.0 : 64.0);
     return SceneModel(
       team == MobaTeam.blue
           ? 'assets/world/city/commercial_building_a.glb'
@@ -334,7 +334,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: '${team.name}_urban_command_base',
       position: _worldPosition(point),
       rotation: _facing(team),
-      scale: vm.Vector3.all(8.0),
+      scale: vm.Vector3.all(5.0),
     );
   }
 
