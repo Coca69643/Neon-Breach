@@ -62,18 +62,23 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 ## Estado desta implementação
 
 Implementado no branch atual:
-- Simulação Dart isolada com três rotas, ondas, 18 torres, bots, economia básica, XP, níveis, habilidades iniciais, respawn e bloqueio do núcleo.
-- Testes unitários para roster, estruturas, input, cooldowns e limite de tropas.
+- Partida 5v5 com simulação Dart determinística, três rotas, ondas, 18 estruturas defensivas, bots, economia básica, XP, níveis, habilidades iniciais e respawn.
+- Cena 3D conectada aos snapshots: terreno, bases urbanas, estruturas de rota, tropas, bots e herói selecionado.
+- Joystick esquerdo exclusivo para movimento; pointer tracking central/direito exclusivo para girar e inclinar a câmera.
+- HUD touch, minimapa, pausa e botões de ataque/habilidade.
+- Ataque básico com clipe SwordSlash e alcance/intervalo específico por herói.
+- Quatro interiores com piso, paredes, portas, mobiliário e colisões; três avenidas e três travessias do canal.
+- Pipeline verifica o rig masculino de Kairo e os clipes de ataque no GLB empacotado.
 
-Ainda não implementado como partida visual jogável:
-- vincular os snapshots da simulação a modelos/instâncias da cena 3D;
-- controles touch finais e HUD de combate;
-- seleção de alvo e feedback de alcance/recarga;
-- loja e itens MOBA;
-- objetivos neutros de rio, posteriores ao loop de rotas;
-- validação física de FPS, temperatura e resposta de toque.
+Ainda pendente:
+- Armas visíveis acopladas aos rigs dos heróis e efeitos de impacto por tipo de ataque.
+- Seleção de alvo, telegraph e feedback de alcance/recarga mais legíveis.
+- Loja e itens MOBA.
+- Objetivos neutros competitivos (sem camps de sobrevivência ou coleta).
+- Fachadas/interiores com acabamento artístico, escadas e rotas verticais funcionais.
+- Validação física de câmera, movimento, ataques, FPS, temperatura e memória no Realme C53.
 
-Não anunciar gameplay completo enquanto esses itens de integração e validação não estiverem concluídos.
+Não anunciar gameplay completo enquanto combate, equipamentos, progressão de itens e validação física não estiverem concluídos.
 
 ## Arena, câmera e interiores — revisão 1.7.5
 
