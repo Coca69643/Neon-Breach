@@ -281,6 +281,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ),
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
+      SceneModel(
+        'assets/world/city/interior_desk.glb',
+        key: const ValueKey('central-objective-pedestal'),
+        name: 'central_relay_pedestal',
+        position: _worldPosition(const MobaPoint(0, 0)),
+        scale: vm.Vector3.all(2.7),
+      ),
+      SceneModel(
+        'assets/world/city/interior_computer_screen.glb',
+        key: const ValueKey('central-objective-terminal'),
+        name: 'central_relay_terminal',
+        position: vm.Vector3(
+          0,
+          _groundHeight(const MobaPoint(0, 0)) + 1.15,
+          0,
+        ),
+        scale: vm.Vector3.all(2.1),
+      ),
       for (final bridge in _bridges)
         SceneModel(
           'assets/world/city/road_straight.glb',
@@ -734,6 +752,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     ),
                   ),
                   Positioned(
+                    top: 64,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: _ObjectiveHud(
+                        objective: snapshot.centralObjective,
+                      ),
+                    ),
+                  ),
+                  Positioned(
                     top: 8,
                     right: side,
                     child: Row(
@@ -937,6 +965,110 @@ class _CoreHud extends StatelessWidget {
                 fontSize: 8,
                 letterSpacing: 1.45,
                 fontWeight: FontWeight.w800,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ObjectiveHud extends StatelessWidget {
+  const _ObjectiveHud({required this.objective});
+
+  final MobaObjectiveSnapshot objective;
+
+  @override
+  Widget build(BuildContext context) {
+    final progress = (objective.control.abs() / 100)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final blueControl = objective.control >= 0;
+    final owner = objective.owner;
+    final Color controlColor = owner == MobaTeam.blue
+        ? const Color(0xFF6BBDEB)
+        : owner == MobaTeam.red
+            ? const Color(0xFFED7A80)
+            : blueControl
+                ? const Color(0xFF6BBDEB)
+                : const Color(0xFFED7A80);
+    final String status = objective.contested
+        ? 'DISPUTADO'
+        : owner == MobaTeam.blue
+            ? 'AZUL  •  +12% DANO'
+            : owner == MobaTeam.red
+                ? 'VERMELHO  •  +12% DANO'
+                : progress <= 0.001
+                    ? 'NEUTRO'
+                    : blueControl
+                        ? 'CAPTURANDO AZUL'
+                        : 'CAPTURANDO VERMELHO';
+
+    return _HudPlate(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      child: SizedBox(
+        width: 184,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(
+                  Icons.radar_rounded,
+                  color: Color(0xFFD6E8EA),
+                  size: 11,
+                ),
+                const SizedBox(width: 5),
+                const Text(
+                  'REATOR CENTRAL',
+                  style: TextStyle(
+                    color: Color(0xFFE4EFF0),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.15,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  status,
+                  style: TextStyle(
+                    color: objective.contested
+                        ? const Color(0xFFFFD68E)
+                        : controlColor,
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(3),
+              child: SizedBox(
+                height: 4,
+                child: Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    const ColoredBox(color: Color(0xFF26333D)),
+                    Align(
+                      alignment: blueControl
+                          ? Alignment.centerLeft
+                          : Alignment.centerRight,
+                      child: FractionallySizedBox(
+                        widthFactor: progress,
+                        child: ColoredBox(color: controlColor),
+                      ),
+                    ),
+                    if (objective.contested)
+                      const Center(
+                        child: SizedBox(
+                          width: 28,
+                          child: ColoredBox(color: Color(0xFFFFD68E)),
+                        ),
+                      ),
+                  ],
+                ),
               ),
             ),
           ],
