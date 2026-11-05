@@ -26,6 +26,11 @@ Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop prin
 
 - Movimento do herói por controle touch, colisão com o limite do mapa, canal, paredes de edifícios, mobiliário e footprints de torres.
 - Ataque básico, alcance, intervalo de ataque e seleção de alvo.
+- Espadas CC0 diferentes para Lyra, Bastion e Kairo, anexadas ao osso `Palm.R`; bots recebem cópias por clone de template.
+- Duas rotas verticais com escada e mezanino; movimento armazena elevação e exige atravessar a rampa, sem saltar entre pisos.
+- Coberturas destrutíveis com 180 HP bloqueiam duas entradas; ataques básicos removem HP e destroem a colisão ao zerar.
+- Reator central contestável; presença ponderada das unidades altera progresso, disputa simultânea congela a captura e controle concede +12% de dano.
+- Primeira captura do reator rende 150 G e 90 XP à equipe capturadora.
 - Três kits de habilidade com função distinta:
   - Lyra: suporte e recuperação de aliados.
   - Bastion: linha de frente e mitigação.
@@ -71,19 +76,20 @@ Implementado no branch atual:
 - Pipeline verifica o rig masculino de Kairo e os clipes de ataque no GLB empacotado.
 
 Ainda pendente:
-- Armas visíveis acopladas aos rigs dos heróis e efeitos de impacto por tipo de ataque.
+- Efeitos de impacto por tipo de ataque e indicadores mais claros de seleção/alcance.
 - Seleção de alvo, telegraph e feedback de alcance/recarga mais legíveis.
 - Loja e itens MOBA.
-- Objetivos neutros competitivos (sem camps de sobrevivência ou coleta).
-- Fachadas/interiores com acabamento artístico, escadas e rotas verticais funcionais.
+- Efeitos de impacto, telegraph e seleção de alvo mais claros; o reator central já está integrado como objetivo competitivo.
+- Fachadas/interiores com acabamento artístico e validação visual das escadas/mezaninos no aparelho.
 - Validação física de câmera, movimento, ataques, FPS, temperatura e memória no Realme C53.
 
 Não anunciar gameplay completo enquanto combate, equipamentos, progressão de itens e validação física não estiverem concluídos.
 
-## Arena, câmera e interiores — revisão 1.7.5
+## Arena, câmera, verticalidade e objetivo — revisão 1.7.6
 
 - Footprint 180 × 140, terreno urbano sem rodapé de penhasco.
 - Três avenidas em x ≈ -36 / 0 / +36 e z ≈ -70…+70.
-- Quatro interiores com portas abertas, paredes e mobiliário com colisão; becos conectam as rotas. Sem camps ou mecânicas de coleta.
+- Quatro interiores com portas, paredes e mobiliário; dois recebem mezaninos com escadas transitáveis. Sem camps ou mecânicas de coleta.
+- Coberturas de entrada são destrutíveis; reator central no cruzamento médio concede bônus de dano por controle territorial.
 - O canal bloqueia movimento fora das três travessias; torres, paredes, mobiliário e limites do mapa têm colisão.
 - Câmera de ação traseira com follow distance 9.4, look-ahead 3.0, pitch 0.34 rad e FOV 49°. O arrasto central/direito controla a câmera; joystick esquerdo controla movimento.
