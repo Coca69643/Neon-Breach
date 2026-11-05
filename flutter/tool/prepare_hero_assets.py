@@ -6,12 +6,22 @@ import hashlib
 import json
 import shutil
 import struct
+import tempfile
+import urllib.request
 from pathlib import Path
 from typing import Any
 
 ROOT = Path(__file__).resolve().parents[2]
 SOURCE_DIR = ROOT / "app" / "src" / "main" / "assets" / "heroes"
 OUTPUT_DIR = ROOT / "flutter" / "assets" / "heroes"
+KAIRO_SOURCE_URL = (
+    "https://raw.githubusercontent.com/schulerj89/vanta-city/"
+    "a3fbd53398d6712742f34170a54cb450c90b1f80/"
+    "public/assets/characters/animated-men/nox-layered-shirt.glb"
+)
+KAIRO_SOURCE_SHA256 = (
+    "40c62848350df6d13cc6eed20f30c3406a7761542236d8a9f6c3a4060d005e97"
+)
 ALLOWED_CLIPS = {
     "HumanArmature|Female_Idle",
     "HumanArmature|Female_Walk",
@@ -26,8 +36,10 @@ ALLOWED_CLIPS = {
 }
 
 KAIRO_PALETTE = {
+    "Shirt2": [0.075, 0.23, 0.31, 1.0],
     "Shirt": [0.105, 0.38, 0.43, 1.0],
     "Pants": [0.055, 0.105, 0.16, 1.0],
+    "Shoes": [0.035, 0.055, 0.075, 1.0],
     "Socks": [0.24, 0.31, 0.34, 1.0],
 }
 
@@ -76,6 +88,29 @@ def encode_glb(document: dict[str, Any], chunks: list[tuple[int, bytes]]) -> byt
     return bytes(result)
 
 
+def fetch_kairo_source(destination: Path) -> None:
+    request = urllib.request.Request(
+        KAIRO_SOURCE_URL,
+        headers={"User-Agent": "DuckDreamStudios-HeroAssetBake/1.0"},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=45) as response:
+            if response.status != 200:
+                raise RuntimeError(f"Unexpected Kairo source HTTP status: {response.status}")
+            payload = response.read()
+    except OSError as error:
+        raise RuntimeError(f"Could not fetch pinned male Kairo GLB: {error}") from error
+
+    digest = hashlib.sha256(payload).hexdigest()
+    if digest != KAIRO_SOURCE_SHA256:
+        raise RuntimeError(
+            "Pinned Kairo model changed: "
+            f"expected {KAIRO_SOURCE_SHA256}, got {digest}"
+        )
+    decode_glb(payload)
+    destination.write_bytes(payload)
+
+
 def prepare_model(source: Path, destination: Path, *, kairo: bool = False) -> str:
     raw = source.read_bytes()
     document, chunks = decode_glb(raw)
@@ -112,7 +147,7 @@ def prepare_model(source: Path, destination: Path, *, kairo: bool = False) -> st
         )
         document.setdefault("extras", {})["heroId"] = "kairo"
         document["extras"]["visualRig"] = "male"
-        document["extras"]["sourceModel"] = "Quaternius Animated Men Pack / Man in Long Sleeves"
+        document["extras"]["sourceModel"] = "Quaternius Animated Men Pack / Man-fjHyMd5Wxw (CC0)"
 
     built = encode_glb(document, chunks)
     destination.parent.mkdir(parents=True, exist_ok=True)
@@ -127,36 +162,51 @@ def main() -> None:
         "creator": "Quaternius",
         "runtime": "bundled-offline",
         "generatedBy": "flutter/tool/prepare_hero_assets.py",
+        "kairoSource": {
+            "repository": "schulerj89/vanta-city",
+            "commit": "a3fbd53398d6712742f34170a54cb450c90b1f80",
+            "asset": "Quaternius Animated Men Pack / Man-fjHyMd5Wxw",
+            "sha256": KAIRO_SOURCE_SHA256,
+            "license": "CC0-1.0",
+        },
         "models": [],
     }
 
-    models = [
-        ("lyra.glb", "Lyra", "Animated Women Pack / Woman Casual", False),
-        ("bastion.glb", "Bastion", "Animated Men Pack / Man in Long Sleeves", False),
-        ("kairo.glb", "Kairo", "Animated Men Pack / male palette variant", True),
-    ]
-    for filename, hero_id, source_name, kairo in models:
-        source = SOURCE_DIR / ("bastion.glb" if kairo else filename)
-        destination = OUTPUT_DIR / filename
-        digest = prepare_model(source, destination, kairo=kairo)
-        manifest["models"].append({
-            "id": hero_id,
-            "file": filename,
-            "source": source_name,
-            "sha256": digest,
-            "clips": sorted(
-                name for name in ALLOWED_CLIPS
-                if (("Man_" in name) if hero_id != "Lyra" else ("Female_" in name))
-            ),
-        })
-        print(f"Prepared {hero_id}: {destination.stat().st_size:,} bytes, sha256={digest}")
+    with tempfile.TemporaryDirectory(prefix="project-arena-kairo-") as temp_dir:
+        kairo_source = Path(temp_dir) / "kairo-source.glb"
+        fetch_kairo_source(kairo_source)
+        models = [
+            ("lyra.glb", "Lyra", "Animated Women Pack / Woman Casual (CC0)", False),
+            ("bastion.glb", "Bastion", "Animated Men Pack / Man in Long Sleeves (CC0)", False),
+            ("kairo.glb", "Kairo", "Animated Men Pack / Man-fjHyMd5Wxw (CC0)", True),
+        ]
+        for filename, hero_id, source_name, kairo in models:
+            source = kairo_source if kairo else SOURCE_DIR / filename
+            destination = OUTPUT_DIR / filename
+            digest = prepare_model(source, destination, kairo=kairo)
+            manifest["models"].append({
+                "id": hero_id,
+                "file": filename,
+                "source": source_name,
+                "sha256": digest,
+                "clips": sorted(
+                    name for name in ALLOWED_CLIPS
+                    if (("Man_" in name) if hero_id != "Lyra" else ("Female_" in name))
+                ),
+            })
+            print(
+                f"Prepared {hero_id}: {destination.stat().st_size:,} bytes, "
+                f"sha256={digest}"
+            )
 
     (OUTPUT_DIR / "cc0-manifest.json").write_text(
         json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
-    print("Prepared 3 offline playable hero models; only idle, walk and run clips are bundled.")
-
+    print(
+        "Prepared 3 offline playable heroes; bundled clips include idle, "
+        "walk, run, punch and sword slash."
+    )
 
 if __name__ == "__main__":
     main()
