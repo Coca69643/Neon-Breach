@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.5 / 67
+- versionName/versionCode: 1.7.6 / 68
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -21,9 +21,9 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
 - Meta inicial: 30 FPS sustentados no Realme C53.
 - Arena urbana 180 × 140, com três avenidas, quatro edifícios de piso térreo acessíveis, interiores, ruas e cruzamentos.
-- Navegação com colisão de paredes e mobiliário, portas abertas, rio bloqueado fora das pontes e testes de acesso interno.
+- Navegação com colisão de paredes/mobiliário, portas, três travessias do canal e duas escadas que conectam mezaninos com elevação real.
 - Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
-- Próximo conteúdo obrigatório: interiores artísticos completos, conexões verticais, armas visíveis e validação de combate no aparelho.
+- Próximas prioridades: efeitos de impacto, seleção de alvo mais legível, loja/itens MOBA e validação física no aparelho.
 - Escalas de leitura: herói 1.0, bots 0.86, minions 0.54–0.58.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
@@ -51,10 +51,14 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, torres e limites do mapa; entradas dos edifícios permanecem transitáveis.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
+- Duas rotas de mezanino com subida gradual, colisão por altura e bloqueio de ataques entre pisos.
+- Coberturas CC0 nas entradas recebem dano; destruí-las remove a colisão e abre a passagem.
+- Reator central capturável/contestável; equipe controladora recebe +12% de dano e recompensa inicial.
+- Espadas CC0 distintas de Lyra, Bastion e Kairo anexadas a Palm.R; bots usam clones de templates compartilhados.
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, build ARM64 e verificação da assinatura.
-- APK 1.7.5+67: código atualizado; build ARM64, assinatura, renderização, FPS e temperatura ainda dependem da execução CI e teste físico.
+- APK 1.7.6+68: análise/testes/build ARM64/validação de assets/assinatura dependem do CI atual; escadas, objetivo, armas e desempenho ainda exigem inspeção visual no Realme C53.
 
 ## Comandos
 
@@ -63,6 +67,10 @@ cd flutter
 python3 -m pip install -r tool/requirements-world.txt
 python3 tool/prepare_world_assets.py
 python3 tool/prepare_menu_hub.py
+python3 tool/prepare_hero_assets.py
+python3 tool/prepare_city_assets.py
+python3 tool/prepare_match_assets.py
+python3 tool/prepare_weapon_assets.py
 python3 tool/prepare_android.py
 flutter pub get
 flutter analyze
