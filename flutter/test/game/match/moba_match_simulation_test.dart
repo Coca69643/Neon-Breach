@@ -98,6 +98,27 @@ void main() {
       }
     });
 
+    test('central relay is captured only by uncontested presence', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: const MobaPoint(0, 0),
+      );
+
+      expect(simulation.snapshot.centralObjective.owner, isNull);
+      expect(simulation.snapshot.centralObjective.control, 0);
+      expect(simulation.snapshot.centralObjective.contested, isFalse);
+
+      advanceFor(simulation, 7);
+
+      final objective = simulation.snapshot.centralObjective;
+      expect(objective.owner, MobaTeam.blue);
+      expect(objective.control, 100);
+      expect(objective.contested, isFalse);
+      expect(simulation.snapshot.playerGold, 650,
+          reason: 'first relay capture must award team gold');
+      expect(simulation.snapshot.playerXp, greaterThan(0));
+    });
+
     test('construction cover blocks a doorway until destroyed', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
