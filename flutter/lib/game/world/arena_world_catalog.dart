@@ -178,7 +178,7 @@ abstract final class ArenaWorldCatalog {
 
   static bool _insideTowerFootprint(double x, double z) {
     const lanes = <double>[-22.5, 0.0, 22.5];
-    const towerRows = <double>[-30.0, -20.0, -10.0, 10.0, 20.0, 30.0];
+    const towerRows = <double>[-26.0, -18.0, -10.0, 10.0, 18.0, 26.0];
     const radiusSquared = 2.2 * 2.2;
     for (final laneX in lanes) {
       for (final rowZ in towerRows) {
