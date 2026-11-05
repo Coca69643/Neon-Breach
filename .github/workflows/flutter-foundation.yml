@@ -7,12 +7,14 @@ on:
     paths:
       - "flutter/**"
       - "app/src/main/assets/world/nature/**"
+      - "app/src/main/res/drawable/ic_launcher.xml"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   pull_request:
     paths:
       - "flutter/**"
       - "app/src/main/assets/world/nature/**"
+      - "app/src/main/res/drawable/ic_launcher.xml"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   workflow_dispatch:
@@ -45,7 +47,30 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check --no-input -r tool/requirements-world.txt
       - name: Bake offline organic world assets
         run: python3 tool/prepare_world_assets.py
-      - name: Generate Android host and enable Flutter GPU
+      - name: Load persistent Project Arena signing key
+        if: github.event_name != 'pull_request'
+        env:
+          NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
+          NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
+          NEON_BREACH_KEY_ALIAS: ${{ secrets.NEON_BREACH_KEY_ALIAS }}
+          NEON_BREACH_KEY_PASSWORD: ${{ secrets.NEON_BREACH_KEY_PASSWORD }}
+        run: |
+          set -euo pipefail
+          test -n "${NEON_BREACH_KEYSTORE_BASE64:-}" || { echo "::error::Persistent signing secret is missing; refusing to publish an incompatible update APK."; exit 1; }
+          test -n "${NEON_BREACH_KEYSTORE_PASSWORD:-}"
+          test -n "${NEON_BREACH_KEY_ALIAS:-}"
+          test -n "${NEON_BREACH_KEY_PASSWORD:-}"
+          KEYSTORE_PATH="$RUNNER_TEMP/project-arena-signing.jks"
+          printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
+          test -s "$KEYSTORE_PATH"
+          {
+            echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
+            echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
+            echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
+            echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
+          } >> "$GITHUB_ENV"
+          echo "Persistent signing key loaded."
+      - name: Generate Android host, identity and Flutter GPU setup
         run: python3 tool/prepare_android.py
       - name: Resolve dependencies
         run: flutter pub get
@@ -53,11 +78,23 @@ jobs:
         run: flutter analyze
       - name: Unit tests
         run: flutter test --reporter expanded
-      - name: Build Android release
-        run: flutter build apk --release
-      - name: Upload APK artifact
+      - name: Build ARM64 Android release
+        run: flutter build apk --release --target-platform android-arm64
+      - name: Verify APK identity, platform and bundled scenes
+        run: python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-release.apk
+      - name: Verify APK signature
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT" && test -d "$SDK_ROOT/build-tools"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
+      - name: Upload signed ARM64 APK artifact
+        if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: project-arena-flutter-scene-apk
+          name: project-arena-flutter-scene-arm64-apk
           path: flutter/build/app/outputs/flutter-apk/app-release.apk
           if-no-files-found: error
+          retention-days: 30
