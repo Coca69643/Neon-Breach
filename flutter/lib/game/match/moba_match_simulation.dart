@@ -7,7 +7,7 @@ enum MobaTeam { blue, red }
 extension MobaTeamRules on MobaTeam {
   MobaTeam get enemy => this == MobaTeam.blue ? MobaTeam.red : MobaTeam.blue;
   double get forward => this == MobaTeam.blue ? 1.0 : -1.0;
-  double get homeZ => this == MobaTeam.blue ? -36.0 : 36.0;
+  double get homeZ => this == MobaTeam.blue ? -34.0 : 34.0;
   int get index => this == MobaTeam.blue ? 0 : 1;
 }
 
@@ -279,7 +279,7 @@ class MobaMatchSimulation {
   double _playerPower = 1;
   int _playerLevel = 1;
   int _nextMinionId = 0;
-  MobaPoint _playerPosition = const MobaPoint(0, -36);
+  MobaPoint _playerPosition = const MobaPoint(0, -34);
   MobaTeam? _winner;
   double _lastMoveX = 0;
   double _lastMoveZ = 1;
@@ -1016,7 +1016,7 @@ class MobaMatchSimulation {
   }
 
   MobaPoint _towerPosition(MobaTeam team, MobaLane lane, int tier) {
-    final z = team == MobaTeam.blue ? -10.0 - tier * 10.0 : 10.0 + tier * 10.0;
+    final z = team == MobaTeam.blue ? -10.0 - tier * 8.0 : 10.0 + tier * 8.0;
     return MobaPoint(_laneX(lane, z), z);
   }
 
