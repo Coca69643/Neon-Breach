@@ -138,6 +138,7 @@ def main() -> None:
         with zipfile.ZipFile(apk) as archive:
             names = set(archive.namelist())
             elements = parse_manifest(archive.read("AndroidManifest.xml"))
+            kairo_raw = archive.read("assets/flutter_assets/assets/heroes/kairo.glb")
     except (OSError, zipfile.BadZipFile, KeyError, ValueError) as error:
         raise SystemExit(f"APK validation failed: cannot inspect archive: {error}") from error
 
@@ -149,11 +150,11 @@ def main() -> None:
 
     require(manifest.get("package") == "com.duckdream.projectarena",
             f"unexpected applicationId: {manifest.get('package')!r}")
-    require(manifest.get("versionName") == "1.7.4",
+    require(manifest.get("versionName") == "1.7.5",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
-    require(isinstance(version_code, int) and version_code > 65,
-            f"versionCode must be greater than 64, got {version_code!r}")
+    require(isinstance(version_code, int) and version_code > 66,
+            f"versionCode must be greater than 66, got {version_code!r}")
     require(application.get("label") == "Projeto Arena",
             f"unexpected launcher label: {application.get('label')!r}")
 
@@ -205,12 +206,51 @@ def main() -> None:
     for asset in expected_raw_assets:
         require(asset in names, f"required runtime asset is missing: {asset}")
 
+    # Validate the actual packaged Kairo GLB, not only its UI label.
+    require(len(kairo_raw) >= 20, "Kairo GLB is truncated.")
+    magic, glb_version, declared_length, json_length, json_type = struct.unpack_from(
+        "<4sIIII", kairo_raw, 0
+    )
+    require(magic == b"glTF" and glb_version == 2 and
+            declared_length == len(kairo_raw) and json_type == 0x4E4F534A,
+            "Kairo is not a valid GLB 2.0 asset.")
+    kairo_doc = json.loads(
+        kairo_raw[20:20 + json_length].decode("utf-8").rstrip(" \\t\\r\\n\\0")
+    )
+    kairo_clips = {clip.get("name", "") for clip in kairo_doc.get("animations", [])}
+    require("HumanArmature|Man_Idle" in kairo_clips and
+            "HumanArmature|Man_Walk" in kairo_clips and
+            "HumanArmature|Man_SwordSlash" in kairo_clips and
+            not any(name.startswith("HumanArmature|Female_") for name in kairo_clips),
+            "Kairo must ship with male idle, locomotion and sword-attack clips.")
+    require(kairo_doc.get("extras", {}).get("visualRig") == "male",
+            "Kairo GLB does not declare the validated male visual rig.")
+
+    city_assets = (
+        "commercial_building_a.glb", "commercial_building_c.glb",
+        "commercial_building_e.glb", "commercial_low_a.glb",
+        "commercial_low_b.glb", "commercial_low_c.glb", "commercial_low_d.glb",
+        "road_straight.glb", "road_crossroad.glb", "road_bend.glb", "road_side.glb",
+        "interior_floor.glb", "interior_wall.glb", "interior_doorway_wide.glb",
+        "interior_wall_window.glb", "interior_stairs.glb", "interior_doorway_open.glb",
+        "interior_desk.glb", "interior_bench.glb", "interior_chair.glb",
+        "interior_computer_screen.glb",
+    )
+    for asset in city_assets:
+        require(f"assets/flutter_assets/assets/world/city/{asset}" in names,
+                f"urban environment asset is missing: {asset}")
+
     compiled_scenes = (
         "lyra", "bastion", "kairo", "arena_terrain",
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
         "arena_menu_hub", "quaternius_minion", "tower_blue", "tower_red",
-        "castle_blue", "castle_red", "home_blue", "home_red", "bridge_a", "quaternius_minion", "tower_blue", "tower_red",
         "castle_blue", "castle_red", "home_blue", "home_red", "bridge_a",
+        "commercial_building_a", "commercial_building_c", "commercial_building_e",
+        "commercial_low_a", "commercial_low_b", "commercial_low_c", "commercial_low_d",
+        "road_straight", "road_crossroad", "road_bend", "road_side",
+        "interior_floor", "interior_wall", "interior_doorway_wide", "interior_wall_window",
+        "interior_stairs", "interior_doorway_open", "interior_desk", "interior_bench",
+        "interior_chair", "interior_computer_screen",
     )
     for scene in compiled_scenes:
         prefix = f"assets/flutter_assets/flutter_scene_generated/scene.{scene}."
@@ -229,7 +269,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=1.7.4+{version_code}, minSdk={min_sdk}, "
+        f"version=1.7.5+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )
