@@ -313,7 +313,6 @@ class _ArenaScreen extends StatelessWidget {
                     const Spacer(),
                     for (final hero in heroes) ...[
                       _HeroChoiceTile(
-                        heroId: hero.$1,
                         label: hero.$2,
                         selected: selectedId == hero.$1,
                         height: itemHeight,
@@ -421,14 +420,12 @@ class _ArenaScreen extends StatelessWidget {
 
 class _HeroChoiceTile extends StatelessWidget {
   const _HeroChoiceTile({
-    required this.heroId,
     required this.label,
     required this.selected,
     required this.height,
     required this.onTap,
   });
 
-  final String heroId;
   final String label;
   final bool selected;
   final double height;
