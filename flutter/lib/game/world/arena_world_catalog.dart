@@ -290,6 +290,7 @@ abstract final class ArenaWorldCatalog {
     double x,
     double z, {
     bool includeTreeCollision = true,
+    bool includeTowerCollision = true,
     double elevation = 0,
   }) {
     if (!contains(x, z) || !_isVerticalSurface(x, z, elevation)) {
@@ -298,7 +299,8 @@ abstract final class ArenaWorldCatalog {
     final riverDistance = (z - _riverCenterZ(x)).abs();
     final channelWidth = _riverHalfWidth(x) + riverBankMargin;
     if (riverDistance < channelWidth && !_isOnBridge(x, z)) return false;
-    if (_insideTowerFootprint(x, z) || _insideBuildingWall(x, z)) return false;
+    if ((includeTowerCollision && _insideTowerFootprint(x, z)) ||
+        _insideBuildingWall(x, z)) return false;
     for (final block in commercialBlocks) {
       final dx = (x - block.$2).abs();
       final dz = (z - block.$3).abs();
