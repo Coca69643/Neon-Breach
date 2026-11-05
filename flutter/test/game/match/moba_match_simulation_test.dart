@@ -1,5 +1,6 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:project_arena_flutter/game/match/moba_match_simulation.dart';
+import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
 void advanceFor(MobaMatchSimulation simulation, double seconds) {
   final frames = (seconds * 60).round();
@@ -47,6 +48,36 @@ void main() {
       expect(moved.x, greaterThan(start.x + 5));
       expect(moved.x, lessThanOrEqualTo(56.0));
       expect(simulation.snapshot.elapsedSeconds, closeTo(1, 0.001));
+    });
+
+    test('all three selected heroes can leave their own spawn lane', () {
+      for (final hero in MobaHeroId.values) {
+        final simulation = MobaMatchSimulation(heroId: hero);
+        final start = simulation.snapshot.playerPosition;
+        for (var frame = 0; frame < 36; frame++) {
+          simulation.step(1 / 60, moveX: 0, moveZ: 1);
+        }
+        final end = simulation.snapshot.playerPosition;
+        expect(
+          end.z,
+          greaterThan(start.z + 2.0),
+          reason: '${hero.name} must be able to move out of the blue base',
+        );
+        expect(ArenaWorldCatalog.isWalkable(end.x, end.z), isTrue);
+      }
+    });
+
+    test('basic attack has visible feedback even with no target in range', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      final healthBefore = simulation.snapshot.playerHealth;
+
+      simulation.step(1 / 60, basicAttack: true);
+
+      expect(simulation.snapshot.playerAttackSeconds, greaterThan(0));
+      expect(simulation.snapshot.playerHealth, healthBefore);
+
+      advanceFor(simulation, 0.5);
+      expect(simulation.snapshot.playerAttackSeconds, 0);
     });
 
     test('rejects invalid frame deltas without corrupting match state', () {
