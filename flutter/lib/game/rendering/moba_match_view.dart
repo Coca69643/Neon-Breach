@@ -3,7 +3,6 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
-import 'package:flutter_scene/scene.dart' show RingGeometry, UnlitMaterial;
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../match/moba_match_simulation.dart';
