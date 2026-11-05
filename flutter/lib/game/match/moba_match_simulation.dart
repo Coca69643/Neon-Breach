@@ -121,6 +121,7 @@ class MobaMatchSnapshot {
     required this.playerGold,
     required this.playerSkillCooldown,
     required this.playerRespawnSeconds,
+    required this.playerMoving,
     required this.blueTeamKills,
     required this.redTeamKills,
     required this.blueCoreHealth,
@@ -148,6 +149,7 @@ class MobaMatchSnapshot {
   final double playerGold;
   final double playerSkillCooldown;
   final double playerRespawnSeconds;
+  final bool playerMoving;
   final int blueTeamKills;
   final int redTeamKills;
   final double blueCoreHealth;
@@ -275,6 +277,7 @@ class MobaMatchSimulation {
   MobaTeam? _winner;
   double _lastMoveX = 0;
   double _lastMoveZ = 1;
+  bool _playerMoving = false;
 
   MobaMatchSnapshot get snapshot => _makeSnapshot();
 
@@ -316,6 +319,7 @@ class MobaMatchSimulation {
     _winner = null;
     _lastMoveX = 0;
     _lastMoveZ = 1;
+    _playerMoving = false;
     _coreHealth
       ..[0] = coreMaxHealth
       ..[1] = coreMaxHealth;
@@ -444,6 +448,7 @@ class MobaMatchSimulation {
     }
 
     if (_playerRespawn <= 0) {
+      _playerMoving = moveX.abs() >= 0.06 || moveZ.abs() >= 0.06;
       _movePlayer(moveX, moveZ, dt);
       if (basicAttack && _playerAttackCooldown <= 0) _playerAttack();
       if (castSkill && _playerSkillCooldown <= 0) _castHeroSkill();
@@ -1058,6 +1063,7 @@ class MobaMatchSimulation {
       playerGold: _playerGold,
       playerSkillCooldown: _playerSkillCooldown,
       playerRespawnSeconds: _playerRespawn,
+      playerMoving: _playerMoving,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
       redTeamKills: _teamKills[MobaTeam.red.index].toInt(),
       blueCoreHealth: _coreHealth[MobaTeam.blue.index],
