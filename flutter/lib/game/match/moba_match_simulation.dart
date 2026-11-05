@@ -315,9 +315,7 @@ class MobaMatchSimulation {
 
     for (final team in MobaTeam.values) {
       for (final lane in MobaLane.values) {
-        for (var slot = 0; slot < 4; slot++) {
-          _spawnMinionWave(team, lane, group: 0, stagger: slot * 0.08);
-        }
+        _spawnMinionWave(team, lane, group: 0);
         _nextWave[_waveIndex(team, lane)] = waveIntervalSeconds;
       }
     }
