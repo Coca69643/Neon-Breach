@@ -510,6 +510,27 @@ void main() {
       expect(simulation.snapshot.minions, hasLength(24));
     });
 
+    test('non-finite and oversized movement inputs cannot corrupt the player state', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      final start = simulation.snapshot.playerPosition;
+
+      simulation.step(1 / 60, moveX: double.nan, moveZ: double.infinity);
+      simulation.step(1 / 60, moveX: 500, moveZ: -500);
+
+      final position = simulation.snapshot.playerPosition;
+      expect(position.x.isFinite, isTrue);
+      expect(position.z.isFinite, isTrue);
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          position.x,
+          position.z,
+          elevation: position.elevation,
+        ),
+        isTrue,
+      );
+      expect(position.distanceTo(start), lessThanOrEqualTo(0.2));
+    });
+
     test('hero abilities share a cooldown and remain hero-specific', () {
       final lyra = MobaMatchSimulation(heroId: MobaHeroId.lyra);
       final bastion = MobaMatchSimulation(heroId: MobaHeroId.bastion);
