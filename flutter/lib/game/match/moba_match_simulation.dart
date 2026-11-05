@@ -322,10 +322,10 @@ class MobaMatchSimulation {
 
     const roleLanes = <MobaLane>[
       MobaLane.top,
+      MobaLane.top,
       MobaLane.middle,
       MobaLane.bottom,
       MobaLane.bottom,
-      MobaLane.middle,
     ];
     final occupiedRole = switch (heroId) {
       MobaHeroId.bastion => 0,
@@ -486,8 +486,7 @@ class MobaMatchSimulation {
     if (tower != null &&
         _playerPosition.distanceTo(tower.position) <= 3.25 &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
-      tower.health = math.max(0, tower.health - heroId.basicDamage * _playerPower);
-      _awardGold(MobaTeam.blue, 20);
+      _damageTower(tower, MobaTeam.blue, heroId.basicDamage * _playerPower);
       _playerAttackCooldown = 0.72;
       return;
     }
@@ -606,16 +605,43 @@ class MobaMatchSimulation {
         continue;
       }
 
+      final enemyBot = _nearestBot(
+        minion.position,
+        minion.team.enemy,
+        maxRange: 3.8,
+        lane: minion.lane,
+      );
+      if (enemyBot != null) {
+        final distance = minion.position.distanceTo(enemyBot.position);
+        if (distance > 2.0) {
+          _moveMinion(minion, enemyBot.position, 2.35, dt);
+        } else if (minion.attackCooldown <= 0) {
+          _damageBot(enemyBot, minion.team, minion.ranged ? 8 : 14);
+          minion.attackCooldown = 1.0;
+        }
+        continue;
+      }
+
+      if (minion.team == MobaTeam.red &&
+          _playerRespawn <= 0 &&
+          minion.position.distanceTo(_playerPosition) <= 3.8) {
+        final distance = minion.position.distanceTo(_playerPosition);
+        if (distance > 1.9) {
+          _moveMinion(minion, _playerPosition, 2.35, dt);
+        } else if (minion.attackCooldown <= 0) {
+          _damagePlayer(minion.ranged ? 7 : 10);
+          minion.attackCooldown = 1.0;
+        }
+        continue;
+      }
+
       final defendingTeam = minion.team.enemy;
       final tower = _activeTower(defendingTeam, minion.lane);
       if (tower != null) {
         if (minion.position.distanceTo(tower.position) > 2.65) {
           _moveMinion(minion, tower.position, minion.ranged ? 2.25 : 2.5, dt);
         } else if (minion.attackCooldown <= 0) {
-          tower.health = math.max(
-            0,
-            tower.health - (minion.ranged ? 34 : 42),
-          );
+          _damageTower(tower, minion.team, minion.ranged ? 34 : 42);
           minion.attackCooldown = 1.12;
         }
       } else if (_laneOpen(defendingTeam, minion.lane)) {
@@ -714,7 +740,7 @@ class MobaMatchSimulation {
           bot.position.distanceTo(tower.position) <= 4.4 &&
           _hasFriendlyMinionSupport(bot.team, bot.lane, tower.position, 7.2) &&
           bot.attackCooldown <= 0) {
-        tower.health = math.max(0, tower.health - 24);
+        _damageTower(tower, bot.team, 24);
         bot.attackCooldown = 1.15;
       } else if (tower == null &&
           _laneOpen(bot.team.enemy, bot.lane) &&
@@ -865,6 +891,15 @@ class MobaMatchSimulation {
       _teamKills[source.index]++;
       _awardGold(source, 170);
       _awardXp(source, 115);
+    }
+  }
+
+  void _damageTower(_Tower tower, MobaTeam source, double damage) {
+    if (!tower.alive) return;
+    tower.health = math.max(0, tower.health - damage);
+    if (!tower.alive) {
+      _awardGold(source, 250);
+      _awardXp(source, 120);
     }
   }
 
