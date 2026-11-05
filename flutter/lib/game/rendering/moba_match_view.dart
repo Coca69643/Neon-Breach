@@ -251,8 +251,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // The imported Quaternius character rigs face local -Z.
-    final yaw = math.atan2(facingX, facingZ) + math.pi;
+    // glTF humanoid assets face local +Z; align +Z with the movement vector.
+    final yaw = math.atan2(facingX, facingZ);
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
