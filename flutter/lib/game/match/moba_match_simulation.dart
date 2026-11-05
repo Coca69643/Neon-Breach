@@ -44,13 +44,21 @@ extension MobaHeroRules on MobaHeroId {
 }
 
 class MobaPoint {
-  const MobaPoint(this.x, this.z);
+  const MobaPoint(this.x, this.z, {this.elevation = 0});
 
   final double x;
   final double z;
 
-  double distanceTo(MobaPoint other) =>
-      math.sqrt(math.pow(x - other.x, 2) + math.pow(z - other.z, 2));
+  /// Local height above the baked ground surface. Elevated routes use this
+  /// value to keep units on separate floors from acquiring targets through decks.
+  final double elevation;
+
+  double distanceTo(MobaPoint other) {
+    if ((elevation - other.elevation).abs() > 0.65) {
+      return double.infinity;
+    }
+    return math.sqrt(math.pow(x - other.x, 2) + math.pow(z - other.z, 2));
+  }
 
   MobaPoint moveToward(MobaPoint target, double distance) {
     final dx = target.x - x;
@@ -58,7 +66,11 @@ class MobaPoint {
     final length = math.sqrt(dx * dx + dz * dz);
     if (length <= distance || length < 0.0001) return target;
     final t = distance / length;
-    return MobaPoint(x + dx * t, z + dz * t);
+    return MobaPoint(
+      x + dx * t,
+      z + dz * t,
+      elevation: elevation,
+    );
   }
 }
 
@@ -496,21 +508,28 @@ class MobaMatchSimulation {
   }
 
   void _tryMovePlayer(double dx, double dz) {
-    final nextX = _playerPosition.x + dx;
-    final nextZ = _playerPosition.z + dz;
-    if (ArenaWorldCatalog.isWalkable(nextX, nextZ)) {
-      _playerPosition = MobaPoint(nextX, nextZ);
-      return;
+    bool tryPosition(double x, double z) {
+      final elevation = ArenaWorldCatalog.resolveNavigationElevation(
+        x,
+        z,
+        _playerPosition.elevation,
+      );
+      if (elevation == null ||
+          !ArenaWorldCatalog.isWalkable(x, z, elevation: elevation)) {
+        return false;
+      }
+      _playerPosition = MobaPoint(x, z, elevation: elevation);
+      return true;
     }
 
-    // Axis sliding prevents a diagonal input from sticking against a bank,
-    // tree trunk or terrain boundary.
-    if (ArenaWorldCatalog.isWalkable(nextX, _playerPosition.z)) {
-      _playerPosition = MobaPoint(nextX, _playerPosition.z);
-    }
-    if (ArenaWorldCatalog.isWalkable(_playerPosition.x, nextZ)) {
-      _playerPosition = MobaPoint(_playerPosition.x, nextZ);
-    }
+    final nextX = _playerPosition.x + dx;
+    final nextZ = _playerPosition.z + dz;
+    if (tryPosition(nextX, nextZ)) return;
+
+    // Axis sliding preserves touch response around walls, tree trunks,
+    // raised mezzanine edges and the vertical stair corridor.
+    if (tryPosition(nextX, _playerPosition.z)) return;
+    tryPosition(_playerPosition.x, nextZ);
   }
 
   void _playerAttack() {
