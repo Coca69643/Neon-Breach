@@ -15,7 +15,7 @@ class ArenaVerticalAccess {
   static const double upperHeight = 3.35;
   static const double platformLength = 5.0;
   static const double platformDepth = 2.3;
-  static const double corridorMinOffset = 1.18;
+  static const double corridorMinOffset = 1.22;
   static const double corridorMaxOffset = 3.52;
 
   double get rampStartX => x - rampRun;
@@ -214,7 +214,7 @@ abstract final class ArenaWorldCatalog {
       final hasVerticalAccess = verticalAccesses.any(
         (access) => access.id == building.$1,
       );
-      final counterZ = hasVerticalAccess ? cz - 1.35 : cz + 1.35;
+      final counterZ = hasVerticalAccess ? cz - 1.45 : cz + 1.35;
       if (dx <= 1.95 && (z - counterZ).abs() <= 0.52) return true;
       if (!hasVerticalAccess &&
           (dx - 4.35).abs() <= 0.48 &&
