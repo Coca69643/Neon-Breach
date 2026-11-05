@@ -209,7 +209,11 @@ class ArenaStateMachine extends ChangeNotifier {
 
     if (event is OpenHeroSelection &&
         current.phase == ArenaPhase.mainMenu) {
-      return const ArenaSnapshot(phase: ArenaPhase.heroSelection);
+      // Keep the visible default selection and the FSM in sync.
+      return const ArenaSnapshot(
+        phase: ArenaPhase.heroSelection,
+        selectedHeroId: 'lyra',
+      );
     }
 
     if (event is SelectHero &&
