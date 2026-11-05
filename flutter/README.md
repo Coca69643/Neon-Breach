@@ -26,13 +26,15 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Dependência Flutter Scene: fixada.
 - Build hook de assets: implementado.
 - Script reproduzível do host Android, Flutter GPU e landscape: implementado.
-- Bootstrap dos recursos estáticos Flutter Scene: implementado; cena e modelos de produção ainda não validados em dispositivo.
+- Preview 3D dos três heróis CC0 com clips Idle via SceneModel: implementado; renderização ainda não validada em dispositivo.
+- Bootstrap dos recursos estáticos Flutter Scene: implementado.
 - APK: ainda não gerada.
 
 ## Comandos de validação
 
 ~~~bash
 cd flutter
+python3 tool/prepare_android.py
 flutter pub get
 flutter analyze
 flutter test
