@@ -12,7 +12,7 @@ namespace {
 
 bool check(const bool condition, const char* message) {
     if (!condition) {
-        std::cerr << "FAIL: " << message << '\\n';
+        std::cerr << "FAIL: " << message << '\n';
         return false;
     }
     return true;
@@ -128,6 +128,6 @@ int main() {
         return EXIT_FAILURE;
     }
 
-    std::cout << "All agent state machine tests passed.\\n";
+    std::cout << "All agent state machine tests passed.\n";
     return EXIT_SUCCESS;
 }
