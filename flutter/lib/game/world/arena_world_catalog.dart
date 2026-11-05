@@ -215,7 +215,13 @@ abstract final class ArenaWorldCatalog {
         (access) => access.id == building.$1,
       );
       final counterZ = hasVerticalAccess ? cz - 1.45 : cz + 1.35;
-      if (dx <= 1.95 && (z - counterZ).abs() <= 0.52) return true;
+      final counterDistanceX = hasVerticalAccess
+          ? (x - (cx - 3.5)).abs()
+          : dx;
+      if (counterDistanceX <= (hasVerticalAccess ? 1.05 : 1.95) &&
+          (z - counterZ).abs() <= 0.52) {
+        return true;
+      }
       if (!hasVerticalAccess &&
           (dx - 4.35).abs() <= 0.48 &&
           (z - (cz + 2.1)).abs() <= 1.35) {
