@@ -36,6 +36,19 @@ void main() {
       expect(simulation.canDamageCore(MobaTeam.red), isFalse);
     });
 
+    test('elevated units cannot acquire targets through a mezzanine floor', () {
+      const ground = MobaPoint(0, 0);
+      const upper = MobaPoint(0, 0, elevation: 3.35);
+      expect(ground.distanceTo(upper), double.infinity);
+
+      final moved = upper.moveToward(
+        const MobaPoint(1, 0, elevation: 3.35),
+        0.5,
+      );
+      expect(moved.elevation, 3.35);
+      expect(moved.x, closeTo(0.5, 0.001));
+    });
+
     test('movement uses a fixed simulation step and stays inside the map', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.kairo);
       final start = simulation.snapshot.playerPosition;
