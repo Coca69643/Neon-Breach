@@ -24,9 +24,9 @@ Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop prin
 
 ## Sistemas de gameplay
 
-- Movimento do herói por controle touch, colisão com o limite do mapa, canal, paredes de edifícios, mobiliário e footprints de torres.
+- Movimento do herói por controle touch, colisão com o limite do mapa, canal, paredes, mobiliário, coberturas e footprints de torres; movimento com varredura em subpassos para impedir atravessar obstáculos.
 - Ataque básico, alcance, intervalo de ataque e seleção de alvo.
-- Espadas CC0 diferentes para Lyra, Bastion e Kairo, anexadas ao osso `Palm.R`; bots recebem cópias por clone de template.
+- Espadas CC0 diferentes para Lyra, Bastion e Kairo, anexadas ao osso `Palm.R`; bots, tropas e NPCs usam seis modelos CC0 independentes dos heróis selecionáveis.
 - Duas rotas verticais com escada e mezanino; movimento armazena elevação e exige atravessar a rampa, sem saltar entre pisos.
 - Coberturas destrutíveis com 180 HP bloqueiam duas entradas; ataques básicos removem HP e destroem a colisão ao zerar.
 - Reator central contestável; presença ponderada das unidades altera progresso, disputa simultânea congela a captura e controle concede +12% de dano.
@@ -35,11 +35,11 @@ Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop prin
   - Lyra: suporte e recuperação de aliados.
   - Bastion: linha de frente e mitigação.
   - Kairo: mobilidade e pressão de curta duração.
-- Ondas: três unidades corpo a corpo e uma unidade de distância por formação.
-- Bots aliados e rivais com objetivos de rota, combate e retorno após eliminação.
+- Ondas: três unidades corpo a corpo e uma unidade de distância por formação; unidades derrotadas são recicladas antes de aplicar o limite global de 48 entidades.
+- Bots aliados e rivais com objetivos de rota, combate, flancos por pontos de referência e retorno após eliminação; sua movimentação ignora apenas a colisão do footprint das torres para alcançar pontos de ataque externos.
 - Torres com prioridade de alvo e proteção por tropas.
 - Ouro, experiência, níveis, atributos e loja de itens.
-- Vitória/derrota pelo estado do núcleo; pausa e retomada preservam a simulação.
+- Vitória/derrota pelo estado do núcleo; pausa e retomada preservam a simulação enquanto o processo está ativo. Persistência após encerramento forçado ainda não está implementada.
 
 ## Fora do escopo
 
@@ -71,7 +71,7 @@ Implementado no branch atual:
 - Cena 3D conectada aos snapshots: terreno, bases urbanas, estruturas de rota, tropas, bots e herói selecionado.
 - Joystick esquerdo exclusivo para movimento; pointer tracking central/direito exclusivo para girar e inclinar a câmera.
 - HUD touch, minimapa, pausa e botões de ataque/habilidade.
-- Ataque básico com clipe SwordSlash e alcance/intervalo específico por herói.
+- Ataque básico com clipe SwordSlash e alcance/intervalo específico por herói; bots e tropas também expõem janelas de ataque para reproduzir golpes corpo a corpo ou à distância.
 - Seleção manual de alvo por botão touch, com HUD contextual e barra de vida.
 - Marcador de acerto separado da animação de swing; só confirma quando o dano foi aplicado.
 - Quatro interiores com piso, paredes, portas, mobiliário e colisões; três avenidas e três travessias do canal.
