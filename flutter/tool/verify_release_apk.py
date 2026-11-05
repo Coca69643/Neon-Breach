@@ -180,6 +180,7 @@ def main() -> None:
         "assets/flutter_assets/assets/heroes/bastion.glb",
         "assets/flutter_assets/assets/heroes/kairo.glb",
         "assets/flutter_assets/assets/world/arena_terrain.glb",
+        "assets/flutter_assets/assets/world/arena_menu_hub.glb",
     )
     for asset in expected_raw_assets:
         require(asset in names, f"required runtime asset is missing: {asset}")
@@ -187,6 +188,7 @@ def main() -> None:
     compiled_scenes = (
         "lyra", "bastion", "kairo", "arena_terrain",
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
+        "arena_menu_hub",
     )
     for scene in compiled_scenes:
         prefix = f"assets/flutter_assets/flutter_scene_generated/scene.{scene}."
