@@ -151,11 +151,11 @@ def main() -> None:
 
     require(manifest.get("package") == "com.duckdream.projectarena",
             f"unexpected applicationId: {manifest.get('package')!r}")
-    require(manifest.get("versionName") == "1.7.5",
+    require(manifest.get("versionName") == "1.7.6",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
-    require(isinstance(version_code, int) and version_code > 66,
-            f"versionCode must be greater than 66, got {version_code!r}")
+    require(isinstance(version_code, int) and version_code > 67,
+            f"versionCode must be greater than 67, got {version_code!r}")
     require(application.get("label") == "Projeto Arena",
             f"unexpected launcher label: {application.get('label')!r}")
 
@@ -233,6 +233,7 @@ def main() -> None:
 
     weapon_assets = (
         "lyra_sword.glb", "bastion_sword.glb", "kairo_sword.glb",
+        "CC0-QUATERNIUS-LICENSE.txt", "weapon-assets-manifest.json",
     )
     for asset in weapon_assets:
         require(f"assets/flutter_assets/assets/weapons/{asset}" in names,
@@ -284,7 +285,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=1.7.5+{version_code}, minSdk={min_sdk}, "
+        f"version=1.7.6+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )
