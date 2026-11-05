@@ -4,7 +4,7 @@ import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 void main() {
   group('ArenaWorldCatalog', () {
     test('provides deterministic, offline vegetation placements', () {
-      expect(ArenaWorldCatalog.trees, hasLength(22));
+      expect(ArenaWorldCatalog.trees, hasLength(30));
       expect(ArenaWorldCatalog.bushes, hasLength(12));
 
       for (final placement in [
@@ -40,6 +40,8 @@ void main() {
       }
       expect(ArenaWorldCatalog.isWalkable(0, 15), isTrue);
       expect(ArenaWorldCatalog.isWalkable(8, 16), isFalse);
+      expect(ArenaWorldCatalog.isWalkable(0, -10), isFalse);
+      expect(ArenaWorldCatalog.isWalkable(4, -10), isTrue);
       expect(ArenaWorldCatalog.isWalkable(58, 40), isFalse);
     });
 
