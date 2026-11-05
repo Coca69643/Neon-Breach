@@ -309,11 +309,12 @@ class ArenaStateMachine extends ChangeNotifier {
 
   ArenaSnapshot? _resume(ArenaSnapshot current) {
     final target = current.resumePhase;
-    if (target != ArenaPhase.inMatch && target != ArenaPhase.matchLoading) {
+    if (target == null ||
+        (target != ArenaPhase.inMatch && target != ArenaPhase.matchLoading)) {
       return null;
     }
     return current.copyWith(
-      phase: target!,
+      phase: target,
       clearResumePhase: true,
       clearPauseOrigin: true,
     );
