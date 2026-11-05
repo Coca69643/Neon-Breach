@@ -60,7 +60,8 @@ class ArenaHeroPreview extends StatelessWidget {
             key: ValueKey(heroId),
             name: 'playable_hero_$heroId',
             position: vm.Vector3(0, 0, 0),
-            // The imported Quaternius rigs present their front on local -Z.
+            // glTF humanoid assets face +Z; the preview camera looks from -Z.
+            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi),
             scale: vm.Vector3.all(0.52),
             animations: [
               SceneAnimationSpec(model.idle, loop: true, speed: 1),
