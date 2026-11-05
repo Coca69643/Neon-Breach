@@ -136,21 +136,36 @@ class _ArenaScreen extends StatelessWidget {
           ),
         ),
         child: SafeArea(
-          child: Center(
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 20),
-              child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 980),
-                child: _buildPhase(),
-              ),
-            ),
+          child: LayoutBuilder(
+            builder: (context, viewport) {
+              final compact = viewport.maxHeight < 540;
+              final horizontal = viewport.maxWidth < 700 ? 12.0 : 26.0;
+              final vertical = compact ? 8.0 : 14.0;
+
+              return Center(
+                child: ConstrainedBox(
+                  constraints: const BoxConstraints(maxWidth: 1240),
+                  child: SizedBox(
+                    width: double.infinity,
+                    height: viewport.maxHeight,
+                    child: Padding(
+                      padding: EdgeInsets.symmetric(
+                        horizontal: horizontal,
+                        vertical: vertical,
+                      ),
+                      child: _buildPhase(compact: compact),
+                    ),
+                  ),
+                ),
+              );
+            },
           ),
         ),
       ),
     );
   }
 
-  Widget _buildPhase() {
+  Widget _buildPhase({required bool compact}) {
     switch (snapshot.phase) {
       case ArenaPhase.boot:
         return const _StatusView(
@@ -162,12 +177,12 @@ class _ArenaScreen extends StatelessWidget {
         return const _StatusView(
           eyebrow: 'VERIFICAÇÃO',
           title: 'Preparando runtime 3D',
-          description: 'Inicializando shaders, materiais e conteúdo offline.',
+          description: 'Inicializando conteúdo offline.',
         );
       case ArenaPhase.mainMenu:
-        return _mainMenu();
+        return _mainMenu(compact: compact);
       case ArenaPhase.heroSelection:
-        return _heroSelection();
+        return _heroSelection(compact: compact);
       case ArenaPhase.matchLoading:
         return _worldPreview();
       case ArenaPhase.inMatch:
@@ -185,60 +200,66 @@ class _ArenaScreen extends StatelessWidget {
     }
   }
 
-  Widget _mainMenu() {
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text(
-          'DUCK DREAM STUDIOS  /  MOBILE',
-          style: TextStyle(
-            color: Color(0xFF79D6BD),
-            fontSize: 12,
-            letterSpacing: 2.2,
-            fontWeight: FontWeight.w700,
-          ),
+  Widget _mainMenu({required bool compact}) {
+    return Align(
+      alignment: Alignment.centerLeft,
+      child: Padding(
+        padding: EdgeInsets.only(left: compact ? 8 : 28),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'DUCK DREAM STUDIOS',
+              style: TextStyle(
+                color: Color(0xFF79D6BD),
+                fontSize: 10,
+                letterSpacing: 2.0,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+            SizedBox(height: compact ? 14 : 20),
+            Text(
+              'PROJETO\nARENA',
+              style: TextStyle(
+                fontSize: compact ? 48 : 56,
+                height: 0.94,
+                letterSpacing: -1.8,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            SizedBox(height: compact ? 22 : 30),
+            FilledButton.icon(
+              onPressed: () => onEvent(const OpenHeroSelection()),
+              icon: const Icon(Icons.play_arrow_rounded, size: 18),
+              label: const Text(
+                'JOGAR',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w700,
+                  letterSpacing: 1.0,
+                ),
+              ),
+              style: FilledButton.styleFrom(
+                minimumSize: const Size(176, 48),
+                padding: const EdgeInsets.symmetric(horizontal: 20),
+                tapTargetSize: MaterialTapTargetSize.padded,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+            ),
+          ],
         ),
-        const SizedBox(height: 18),
-        const Text(
-          'PROJETO\nARENA',
-          style: TextStyle(
-            fontSize: 58,
-            height: 0.94,
-            letterSpacing: -2.2,
-            fontWeight: FontWeight.w900,
-          ),
-        ),
-        const SizedBox(height: 16),
-        const Text(
-          'Flutter + Flutter Scene.\n'
-          'Offline • Landscape • Máquina de estados ativa',
-          style: TextStyle(color: Color(0xFFB7C2CA), height: 1.5),
-        ),
-        const SizedBox(height: 30),
-        FilledButton.icon(
-          onPressed: () => onEvent(const OpenHeroSelection()),
-          icon: const Icon(Icons.play_arrow_rounded),
-          label: const Text('SELECIONAR HERÓI'),
-        ),
-        const SizedBox(height: 22),
-        const Text(
-          'FUNDAÇÃO 0.2  /  PARTIDA 3D AINDA NÃO INTEGRADA',
-          style: TextStyle(
-            color: Color(0xFF71808B),
-            fontSize: 10,
-            letterSpacing: 1.2,
-          ),
-        ),
-      ],
+      ),
     );
   }
 
-  Widget _heroSelection() {
+  Widget _heroSelection({required bool compact}) {
     const heroes = [
-      ('lyra', 'LYRA', 'Mobilidade'),
-      ('bastion', 'BASTION', 'Linha de frente'),
-      ('kairo', 'KAIRO', 'Controle'),
+      ('lyra', 'LYRA'),
+      ('bastion', 'BASTION'),
+      ('kairo', 'KAIRO'),
     ];
     final selectedId = snapshot.selectedHeroId ?? 'lyra';
 
@@ -246,112 +267,111 @@ class _ArenaScreen extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Expanded(
-          flex: 6,
+          flex: 12,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(18),
+            borderRadius: BorderRadius.circular(10),
             child: ArenaHeroPreview(heroId: selectedId),
           ),
         ),
-        const SizedBox(width: 28),
+        SizedBox(width: compact ? 12 : 20),
         Expanded(
-          flex: 4,
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              const Text(
-                'SELEÇÃO DE HERÓI  /  01',
-                style: TextStyle(
-                  color: Color(0xFF79D6BD),
-                  letterSpacing: 2,
-                  fontSize: 11,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Escolha seu operador',
-                style: TextStyle(fontSize: 29, fontWeight: FontWeight.w800),
-              ),
-              const SizedBox(height: 8),
-              const Text(
-                'Modelos 3D independentes com animação em tempo real.',
-                style: TextStyle(color: Color(0xFFB7C2CA), height: 1.4),
-              ),
-              const SizedBox(height: 22),
-              for (final hero in heroes) ...[
-                SizedBox(
-                  width: double.infinity,
-                  child: OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      alignment: Alignment.centerLeft,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 13,
+          flex: 8,
+          child: Padding(
+            padding: EdgeInsets.symmetric(
+              vertical: compact ? 2 : 8,
+              horizontal: compact ? 2 : 8,
+            ),
+            child: LayoutBuilder(
+              builder: (context, panel) {
+                final itemHeight = (panel.maxHeight * 0.13)
+                    .clamp(48.0, compact ? 54.0 : 62.0)
+                    .toDouble();
+
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'HERÓIS',
+                      style: TextStyle(
+                        color: const Color(0xFF79D6BD),
+                        fontSize: compact ? 10 : 11,
+                        letterSpacing: 2.0,
+                        fontWeight: FontWeight.w700,
                       ),
-                      side: BorderSide(
-                        color: selectedId == hero.$1
-                            ? const Color(0xFF79D6BD)
-                            : const Color(0xFF46545E),
-                        width: selectedId == hero.$1 ? 2 : 1,
-                      ),
-                      backgroundColor: selectedId == hero.$1
-                          ? const Color(0x2679D6BD)
-                          : const Color(0x1479D6BD),
                     ),
-                    onPressed: () => onEvent(SelectHero(hero.$1)),
-                    child: Row(
+                    SizedBox(height: compact ? 6 : 9),
+                    Text(
+                      'Escolha seu herói',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: compact ? 21 : 25,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -0.5,
+                      ),
+                    ),
+                    const Spacer(),
+                    for (final hero in heroes) ...[
+                      _HeroChoiceTile(
+                        heroId: hero.$1,
+                        label: hero.$2,
+                        selected: selectedId == hero.$1,
+                        height: itemHeight,
+                        onTap: () => onEvent(SelectHero(hero.$1)),
+                      ),
+                      const SizedBox(height: 8),
+                    ],
+                    const Spacer(),
+                    Row(
                       children: [
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                hero.$2,
-                                style: const TextStyle(
-                                  fontWeight: FontWeight.w900,
-                                  letterSpacing: 1.1,
-                                ),
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                hero.$3,
-                                style: const TextStyle(
-                                  color: Color(0xFFB7C2CA), fontSize: 12,
-                                ),
-                              ),
-                            ],
+                        TextButton(
+                          onPressed: () => onEvent(const ReturnToMenu()),
+                          style: TextButton.styleFrom(
+                            foregroundColor: const Color(0xFFB7C2CA),
+                            minimumSize: const Size(82, 44),
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'VOLTAR',
+                            style: TextStyle(fontSize: 12, letterSpacing: 0.8),
                           ),
                         ),
-                        if (selectedId == hero.$1)
-                          const Icon(Icons.check_circle, color: Color(0xFF79D6BD)),
+                        const Spacer(),
+                        FilledButton(
+                          onPressed: snapshot.selectedHeroId == null
+                              ? null
+                              : () => onEvent(const ConfirmHeroSelection()),
+                          style: FilledButton.styleFrom(
+                            minimumSize: const Size(132, 44),
+                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                          ),
+                          child: const Text(
+                            'CONFIRMAR',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.7,
+                            ),
+                          ),
+                        ),
                       ],
                     ),
-                  ),
-                ),
-                const SizedBox(height: 8),
-              ],
-              const Spacer(),
-              Row(
-                children: [
-                  TextButton(
-                    onPressed: () => onEvent(const ReturnToMenu()),
-                    child: const Text('VOLTAR'),
-                  ),
-                  const SizedBox(width: 12),
-                  FilledButton(
-                    onPressed: snapshot.selectedHeroId == null
-                        ? null
-                        : () => onEvent(const ConfirmHeroSelection()),
-                    child: const Text('CONTINUAR'),
-                  ),
-                ],
-              ),
-            ],
+                  ],
+                );
+              },
+            ),
           ),
         ),
       ],
     );
   }
+
   Widget _worldPreview() {
     return SizedBox.expand(
       child: ArenaWorldPreview(
@@ -395,6 +415,76 @@ class _ArenaScreen extends StatelessWidget {
       description: snapshot.errorMessage ?? 'Erro não identificado.',
       actionLabel: 'TENTAR NOVAMENTE',
       onAction: onRetry,
+    );
+  }
+}
+
+class _HeroChoiceTile extends StatelessWidget {
+  const _HeroChoiceTile({
+    required this.heroId,
+    required this.label,
+    required this.selected,
+    required this.height,
+    required this.onTap,
+  });
+
+  final String heroId;
+  final String label;
+  final bool selected;
+  final double height;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = selected
+        ? const Color(0xFF79D6BD)
+        : const Color(0xFF46545E);
+
+    return Material(
+      color: selected
+          ? const Color(0x263C8D7C)
+          : const Color(0x141E2A31),
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(8),
+        child: Container(
+          width: double.infinity,
+          height: height,
+          padding: const EdgeInsets.symmetric(horizontal: 16),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: accent.withValues(alpha: selected ? 0.95 : 0.55),
+              width: selected ? 1.6 : 1,
+            ),
+          ),
+          child: Row(
+            children: [
+              Expanded(
+                child: Text(
+                  label,
+                  style: TextStyle(
+                    color: selected
+                        ? const Color(0xFF9BE4D1)
+                        : const Color(0xFFE0E6E8),
+                    fontSize: 15,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 1.2,
+                  ),
+                ),
+              ),
+              Icon(
+                selected ? Icons.check_circle : Icons.circle_outlined,
+                size: 18,
+                color: selected
+                    ? const Color(0xFF79D6BD)
+                    : const Color(0xFF71808B),
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }
