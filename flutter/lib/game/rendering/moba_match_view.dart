@@ -199,11 +199,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Walk',
       };
 
-  String _heroAttack(MobaHeroId hero) => switch (hero) {
-        MobaHeroId.lyra => 'HumanArmature|Female_Punch',
-        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Punch',
-      };
-
   double _groundHeight(MobaPoint point) =>
       ArenaWorldCatalog.navigationHeightAt(point.x, point.z) + 0.035;
 
@@ -281,17 +276,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         scale: vm.Vector3.all(0.82),
         animations: [
           SceneAnimationSpec(
-            snapshot.playerAttackSeconds > 0
-                ? _heroAttack(snapshot.heroId)
-                : snapshot.playerMoving
-                    ? _heroWalk(snapshot.heroId)
-                    : _heroIdle(snapshot.heroId),
-            loop: snapshot.playerAttackSeconds <= 0,
-            speed: snapshot.playerAttackSeconds > 0
-                ? 1.12
-                : snapshot.playerMoving
-                    ? 1.05
-                    : 0.78,
+            snapshot.playerMoving
+                ? _heroWalk(snapshot.heroId)
+                : _heroIdle(snapshot.heroId),
+            loop: true,
+            speed: snapshot.playerMoving ? 1.05 : 0.78,
           ),
         ],
       ),
@@ -453,10 +442,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               children: _buildSceneChildren(snapshot),
             ),
             Positioned(
-              left: viewport.maxWidth * 0.48,
-              right: side + 158,
-              top: compact ? 92 : 104,
-              bottom: compact ? 104 : 116,
+              left: viewport.maxWidth * 0.50,
+              right: side + 170,
+              top: compact ? 100 : 112,
+              bottom: compact ? 112 : 124,
               child: GestureDetector(
                 behavior: HitTestBehavior.translucent,
                 onPanUpdate: _rotateCamera,
@@ -515,6 +504,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         const SizedBox(width: 9),
                         _PauseButton(onTap: widget.onPause),
                       ],
+                    ),
+                  ),
+                  Positioned(
+                    left: viewport.maxWidth * 0.56,
+                    top: viewport.maxHeight * 0.48,
+                    child: IgnorePointer(
+                      child: AnimatedOpacity(
+                        opacity: snapshot.playerAttackSeconds > 0 ? 1 : 0,
+                        duration: const Duration(milliseconds: 85),
+                        child: const Icon(
+                          Icons.auto_awesome,
+                          size: 38,
+                          color: Color(0xFFFFE6A4),
+                          shadows: [
+                            Shadow(color: Color(0xAAFFE4A0), blurRadius: 16),
+                          ],
+                        ),
+                      ),
                     ),
                   ),
                   Positioned(
