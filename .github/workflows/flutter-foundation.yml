@@ -113,6 +113,7 @@ jobs:
           path: |
             flutter/Project-Arena-1.7.8-arm64.apk
             flutter/Project-Arena-1.7.8-arm64.apk.sha256
+            flutter/Project-Arena-1.7.8-Changelog.txt
           if-no-files-found: error
           retention-days: 30
       - name: Publish Projeto Arena 1.7.8 stable tester release
