@@ -18,7 +18,7 @@
 - Reator central com barra de captura e estado neutro/contestado.
 - Heróis, bots e minions contribuem com presença ponderada.
 - Disputa simultânea congela a captura; o controle persiste até retomada inimiga.
-- Controle concede +12% de dano à equipe e a primeira captura rende 150 G / 90 XP.
+- Controle concede +12% de dano à equipe; a posse persiste enquanto o adversário drena o medidor, sendo perdida apenas quando ele retorna a zero. A primeira captura rende 150 G / 90 XP.
 
 ### Equipamento dos heróis
 - Lyra, Bastion e Kairo recebem espadas CC0 distintas.
