@@ -31,6 +31,8 @@ jobs:
           flutter-version: "3.47.0"
           channel: stable
           cache: true
+      - name: Generate Android host and enable Flutter GPU
+        run: python3 tool/prepare_android.py
       - name: Resolve dependencies
         run: flutter pub get
       - name: Static analysis
