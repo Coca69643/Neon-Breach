@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.7 / 69
+- versionName/versionCode: 1.7.8 / 69
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -58,7 +58,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, build ARM64 e verificação da assinatura.
-- APK 1.7.7+69: targeting e hit confirmation integrados; análise/testes/build ARM64/validação de assets/assinatura dependem do CI atual; escadas, objetivo, armas e desempenho ainda exigem inspeção visual no Realme C53.
+- APK 1.7.8+69: targeting e hit confirmation integrados; análise/testes/build ARM64/validação de assets/assinatura dependem do CI atual; escadas, objetivo, armas e desempenho ainda exigem inspeção visual no Realme C53.
 
 ## Comandos
 
