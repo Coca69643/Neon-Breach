@@ -26,7 +26,9 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Dependência Flutter Scene: fixada.
 - Build hook de assets: implementado.
 - Script reproduzível do host Android, Flutter GPU e landscape: implementado.
-- Preview 3D dos três heróis CC0 com clips Idle via SceneModel: implementado; pixel ratio limitado a 1.0; renderização ainda não validada em CI/dispositivo.
+- Preview 3D dos três heróis CC0 com clips Idle via SceneModel: implementado; pixel ratio limitado a 1.0; renderização ainda não validada em dispositivo.
+- Pipeline offline do cenário Vale das Coroas: script para terreno GLB texturizado, rio curvo e quatro modelos CC0 de vegetação; validação CI pendente.
+- Prévia do mundo em MATCH_LOADING: integrada como visualização, explicitamente sem gameplay; compilação e renderização pendentes.
 - Bootstrap dos recursos estáticos Flutter Scene: chamado antes da validação do manifesto; falhas são recuperáveis.
 - APK: ainda não gerada.
 
@@ -34,6 +36,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 
 ~~~bash
 cd flutter
+python3 tool/prepare_world_assets.py
 python3 tool/prepare_android.py
 flutter pub get
 flutter analyze
