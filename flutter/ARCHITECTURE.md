@@ -32,7 +32,7 @@ Regras:
 5. A recuperação preserva o estágio que precisa ser repetido.
 6. Os testes unitários verificam o fluxo e os invariantes sem depender de renderização.
 
-A máquina de estados da aplicação não substitui a IA dos personagens. Bots e minions terão máquinas de estados próprias no runtime nativo, com estados e transições determinísticos.
+A máquina de estados da aplicação não substitui a IA dos personagens. O primeiro núcleo determinístico de agentes já está em `native/arena_runtime/`: bots e minions possuem transições distintas para patrulha, aquisição, aproximação, ataque, recuo e estado terminal. Detecção real de alvos, navegação e execução de ações ainda serão conectadas ao runtime.
 
 ## Renderizador nativo — próxima integração
 
@@ -64,6 +64,10 @@ Ainda não implementado:
 - HUD de combate, rede ou simulação de partida.
 
 A validação atual do manifesto **não** afirma que modelos GLB ou texturas já foram auditados. A etapa de assets 3D terá verificações próprias antes de qualquer partida ser liberada.
+
+## Identidade Android e continuidade de instalação
+
+O host Flutter futuro deve preservar `applicationId: com.duckdream.projectarena` para manter a identidade do aplicativo. A `main` atual registra `versionName 0.16.0`, `versionCode 59` e `minSdk 23`; portanto, a próxima APK de atualização deve usar `versionCode` maior que 59 e manter `minSdk 23` salvo decisão explícita. A versão de publicação ainda não foi atribuída nesta fundação.
 
 ## Critérios para avançar
 
