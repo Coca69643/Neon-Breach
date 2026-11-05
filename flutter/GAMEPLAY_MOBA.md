@@ -72,6 +72,8 @@ Implementado no branch atual:
 - Joystick esquerdo exclusivo para movimento; pointer tracking central/direito exclusivo para girar e inclinar a câmera.
 - HUD touch, minimapa, pausa e botões de ataque/habilidade.
 - Ataque básico com clipe SwordSlash e alcance/intervalo específico por herói.
+- Seleção manual de alvo por botão touch, com HUD contextual e barra de vida.
+- Marcador de acerto separado da animação de swing; só confirma quando o dano foi aplicado.
 - Quatro interiores com piso, paredes, portas, mobiliário e colisões; três avenidas e três travessias do canal.
 - Pipeline verifica o rig masculino de Kairo e os clipes de ataque no GLB empacotado.
 
@@ -85,7 +87,7 @@ Ainda pendente:
 
 Não anunciar gameplay completo enquanto combate, equipamentos, progressão de itens e validação física não estiverem concluídos.
 
-## Arena, câmera, verticalidade e objetivo — revisão 1.7.6
+## Arena, câmera, verticalidade e objetivo — revisão 1.7.7
 
 - Footprint 180 × 140, terreno urbano sem rodapé de penhasco.
 - Três avenidas em x ≈ -36 / 0 / +36 e z ≈ -70…+70.
@@ -93,3 +95,11 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 - Coberturas de entrada são destrutíveis; reator central no cruzamento médio concede bônus de dano por controle territorial.
 - O canal bloqueia movimento fora das três travessias; torres, paredes, mobiliário e limites do mapa têm colisão.
 - Câmera de ação traseira com follow distance 9.4, look-ahead 3.0, pitch 0.34 rad e FOV 49°. O arrasto central/direito controla a câmera; joystick esquerdo controla movimento.
+
+## Targeting e feedback de combate — revisão 1.7.7
+
+- Botão ALVO percorre heróis e tropas inimigas dentro de 24 unidades, priorizando a menor distância.
+- O HUD mostra nome, classe e vida do alvo selecionado e some quando ele morre ou sai do alcance de seleção.
+- Ataque sem contato mantém o feedback de swing, mas não dispara confirmação de impacto.
+- Dano real em heróis, tropas, coberturas, torres e núcleo ativa um marcador breve de acerto.
+- A seleção manual complementa o auto-target atual; não substitui a lógica contextual de torres e estruturas.
