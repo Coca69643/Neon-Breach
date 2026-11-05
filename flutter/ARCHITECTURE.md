@@ -47,7 +47,7 @@ O menu principal usa SceneView.declarative em tela cheia, com o terreno contínu
 
 A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra/Kairo e Man_Idle para Bastion. A inicialização estática acontece no bootstrap antes da validação do manifesto e de qualquer SceneView; falhas entram na recuperação e podem ser tentadas novamente. A seleção troca o GLB sem reconstruir a aplicação. Isso ainda precisa de validação em dispositivo.
 
-O mapa Vale das Coroas foi reconstruído como uma arena MOBA de contorno retangular orgânico (superellipse), não como a antiga ilha oval. O terreno agora tem três rotas curvas, rio diagonal em S, três pontes, bases opostas e clareiras de selva, com GLB gerado offline e mapas albedo/normal de grama, musgo, solo e rocha. Quatro modelos de vegetação Quaternius CC0 são decodificados do conteúdo já versionado, sem baixar nada durante a partida. SceneModel monta as árvores e arbustos a partir de fontes repetidas, compartilhando geometria/texturas cacheadas pelo runtime. O pixel ratio da prévia é 0.9 e o ritmo é limitado a 30 FPS; estes são limites de configuração, não resultados medidos no Realme C53.
+O mapa Vale das Coroas foi reconstruído como uma arena MOBA de arena larga de contorno retangular orgânico, com cantos mais definidos (superellipse), proporção 88:58 e câmera mais alta, não como a antiga ilha oval. O terreno agora tem três rotas curvas, rio diagonal em S, três pontes, bases opostas e clareiras de selva, com GLB gerado offline e mapas albedo/normal de grama, musgo, solo e rocha. Quatro modelos de vegetação Quaternius CC0 são decodificados do conteúdo já versionado, sem baixar nada durante a partida. SceneModel monta as árvores e arbustos a partir de fontes repetidas, compartilhando geometria/texturas cacheadas pelo runtime. O pixel ratio da prévia é 0.9 e o ritmo é limitado a 30 FPS; estes são limites de configuração, não resultados medidos no Realme C53.
 
 MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY. Não é uma partida: navegação, unidades, bots, objetivos, HUD e combate ainda não foram migrados para Flutter Scene.
 
@@ -62,7 +62,7 @@ MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY
 
 ## Identidade Android
 
-Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 59 na próxima APK instalável. Esta fundação usa 1.7.2+63 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
+Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 63 na próxima APK instalável. Esta fundação usa 1.7.2+64 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
 
 ## Critérios de aceite
 
