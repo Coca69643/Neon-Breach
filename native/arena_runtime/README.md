@@ -10,7 +10,7 @@ Não é uma engine e não deve receber dependências de engines. O módulo será
 - simulation: timestep, colisão e movimento;
 - gameplay: estados de heróis, bots, minions e objetivos.
 
-A implementação começa somente após o contrato Flutter/plugin de superfície estar definido. Nenhum renderizador funcional está declarado neste commit.
+A implementação do renderizador começa somente após o contrato Flutter/plugin de superfície estar definido. Nenhum renderizador funcional está declarado neste commit.
 
 ## Núcleo de máquina de estados de agentes
 
