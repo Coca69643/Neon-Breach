@@ -418,11 +418,13 @@ def build_terrain_glb(output: Path) -> None:
         a1 = 2.0 * math.pi * (i + 1) / skirt_segments
 
         def edge_point(angle: float) -> tuple[float, float, float]:
-            exponent = 2.0 / 4.2
+            exponent = 4.2
             wobble = edge_wobble(angle)
             cosine, sine = math.cos(angle), math.sin(angle)
-            x = HALF_X * math.copysign(abs(cosine) ** exponent, cosine) * wobble
-            z = HALF_Z * math.copysign(abs(sine) ** exponent, sine) * wobble
+            norm = (abs(cosine) ** exponent + abs(sine) ** exponent) ** (1.0 / exponent)
+            scale = wobble / norm
+            x = HALF_X * scale * cosine
+            z = HALF_Z * scale * sine
             return x, height(x, z) - 0.02, z
 
         top_a = edge_point(a0)
