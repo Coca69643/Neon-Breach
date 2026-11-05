@@ -48,11 +48,14 @@ abstract final class ArenaManifestValidator {
       if (runtime is! Map<String, dynamic>) {
         issues.add('Bloco runtime ausente ou inválido.');
       } else {
-        if (runtime['kind'] != 'custom_native') {
-          issues.add('O runtime precisa ser custom_native, sem engine.');
+        if (runtime['kind'] != 'flutter_scene') {
+          issues.add('O runtime precisa ser flutter_scene.');
         }
-        if (runtime['status'] != 'foundation_only') {
-          issues.add('Status inesperado para a fundação inicial.');
+        if (runtime['status'] != 'scene_integration') {
+          issues.add('Status inesperado para a integração Flutter Scene.');
+        }
+        if (runtime['graphicsRuntime'] != 'Flutter GPU / Impeller') {
+          issues.add('Backend gráfico incompatível com Flutter Scene.');
         }
       }
 
