@@ -1,0 +1,17 @@
+Projeto Arena
+Versão 1.7.9
+
+NOVIDADES
+- Seis aparências distintas dos heróis jogáveis para bots, tropas e NPCs.
+- NPCs do distrito com animações de locomoção e interação.
+- Entradas visuais dos interiores alinhadas ao vão de colisão.
+
+ALTERAÇÕES
+- Corrigida a orientação dos personagens durante a movimentação.
+- Bots e tropas agora usam modelos independentes dos heróis selecionáveis.
+- Corrigidos os caminhos de assets dos NPCs no pacote offline.
+- Corrigido o posicionamento das paredes frontais e das portas internas.
+- Deslocadas as barreiras para liberar as entradas dos prédios.
+
+EXCLUSÕES
+- Removida a dependência de modelos de NPC ausentes do repositório.
