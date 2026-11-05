@@ -2,12 +2,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../game/manifest/arena_manifest_validator.dart';
+import '../game/match/moba_match_simulation.dart';
 import '../game/rendering/arena_hero_preview.dart';
 import '../game/rendering/arena_main_menu_scene.dart';
-import '../game/rendering/moba_match_view.dart';
 import '../game/rendering/arena_scene_runtime.dart';
+import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
-import '../game/match/moba_match_simulation.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
