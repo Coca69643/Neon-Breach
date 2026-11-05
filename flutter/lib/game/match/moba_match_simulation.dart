@@ -531,12 +531,12 @@ class MobaMatchSimulation {
         _Cover(
           id: 'west_south_door_barrier',
           variant: 'barrier',
-          position: const MobaPoint(-63.0, -42.1),
+          position: const MobaPoint(-70.5, -42.1),
         ),
         _Cover(
           id: 'east_north_door_fence',
           variant: 'fence',
-          position: const MobaPoint(63.0, 33.9),
+          position: const MobaPoint(70.5, 33.9),
         ),
       ]);
     _elapsed = 0;
