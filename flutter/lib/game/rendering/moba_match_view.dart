@@ -178,7 +178,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       };
 
   double _groundHeight(MobaPoint point) =>
-      ArenaWorldCatalog.heightAt(point.x, point.z) + 0.035;
+      ArenaWorldCatalog.navigationHeightAt(point.x, point.z) + 0.035;
 
   vm.Vector3 _worldPosition(MobaPoint point, {double heightOffset = 0}) =>
       vm.Vector3(
