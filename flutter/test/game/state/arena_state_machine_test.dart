@@ -48,13 +48,32 @@ void main() {
     expect(machine.snapshot.phase, ArenaPhase.boot);
   });
 
-  test('não permite confirmar herói sem seleção válida', () {
+  test('abre a seleção com Lyra ativa e permite trocar de herói', () {
     reachMainMenu();
     machine.dispatch(const OpenHeroSelection());
 
+    expect(machine.snapshot.selectedHeroId, 'lyra');
+
+    machine.dispatch(const SelectHero('bastion'));
+    expect(machine.snapshot.selectedHeroId, 'bastion');
+
+    machine.dispatch(const SelectHero('kairo'));
+    expect(machine.snapshot.selectedHeroId, 'kairo');
+
     final decision = machine.dispatch(const ConfirmHeroSelection());
+    expect(decision.accepted, isTrue);
+    expect(machine.snapshot.phase, ArenaPhase.matchLoading);
+    expect(machine.snapshot.selectedHeroId, 'kairo');
+  });
+
+  test('recusa IDs de herói desconhecidos sem perder a seleção atual', () {
+    reachMainMenu();
+    machine.dispatch(const OpenHeroSelection());
+
+    final decision = machine.dispatch(const SelectHero('unknown-hero'));
 
     expect(decision.accepted, isFalse);
+    expect(machine.snapshot.selectedHeroId, 'lyra');
     expect(machine.snapshot.phase, ArenaPhase.heroSelection);
   });
 
