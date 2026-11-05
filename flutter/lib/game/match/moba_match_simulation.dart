@@ -11,6 +11,55 @@ extension MobaTeamRules on MobaTeam {
   int get index => this == MobaTeam.blue ? 0 : 1;
 }
 
+/// Deterministic capture meter for the central relay. Ownership is latched
+/// until opposing progress drains the meter back to neutral.
+class MobaObjectiveControl {
+  double control = 0;
+  MobaTeam? owner;
+  bool contested = false;
+  double bluePresence = 0;
+  double redPresence = 0;
+
+  void reset() {
+    control = 0;
+    owner = null;
+    contested = false;
+    bluePresence = 0;
+    redPresence = 0;
+  }
+
+  /// Returns the newly captured team only when ownership changes.
+  MobaTeam? update(double dt, {required double blue, required double red}) {
+    bluePresence = blue;
+    redPresence = red;
+    contested = blue > 0 && red > 0;
+    if (contested || dt <= 0) return null;
+
+    final previousOwner = owner;
+    if (blue > 0) {
+      control = math.min(100, control + dt * 9.0 * blue);
+    } else if (red > 0) {
+      control = math.max(-100, control - dt * 9.0 * red);
+    }
+
+    if (owner == MobaTeam.blue && control <= 0) {
+      owner = null;
+    } else if (owner == MobaTeam.red && control >= 0) {
+      owner = null;
+    }
+
+    if (owner == null) {
+      if (control >= 100) {
+        owner = MobaTeam.blue;
+      } else if (control <= -100) {
+        owner = MobaTeam.red;
+      }
+    }
+
+    return owner != null && owner != previousOwner ? owner : null;
+  }
+}
+
 enum MobaLane { top, middle, bottom }
 
 enum MobaHeroId { lyra, bastion, kairo }
@@ -348,15 +397,9 @@ class MobaMatchSimulation {
   final List<_Cover> _covers = [];
   static const MobaPoint _objectivePosition = MobaPoint(0, 0);
   static const double objectiveRadius = 8.0;
-  double _objectiveControl = 0;
-  MobaTeam? _objectiveOwnerTeam;
-  bool _objectiveContested = false;
-  double _objectiveBluePresence = 0;
-  double _objectiveRedPresence = 0;
+  final MobaObjectiveControl _objective = MobaObjectiveControl();
 
-  /// Ownership is latched while the opponent drains the meter. The owner
-  /// loses control only when the meter returns to neutral, not at 99/100.
-  MobaTeam? get _objectiveOwner => _objectiveOwnerTeam;
+  MobaTeam? get _objectiveOwner => _objective.owner;
 
   double _objectiveDamageMultiplier(MobaTeam attackingTeam) =>
       _objectiveOwner == attackingTeam ? 1.12 : 1.0;
@@ -405,11 +448,7 @@ class MobaMatchSimulation {
     _minions.clear();
     _bots.clear();
     _towers.clear();
-    _objectiveControl = 0;
-    _objectiveOwnerTeam = null;
-    _objectiveContested = false;
-    _objectiveBluePresence = 0;
-    _objectiveRedPresence = 0;
+    _objective.reset();
     _covers
       ..clear()
       ..addAll([
@@ -1016,40 +1055,14 @@ class MobaMatchSimulation {
       }
     }
 
-    _objectiveBluePresence = blue;
-    _objectiveRedPresence = red;
-    _objectiveContested = blue > 0 && red > 0;
-    if (_objectiveContested) return;
-
-    final previousOwner = _objectiveOwnerTeam;
-    if (blue > 0) {
-      _objectiveControl = math.min(100, _objectiveControl + dt * 9.0 * blue);
-    } else if (red > 0) {
-      _objectiveControl = math.max(-100, _objectiveControl - dt * 9.0 * red);
-    }
-
-    // Ownership persists while an enemy drains the meter. At neutral the
-    // current owner is removed; a new owner is granted only after a full
-    // capture in the opposite direction.
-    if (_objectiveOwnerTeam == MobaTeam.blue && _objectiveControl <= 0) {
-      _objectiveOwnerTeam = null;
-    } else if (_objectiveOwnerTeam == MobaTeam.red &&
-        _objectiveControl >= 0) {
-      _objectiveOwnerTeam = null;
-    }
-
-    if (_objectiveOwnerTeam == null) {
-      if (_objectiveControl >= 100) {
-        _objectiveOwnerTeam = MobaTeam.blue;
-      } else if (_objectiveControl <= -100) {
-        _objectiveOwnerTeam = MobaTeam.red;
-      }
-    }
-
-    final nextOwner = _objectiveOwnerTeam;
-    if (nextOwner != null && nextOwner != previousOwner) {
-      _awardGold(nextOwner, 150);
-      _awardXp(nextOwner, 90);
+    final capturedTeam = _objective.update(
+      dt,
+      blue: blue,
+      red: red,
+    );
+    if (capturedTeam != null) {
+      _awardGold(capturedTeam, 150);
+      _awardXp(capturedTeam, 90);
     }
   }
 
@@ -1355,11 +1368,11 @@ class MobaMatchSimulation {
       towers: List.unmodifiable(towers),
       covers: List.unmodifiable(covers),
       centralObjective: MobaObjectiveSnapshot(
-        control: _objectiveControl,
-        owner: _objectiveOwner,
-        contested: _objectiveContested,
-        bluePresence: _objectiveBluePresence,
-        redPresence: _objectiveRedPresence,
+        control: _objective.control,
+        owner: _objective.owner,
+        contested: _objective.contested,
+        bluePresence: _objective.bluePresence,
+        redPresence: _objective.redPresence,
       ),
       winner: _winner,
     );
