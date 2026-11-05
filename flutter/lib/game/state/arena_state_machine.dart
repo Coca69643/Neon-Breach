@@ -250,7 +250,7 @@ class ArenaStateMachine extends ChangeNotifier {
       }
       return current.copyWith(
         phase: ArenaPhase.recoverableError,
-        errorMessage: event.reason ?? 'Falha ao iniciar o runtime nativo.',
+        errorMessage: event.reason ?? 'Falha ao iniciar o runtime 3D Flutter Scene.',
         recoveryPhase: ArenaPhase.matchLoading,
       );
     }
