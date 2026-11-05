@@ -41,15 +41,20 @@ A IA dos bots e minions será implementada em Dart com FSMs determinísticas, de
 
 ## Integração Flutter Scene
 
-A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra/Kairo e Man_Idle para Bastion. A inicialização estática acontece no bootstrap antes da validação do manifesto e de qualquer SceneView; falhas entram na recuperação e podem ser tentadas novamente. A seleção troca o GLB sem reconstruir a aplicação. Isso ainda precisa passar por análise/compilação e validação em dispositivo; não representa o mapa nem uma partida jogável.
+A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra/Kairo e Man_Idle para Bastion. A inicialização estática acontece no bootstrap antes da validação do manifesto e de qualquer SceneView; falhas entram na recuperação e podem ser tentadas novamente. A seleção troca o GLB sem reconstruir a aplicação. Isso ainda precisa de validação em dispositivo.
+
+A etapa seguinte gera offline o GLB do Vale das Coroas: heightfield contínuo de baixa densidade, relevo com cristas suaves, canal de rio de largura variável, bandas de margem e mapas albedo/normal de grama, musgo, solo e rocha. Quatro modelos de vegetação Quaternius CC0 são decodificados do conteúdo já versionado, sem baixar nada durante a partida. SceneModel monta as árvores e arbustos a partir de fontes repetidas, compartilhando geometria/texturas cacheadas pelo runtime. O pixel ratio da prévia é 0.9 e o ritmo é limitado a 30 FPS; estes são limites de configuração, não resultados medidos no Realme C53.
+
+MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY. Não é uma partida: navegação, unidades, bots, objetivos, HUD e combate ainda não foram migrados para Flutter Scene.
 
 
 1. Habilitar Flutter GPU no AndroidManifest com io.flutter.embedding.android.EnableFlutterGPU=true.
 2. Inicializar Scene.initializeStaticResources() no bootstrap, antes de liberar o menu e montar qualquer SceneView.
-3. Pré-processar modelos e materiais incluídos no APK pelo build hook.
-4. Reservar importação GLB em runtime para conteúdo dinâmico; assets embarcados usam o pipeline de build.
-5. Descartar cenas explicitamente para liberar render targets e texturas.
-6. Não liberar uma partida se os assets necessários falharem na validação.
+3. Executar tool/prepare_world_assets.py para gerar o terreno GLB e decodificar modelos naturais CC0 offline.
+4. Pré-processar modelos e materiais incluídos no APK pelo build hook.
+5. Reservar importação GLB em runtime para conteúdo dinâmico; assets embarcados usam o pipeline de build.
+6. Descartar cenas explicitamente para liberar render targets e texturas.
+7. Não liberar uma partida se os assets necessários falharem na validação.
 
 ## Identidade Android
 
