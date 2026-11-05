@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 
 import '../game/manifest/arena_manifest_validator.dart';
 import '../game/rendering/arena_hero_preview.dart';
+import '../game/rendering/arena_main_menu_scene.dart';
 import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/arena_world_preview.dart';
 import '../game/state/arena_state_machine.dart';
@@ -127,7 +128,9 @@ class _ArenaScreen extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      body: DecoratedBox(
+      body: snapshot.phase == ArenaPhase.mainMenu
+          ? _immersiveMainMenu()
+          : DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -165,6 +168,137 @@ class _ArenaScreen extends StatelessWidget {
     );
   }
 
+  Widget _immersiveMainMenu() {
+    final heroId = snapshot.selectedHeroId ?? 'lyra';
+    final heroName = switch (heroId) {
+      'bastion' => 'BASTION',
+      'kairo' => 'KAIRO',
+      _ => 'LYRA',
+    };
+
+    return Stack(
+      fit: StackFit.expand,
+      children: [
+        ArenaMainMenuScene(heroId: heroId),
+        const IgnorePointer(
+          child: DecoratedBox(
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topCenter,
+                end: Alignment.bottomCenter,
+                stops: [0.0, 0.22, 0.62, 1.0],
+                colors: [
+                  Color(0xA60A1419),
+                  Color(0x000A1419),
+                  Color(0x000A1419),
+                  Color(0xB90A1419),
+                ],
+              ),
+            ),
+          ),
+        ),
+        SafeArea(
+          child: LayoutBuilder(
+            builder: (context, viewport) {
+              final compact = viewport.maxHeight < 440;
+              final edgeX = viewport.maxWidth < 700 ? 18.0 : 28.0;
+              final edgeY = compact ? 12.0 : 22.0;
+
+              return Stack(
+                children: [
+                  Positioned(
+                    left: edgeX,
+                    top: edgeY,
+                    child: const Text(
+                      'PROJETO ARENA',
+                      style: TextStyle(
+                        color: Color(0xFFF1F2EC),
+                        fontSize: 19,
+                        letterSpacing: 1.2,
+                        fontWeight: FontWeight.w900,
+                        shadows: [
+                          Shadow(
+                            color: Color(0x99000000),
+                            blurRadius: 12,
+                            offset: Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                  Positioned(
+                    left: edgeX,
+                    bottom: edgeY + 7,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 3,
+                          height: compact ? 24 : 29,
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF79D6BD),
+                            borderRadius: BorderRadius.circular(1),
+                          ),
+                        ),
+                        const SizedBox(width: 11),
+                        Text(
+                          heroName,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: compact ? 16 : 19,
+                            letterSpacing: 1.8,
+                            fontWeight: FontWeight.w800,
+                            shadows: const [
+                              Shadow(
+                                color: Color(0x99000000),
+                                blurRadius: 10,
+                                offset: Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    right: edgeX,
+                    bottom: edgeY,
+                    child: FilledButton.icon(
+                      onPressed: () => onEvent(const OpenHeroSelection()),
+                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
+                      label: const Text(
+                        'JOGAR',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 1.1,
+                        ),
+                      ),
+                      style: FilledButton.styleFrom(
+                        backgroundColor: const Color(0xFFE0B56B),
+                        foregroundColor: const Color(0xFF22251F),
+                        minimumSize: Size(
+                          compact ? 132 : 152,
+                          compact ? 46 : 50,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 19),
+                        tapTargetSize: MaterialTapTargetSize.padded,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        elevation: 3,
+                      ),
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        ),
+      ],
+    );
+  }
+
   Widget _buildPhase({required bool compact}) {
     switch (snapshot.phase) {
       case ArenaPhase.boot:
@@ -180,7 +314,7 @@ class _ArenaScreen extends StatelessWidget {
           description: 'Inicializando conteúdo offline.',
         );
       case ArenaPhase.mainMenu:
-        return _mainMenu(compact: compact);
+        return const SizedBox.shrink();
       case ArenaPhase.heroSelection:
         return _heroSelection(compact: compact);
       case ArenaPhase.matchLoading:
@@ -198,61 +332,6 @@ class _ArenaScreen extends StatelessWidget {
       case ArenaPhase.recoverableError:
         return _error();
     }
-  }
-
-  Widget _mainMenu({required bool compact}) {
-    return Align(
-      alignment: Alignment.centerLeft,
-      child: Padding(
-        padding: EdgeInsets.only(left: compact ? 8 : 28),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'DUCK DREAM STUDIOS',
-              style: TextStyle(
-                color: Color(0xFF79D6BD),
-                fontSize: 10,
-                letterSpacing: 2.0,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-            SizedBox(height: compact ? 14 : 20),
-            Text(
-              'PROJETO\nARENA',
-              style: TextStyle(
-                fontSize: compact ? 48 : 56,
-                height: 0.94,
-                letterSpacing: -1.8,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-            SizedBox(height: compact ? 22 : 30),
-            FilledButton.icon(
-              onPressed: () => onEvent(const OpenHeroSelection()),
-              icon: const Icon(Icons.play_arrow_rounded, size: 18),
-              label: const Text(
-                'JOGAR',
-                style: TextStyle(
-                  fontSize: 13,
-                  fontWeight: FontWeight.w700,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              style: FilledButton.styleFrom(
-                minimumSize: const Size(176, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 20),
-                tapTargetSize: MaterialTapTargetSize.padded,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 
   Widget _heroSelection({required bool compact}) {

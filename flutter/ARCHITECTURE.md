@@ -41,6 +41,8 @@ A IA dos bots e minions será implementada em Dart com FSMs determinísticas, de
 
 ## Integração Flutter Scene
 
+O menu principal usa SceneView.declarative em tela cheia, com o terreno contínuo, vegetação CC0 e um herói animado em primeiro plano; a interface Flutter fica restrita a marca, herói atual e uma ação primária na borda inferior. A câmera faz um deslocamento lateral lento, com pixel ratio 0.85 e teto de 30 FPS. A cena reutiliza os GLBs e o catálogo de posicionamento existentes, sem adicionar dependências ou sombras dinâmicas.
+
 A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra/Kairo e Man_Idle para Bastion. A inicialização estática acontece no bootstrap antes da validação do manifesto e de qualquer SceneView; falhas entram na recuperação e podem ser tentadas novamente. A seleção troca o GLB sem reconstruir a aplicação. Isso ainda precisa de validação em dispositivo.
 
 A etapa seguinte gera offline o GLB do Vale das Coroas: heightfield contínuo de baixa densidade, relevo com cristas suaves, canal de rio de largura variável, bandas de margem e mapas albedo/normal de grama, musgo, solo e rocha. Quatro modelos de vegetação Quaternius CC0 são decodificados do conteúdo já versionado, sem baixar nada durante a partida. SceneModel monta as árvores e arbustos a partir de fontes repetidas, compartilhando geometria/texturas cacheadas pelo runtime. O pixel ratio da prévia é 0.9 e o ritmo é limitado a 30 FPS; estes são limites de configuração, não resultados medidos no Realme C53.
@@ -58,7 +60,7 @@ MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY
 
 ## Identidade Android
 
-Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 59 na próxima APK instalável. Esta fundação usa 0.17.0+60 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
+Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 59 na próxima APK instalável. Esta fundação usa 0.17.1+61 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
 
 ## Critérios de aceite
 
