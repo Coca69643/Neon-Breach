@@ -149,7 +149,7 @@ def main() -> None:
 
     require(manifest.get("package") == "com.duckdream.projectarena",
             f"unexpected applicationId: {manifest.get('package')!r}")
-    require(manifest.get("versionName") == "0.17.1",
+    require(manifest.get("versionName") == "0.17.2",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
     require(isinstance(version_code, int) and version_code > 60,
