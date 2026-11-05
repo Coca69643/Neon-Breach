@@ -56,15 +56,15 @@ if gradle is None:
 
 content = gradle.read_text(encoding='utf-8')
 content = re.sub(
-    r'applicationId\\s*(?:=\\s*)?["\\']com\\.duckdream\\.project_arena_flutter["\\']',
+    r'applicationId\s*(?:=\s*)?["\']com\.duckdream\.project_arena_flutter["\']',
     'applicationId = "com.duckdream.projectarena"' if gradle.suffix == '.kts'
     else 'applicationId "com.duckdream.projectarena"',
     content,
 )
 if gradle.suffix == '.kts':
-    content = re.sub(r'minSdk\\s*=\\s*flutter\\.minSdkVersion', 'minSdk = 23', content)
+    content = re.sub(r'minSdk\s*=\s*flutter\.minSdkVersion', 'minSdk = 23', content)
 else:
-    content = re.sub(r'minSdkVersion\\s+flutter\\.minSdkVersion', 'minSdkVersion 23', content)
+    content = re.sub(r'minSdkVersion\s+flutter\.minSdkVersion', 'minSdkVersion 23', content)
 gradle.write_text(content, encoding='utf-8')
 
 print('Android host prepared: applicationId=com.duckdream.projectarena, minSdk=23, Flutter GPU enabled, landscape.')
