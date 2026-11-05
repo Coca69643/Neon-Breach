@@ -152,6 +152,23 @@ class MobaCoverSnapshot {
   bool get isDestroyed => health <= 0;
 }
 
+class MobaObjectiveSnapshot {
+  const MobaObjectiveSnapshot({
+    required this.control,
+    required this.owner,
+    required this.contested,
+    required this.bluePresence,
+    required this.redPresence,
+  });
+
+  /// Signed capture progress: -100 is red, +100 is blue.
+  final double control;
+  final MobaTeam? owner;
+  final bool contested;
+  final double bluePresence;
+  final double redPresence;
+}
+
 class MobaMatchSnapshot {
   const MobaMatchSnapshot({
     required this.elapsedSeconds,
@@ -183,6 +200,7 @@ class MobaMatchSnapshot {
     required this.minions,
     required this.towers,
     required this.covers,
+    required this.centralObjective,
     required this.winner,
   });
 
@@ -215,6 +233,7 @@ class MobaMatchSnapshot {
   final List<MobaMinionSnapshot> minions;
   final List<MobaTowerSnapshot> towers;
   final List<MobaCoverSnapshot> covers;
+  final MobaObjectiveSnapshot centralObjective;
   final MobaTeam? winner;
 
   bool get isFinished => winner != null;
@@ -327,6 +346,21 @@ class MobaMatchSimulation {
   final List<_Bot> _bots = [];
   final List<_Tower> _towers = [];
   final List<_Cover> _covers = [];
+  static const MobaPoint _objectivePosition = MobaPoint(0, 0);
+  static const double objectiveRadius = 8.0;
+  double _objectiveControl = 0;
+  bool _objectiveContested = false;
+  double _objectiveBluePresence = 0;
+  double _objectiveRedPresence = 0;
+
+  MobaTeam? get _objectiveOwner {
+    if (_objectiveControl >= 100) return MobaTeam.blue;
+    if (_objectiveControl <= -100) return MobaTeam.red;
+    return null;
+  }
+
+  double _objectiveDamageMultiplier(MobaTeam attackingTeam) =>
+      _objectiveOwner == attackingTeam ? 1.12 : 1.0;
   final List<double> _coreHealth = [coreMaxHealth, coreMaxHealth];
   final List<double> _teamKills = [0, 0];
   final List<double> _teamGold = [500, 500];
@@ -372,6 +406,10 @@ class MobaMatchSimulation {
     _minions.clear();
     _bots.clear();
     _towers.clear();
+    _objectiveControl = 0;
+    _objectiveContested = false;
+    _objectiveBluePresence = 0;
+    _objectiveRedPresence = 0;
     _covers
       ..clear()
       ..addAll([
@@ -548,6 +586,7 @@ class MobaMatchSimulation {
     _updateWaves(dt);
     _updateMinions(dt);
     _updateBots(dt);
+    _updateCentralObjective(dt);
     _updateTowers(dt);
     _checkWinner();
   }
@@ -952,6 +991,50 @@ class MobaMatchSimulation {
     );
   }
 
+  void _updateCentralObjective(double dt) {
+    var blue = 0.0;
+    var red = 0.0;
+
+    bool isInside(MobaPoint point) =>
+        point.distanceTo(_objectivePosition) <= objectiveRadius;
+
+    if (_playerRespawn <= 0 && isInside(_playerPosition)) blue += 2.0;
+    for (final bot in _bots.where((unit) => unit.alive)) {
+      if (!isInside(bot.position)) continue;
+      if (bot.team == MobaTeam.blue) {
+        blue += 1.5;
+      } else {
+        red += 1.5;
+      }
+    }
+    for (final minion in _minions.where((unit) => unit.alive)) {
+      if (!isInside(minion.position)) continue;
+      if (minion.team == MobaTeam.blue) {
+        blue += 0.35;
+      } else {
+        red += 0.35;
+      }
+    }
+
+    _objectiveBluePresence = blue;
+    _objectiveRedPresence = red;
+    _objectiveContested = blue > 0 && red > 0;
+    if (_objectiveContested) return;
+
+    final previousOwner = _objectiveOwner;
+    if (blue > 0) {
+      _objectiveControl = math.min(100, _objectiveControl + dt * 9.0 * blue);
+    } else if (red > 0) {
+      _objectiveControl = math.max(-100, _objectiveControl - dt * 9.0 * red);
+    }
+
+    final nextOwner = _objectiveOwner;
+    if (nextOwner != null && nextOwner != previousOwner) {
+      _awardGold(nextOwner, 150);
+      _awardXp(nextOwner, 90);
+    }
+  }
+
   _Minion? _nearestMinion(
     MobaPoint position,
     MobaTeam team,
@@ -1038,7 +1121,10 @@ class MobaMatchSimulation {
 
   void _damageMinion(_Minion target, MobaTeam source, double damage) {
     if (!target.alive) return;
-    target.health = math.max(0, target.health - damage);
+    target.health = math.max(
+      0,
+      target.health - damage * _objectiveDamageMultiplier(source),
+    );
     if (!target.alive) {
       _awardGold(source, target.ranged ? 58 : 42);
       _awardXp(source, target.ranged ? 34 : 26);
@@ -1047,7 +1133,10 @@ class MobaMatchSimulation {
 
   void _damageBot(_Bot target, MobaTeam source, double damage) {
     if (!target.alive) return;
-    target.health = math.max(0, target.health - damage);
+    target.health = math.max(
+      0,
+      target.health - damage * _objectiveDamageMultiplier(source),
+    );
     if (target.health <= 0) {
       target.respawnSeconds = 6;
       _teamKills[source.index]++;
@@ -1058,7 +1147,10 @@ class MobaMatchSimulation {
 
   void _damageTower(_Tower tower, MobaTeam source, double damage) {
     if (!tower.alive) return;
-    tower.health = math.max(0, tower.health - damage);
+    tower.health = math.max(
+      0,
+      tower.health - damage * _objectiveDamageMultiplier(source),
+    );
     if (!tower.alive) {
       _awardGold(source, 250);
       _awardXp(source, 120);
@@ -1067,8 +1159,12 @@ class MobaMatchSimulation {
 
   void _damageCore(MobaTeam defendingTeam, double damage, MobaLane lane) {
     if (!_laneOpen(defendingTeam, lane)) return;
-    _coreHealth[defendingTeam.index] =
-        math.max(0, _coreHealth[defendingTeam.index] - damage);
+    final attackingTeam = defendingTeam.enemy;
+    _coreHealth[defendingTeam.index] = math.max(
+      0,
+      _coreHealth[defendingTeam.index] -
+          damage * _objectiveDamageMultiplier(attackingTeam),
+    );
   }
 
   void _awardGold(MobaTeam team, double amount) {
@@ -1094,7 +1190,12 @@ class MobaMatchSimulation {
 
   void _damagePlayer(double damage) {
     final mitigation = _playerShieldTime > 0 ? 0.58 : 1.0;
-    _playerHealth = math.max(0, _playerHealth - damage * mitigation);
+    final objectiveMultiplier =
+        _objectiveDamageMultiplier(MobaTeam.red);
+    _playerHealth = math.max(
+      0,
+      _playerHealth - damage * mitigation * objectiveMultiplier,
+    );
     if (_playerHealth <= 0) {
       _playerHealth = 0;
       _playerRespawn = 5;
@@ -1235,6 +1336,13 @@ class MobaMatchSimulation {
       minions: List.unmodifiable(minions),
       towers: List.unmodifiable(towers),
       covers: List.unmodifiable(covers),
+      centralObjective: MobaObjectiveSnapshot(
+        control: _objectiveControl,
+        owner: _objectiveOwner,
+        contested: _objectiveContested,
+        bluePresence: _objectiveBluePresence,
+        redPresence: _objectiveRedPresence,
+      ),
       winner: _winner,
     );
   }
