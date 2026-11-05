@@ -1706,6 +1706,21 @@ class _MiniMapPainter extends CustomPainter {
     }
     canvas.drawPath(river, riverPaint);
 
+    // Mint markers identify the four accessible indoor service points.
+    for (final building in ArenaWorldCatalog.cityInteriors) {
+      final marker = project(MobaPoint(building.$2, building.$3));
+      canvas.drawCircle(
+        marker,
+        3.2,
+        Paint()..color = const Color(0xFF83E0C5),
+      );
+      canvas.drawCircle(
+        marker,
+        1.25,
+        Paint()..color = const Color(0xFF17342F),
+      );
+    }
+
     for (final tower in snapshot.towers) {
       final paint = Paint()
         ..color = tower.team == MobaTeam.blue
