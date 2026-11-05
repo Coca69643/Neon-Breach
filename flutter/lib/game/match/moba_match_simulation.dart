@@ -64,6 +64,9 @@ enum MobaLane { top, middle, bottom }
 
 enum MobaHeroId { lyra, bastion, kairo }
 
+// Gameplay archetype and rendered appearance are kept independent.
+enum MobaNpcVisualId { maleA, femaleA, maleB, femaleB, maleC, femaleC }
+
 extension MobaHeroRules on MobaHeroId {
   MobaLane get assignedLane => switch (this) {
         MobaHeroId.bastion => MobaLane.top,
@@ -129,6 +132,7 @@ class MobaMinionSnapshot {
     required this.team,
     required this.lane,
     required this.ranged,
+    required this.visualId,
     required this.position,
     required this.facingX,
     required this.facingZ,
@@ -141,6 +145,7 @@ class MobaMinionSnapshot {
   final MobaTeam team;
   final MobaLane lane;
   final bool ranged;
+  final MobaNpcVisualId visualId;
   final MobaPoint position;
   final double facingX;
   final double facingZ;
@@ -155,6 +160,7 @@ class MobaBotSnapshot {
     required this.team,
     required this.lane,
     required this.heroId,
+    required this.visualId,
     required this.position,
     required this.facingX,
     required this.facingZ,
@@ -168,6 +174,7 @@ class MobaBotSnapshot {
   final MobaTeam team;
   final MobaLane lane;
   final MobaHeroId heroId;
+  final MobaNpcVisualId visualId;
   final MobaPoint position;
   final double facingX;
   final double facingZ;
@@ -330,6 +337,7 @@ class _Minion {
     required this.team,
     required this.lane,
     required this.ranged,
+    required this.visualId,
     required this.position,
   })  : maxHealth = ranged ? 92.0 : 145.0,
         health = ranged ? 92.0 : 145.0,
@@ -339,6 +347,7 @@ class _Minion {
   final MobaTeam team;
   final MobaLane lane;
   final bool ranged;
+  final MobaNpcVisualId visualId;
   final double maxHealth;
   MobaPoint position;
   double facingX = 0;
@@ -357,6 +366,7 @@ class _Bot {
     required this.lane,
     required this.role,
     required this.heroId,
+    required this.visualId,
     required this.position,
   }) : facingZ = team.forward;
 
@@ -365,6 +375,7 @@ class _Bot {
   final MobaLane lane;
   final int role;
   final MobaHeroId heroId;
+  final MobaNpcVisualId visualId;
   MobaPoint position;
   double facingX = 0;
   double facingZ;
@@ -490,6 +501,11 @@ class MobaMatchSimulation {
         _ => MobaHeroId.bastion,
       };
 
+  MobaNpcVisualId _visualForBot(MobaTeam team, int role) =>
+      MobaNpcVisualId.values[
+        (role + team.index * 3) % MobaNpcVisualId.values.length
+      ];
+
   /// Place bots in the staging area behind their own first tower.
   /// Two heroes sharing a lane receive mirrored lateral slots rather than
   /// spawning inside the tower collision footprint or on top of each other.
@@ -588,6 +604,7 @@ class MobaMatchSimulation {
           lane: lane,
           role: role,
           heroId: _heroForRole(role),
+          visualId: _visualForBot(MobaTeam.blue, role),
           position: _botSpawnPosition(MobaTeam.blue, lane, role),
         ),
       );
@@ -602,6 +619,7 @@ class MobaMatchSimulation {
           lane: lane,
           role: role,
           heroId: _heroForRole(role),
+          visualId: _visualForBot(MobaTeam.red, role),
           position: _botSpawnPosition(MobaTeam.red, lane, role),
         ),
       );
@@ -965,6 +983,9 @@ class MobaMatchSimulation {
           team: team,
           lane: lane,
           ranged: ranged,
+          visualId: MobaNpcVisualId.values[
+            (slot + team.index * 2) % MobaNpcVisualId.values.length
+          ],
           position: MobaPoint(
             _laneX(lane, z) + (slot - 1.5) * 0.52,
             z - team.forward * stagger,
@@ -1591,6 +1612,7 @@ class MobaMatchSimulation {
             team: unit.team,
             lane: unit.lane,
             ranged: unit.ranged,
+            visualId: unit.visualId,
             position: unit.position,
             facingX: unit.facingX,
             facingZ: unit.facingZ,
@@ -1607,6 +1629,7 @@ class MobaMatchSimulation {
             team: bot.team,
             lane: bot.lane,
             heroId: bot.heroId,
+            visualId: bot.visualId,
             position: bot.position,
             facingX: bot.facingX,
             facingZ: bot.facingZ,
