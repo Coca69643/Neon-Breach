@@ -11,3 +11,6 @@ coverage/
 android/.gradle/
 android/local.properties
 android/key.properties
+
+# Generated offline scene assets (built before Flutter asset processing).
+assets/world/
