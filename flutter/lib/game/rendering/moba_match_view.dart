@@ -422,10 +422,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       vm.Vector3(0, 1, 0),
       math.pi / 2,
     );
-    final frontYaw = vm.Quaternion.axisAngle(
-      vm.Vector3(0, 1, 0),
-      math.pi,
-    );
     return [
       SceneModel(
         'assets/world/city/interior_stairs.glb',
@@ -462,7 +458,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           top,
           access.z + access.corridorMaxOffset,
         ),
-        scale: const vm.Vector3(5.0, 0.35, 0.65),
+        scale: vm.Vector3(5.0, 0.35, 0.65),
       ),
       SceneModel(
         'assets/world/city/interior_wall.glb',
@@ -474,7 +470,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           access.z + access.corridorMaxOffset,
         ),
         rotation: railYaw,
-        scale: const vm.Vector3(2.3, 0.35, 0.65),
+        scale: vm.Vector3(2.3, 0.35, 0.65),
       ),
       SceneModel(
         'assets/world/city/interior_wall.glb',
@@ -485,8 +481,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           top,
           access.z + access.corridorMinOffset,
         ),
-        rotation: frontYaw,
-        scale: const vm.Vector3(4.3, 0.35, 0.65),
+        scale: vm.Vector3(4.3, 0.35, 0.65),
       ),
     ];
   }
