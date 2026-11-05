@@ -109,7 +109,7 @@ void main() {
           deckX, z, 0,
         ), isNull);
         expect(ArenaWorldCatalog.resolveNavigationElevation(
-          deckX + 0.4, z, ArenaVerticalAccess.upperHeight,
+          access.platformEndX + 0.4, z, ArenaVerticalAccess.upperHeight,
         ), isNull, reason: 'the elevated route must remain bounded');
       }
     });
