@@ -1,0 +1,18 @@
+Projeto Arena
+Versão 1.7.10
+
+NOVIDADES
+- Bots e tropas exibem animações de ataque próprias.
+
+ALTERAÇÕES
+- Corrigida a reciclagem das tropas derrotadas para manter novas ondas.
+- Corrigida a movimentação por colisões e bordas do mapa.
+- Corrigido o avanço das tropas até os núcleos após a queda das torres.
+- Ajustadas as rotas dos bots ao redor das estruturas.
+- Corrigida a orientação dos personagens durante a movimentação.
+- Torres destruídas deixam de aparecer na partida e no minimapa.
+- Reforçada a validação dos assets e da assinatura do APK.
+
+EXCLUSÕES
+- Removida a rotação invertida que fazia os personagens andarem de costas.
+- Removido o bloqueio permanente das ondas ao atingir o limite de tropas.
