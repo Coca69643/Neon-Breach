@@ -1047,7 +1047,21 @@ class MobaMatchSimulation {
   void _moveMinion(_Minion unit, MobaPoint target, double speed, double dt) {
     final before = unit.position;
     final next = before.moveToward(target, speed * dt);
-    final constrained = MobaPoint(_laneX(unit.lane, next.z), next.z);
+    // Keep the wave in a readable four-unit formation instead of collapsing
+    // every troop onto the exact lane centreline.
+    final formationOffset = switch (unit.id % 4) {
+      0 => -1.35,
+      1 => -0.45,
+      2 => 0.45,
+      _ => 1.35,
+    };
+    final laneCenter = _laneX(unit.lane, next.z);
+    final desiredX = laneCenter + formationOffset;
+    final lateralBlend = (dt * speed * 1.4).clamp(0.0, 1.0);
+    final constrained = MobaPoint(
+      before.x + (desiredX - before.x) * lateralBlend,
+      next.z,
+    );
     final dx = constrained.x - before.x;
     final dz = constrained.z - before.z;
     if (dx.abs() + dz.abs() > 0.0001) {
