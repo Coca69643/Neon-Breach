@@ -745,9 +745,19 @@ class MobaMatchSimulation {
     if (_winner != null || !frameDelta.isFinite || frameDelta <= 0) return;
     final safeDelta = frameDelta.clamp(0.0, 0.25).toDouble();
     _accumulator = math.min(_accumulator + safeDelta, _fixedStep * 8);
-    final inputLength = math.sqrt(moveX * moveX + moveZ * moveZ);
-    final normalizedX = inputLength > 1 ? moveX / inputLength : moveX;
-    final normalizedZ = inputLength > 1 ? moveZ / inputLength : moveZ;
+    final safeMoveX = moveX.isFinite
+        ? moveX.clamp(-1.0, 1.0).toDouble()
+        : 0.0;
+    final safeMoveZ = moveZ.isFinite
+        ? moveZ.clamp(-1.0, 1.0).toDouble()
+        : 0.0;
+    final inputLength = math.sqrt(
+      safeMoveX * safeMoveX + safeMoveZ * safeMoveZ,
+    );
+    final normalizedX =
+        inputLength > 1 ? safeMoveX / inputLength : safeMoveX;
+    final normalizedZ =
+        inputLength > 1 ? safeMoveZ / inputLength : safeMoveZ;
 
     var steps = 0;
     while (_accumulator + 1e-9 >= _fixedStep && steps < 8) {
