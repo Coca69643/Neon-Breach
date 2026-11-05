@@ -171,7 +171,9 @@ abstract final class ArenaWorldCatalog {
       // Counter and shelving are physical interior obstacles.
       if (dx <= 1.95 && (z - (cz + 1.35)).abs() <= 0.52) return true;
       if ((dx - 4.35).abs() <= 0.48 &&
-          (z - (cz + 2.1)).abs() <= 1.35) return true;
+          (z - (cz + 2.1)).abs() <= 1.35) {
+        return true;
+      }
     }
     return false;
   }
