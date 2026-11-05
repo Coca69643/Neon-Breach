@@ -50,6 +50,8 @@ jobs:
         run: python3 tool/prepare_world_assets.py
       - name: Bake original tower hub scene
         run: python3 tool/prepare_menu_hub.py
+      - name: Prepare offline MOBA character and structure assets
+        run: python3 tool/prepare_match_assets.py
       - name: Load persistent Project Arena signing key
         if: github.event_name != 'pull_request'
         env:
