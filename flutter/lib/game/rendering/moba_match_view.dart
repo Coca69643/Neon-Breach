@@ -37,6 +37,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   double _cameraPitch = 0.34;
   int? _cameraPointerId;
   Offset? _lastCameraPointer;
+  late final List<Widget> _staticSceneChildren = _buildStaticSceneChildren();
   double _moveX = 0;
   double _moveZ = 0;
   bool _basicAttackHeld = false;
@@ -238,7 +239,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ('east', 36.0, -0.1),
   ];
 
-  List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
+  List<Widget> _buildStaticSceneChildren() {
     return <Widget>[
       SceneModel(
         _terrainAsset,
@@ -286,6 +287,12 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           ),
           scale: vm.Vector3(8.0, 1.0, 9.0),
         ),
+    ];
+  }
+
+  List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
+    return <Widget>[
+      ..._staticSceneChildren,
       for (final tower in snapshot.towers)
         SceneModel(
           _towerAsset(tower.lane.index, tower.tier),
