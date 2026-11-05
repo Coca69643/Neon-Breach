@@ -1,5 +1,18 @@
 # Changelog — Projeto Arena
 
+## [1.7.7] — 2026-11-05
+
+### Combate e leitura de alvo
+- Adicionado botão touch dedicado para alternar entre heróis e tropas inimigas dentro do raio de seleção.
+- HUD contextual exibe o alvo travado, tipo de unidade e barra de vida; desaparece quando não há alvo válido.
+- Ataque básico mantém a confirmação imediata de animação, mas o marcador de impacto só aparece quando dano real é aplicado.
+- Feedback de acerto separado de swing vazio, cobrindo heróis, minions, coberturas, torres e núcleo.
+- Testes cobrem seleção de alvo, confirmação de dano e ataque sem contato.
+
+### Validação
+- Análise, testes, build ARM64, inspeção de assets e assinatura exigem aprovação do CI 1.7.7.
+- Teste físico no Realme C53 continua necessário para validar posição dos controles, legibilidade e desempenho.
+
 ## [1.7.6] — 2026-11-05
 
 ### Rotas verticais e posicionamento
