@@ -26,4 +26,5 @@ flutter:
     - assets/heroes/
     - assets/match/
     - assets/world/
+    - assets/world/city/
     - flutter_scene_generated/
