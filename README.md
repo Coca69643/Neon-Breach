@@ -4,7 +4,9 @@ MOBA 3D mobile para Android, com Flutter + Flutter Scene. Offline, landscape e r
 
 ## Log de atualizações
 
-- **1.7.8 (69) — combate legível:** botão touch de seleção de alvo, HUD contextual com vida do inimigo e marcador de impacto somente quando o ataque acerta. CI e teste físico pendentes.
+- **1.7.10 (72) — robustez da partida:** ondas de tropas recicláveis, colisão varrida para movimento e dash, rotas de bots/minions até torres e núcleos, ataques de IA com animações próprias, orientação corrigida e torres destruídas removidas da cena/minimapa. CI e teste físico ainda precisam ser confirmados.
+- **1.7.9 (71) — diversidade visual:** seis modelos CC0 independentes para bots, tropas e NPCs; interiores e entradas ajustados.
+- **1.7.8 (70) — combate legível:** botão touch de seleção de alvo, HUD contextual com vida do inimigo e marcador de impacto somente quando o ataque acerta.
 
 - **1.7.6 (68) — verticalidade e disputa de território:** duas rotas elevadas com escadas e colisão por nível; barricadas destrutíveis abrem interiores; reator central contestável mantém bônus enquanto o medidor do rival não zera; espadas CC0 distintas anexadas ao osso Palm.R de Lyra, Bastion e Kairo; GLB masculino de Kairo validado. CI e teste físico da nova build pendentes.
 - **1.7.4 (66) — arena expandida:** três rotas, rio, pontes, acessos laterais e câmera de ação. A revisão visual ainda precisava de validação no aparelho.
