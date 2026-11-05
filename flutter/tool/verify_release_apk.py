@@ -153,7 +153,7 @@ def main() -> None:
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
     require(isinstance(version_code, int) and version_code > 61,
-            f"versionCode must be greater than 60, got {version_code!r}")
+            f"versionCode must be greater than 61, got {version_code!r}")
     require(application.get("label") == "Projeto Arena",
             f"unexpected launcher label: {application.get('label')!r}")
 
