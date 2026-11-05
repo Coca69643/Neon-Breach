@@ -320,20 +320,20 @@ def build_terrain_glb(output: Path) -> None:
 
         # Moss and soil each form two strips, one on either side of the channel.
         bands = (
-            ("moss", half_width * 0.70, half_width * 0.92, water_y - 0.035, 0.07),
-            ("soil", half_width * 0.92, half_width + 0.82, 0.07, 0.035),
+            ("moss", half_width * 0.70, half_width * 0.92),
+            ("soil", half_width * 0.92, half_width + 0.82),
         )
-        for group_name, inner, outer, inner_lift, outer_lift in bands:
+        for group_name, inner, outer in bands:
             current_indices = []
             for side in (1.0, -1.0):
-                for distance, lift in ((inner, inner_lift), (outer, outer_lift)):
+                for is_inner, distance in ((True, inner), (False, outer)):
                     x = cx + side_x * distance * side
                     z = cz + side_z * distance * side
-                    y = (
-                        water_y + lift
-                        if group_name == "moss" and lift < 0.0
-                        else height(x, z) + lift
-                    )
+                    if group_name == "moss" and is_inner:
+                        y = water_y - 0.035
+                    else:
+                        lift = 0.07 if is_inner else 0.035
+                        y = height(x, z) + lift
                     current_indices.append(len(positions) // 3)
                     positions.extend((x * WORLD_SCALE, y, z * WORLD_SCALE))
                     normals.extend((0.0, 1.0, 0.0))
