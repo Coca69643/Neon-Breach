@@ -241,7 +241,7 @@ def main() -> None:
             f"{filename} is not a valid GLB 2.0 asset.",
         )
         npc_doc = json.loads(
-            payload[20:20 + json_length].decode("utf-8").rstrip(" \\t\\r\\n\\0")
+            payload[20:20 + json_length].decode("utf-8").rstrip(" ")
         )
         npc_clips = {
             clip.get("name", "") for clip in npc_doc.get("animations", [])
