@@ -135,5 +135,5 @@ jobs:
           make_latest: true
           overwrite_files: true
           files: |
-            flutter/Project-Arena-1.7.4-arm64.apk
-            flutter/Project-Arena-1.7.4-arm64.apk.sha256
+            flutter/Project-Arena-1.7.5-arm64.apk
+            flutter/Project-Arena-1.7.5-arm64.apk.sha256
