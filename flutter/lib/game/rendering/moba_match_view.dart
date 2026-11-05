@@ -62,7 +62,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _AmbientNpc(
       id: 'dispatcher',
       label: 'Central de Operações',
-      asset: 'assets/npcs/business-man.glb',
+      asset: 'assets/npcs/npc_female_b.glb',
       x: -63.0,
       z: -38.0,
       dialogue: 'As três rotas estão ativas. Observe o minimapa antes de avançar.',
@@ -70,7 +70,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _AmbientNpc(
       id: 'mechanic',
       label: 'Técnico de Campo',
-      asset: 'assets/npcs/worker.glb',
+      asset: 'assets/npcs/npc_male_c.glb',
       x: 63.0,
       z: -38.0,
       dialogue: 'As passagens laterais permitem contornar os bloqueios da avenida.',
@@ -78,7 +78,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _AmbientNpc(
       id: 'gardener',
       label: 'Responsável pelo Parque',
-      asset: 'assets/npcs/farmer.glb',
+      asset: 'assets/npcs/npc_female_c.glb',
       x: -63.0,
       z: 38.0,
       dialogue: 'O canal só pode ser atravessado pelas três pontes sinalizadas.',
@@ -86,7 +86,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _AmbientNpc(
       id: 'resident',
       label: 'Morador do Distrito',
-      asset: 'assets/npcs/hoodie-character.glb',
+      asset: 'assets/npcs/npc_male_b.glb',
       x: 63.0,
       z: 38.0,
       dialogue: 'O reator central muda o ritmo da disputa quando uma equipe o controla.',
@@ -260,8 +260,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // glTF humanoid assets face local +Z; align +Z with the movement vector.
-    final yaw = math.atan2(facingX, facingZ);
+    // The character source rigs use -Z as their forward axis.
+    // Keep the simulation's +Z-forward world vector consistent across all rigs.
+    final yaw = math.atan2(facingX, facingZ) + math.pi;
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -448,13 +449,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         scale: vm.Vector3(8.6, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-front-left-$id'), name: 'interior_front_left_$id',
-        position: p(x - 6, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
+        position: p(x - 3.8, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-front-right-$id'), name: 'interior_front_right_$id',
-        position: p(x + 1.6, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
+        position: p(x + 3.8, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x - 1.6, 0, z - 4.3), scale: vm.Vector3(3.2, 2.5, 1)),
+        position: p(x, 0, z - 4.3), scale: vm.Vector3(3.2, 2.5, 1)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
         position: p(hasVerticalAccess ? x - 3.5 : x - 1.8, 0, deskZ),
@@ -578,20 +579,26 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: vm.Vector3(0, 0.025, 0),
       );
 
+  String _npcAsset(MobaNpcVisualId visualId) => switch (visualId) {
+        MobaNpcVisualId.maleA => 'assets/npcs/npc_male_a.glb',
+        MobaNpcVisualId.femaleA => 'assets/npcs/npc_female_a.glb',
+        MobaNpcVisualId.maleB => 'assets/npcs/npc_male_b.glb',
+        MobaNpcVisualId.femaleB => 'assets/npcs/npc_female_b.glb',
+        MobaNpcVisualId.maleC => 'assets/npcs/npc_male_c.glb',
+        MobaNpcVisualId.femaleC => 'assets/npcs/npc_female_c.glb',
+      };
+
   Widget _buildBot(MobaBotSnapshot bot) {
     return SceneModel(
-      _heroAsset(bot.heroId),
+      _npcAsset(bot.visualId),
       key: ValueKey('match-bot-${bot.id}'),
       name: bot.id,
-      onLoaded: (modelRoot) {
-        unawaited(HeroWeaponSocket.attach(modelRoot, bot.heroId));
-      },
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(0.86),
+      scale: vm.Vector3.all(0.84),
       animations: [
         SceneAnimationSpec(
-          bot.moving ? _heroWalk(bot.heroId) : _heroIdle(bot.heroId),
+          bot.moving ? 'walk' : 'idle',
           loop: true,
           speed: bot.moving ? 0.98 : 0.82,
         ),
@@ -600,21 +607,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     );
   }
 
-  String _minionAssetFor(MobaMinionSnapshot minion) {
-    if (minion.team == MobaTeam.blue) {
-      return minion.ranged
-          ? 'assets/npcs/worker.glb'
-          : 'assets/npcs/business-man.glb';
-    }
-    return minion.ranged
-        ? 'assets/npcs/hoodie-character.glb'
-        : 'assets/npcs/farmer.glb';
-  }
-
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final scale = minion.ranged ? 0.42 : 0.46;
+    final scale = minion.ranged ? 0.68 : 0.74;
     return SceneModel(
-      _minionAssetFor(minion),
+      _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
       name:
           '${minion.team.name}_${minion.lane.name}_minion_${minion.id}',
@@ -623,9 +619,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       scale: vm.Vector3.all(scale),
       animations: [
         SceneAnimationSpec(
-          minion.moving ? 'CharacterArmature|Walk' : 'CharacterArmature|Idle',
+          minion.moving ? 'walk' : 'idle',
           loop: true,
-          speed: minion.moving ? (minion.ranged ? 0.88 : 1.0) : 0.82,
+          speed: minion.moving ? (minion.ranged ? 0.92 : 1.0) : 0.82,
         ),
       ],
       children: [_teamRing(minion.team)],
@@ -644,7 +640,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       scale: vm.Vector3.all(0.96),
       animations: [
         SceneAnimationSpec(
-          interacting ? 'CharacterArmature|Wave' : 'CharacterArmature|Idle',
+          interacting ? 'emote-yes' : 'idle',
           loop: !interacting,
           speed: interacting ? 1.0 : 0.84,
         ),
