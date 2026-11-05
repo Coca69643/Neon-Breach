@@ -65,6 +65,14 @@ ASSETS = {
         "packs/city-kit-roads/road-side.glb",
         "b458ef693cf4f59e93fa23cc8e66b682567bc452",
     ),
+    "construction_barrier.glb": (
+        "packs/city-kit-roads/construction-barrier.glb",
+        "f11e89081e7fa88dad4716b5e3b9042497f3019b",
+    ),
+    "construction_fence.glb": (
+        "packs/city-kit-roads/construction-fence.glb",
+        "5a2ce85eb9feeceb7d972557be6d91b47f8e2933",
+    ),
     "interior_floor.glb": (
         "packs/furniture-kit/floorfull.glb",
         "3861276342492222b1019aea63ed50e6e52e83b3",
