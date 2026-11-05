@@ -7,6 +7,9 @@
 - Corrigida a orientação frontal dos heróis no seletor e durante a movimentação.
 - Reduzida a escala das armas equipadas.
 - Corrigida a composição do HUD de interação com NPCs.
+- Identificação de equipe por cores nos heróis controlados pela IA e nas tropas.
+- Minions agora mantêm formação distribuída em quatro posições por rota.
+- Quatro pontos internos com NPCs receberam marcadores no minimapa.
 
 ### Ainda em auditoria
 - Diversidade visual de bots e minions, navegação tática e exploração de interiores continuam pendentes de validação visual e funcional.
