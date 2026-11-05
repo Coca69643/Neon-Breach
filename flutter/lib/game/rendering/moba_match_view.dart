@@ -1023,16 +1023,28 @@ class _MiniMapPainter extends CustomPainter {
       ..color = const Color(0xFF4D9EC1)
       ..strokeWidth = 3.0
       ..style = PaintingStyle.stroke;
-    final river = Path()
-      ..moveTo(0, size.height * 0.30)
-      ..cubicTo(
-        size.width * 0.25,
-        size.height * 0.36,
-        size.width * 0.58,
-        size.height * 0.72,
-        size.width,
-        size.height * 0.37,
-      );
+    const riverPoints = <MobaPoint>[
+      MobaPoint(-59, -17),
+      MobaPoint(-48, -13),
+      MobaPoint(-36, -8),
+      MobaPoint(-24, -1),
+      MobaPoint(-12, 7),
+      MobaPoint(0, 15),
+      MobaPoint(12, 17),
+      MobaPoint(24, 12.5),
+      MobaPoint(36, 4.5),
+      MobaPoint(48, -6.5),
+      MobaPoint(59, -14),
+    ];
+    final river = Path();
+    for (var index = 0; index < riverPoints.length; index++) {
+      final point = project(riverPoints[index]);
+      if (index == 0) {
+        river.moveTo(point.dx, point.dy);
+      } else {
+        river.lineTo(point.dx, point.dy);
+      }
+    }
     canvas.drawPath(river, riverPaint);
 
     for (final tower in snapshot.towers) {
