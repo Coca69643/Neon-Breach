@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.4 / 66
+- versionName/versionCode: 1.7.5 / 67
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -20,11 +20,11 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - PBR com iluminação de ambiente controlada e materiais bem trabalhados.
 - Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
 - Meta inicial: 30 FPS sustentados no Realme C53.
-- Arena em transição de ilha medieval para distritos urbanos-fantásticos, com quatro edifícios de serviço de telhado aberto e interiores básicos acessíveis.
+- Arena urbana 180 × 140, com três avenidas, quatro edifícios de piso térreo acessíveis, interiores, ruas e cruzamentos.
 - Navegação com colisão de paredes e mobiliário, portas abertas, rio bloqueado fora das pontes e testes de acesso interno.
-- Câmera follow de ação traseira com gesto de arrasto independente na área central/direita; joystick esquerdo reservado ao movimento.
-- Próximo conteúdo obrigatório: fachadas urbanas, interiores completos, rotas verticais, arma/ataque com feedback e novo GLB masculino para Kairo.
-- Escalas de leitura: herói 0.82, bots 0.68, minions 0.45–0.48.
+- Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
+- Próximo conteúdo obrigatório: interiores artísticos completos, conexões verticais, armas visíveis e validação de combate no aparelho.
+- Escalas de leitura: herói 1.0, bots 0.86, minions 0.54–0.58.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
 ## Identidade e assinatura Android
@@ -47,14 +47,14 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Mapa do Vale das Coroas expandido: 120 × 84 unidades, super-retângulo orgânico, três rotas, rio em S, três pontes e quatro acessos laterais percorríveis.
-- Pipeline offline do terreno GLB texturizado, 30 árvores e 12 arbustos CC0.
-- Colisões de margem, rio, pontes, árvores e torres; o piso da ponte usa a altura do deck.
+- Mapa urbano expandido: 180 × 140 unidades, três avenidas, canal central, três travessias, becos e quatro interiores acessíveis.
+- Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
+- Colisões de paredes, móveis, torres e limites do mapa; entradas dos edifícios permanecem transitáveis.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, build ARM64 e verificação da assinatura.
-- APK 1.7.4+66: build ARM64 assinado e validado no CI; validação visual, FPS sustentado, temperatura e resposta de toque ainda exigem teste no aparelho.
+- APK 1.7.5+67: código atualizado; build ARM64, assinatura, renderização, FPS e temperatura ainda dependem da execução CI e teste físico.
 
 ## Comandos
 
