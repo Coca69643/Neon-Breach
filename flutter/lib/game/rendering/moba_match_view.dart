@@ -745,6 +745,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     ),
                   ),
                   Positioned(
+                    top: 52,
+                    left: side,
+                    child: snapshot.selectedTarget == null
+                        ? const SizedBox.shrink()
+                        : _TargetHud(target: snapshot.selectedTarget!),
+                  ),
+                  Positioned(
                     top: 8,
                     left: 0,
                     right: 0,
@@ -785,14 +792,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     top: viewport.maxHeight * 0.48,
                     child: IgnorePointer(
                       child: AnimatedOpacity(
-                        opacity: snapshot.playerAttackSeconds > 0 ? 1 : 0,
-                        duration: const Duration(milliseconds: 85),
+                        opacity: snapshot.playerHitConfirmSeconds > 0 ? 1 : 0,
+                        duration: const Duration(milliseconds: 55),
                         child: const Icon(
-                          Icons.auto_awesome,
-                          size: 38,
+                          Icons.close_rounded,
+                          size: 30,
                           color: Color(0xFFFFE6A4),
                           shadows: [
-                            Shadow(color: Color(0xAAFFE4A0), blurRadius: 16),
+                            Shadow(color: Color(0xAAFFE4A0), blurRadius: 12),
                           ],
                         ),
                       ),
@@ -821,6 +828,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        _TargetLockButton(
+                          size: compact ? 48 : 52,
+                          onTap: () {
+                            widget.simulation.cyclePlayerTarget();
+                            setState(() => _snapshot = widget.simulation.snapshot);
+                          },
+                        ),
+                        const SizedBox(width: 7),
                         _MatchActionButton(
                           label: 'SKILL',
                           icon: Icons.auto_awesome,
@@ -1286,6 +1301,115 @@ class _Joystick extends StatelessWidget {
                       ),
                     ],
                   ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _TargetHud extends StatelessWidget {
+  const _TargetHud({required this.target});
+
+  final MobaTargetSnapshot target;
+
+  @override
+  Widget build(BuildContext context) {
+    final fraction = (target.health / target.maxHealth).clamp(0.0, 1.0);
+    return Container(
+      width: 154,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      decoration: BoxDecoration(
+        color: const Color(0xD9162028),
+        border: Border.all(color: const Color(0xAAE3B47A), width: 1),
+        borderRadius: BorderRadius.circular(5),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.gps_fixed, size: 12, color: Color(0xFFFFD68E)),
+              const SizedBox(width: 5),
+              Expanded(
+                child: Text(
+                  target.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+              ),
+              Text(
+                target.kind == 'HERO' ? 'HERÓI' : 'TROPA',
+                style: const TextStyle(
+                  color: Color(0xFFB8C7CD),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 5),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(2),
+            child: LinearProgressIndicator(
+              value: fraction,
+              minHeight: 4,
+              backgroundColor: const Color(0xFF35424A),
+              valueColor: const AlwaysStoppedAnimation<Color>(
+                Color(0xFFE16C62),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _TargetLockButton extends StatelessWidget {
+  const _TargetLockButton({required this.size, required this.onTap});
+
+  final double size;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(7),
+      side: const BorderSide(color: Color(0xFF9BC2CF), width: 1.1),
+    );
+    return Material(
+      color: const Color(0xD02B414B),
+      shape: shape,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        customBorder: shape,
+        child: SizedBox(
+          width: size,
+          height: size,
+          child: const Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Icon(Icons.gps_fixed, size: 17, color: Colors.white),
+              SizedBox(height: 2),
+              Text(
+                'ALVO',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontSize: 8,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.45,
                 ),
               ),
             ],
