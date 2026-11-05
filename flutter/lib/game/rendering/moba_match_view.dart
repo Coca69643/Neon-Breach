@@ -42,11 +42,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   bool _finishSent = false;
   String? _minionWalkClip;
   bool _minionAssetHasWalk = false;
+  late double _cameraX;
+  late double _cameraY;
+  late double _cameraZ;
+  late double _lookX;
+  late double _lookY;
+  late double _lookZ;
 
   @override
   void initState() {
     super.initState();
     _snapshot = widget.simulation.snapshot;
+    _initialiseCameraRig(_snapshot);
     _loadMinionAnimationManifest();
   }
 
@@ -82,6 +89,40 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     }
   }
 
+  void _initialiseCameraRig(MobaMatchSnapshot snapshot) {
+    final facingX = snapshot.playerFacingX;
+    final facingZ = snapshot.playerFacingZ;
+    final x = snapshot.playerPosition.x * _worldScale;
+    final z = snapshot.playerPosition.z * _worldScale;
+    _cameraX = x - facingX * 13.5;
+    _cameraY = 8.8;
+    _cameraZ = z - facingZ * 13.5;
+    _lookX = x + facingX * 5.2;
+    _lookY = 1.35;
+    _lookZ = z + facingZ * 5.2;
+  }
+
+  void _advanceCameraRig(MobaMatchSnapshot snapshot, double deltaSeconds) {
+    final facingX = snapshot.playerFacingX;
+    final facingZ = snapshot.playerFacingZ;
+    final x = snapshot.playerPosition.x * _worldScale;
+    final z = snapshot.playerPosition.z * _worldScale;
+    final desiredX = x - facingX * 13.5;
+    final desiredY = 8.8;
+    final desiredZ = z - facingZ * 13.5;
+    final desiredLookX = x + facingX * 5.2;
+    final desiredLookY = 1.35;
+    final desiredLookZ = z + facingZ * 5.2;
+    final blend = 1.0 - math.exp(-5.5 * deltaSeconds);
+
+    _cameraX += (desiredX - _cameraX) * blend;
+    _cameraY += (desiredY - _cameraY) * blend;
+    _cameraZ += (desiredZ - _cameraZ) * blend;
+    _lookX += (desiredLookX - _lookX) * blend;
+    _lookY += (desiredLookY - _lookY) * blend;
+    _lookZ += (desiredLookZ - _lookZ) * blend;
+  }
+
   void _onSceneTick(Duration elapsed, double deltaSeconds) {
     if (!mounted) return;
     widget.simulation.step(
@@ -92,6 +133,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       castSkill: _skillHeld,
     );
     final next = widget.simulation.snapshot;
+    _advanceCameraRig(next, deltaSeconds);
     setState(() => _snapshot = next);
 
     if (_worldReady && !_readySent) {
@@ -341,33 +383,21 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               pixelRatio: 0.82,
               maxFrameRate: 30,
               cameraBuilder: (elapsed) {
-                final player = snapshot.playerPosition;
-                final facingX = snapshot.playerFacingX;
-                final facingZ = snapshot.playerFacingZ;
-                final x = player.x * _worldScale;
-                final z = player.z * _worldScale;
-                // Action camera: low trailing perspective, not a battlefield
-                // overview. Facing is driven by the last movement direction.
-                final cameraHeight = compact ? 8.2 : 8.8;
-                final followDistance = compact ? 12.0 : 13.5;
-                final lookAhead = compact ? 4.5 : 5.2;
+                // Smoothed trailing perspective with a restrained motion
+                // response. The battlefield overview remains in the minimap.
                 final cameraBob = math.sin(
-                  elapsed.inMicroseconds / 1000000.0 * 1.4,
-                ) * 0.045;
+                  elapsed.inMicroseconds / 1000000.0 * 1.35,
+                ) * 0.035;
                 return PerspectiveCamera(
                   fovRadiansY: 52 * math.pi / 180,
                   position: vm.Vector3(
-                    x - facingX * followDistance,
-                    cameraHeight + cameraBob,
-                    z - facingZ * followDistance,
+                    _cameraX,
+                    _cameraY + cameraBob,
+                    _cameraZ,
                   ),
-                  target: vm.Vector3(
-                    x + facingX * lookAhead,
-                    1.35,
-                    z + facingZ * lookAhead,
-                  ),
+                  target: vm.Vector3(_lookX, _lookY, _lookZ),
                   fovNear: 0.08,
-                  fovFar: 220,
+                  fovFar: 240,
                 );
               },
               onTick: _onSceneTick,
