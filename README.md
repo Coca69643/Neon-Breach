@@ -4,7 +4,7 @@ MOBA 3D mobile para Android, com Flutter + Flutter Scene. Offline, landscape e r
 
 ## Log de atualizações
 
-- **1.7.5 (67) — distrito urbano e combate:** campo 180 × 140 alinhado entre renderização e navegação; avenidas, ruas, quatro interiores acessíveis, bases e estruturas urbanas; câmera de arrasto independente do joystick; ataque com SwordSlash; validação do rig masculino de Kairo dentro do APK. CI e teste físico pendentes.
+- **1.7.5 (67) — distrito urbano e combate:** campo 180 × 140 alinhado entre renderização e navegação; avenidas, ruas, quatro interiores acessíveis, bases e estruturas urbanas; câmera de arrasto independente do joystick; ataque com SwordSlash; validação do GLB masculino distinto de Kairo dentro do APK. CI e teste físico pendentes.
 - **1.7.4 (66) — arena expandida:** três rotas, rio, pontes, acessos laterais e câmera de ação. A revisão visual ainda precisava de validação no aparelho.
 - **1.7.3 (65) — câmera de combate:** enquadramento 3/4 mais baixo e próximo do herói; escalas ampliadas para leitura mobile.
 - **1.7.2 (64) — migração Flutter Scene:** runtime 3D migrado para Flutter; FSM Dart; prévia 3D de Lyra, Bastion e Kairo.
