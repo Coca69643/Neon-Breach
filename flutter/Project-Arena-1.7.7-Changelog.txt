@@ -1,0 +1,15 @@
+Projeto Arena
+Versão 1.7.7
+
+Novidades
+- Botão ALVO para alternar entre heróis e tropas inimigas próximas.
+- Painel do alvo selecionado com nome, tipo e barra de vida.
+- Confirmação visual de impacto quando o ataque realmente causa dano.
+
+Alterações
+- Animação do golpe e confirmação de acerto agora são sinais separados.
+- O painel do alvo desaparece quando não existe um alvo válido.
+- O feedback de acerto abrange heróis, tropas, coberturas, torres e núcleo.
+
+Removido
+- Marcador de impacto em ataques que não acertam.

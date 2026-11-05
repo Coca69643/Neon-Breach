@@ -101,10 +101,27 @@ jobs:
           APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-release.apk
-      - name: Prepare versioned APK and checksum
+      - name: Prepare APK, checksum and player changelog
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.7-arm64.apk
           sha256sum Project-Arena-1.7.7-arm64.apk > Project-Arena-1.7.7-arm64.apk.sha256
+          cat > Project-Arena-1.7.7-Changelog.txt <<'EOF'
+          Projeto Arena
+          Versão 1.7.7
+
+          Novidades
+          - Botão ALVO para alternar entre heróis e tropas inimigas próximas.
+          - Painel do alvo selecionado com nome, tipo e barra de vida.
+          - Confirmação visual de impacto quando o ataque realmente causa dano.
+
+          Alterações
+          - Animação do golpe e confirmação de acerto agora são sinais separados.
+          - O painel do alvo desaparece quando não existe um alvo válido.
+          - O feedback de acerto abrange heróis, tropas, coberturas, torres e núcleo.
+
+          Removido
+          - Marcador de impacto em ataques que não acertam.
+          EOF
       - name: Upload signed ARM64 APK artifact
         if: github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
@@ -113,6 +130,7 @@ jobs:
           path: |
             flutter/Project-Arena-1.7.7-arm64.apk
             flutter/Project-Arena-1.7.7-arm64.apk.sha256
+            flutter/Project-Arena-1.7.7-Changelog.txt
           if-no-files-found: error
           retention-days: 30
       - name: Publish Projeto Arena 1.7.7 stable tester release
@@ -123,15 +141,21 @@ jobs:
           target_commitish: ${{ github.sha }}
           name: Projeto Arena 1.7.7 — build de teste
           body: |
-            Projeto Arena 1.7.7 para Android ARM64.
-            - Runtime Flutter + Flutter Scene 0.24.3.
-            - Máquina de estados Dart e aplicativo offline em landscape.
-            - Prévia 3D de Lyra, Bastion e Kairo.
-            - Distrito urbano 180 × 140 com três avenidas, ruas, quatro interiores acessíveis e três travessias.
-            - Câmera com arrasto independente; escadas/mezaninos com elevação real; coberturas destrutíveis; reator central com controle de território e bônus de dano; armas CC0 presas ao osso Palm.R; Kairo com GLB masculino distinto.
-            - versionName 1.7.7 / versionCode 69.
-            - APK compilado, assets conferidos e assinatura verificada pelo GitHub Actions.
-            - Renderização visual, FPS sustentado, temperatura e atualização precisam de validação no Realme C53.
+            Projeto Arena
+            Versão 1.7.7
+
+            Novidades
+            - Botão ALVO para alternar entre heróis e tropas inimigas próximas.
+            - Painel do alvo selecionado com nome, tipo e barra de vida.
+            - Confirmação visual de impacto quando o ataque realmente causa dano.
+
+            Alterações
+            - Animação do golpe e confirmação de acerto agora são sinais separados.
+            - O painel do alvo desaparece quando não existe um alvo válido.
+            - O feedback de acerto abrange heróis, tropas, coberturas, torres e núcleo.
+
+            Removido
+            - Marcador de impacto em ataques que não acertam.
           draft: false
           prerelease: false
           make_latest: true
