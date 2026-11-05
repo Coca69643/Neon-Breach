@@ -140,6 +140,16 @@ def main() -> None:
             names = set(archive.namelist())
             elements = parse_manifest(archive.read("AndroidManifest.xml"))
             kairo_raw = archive.read("assets/flutter_assets/assets/heroes/kairo.glb")
+            npc_files = (
+                "npc_male_a.glb", "npc_male_b.glb", "npc_male_c.glb",
+                "npc_female_a.glb", "npc_female_b.glb", "npc_female_c.glb",
+            )
+            npc_raw = {
+                filename: archive.read(
+                    f"assets/flutter_assets/assets/npcs/{filename}"
+                )
+                for filename in npc_files
+            }
     except (OSError, zipfile.BadZipFile, KeyError, ValueError) as error:
         raise SystemExit(f"APK validation failed: cannot inspect archive: {error}") from error
 
@@ -151,11 +161,11 @@ def main() -> None:
 
     require(manifest.get("package") == "com.duckdream.projectarena",
             f"unexpected applicationId: {manifest.get('package')!r}")
-    require(manifest.get("versionName") == "1.7.8",
+    require(manifest.get("versionName") == "1.7.9",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
-    require(version_code == 70,
-            f"expected versionCode 70 for Projeto Arena 1.7.8, got {version_code!r}")
+    require(version_code == 71,
+            f"expected versionCode 71 for Projeto Arena 1.7.9, got {version_code!r}")
     require(application.get("label") == "Projeto Arena",
             f"unexpected launcher label: {application.get('label')!r}")
 
@@ -181,6 +191,14 @@ def main() -> None:
         "assets/flutter_assets/assets/heroes/lyra.glb",
         "assets/flutter_assets/assets/heroes/bastion.glb",
         "assets/flutter_assets/assets/heroes/kairo.glb",
+        "assets/flutter_assets/assets/npcs/npc_male_a.glb",
+        "assets/flutter_assets/assets/npcs/npc_male_b.glb",
+        "assets/flutter_assets/assets/npcs/npc_male_c.glb",
+        "assets/flutter_assets/assets/npcs/npc_female_a.glb",
+        "assets/flutter_assets/assets/npcs/npc_female_b.glb",
+        "assets/flutter_assets/assets/npcs/npc_female_c.glb",
+        "assets/flutter_assets/assets/npcs/npc-assets-manifest.json",
+        "assets/flutter_assets/assets/npcs/CC0-KENNEY-MINI-CHARACTERS-LICENSE.txt",
         "assets/flutter_assets/assets/world/arena_terrain.glb",
         "assets/flutter_assets/assets/world/arena_menu_hub.glb",
         "assets/flutter_assets/assets/match/quaternius_minion.glb",
@@ -206,6 +224,37 @@ def main() -> None:
     )
     for asset in expected_raw_assets:
         require(asset in names, f"required runtime asset is missing: {asset}")
+
+    # NPC actors must be real, textured GLBs with the locomotion clips used by
+    # the match renderer. This catches missing raw assets before release.
+    required_npc_clips = {"idle", "walk", "sprint"}
+    for filename, payload in npc_raw.items():
+        require(len(payload) >= 20, f"{filename} is truncated.")
+        magic, glb_version, declared_length, json_length, json_type = (
+            struct.unpack_from("<4sIIII", payload, 0)
+        )
+        require(
+            magic == b"glTF" and glb_version == 2
+            and declared_length == len(payload)
+            and json_type == 0x4E4F534A
+            and 20 + json_length <= len(payload),
+            f"{filename} is not a valid GLB 2.0 asset.",
+        )
+        npc_doc = json.loads(
+            payload[20:20 + json_length].decode("utf-8").rstrip(" \\t\\r\\n\\0")
+        )
+        npc_clips = {
+            clip.get("name", "") for clip in npc_doc.get("animations", [])
+        }
+        require(
+            required_npc_clips.issubset(npc_clips),
+            f"{filename} lacks required idle/walk/sprint clips.",
+        )
+        require(
+            any(image.get("bufferView") is not None
+                for image in npc_doc.get("images", [])),
+            f"{filename} has no embedded texture.",
+        )
 
     # Validate the actual packaged Kairo GLB, not only its UI label.
     require(len(kairo_raw) >= 20, "Kairo GLB is truncated.")
@@ -256,6 +305,8 @@ def main() -> None:
 
     compiled_scenes = (
         "lyra", "bastion", "kairo", "arena_terrain",
+        "npc_male_a", "npc_male_b", "npc_male_c",
+        "npc_female_a", "npc_female_b", "npc_female_c",
         "lyra_sword", "bastion_sword", "kairo_sword",
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
         "arena_menu_hub", "quaternius_minion", "tower_blue", "tower_red",
@@ -285,7 +336,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=1.7.8+{version_code}, minSdk={min_sdk}, "
+        f"version=1.7.9+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )
