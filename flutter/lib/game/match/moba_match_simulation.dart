@@ -253,6 +253,7 @@ class MobaMatchSnapshot {
     required this.playerRespawnSeconds,
     required this.playerMoving,
     required this.playerAttackSeconds,
+    required this.playerHitConfirmSeconds,
     required this.playerFacingX,
     required this.playerFacingZ,
     required this.blueTeamKills,
@@ -287,6 +288,7 @@ class MobaMatchSnapshot {
   final double playerRespawnSeconds;
   final bool playerMoving;
   final double playerAttackSeconds;
+  final double playerHitConfirmSeconds;
   final double playerFacingX;
   final double playerFacingZ;
   final int blueTeamKills;
@@ -439,6 +441,7 @@ class MobaMatchSimulation {
   double _playerRespawn = 0;
   double _playerAttackCooldown = 0;
   double _playerAttackPulseSeconds = 0;
+  double _playerHitConfirmSeconds = 0;
   double _playerSkillCooldown = 0;
   double _playerShieldTime = 0;
   double _playerXp = 0;
@@ -495,6 +498,7 @@ class MobaMatchSimulation {
     _playerRespawn = 0;
     _playerAttackCooldown = 0;
     _playerAttackPulseSeconds = 0;
+    _playerHitConfirmSeconds = 0;
     _playerSkillCooldown = 0;
     _playerShieldTime = 0;
     _playerXp = 0;
@@ -720,6 +724,8 @@ class MobaMatchSimulation {
     _playerAttackCooldown = math.max(0, _playerAttackCooldown - dt);
     _playerAttackPulseSeconds =
         math.max(0, _playerAttackPulseSeconds - dt);
+    _playerHitConfirmSeconds =
+        math.max(0, _playerHitConfirmSeconds - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
     _playerShieldTime = math.max(0, _playerShieldTime - dt);
     final wasRespawning = _playerRespawn > 0;
@@ -794,6 +800,7 @@ class MobaMatchSimulation {
         for (final bot in _bots) {
           if ('bot:${bot.id}' != selectedTarget.id) continue;
           _damageBot(bot, MobaTeam.blue, damage);
+          _confirmPlayerHit();
           return;
         }
       } else {
@@ -801,6 +808,7 @@ class MobaMatchSimulation {
         for (final minion in _minions) {
           if (minion.id != minionId) continue;
           _damageMinion(minion, MobaTeam.blue, damage);
+          _confirmPlayerHit();
           return;
         }
       }
@@ -814,6 +822,7 @@ class MobaMatchSimulation {
     );
     if (enemyBot != null) {
       _damageBot(enemyBot, MobaTeam.blue, damage);
+      _confirmPlayerHit();
       return;
     }
 
@@ -821,6 +830,7 @@ class MobaMatchSimulation {
     if (cover != null) {
       cover.health = math.max(0, cover.health - damage);
       if (!cover.alive) _playerGold += 28;
+      _confirmPlayerHit();
       return;
     }
 
@@ -832,6 +842,7 @@ class MobaMatchSimulation {
     );
     if (minion != null) {
       _damageMinion(minion, MobaTeam.blue, damage);
+      _confirmPlayerHit();
       return;
     }
 
@@ -840,13 +851,19 @@ class MobaMatchSimulation {
         _playerPosition.distanceTo(tower.position) <= heroId.basicRange &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
       _damageTower(tower, MobaTeam.blue, damage);
+      _confirmPlayerHit();
       return;
     }
 
     if (_laneOpen(MobaTeam.red, lane) &&
         _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= heroId.basicRange + 0.8) {
       _damageCore(MobaTeam.red, damage, lane);
+      _confirmPlayerHit();
     }
+  }
+
+  void _confirmPlayerHit() {
+    _playerHitConfirmSeconds = 0.22;
   }
 
   void _castHeroSkill() {
@@ -1479,6 +1496,7 @@ class MobaMatchSimulation {
       playerRespawnSeconds: _playerRespawn,
       playerMoving: _playerMoving,
       playerAttackSeconds: _playerAttackPulseSeconds,
+      playerHitConfirmSeconds: _playerHitConfirmSeconds,
       playerFacingX: _lastMoveX,
       playerFacingZ: _lastMoveZ,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
