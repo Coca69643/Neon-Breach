@@ -490,6 +490,19 @@ class MobaMatchSimulation {
         _ => MobaHeroId.bastion,
       };
 
+  /// Place bots in the staging area behind their own first tower.
+  /// Two heroes sharing a lane receive mirrored lateral slots rather than
+  /// spawning inside the tower collision footprint or on top of each other.
+  MobaPoint _botSpawnPosition(MobaTeam team, MobaLane lane, int role) {
+    final z = team.homeZ - team.forward * 5.0;
+    final lateralOffset = (role == 0 || role == 3)
+        ? -1.6
+        : (role == 1 || role == 4)
+            ? 1.6
+            : 0.0;
+    return MobaPoint(_laneX(lane, z) + lateralOffset, z);
+  }
+
   void _reset() {
     _minions.clear();
     _bots.clear();
@@ -565,7 +578,6 @@ class MobaMatchSimulation {
       MobaHeroId.lyra => 3,
     };
 
-    var allyIndex = 0;
     for (var role = 0; role < roleLanes.length; role++) {
       if (role == occupiedRole) continue;
       final lane = roleLanes[role];
@@ -576,10 +588,9 @@ class MobaMatchSimulation {
           lane: lane,
           role: role,
           heroId: _heroForRole(role),
-          position: MobaPoint(_laneX(lane, -57), -57 + allyIndex * 1.2),
+          position: _botSpawnPosition(MobaTeam.blue, lane, role),
         ),
       );
-      allyIndex++;
     }
 
     for (var role = 0; role < roleLanes.length; role++) {
@@ -591,10 +602,7 @@ class MobaMatchSimulation {
           lane: lane,
           role: role,
           heroId: _heroForRole(role),
-          position: MobaPoint(
-            _laneX(lane, 57),
-            57 - role * 1.2,
-          ),
+          position: _botSpawnPosition(MobaTeam.red, lane, role),
         ),
       );
     }
@@ -1139,24 +1147,28 @@ class MobaMatchSimulation {
     }
   }
 
+  MobaPoint? _botFlankWaypoint(_Bot bot) {
+    if (bot.role != 3 && bot.role != 4) return null;
+
+    final laneSide = bot.lane == MobaLane.top ? -1.0 : 1.0;
+    final teamSide = bot.team == MobaTeam.blue ? 1.0 : -1.0;
+    final side = laneSide * teamSide;
+    final waypoint = MobaPoint(
+      side * (bot.role == 3 ? 56.0 : 68.0),
+      bot.team.homeZ + bot.team.forward * (bot.role == 3 ? 22.0 : 12.0),
+    );
+    return bot.position.distanceTo(waypoint) > 3.2 ? waypoint : null;
+  }
+
   MobaPoint _botRouteWaypoint(_Bot bot, MobaPoint laneGoal) {
     // The middle role rotates through the central relay instead of remaining
-    // locked to one straight lane. Side roles enter through real flank corridors.
+    // locked to one straight lane. Side roles take a flank waypoint first.
     if (bot.role == 2 &&
         _objectiveOwner != bot.team &&
         bot.position.distanceTo(_objectivePosition) > objectiveRadius + 2.0) {
       return _objectivePosition;
     }
-
-    if (bot.role == 3 || bot.role == 4) {
-      final side = bot.lane == MobaLane.top ? -1.0 : 1.0;
-      final waypoint = MobaPoint(
-        side * (bot.role == 3 ? 56.0 : 68.0),
-        bot.team.homeZ + bot.team.forward * (bot.role == 3 ? 22.0 : 12.0),
-      );
-      if (bot.position.distanceTo(waypoint) > 3.2) return waypoint;
-    }
-    return laneGoal;
+    return _botFlankWaypoint(bot) ?? laneGoal;
   }
 
   void _updateBots(double dt) {
@@ -1206,6 +1218,15 @@ class MobaMatchSimulation {
           _damageBot(enemyHero, bot.team, 15);
           bot.attackCooldown = 1.0;
         }
+        continue;
+      }
+
+      // Side-lane roamers must complete their flank approach before being
+      // pulled back onto the minion line. Nearby enemy heroes still take
+      // combat priority, but minion aggro cannot cancel the route every tick.
+      final flankWaypoint = _botFlankWaypoint(bot);
+      if (flankWaypoint != null) {
+        _moveBot(bot, flankWaypoint, 2.9, dt);
         continue;
       }
 
