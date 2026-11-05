@@ -53,6 +53,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 cd flutter
 python3 -m pip install -r tool/requirements-world.txt
 python3 tool/prepare_world_assets.py
+python3 tool/prepare_menu_hub.py
 python3 tool/prepare_android.py
 flutter pub get
 flutter analyze
