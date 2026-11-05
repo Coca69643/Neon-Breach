@@ -134,6 +134,24 @@ class MobaTowerSnapshot {
   final double maxHealth;
 }
 
+class MobaCoverSnapshot {
+  const MobaCoverSnapshot({
+    required this.id,
+    required this.variant,
+    required this.position,
+    required this.health,
+    required this.maxHealth,
+  });
+
+  final String id;
+  final String variant;
+  final MobaPoint position;
+  final double health;
+  final double maxHealth;
+
+  bool get isDestroyed => health <= 0;
+}
+
 class MobaMatchSnapshot {
   const MobaMatchSnapshot({
     required this.elapsedSeconds,
@@ -164,6 +182,7 @@ class MobaMatchSnapshot {
     required this.bots,
     required this.minions,
     required this.towers,
+    required this.covers,
     required this.winner,
   });
 
@@ -195,6 +214,7 @@ class MobaMatchSnapshot {
   final List<MobaBotSnapshot> bots;
   final List<MobaMinionSnapshot> minions;
   final List<MobaTowerSnapshot> towers;
+  final List<MobaCoverSnapshot> covers;
   final MobaTeam? winner;
 
   bool get isFinished => winner != null;
@@ -263,11 +283,29 @@ class _Tower {
   bool get alive => health > 0;
 }
 
+class _Cover {
+  _Cover({
+    required this.id,
+    required this.variant,
+    required this.position,
+  });
+
+  final String id;
+  final String variant;
+  final MobaPoint position;
+  double health = 180.0;
+
+  static const double maxHealth = 180.0;
+  bool get alive => health > 0;
+}
+
 class MobaMatchSimulation {
   MobaMatchSimulation({
     required this.heroId,
     double fixedStep = 1 / 30,
-  }) : _fixedStep = fixedStep {
+    MobaPoint? spawnPosition,
+  })  : _fixedStep = fixedStep,
+        _spawnPosition = spawnPosition {
     if (!fixedStep.isFinite || fixedStep <= 0 || fixedStep > 1 / 20) {
       throw ArgumentError.value(fixedStep, 'fixedStep');
     }
@@ -284,9 +322,11 @@ class MobaMatchSimulation {
 
   final MobaHeroId heroId;
   final double _fixedStep;
+  final MobaPoint? _spawnPosition;
   final List<_Minion> _minions = [];
   final List<_Bot> _bots = [];
   final List<_Tower> _towers = [];
+  final List<_Cover> _covers = [];
   final List<double> _coreHealth = [coreMaxHealth, coreMaxHealth];
   final List<double> _teamKills = [0, 0];
   final List<double> _teamGold = [500, 500];
@@ -332,6 +372,20 @@ class MobaMatchSimulation {
     _minions.clear();
     _bots.clear();
     _towers.clear();
+    _covers
+      ..clear()
+      ..addAll([
+        _Cover(
+          id: 'west_south_door_barrier',
+          variant: 'barrier',
+          position: const MobaPoint(-63.0, -42.1),
+        ),
+        _Cover(
+          id: 'east_north_door_fence',
+          variant: 'fence',
+          position: const MobaPoint(63.0, 33.9),
+        ),
+      ]);
     _elapsed = 0;
     _accumulator = 0;
     _playerHealth = playerMaxHealthBase;
@@ -346,10 +400,11 @@ class MobaMatchSimulation {
     _playerPower = 1;
     _playerLevel = 1;
     _nextMinionId = 0;
-    _playerPosition = MobaPoint(
-      _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
-      MobaTeam.blue.homeZ,
-    );
+    _playerPosition = _spawnPosition ??
+        MobaPoint(
+          _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
+          MobaTeam.blue.homeZ,
+        );
     _winner = null;
     _lastMoveX = 0;
     _lastMoveZ = 1;
@@ -515,7 +570,8 @@ class MobaMatchSimulation {
         _playerPosition.elevation,
       );
       if (elevation == null ||
-          !ArenaWorldCatalog.isWalkable(x, z, elevation: elevation)) {
+          !ArenaWorldCatalog.isWalkable(x, z, elevation: elevation) ||
+          _isBlockedByCover(x, z, elevation)) {
         return false;
       }
       _playerPosition = MobaPoint(x, z, elevation: elevation);
@@ -548,6 +604,13 @@ class MobaMatchSimulation {
     );
     if (enemyBot != null) {
       _damageBot(enemyBot, MobaTeam.blue, damage);
+      return;
+    }
+
+    final cover = _nearestCover(_playerPosition, heroId.basicRange);
+    if (cover != null) {
+      cover.health = math.max(0, cover.health - damage);
+      if (!cover.alive) _playerGold += 28;
       return;
     }
 
@@ -868,6 +931,27 @@ class MobaMatchSimulation {
     }
   }
 
+  _Cover? _nearestCover(MobaPoint position, double maxRange) {
+    _Cover? target;
+    var nearest = maxRange;
+    for (final cover in _covers) {
+      if (!cover.alive) continue;
+      final distance = position.distanceTo(cover.position);
+      if (distance < nearest) {
+        nearest = distance;
+        target = cover;
+      }
+    }
+    return target;
+  }
+
+  bool _isBlockedByCover(double x, double z, double elevation) {
+    final point = MobaPoint(x, z, elevation: elevation);
+    return _covers.any(
+      (cover) => cover.alive && point.distanceTo(cover.position) < 1.28,
+    );
+  }
+
   _Minion? _nearestMinion(
     MobaPoint position,
     MobaTeam team,
@@ -1104,6 +1188,18 @@ class MobaMatchSimulation {
         )
         .toList(growable: false);
 
+    final covers = _covers
+        .map(
+          (cover) => MobaCoverSnapshot(
+            id: cover.id,
+            variant: cover.variant,
+            position: cover.position,
+            health: cover.health,
+            maxHealth: _Cover.maxHealth,
+          ),
+        )
+        .toList(growable: false);
+
     final currentThreshold = _xpThreshold(_playerLevel);
     return MobaMatchSnapshot(
       elapsedSeconds: _elapsed,
@@ -1138,6 +1234,7 @@ class MobaMatchSimulation {
       bots: List.unmodifiable(bots),
       minions: List.unmodifiable(minions),
       towers: List.unmodifiable(towers),
+      covers: List.unmodifiable(covers),
       winner: _winner,
     );
   }
