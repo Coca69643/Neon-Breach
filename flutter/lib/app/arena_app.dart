@@ -4,9 +4,11 @@ import 'package:flutter/services.dart';
 import '../game/manifest/arena_manifest_validator.dart';
 import '../game/rendering/arena_hero_preview.dart';
 import '../game/rendering/arena_main_menu_scene.dart';
+import '../game/rendering/moba_match_view.dart';
 import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/arena_world_preview.dart';
 import '../game/state/arena_state_machine.dart';
+import '../game/match/moba_match_simulation.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
@@ -17,6 +19,7 @@ class ArenaApp extends StatefulWidget {
 
 class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   late final ArenaStateMachine _machine;
+  MobaMatchSimulation? _matchSimulation;
 
   @override
   void initState() {
@@ -101,11 +104,35 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
         animation: _machine,
         builder: (context, _) => _ArenaScreen(
           snapshot: _machine.snapshot,
-          onEvent: _machine.dispatch,
+          onEvent: _dispatch,
           onRetry: _retry,
+          simulation: _matchSimulation,
         ),
       ),
     );
+  }
+
+  MobaHeroId _mapHero(String? id) => switch (id) {
+        'bastion' => MobaHeroId.bastion,
+        'kairo' => MobaHeroId.kairo,
+        _ => MobaHeroId.lyra,
+      };
+
+  TransitionDecision _dispatch(ArenaEvent event) {
+    final selectedHero = _machine.snapshot.selectedHeroId;
+    final startsMatch =
+        event is StartRunFromHub || event is ConfirmHeroSelection;
+    final decision = _machine.dispatch(event);
+    if (!decision.accepted) return decision;
+
+    if (startsMatch) {
+      _matchSimulation = MobaMatchSimulation(
+        heroId: _mapHero(selectedHero),
+      );
+    } else if (event is ReturnToMenu) {
+      _matchSimulation = null;
+    }
+    return decision;
   }
 
   Future<void> _retry() async {
@@ -121,11 +148,13 @@ class _ArenaScreen extends StatelessWidget {
     required this.snapshot,
     required this.onEvent,
     required this.onRetry,
+    required this.simulation,
   });
 
   final ArenaSnapshot snapshot;
   final TransitionDecision Function(ArenaEvent) onEvent;
   final VoidCallback onRetry;
+  final MobaMatchSimulation? simulation;
 
   @override
   Widget build(BuildContext context) {
@@ -326,13 +355,8 @@ class _ArenaScreen extends StatelessWidget {
       case ArenaPhase.heroSelection:
         return _heroSelection(compact: compact);
       case ArenaPhase.matchLoading:
-        return _worldPreview();
       case ArenaPhase.inMatch:
-        return const _StatusView(
-          eyebrow: 'PARTIDA',
-          title: 'Runtime conectado',
-          description: 'A camada de renderização será apresentada aqui.',
-        );
+        return _matchView();
       case ArenaPhase.paused:
         return _paused();
       case ArenaPhase.matchResult:
@@ -458,10 +482,33 @@ class _ArenaScreen extends StatelessWidget {
     );
   }
 
-  Widget _worldPreview() {
+  Widget _matchView() {
+    final currentSimulation = simulation;
+    if (currentSimulation == null) {
+      return _StatusView(
+        eyebrow: 'PARTIDA',
+        title: 'Sessão não inicializada',
+        description: 'A máquina de estados não recebeu o modelo de partida.',
+        actionLabel: 'VOLTAR',
+        onAction: () => onEvent(const ReturnToMenu()),
+      );
+    }
     return SizedBox.expand(
-      child: ArenaWorldPreview(
-        onBack: () => onEvent(const ReturnToMenu()),
+      child: MobaMatchView(
+        simulation: currentSimulation,
+        onRuntimeReady: () {
+          if (snapshot.phase == ArenaPhase.matchLoading) {
+            onEvent(const MatchRuntimeCompleted(success: true));
+          }
+        },
+        onPause: () => onEvent(const PauseMatch()),
+        onFinished: (winner) => onEvent(
+          MatchFinished(
+            winner == MobaTeam.blue
+                ? MatchOutcome.victory
+                : MatchOutcome.defeat,
+          ),
+        ),
       ),
     );
   }
