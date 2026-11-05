@@ -423,7 +423,11 @@ class MobaMatchSimulation {
     _playerAttackCooldown = math.max(0, _playerAttackCooldown - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
     _playerShieldTime = math.max(0, _playerShieldTime - dt);
+    final wasRespawning = _playerRespawn > 0;
     _playerRespawn = math.max(0, _playerRespawn - dt);
+    if (wasRespawning && _playerRespawn <= 0) {
+      _playerHealth = _playerMaxHealth;
+    }
 
     if (_playerRespawn <= 0) {
       _movePlayer(moveX, moveZ, dt);
@@ -654,6 +658,21 @@ class MobaMatchSimulation {
         maxRange: 5.8,
         lane: bot.lane,
       );
+      final playerDistance = bot.team == MobaTeam.red && _playerRespawn <= 0
+          ? bot.position.distanceTo(_playerPosition)
+          : double.infinity;
+      final botDistance = enemyHero == null
+          ? double.infinity
+          : bot.position.distanceTo(enemyHero.position);
+      if (playerDistance <= 5.8 && playerDistance < botDistance) {
+        if (playerDistance > 2.25) {
+          bot.position = bot.position.moveToward(_playerPosition, 3.15 * dt);
+        } else if (bot.attackCooldown <= 0) {
+          _damagePlayer(10);
+          bot.attackCooldown = 1.05;
+        }
+        continue;
+      }
       if (enemyHero != null) {
         final distance = bot.position.distanceTo(enemyHero.position);
         if (distance > 2.25) {
@@ -735,6 +754,13 @@ class MobaMatchSimulation {
       );
       if (enemyBot != null) {
         _damageBot(enemyBot, tower.team, 16);
+        tower.attackCooldown = 1.0;
+        continue;
+      }
+      if (tower.team == MobaTeam.red &&
+          _playerRespawn <= 0 &&
+          _playerPosition.distanceTo(tower.position) <= 7.8) {
+        _damagePlayer(12);
         tower.attackCooldown = 1.0;
       }
     }
@@ -875,8 +901,8 @@ class MobaMatchSimulation {
     final mitigation = _playerShieldTime > 0 ? 0.58 : 1.0;
     _playerHealth = math.max(0, _playerHealth - damage * mitigation);
     if (_playerHealth <= 0) {
+      _playerHealth = 0;
       _playerRespawn = 5;
-      _playerHealth = _playerMaxHealth;
       _playerPosition = MobaPoint(
         _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
         MobaTeam.blue.homeZ,
