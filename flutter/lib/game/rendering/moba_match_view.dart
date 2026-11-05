@@ -45,6 +45,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   late double _cameraX;
   late double _cameraY;
   late double _cameraZ;
+  double _cameraYaw = 0;
+  double _cameraPitch = 0;
   late double _lookX;
   late double _lookY;
   late double _lookZ;
