@@ -838,14 +838,24 @@ class MobaMatchSimulation {
     // Swept movement closes the endpoint-only gap used by long skills
     // such as Kairo's dash. The 0.22-unit step is small enough to follow ramps.
     final segments = math.max(1, (distance / 0.22).ceil());
-    for (var segment = 1; segment <= segments; segment++) {
-      final t = segment / segments;
-      final nextX = startX + dx * t;
-      final nextZ = startZ + dz * t;
+    final stepX = dx / segments;
+    final stepZ = dz / segments;
+    for (var segment = 0; segment < segments; segment++) {
+      final nextX = _playerPosition.x + stepX;
+      final nextZ = _playerPosition.z + stepZ;
       if (tryPosition(nextX, nextZ)) continue;
       if (!allowAxisSlide) return;
-      if (tryPosition(nextX, _playerPosition.z)) continue;
-      if (tryPosition(_playerPosition.x, nextZ)) continue;
+
+      // Slide from the last committed position, not from the original
+      // endpoint. This prevents a later segment from jumping through a wall
+      // after an earlier segment used axis sliding.
+      if (tryPosition(_playerPosition.x + stepX, _playerPosition.z)) {
+        tryPosition(_playerPosition.x, _playerPosition.z + stepZ);
+        continue;
+      }
+      if (tryPosition(_playerPosition.x, _playerPosition.z + stepZ)) {
+        continue;
+      }
       return;
     }
   }
