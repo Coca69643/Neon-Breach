@@ -201,6 +201,26 @@ class MobaCoverSnapshot {
   bool get isDestroyed => health <= 0;
 }
 
+class MobaTargetSnapshot {
+  const MobaTargetSnapshot({
+    required this.id,
+    required this.kind,
+    required this.label,
+    required this.team,
+    required this.position,
+    required this.health,
+    required this.maxHealth,
+  });
+
+  final String id;
+  final String kind;
+  final String label;
+  final MobaTeam team;
+  final MobaPoint position;
+  final double health;
+  final double maxHealth;
+}
+
 class MobaObjectiveSnapshot {
   const MobaObjectiveSnapshot({
     required this.control,
@@ -250,6 +270,7 @@ class MobaMatchSnapshot {
     required this.towers,
     required this.covers,
     required this.centralObjective,
+    required this.selectedTarget,
     required this.winner,
   });
 
@@ -283,6 +304,7 @@ class MobaMatchSnapshot {
   final List<MobaTowerSnapshot> towers;
   final List<MobaCoverSnapshot> covers;
   final MobaObjectiveSnapshot centralObjective;
+  final MobaTargetSnapshot? selectedTarget;
   final MobaTeam? winner;
 
   bool get isFinished => winner != null;
@@ -395,6 +417,8 @@ class MobaMatchSimulation {
   final List<_Bot> _bots = [];
   final List<_Tower> _towers = [];
   final List<_Cover> _covers = [];
+  String? _selectedTargetKey;
+  static const double _targetCycleRange = 24.0;
   static const MobaPoint _objectivePosition = MobaPoint(0, 0);
   static const double objectiveRadius = 8.0;
   final MobaObjectiveControl _objective = MobaObjectiveControl();
@@ -449,6 +473,7 @@ class MobaMatchSimulation {
     _bots.clear();
     _towers.clear();
     _objective.reset();
+    _selectedTargetKey = null;
     _covers
       ..clear()
       ..addAll([
@@ -565,6 +590,94 @@ class MobaMatchSimulation {
         }
       }
     }
+  }
+
+  /// Cycles the nearest valid enemy hero/minion. This is a discrete
+  /// touch input and does not advance the fixed simulation clock.
+  void cyclePlayerTarget() {
+    _cyclePlayerTarget();
+  }
+
+  void _cyclePlayerTarget() {
+    final candidates = <(String, double)>[];
+    for (final bot in _bots) {
+      if (!bot.alive || bot.team != MobaTeam.red) continue;
+      final distance = _playerPosition.distanceTo(bot.position);
+      if (distance <= _targetCycleRange) {
+        candidates.add(('bot:${bot.id}', distance));
+      }
+    }
+    for (final minion in _minions) {
+      if (!minion.alive || minion.team != MobaTeam.red) continue;
+      final distance = _playerPosition.distanceTo(minion.position);
+      if (distance <= _targetCycleRange) {
+        candidates.add(('minion:${minion.id}', distance));
+      }
+    }
+
+    candidates.sort((a, b) {
+      final distanceOrder = a.$2.compareTo(b.$2);
+      return distanceOrder != 0 ? distanceOrder : a.$1.compareTo(b.$1);
+    });
+    if (candidates.isEmpty) {
+      _selectedTargetKey = null;
+      return;
+    }
+
+    final current = candidates.indexWhere(
+      (candidate) => candidate.$1 == _selectedTargetKey,
+    );
+    _selectedTargetKey = candidates[(current + 1) % candidates.length].$1;
+  }
+
+  MobaTargetSnapshot? _selectedTargetSnapshot() {
+    final key = _selectedTargetKey;
+    if (key == null) return null;
+
+    if (key.startsWith('bot:')) {
+      final id = key.substring(4);
+      for (final bot in _bots) {
+        if (bot.id != id) continue;
+        if (!bot.alive ||
+            bot.team != MobaTeam.red ||
+            _playerPosition.distanceTo(bot.position) > _targetCycleRange) {
+          _selectedTargetKey = null;
+          return null;
+        }
+        return MobaTargetSnapshot(
+          id: key,
+          kind: 'HERO',
+          label: bot.heroId.name.toUpperCase(),
+          team: bot.team,
+          position: bot.position,
+          health: bot.health,
+          maxHealth: _Bot.maxHealth,
+        );
+      }
+    } else if (key.startsWith('minion:')) {
+      final id = int.tryParse(key.substring(7));
+      for (final minion in _minions) {
+        if (minion.id != id) continue;
+        if (!minion.alive ||
+            minion.team != MobaTeam.red ||
+            _playerPosition.distanceTo(minion.position) > _targetCycleRange) {
+          _selectedTargetKey = null;
+          return null;
+        }
+        return MobaTargetSnapshot(
+          id: key,
+          kind: minion.ranged ? 'RANGED MINION' : 'MINION',
+          label: 'MINION #${minion.id}',
+          team: minion.team,
+          position: minion.position,
+          health: minion.health,
+          maxHealth: minion.maxHealth,
+        );
+      }
+    }
+
+    _selectedTargetKey = null;
+    return null;
   }
 
   void step(
@@ -1374,6 +1487,7 @@ class MobaMatchSimulation {
         bluePresence: _objective.bluePresence,
         redPresence: _objective.redPresence,
       ),
+      selectedTarget: _selectedTargetSnapshot(),
       winner: _winner,
     );
   }
