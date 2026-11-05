@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.6 / 68
+- versionName/versionCode: 1.7.7 / 69
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -23,7 +23,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Arena urbana 180 × 140, com três avenidas, quatro edifícios de piso térreo acessíveis, interiores, ruas e cruzamentos.
 - Navegação com colisão de paredes/mobiliário, portas, três travessias do canal e duas escadas que conectam mezaninos com elevação real.
 - Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
-- Próximas prioridades: efeitos de impacto, seleção de alvo mais legível, loja/itens MOBA e validação física no aparelho.
+- Implementado nesta revisão: seleção touch de alvo, HUD contextual e confirmação visual apenas em acerto. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
 - Escalas de leitura: herói 1.0, bots 0.86, minions 0.54–0.58.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
@@ -58,7 +58,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, build ARM64 e verificação da assinatura.
-- APK 1.7.6+68: análise/testes/build ARM64/validação de assets/assinatura dependem do CI atual; escadas, objetivo, armas e desempenho ainda exigem inspeção visual no Realme C53.
+- APK 1.7.7+69: targeting e hit confirmation integrados; análise/testes/build ARM64/validação de assets/assinatura dependem do CI atual; escadas, objetivo, armas e desempenho ainda exigem inspeção visual no Realme C53.
 
 ## Comandos
 
