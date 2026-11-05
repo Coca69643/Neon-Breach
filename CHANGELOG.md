@@ -1,5 +1,16 @@
 # Changelog — Projeto Arena
 
+## [1.7.8] — 2026-11-05
+
+### Correções
+- Confirmar a escolha do herói retorna ao hub; ASCENDER inicia a partida.
+- Corrigida a orientação frontal dos heróis no seletor e durante a movimentação.
+- Reduzida a escala das armas equipadas.
+- Corrigida a composição do HUD de interação com NPCs.
+
+### Ainda em auditoria
+- Diversidade visual de bots e minions, navegação tática e exploração de interiores continuam pendentes de validação visual e funcional.
+
 ## [1.7.7] — 2026-11-05
 
 ### Combate e leitura de alvo
