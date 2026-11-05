@@ -114,6 +114,12 @@ def fetch_kairo_source(destination: Path) -> None:
 def prepare_model(source: Path, destination: Path, *, kairo: bool = False) -> str:
     raw = source.read_bytes()
     document, chunks = decode_glb(raw)
+    nodes = {node.get("name", "") for node in document.get("nodes", [])}
+    if "Palm.R" not in nodes:
+        raise RuntimeError(
+            f"{source.name} has no Palm.R socket for the equipped hand weapon."
+        )
+
     animations = document.get("animations", [])
     filtered = [
         animation for animation in animations
