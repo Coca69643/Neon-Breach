@@ -169,29 +169,22 @@ class _ArenaScreen extends StatelessWidget {
   }
 
   Widget _immersiveMainMenu() {
-    final heroId = snapshot.selectedHeroId ?? 'lyra';
-    final heroName = switch (heroId) {
-      'bastion' => 'BASTION',
-      'kairo' => 'KAIRO',
-      _ => 'LYRA',
-    };
-
     return Stack(
       fit: StackFit.expand,
       children: [
-        ArenaMainMenuScene(heroId: heroId),
+        const ArenaMainMenuScene(),
         const IgnorePointer(
           child: DecoratedBox(
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topCenter,
                 end: Alignment.bottomCenter,
-                stops: [0.0, 0.22, 0.62, 1.0],
+                stops: [0.0, 0.2, 0.58, 1.0],
                 colors: [
-                  Color(0xA60A1419),
-                  Color(0x000A1419),
-                  Color(0x000A1419),
-                  Color(0xB90A1419),
+                  Color(0x8A102334),
+                  Color(0x000E1925),
+                  Color(0x000E1925),
+                  Color(0xB80A1320),
                 ],
               ),
             ),
@@ -201,57 +194,47 @@ class _ArenaScreen extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, viewport) {
               final compact = viewport.maxHeight < 440;
-              final edgeX = viewport.maxWidth < 700 ? 18.0 : 28.0;
-              final edgeY = compact ? 12.0 : 22.0;
+              final scale = compact ? 0.86 : 1.0;
+              final edgeX = compact ? 12.0 : 22.0;
+              final edgeY = compact ? 10.0 : 18.0;
 
               return Stack(
                 children: [
                   Positioned(
                     left: edgeX,
                     top: edgeY,
-                    child: const Text(
-                      'PROJETO ARENA',
-                      style: TextStyle(
-                        color: Color(0xFFF1F2EC),
-                        fontSize: 19,
-                        letterSpacing: 1.2,
-                        fontWeight: FontWeight.w900,
-                        shadows: [
-                          Shadow(
-                            color: Color(0x99000000),
-                            blurRadius: 12,
-                            offset: Offset(0, 2),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    left: edgeX,
-                    bottom: edgeY + 7,
                     child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
-                          width: 3,
-                          height: compact ? 24 : 29,
+                          width: compact ? 30 : 34,
+                          height: compact ? 30 : 34,
                           decoration: BoxDecoration(
-                            color: const Color(0xFF79D6BD),
-                            borderRadius: BorderRadius.circular(1),
+                            color: const Color(0xC91B3442),
+                            border: Border.all(
+                              color: const Color(0xAAE2C58A),
+                              width: 1.2,
+                            ),
+                            borderRadius: BorderRadius.circular(7),
+                          ),
+                          child: const Icon(
+                            Icons.shield_moon_outlined,
+                            color: Color(0xFFE8D3A2),
+                            size: 19,
                           ),
                         ),
-                        const SizedBox(width: 11),
-                        Text(
-                          heroName,
+                        const SizedBox(width: 9),
+                        const Text(
+                          'PROJETO ARENA',
                           style: TextStyle(
-                            color: Colors.white,
-                            fontSize: compact ? 16 : 19,
-                            letterSpacing: 1.8,
-                            fontWeight: FontWeight.w800,
-                            shadows: const [
+                            color: Color(0xFFF4F0E5),
+                            fontSize: 13,
+                            letterSpacing: 1.4,
+                            fontWeight: FontWeight.w900,
+                            shadows: [
                               Shadow(
                                 color: Color(0x99000000),
-                                blurRadius: 10,
+                                blurRadius: 9,
                                 offset: Offset(0, 2),
                               ),
                             ],
@@ -261,33 +244,56 @@ class _ArenaScreen extends StatelessWidget {
                     ),
                   ),
                   Positioned(
+                    left: edgeX,
+                    bottom: edgeY,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        _HubShortcut(
+                          label: 'HERÓIS',
+                          icon: Icons.groups_rounded,
+                          width: 126 * scale,
+                          height: 50 * scale,
+                          active: true,
+                          onTap: () => onEvent(const OpenHeroSelection()),
+                        ),
+                        SizedBox(width: 7 * scale),
+                        _HubShortcut(
+                          label: 'BAÚS',
+                          icon: Icons.inventory_2_outlined,
+                          width: 96 * scale,
+                          height: 46 * scale,
+                          locked: true,
+                        ),
+                        SizedBox(width: 7 * scale),
+                        _HubShortcut(
+                          label: 'DESAFIOS',
+                          icon: Icons.flag_outlined,
+                          width: 116 * scale,
+                          height: 46 * scale,
+                          locked: true,
+                        ),
+                      ],
+                    ),
+                  ),
+                  Positioned(
+                    right: edgeX,
+                    top: viewport.maxHeight * 0.40,
+                    child: _HubShortcut(
+                      label: 'MERCADOR',
+                      icon: Icons.storefront_outlined,
+                      width: 126 * scale,
+                      height: 49 * scale,
+                      locked: true,
+                    ),
+                  ),
+                  Positioned(
                     right: edgeX,
                     bottom: edgeY,
-                    child: FilledButton.icon(
-                      onPressed: () => onEvent(const OpenHeroSelection()),
-                      icon: const Icon(Icons.arrow_forward_rounded, size: 18),
-                      label: const Text(
-                        'JOGAR',
-                        style: TextStyle(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w900,
-                          letterSpacing: 1.1,
-                        ),
-                      ),
-                      style: FilledButton.styleFrom(
-                        backgroundColor: const Color(0xFFE0B56B),
-                        foregroundColor: const Color(0xFF22251F),
-                        minimumSize: Size(
-                          compact ? 132 : 152,
-                          compact ? 46 : 50,
-                        ),
-                        padding: const EdgeInsets.symmetric(horizontal: 19),
-                        tapTargetSize: MaterialTapTargetSize.padded,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 3,
-                      ),
+                    child: _HubPrimaryAction(
+                      width: 166 * scale,
+                      height: 56 * scale,
+                      onTap: () => onEvent(const StartRunFromHub()),
                     ),
                   ),
                 ],
@@ -453,7 +459,7 @@ class _ArenaScreen extends StatelessWidget {
   Widget _worldPreview() {
     return SizedBox.expand(
       child: ArenaWorldPreview(
-        onBack: () => onEvent(const CancelMatchLoading()),
+        onBack: () => onEvent(const ReturnToMenu()),
       ),
     );
   }
@@ -497,67 +503,140 @@ class _ArenaScreen extends StatelessWidget {
   }
 }
 
-class _HeroChoiceTile extends StatelessWidget {
-  const _HeroChoiceTile({
+class _HubShortcut extends StatelessWidget {
+  const _HubShortcut({
     required this.label,
-    required this.selected,
+    required this.icon,
+    required this.width,
+    required this.height,
+    this.active = false,
+    this.locked = false,
+    this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final double width;
+  final double height;
+  final bool active;
+  final bool locked;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(7),
+      side: BorderSide(
+        color: active
+            ? const Color(0xFFE2D09A)
+            : const Color(0x8AA9D4D8),
+        width: active ? 1.4 : 1,
+      ),
+    );
+    return Material(
+      color: active
+          ? const Color(0xD29BCFC6)
+          : const Color(0xC6284654),
+      shape: shape,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: locked ? null : onTap,
+        customBorder: shape,
+        child: SizedBox(
+          width: width,
+          height: height,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Row(
+              children: [
+                Icon(
+                  icon,
+                  size: 19,
+                  color: active
+                      ? const Color(0xFF163C43)
+                      : const Color(0xFFE1E9E8),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: active
+                          ? const Color(0xFF173A3C)
+                          : const Color(0xFFE2EBE9),
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.65,
+                    ),
+                  ),
+                ),
+                if (locked)
+                  const Icon(
+                    Icons.lock_outline_rounded,
+                    size: 13,
+                    color: Color(0xFFB6C7C9),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _HubPrimaryAction extends StatelessWidget {
+  const _HubPrimaryAction({
+    required this.width,
     required this.height,
     required this.onTap,
   });
 
-  final String label;
-  final bool selected;
+  final double width;
   final double height;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final accent = selected
-        ? const Color(0xFF79D6BD)
-        : const Color(0xFF46545E);
-
-    return Material(
-      color: selected
-          ? const Color(0x263C8D7C)
-          : const Color(0x141E2A31),
+    final shape = BeveledRectangleBorder(
       borderRadius: BorderRadius.circular(8),
+      side: const BorderSide(color: Color(0xFFFFE1A2), width: 1.5),
+    );
+    return Material(
+      color: const Color(0xFFE2B568),
+      shape: shape,
+      elevation: 5,
+      clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(8),
-        child: Container(
-          width: double.infinity,
+        customBorder: shape,
+        child: SizedBox(
+          width: width,
           height: height,
-          padding: const EdgeInsets.symmetric(horizontal: 16),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(8),
-            border: Border.all(
-              color: accent.withValues(alpha: selected ? 0.95 : 0.55),
-              width: selected ? 1.6 : 1,
-            ),
-          ),
-          child: Row(
-            children: [
-              Expanded(
-                child: Text(
-                  label,
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: const [
+                Icon(
+                  Icons.arrow_upward_rounded,
+                  size: 21,
+                  color: Color(0xFF45301F),
+                ),
+                SizedBox(width: 9),
+                Text(
+                  'ASCENDER',
                   style: TextStyle(
-                    color: selected
-                        ? const Color(0xFF9BE4D1)
-                        : const Color(0xFFE0E6E8),
-                    fontSize: 15,
-                    fontWeight: FontWeight.w800,
-                    letterSpacing: 1.2,
+                    color: Color(0xFF45301F),
+                    fontSize: 13,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
                   ),
                 ),
-              ),
-              Icon(
-                selected ? Icons.check_circle : Icons.circle_outlined,
-                size: 18,
-                color: selected
-                    ? const Color(0xFF79D6BD)
-                    : const Color(0xFF71808B),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),
