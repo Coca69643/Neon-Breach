@@ -231,6 +231,13 @@ def main() -> None:
             "Quaternius Animated Men Pack / Man-fjHyMd5Wxw (CC0)",
             "Kairo must use the distinct CC0 male model, not a duplicate Bastion mesh.")
 
+    weapon_assets = (
+        "lyra_sword.glb", "bastion_sword.glb", "kairo_sword.glb",
+    )
+    for asset in weapon_assets:
+        require(f"assets/flutter_assets/assets/weapons/{asset}" in names,
+                f"hero weapon asset is missing: {asset}")
+
     city_assets = (
         "commercial_building_a.glb", "commercial_building_c.glb",
         "commercial_building_e.glb", "commercial_low_a.glb",
@@ -248,6 +255,7 @@ def main() -> None:
 
     compiled_scenes = (
         "lyra", "bastion", "kairo", "arena_terrain",
+        "lyra_sword", "bastion_sword", "kairo_sword",
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
         "arena_menu_hub", "quaternius_minion", "tower_blue", "tower_red",
         "castle_blue", "castle_red", "home_blue", "home_red", "bridge_a",
