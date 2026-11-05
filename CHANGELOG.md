@@ -1,5 +1,35 @@
 # Changelog — Projeto Arena
 
+## [1.7.6] — 2026-11-05
+
+### Rotas verticais e posicionamento
+- Duas rotas de mezanino opostas com escada, deck e guarda-corpos CC0.
+- Navegação por elevação incremental; sem teleporte entre pisos.
+- Ataques e aquisição de alvos respeitam a diferença de altura.
+- Acesso por escada e limite de plataforma cobertos por testes automatizados.
+
+### Coberturas destrutíveis
+- Barricada e grade de construção CC0 nas entradas dos edifícios.
+- Coberturas têm 180 HP, bloqueiam o corredor e recebem dano de ataques básicos.
+- A destruição remove a colisão e libera a passagem; recompensa de 28 G.
+- Mobiliário interno reposicionado para não bloquear o eixo de entrada.
+
+### Objetivo central
+- Reator central com barra de captura e estado neutro/contestado.
+- Heróis, bots e minions contribuem com presença ponderada.
+- Disputa simultânea congela a captura; o controle persiste até retomada inimiga.
+- Controle concede +12% de dano à equipe e a primeira captura rende 150 G / 90 XP.
+
+### Equipamento dos heróis
+- Lyra, Bastion e Kairo recebem espadas CC0 distintas.
+- GLBs presos ao osso `Palm.R`; bots recebem clones dos templates para compartilhar recursos.
+- Pipeline verifica os hashes dos modelos e exige o socket `Palm.R` nos três rigs.
+
+### Validação
+- Análise, testes, build ARM64, pacote de assets e assinatura precisam passar no CI da 1.7.6.
+- Câmera, alinhamento das armas, resposta visual dos impactos, FPS, temperatura e memória ainda exigem teste no Realme C53.
+- Não declarar a partida completa: loja, itens MOBA e efeitos de impacto continuam pendentes.
+
 ## [1.7.5] — 2026-11-05
 
 ### Reconstrução urbana
