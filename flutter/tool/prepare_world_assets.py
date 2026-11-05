@@ -394,7 +394,7 @@ def build_terrain_glb(output: Path) -> None:
 
             if slope > 0.30 or (abs(cx) > 18 and abs(cz) < 23 and noise > 0.25):
                 material = "rock"
-            elif lane_dist < 1.12 + 0.16 * noise:
+            elif lane_dist < 2.25 + 0.22 * noise:
                 material = "soil"
             elif (
                 river_distance < river_width + 5.5 and noise < 0.75
