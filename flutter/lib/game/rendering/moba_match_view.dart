@@ -417,7 +417,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   List<Widget> _buildVerticalAccess(ArenaVerticalAccess access) {
     final base = ArenaWorldCatalog.heightAt(access.x, access.z) + 0.035;
-    final top = base + access.upperHeight;
+    final top = base + ArenaVerticalAccess.upperHeight;
     final railYaw = vm.Quaternion.axisAngle(
       vm.Vector3(0, 1, 0),
       math.pi / 2,
@@ -430,7 +430,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: vm.Vector3(
           access.rampStartX,
           base,
-          access.z + access.corridorMaxOffset,
+          access.z + ArenaVerticalAccess.corridorMaxOffset,
         ),
         scale: vm.Vector3(2.75, 2.5, 2.9),
       ),
@@ -441,12 +441,12 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: vm.Vector3(
           access.x,
           top,
-          access.z + access.corridorMaxOffset,
+          access.z + ArenaVerticalAccess.corridorMaxOffset,
         ),
         scale: vm.Vector3(
-          access.platformLength,
+          ArenaVerticalAccess.platformLength,
           1,
-          access.platformDepth,
+          ArenaVerticalAccess.platformDepth,
         ),
       ),
       SceneModel(
@@ -456,7 +456,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: vm.Vector3(
           access.x,
           top,
-          access.z + access.corridorMaxOffset,
+          access.z + ArenaVerticalAccess.corridorMaxOffset,
         ),
         scale: vm.Vector3(5.0, 0.35, 0.65),
       ),
@@ -467,7 +467,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: vm.Vector3(
           access.platformEndX,
           top,
-          access.z + access.corridorMaxOffset,
+          access.z + ArenaVerticalAccess.corridorMaxOffset,
         ),
         rotation: railYaw,
         scale: vm.Vector3(2.3, 0.35, 0.65),
@@ -479,7 +479,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         position: vm.Vector3(
           access.x + 0.7,
           top,
-          access.z + access.corridorMinOffset,
+          access.z + ArenaVerticalAccess.corridorMinOffset,
         ),
         scale: vm.Vector3(4.3, 0.35, 0.65),
       ),
