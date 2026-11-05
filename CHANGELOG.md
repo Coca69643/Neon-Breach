@@ -1,5 +1,28 @@
 # Changelog — Projeto Arena
 
+## [1.7.10] — 2026-11-05
+
+### Correções de simulação e navegação
+- Ondas de tropas removem unidades derrotadas antes de verificar o limite de entidades.
+- Movimento do jogador e dash do Kairo validam o percurso em subpassos para impedir atravessar paredes.
+- Bots e tropas podem passar pelas pegadas das torres aliadas sem ocupar o centro das torres inimigas.
+- Tropas e bots usam pontos de aproximação próprios para atacar torres e núcleos.
+- Tropas convergem ao núcleo após abrir uma rota, em vez de permanecerem presas ao alinhamento lateral.
+- Bots e tropas expõem estados de ataque para reproduzir as animações correspondentes.
+- Torres destruídas deixam de aparecer na cena e no minimapa.
+- Corrigida a orientação dos rigs no movimento e o alinhamento das rotas no minimapa.
+
+### Integridade de build
+- CI passa a executar análise e testes também em pull requests.
+- A chave persistente de assinatura só é carregada em builds da branch principal.
+- A publicação ocorre em job separado, após o build verificado, e não substitui uma tag existente.
+- Verificador do APK exige os clips de ataque usados pelos novos modelos de NPC.
+
+### Validação pendente
+- CI da 1.7.10: análise, testes, geração dos assets, build ARM64 e assinatura.
+- Teste visual e funcional no Realme C53.
+- Persistência de partida após encerramento forçado do processo ainda não está implementada; pausa/retomada preserva a simulação apenas enquanto o processo permanece ativo.
+
 ## [1.7.8] — 2026-11-05
 
 ### Correções
