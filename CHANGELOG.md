@@ -20,7 +20,7 @@
 ### Combate e personagens
 - Ataque básico agora solicita os clipes SwordSlash dos rigs, em vez de exibir apenas o pulso visual.
 - Alcance e intervalo de ataque passam a variar por herói.
-- Pipeline de Kairo exige rig masculino e clipes Man_Idle, Man_Walk e Man_SwordSlash.
+- Kairo recebe um GLB masculino distinto (Quaternius Man-fjHyMd5Wxw, CC0), com paleta própria; o pipeline exige Man_Idle, Man_Walk e Man_SwordSlash.
 - Verificador do APK inspeciona o GLB de Kairo dentro do pacote e rejeita clipes femininos.
 
 ### Validação
