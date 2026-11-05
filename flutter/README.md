@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.8 / 69
+- versionName/versionCode: 1.7.10 / 72
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -49,16 +49,16 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
 - Mapa urbano expandido: 180 × 140 unidades, três avenidas, canal central, três travessias, becos e quatro interiores acessíveis.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
-- Colisões de paredes, móveis, torres e limites do mapa; entradas dos edifícios permanecem transitáveis.
+- Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
 - Duas rotas de mezanino com subida gradual, colisão por altura e bloqueio de ataques entre pisos.
 - Coberturas CC0 nas entradas recebem dano; destruí-las remove a colisão e abre a passagem.
 - Reator central capturável/contestável; equipe controladora recebe +12% de dano e recompensa inicial.
-- Espadas CC0 distintas de Lyra, Bastion e Kairo anexadas a Palm.R; bots usam clones de templates compartilhados.
+- Armas CC0 distintas de Lyra, Bastion e Kairo anexadas ao rig; bots, tropas e NPCs usam seis aparências CC0 independentes dos heróis selecionáveis.
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
-- CI: análise estática, testes, build ARM64 e verificação da assinatura.
-- APK 1.7.8+69: targeting e hit confirmation integrados; análise/testes/build ARM64/validação de assets/assinatura dependem do CI atual; escadas, objetivo, armas e desempenho ainda exigem inspeção visual no Realme C53.
+- CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
+- Build 1.7.10+72: correções de navegação, colisão, reciclagem de tropas, rotas até núcleos, orientação e animações de ataque. O CI valida análise, testes, assets, build ARM64 e assinatura; a validação visual e de desempenho sustentado no Realme C53 continua pendente.
 
 ## Comandos
 
@@ -69,6 +69,7 @@ python3 tool/prepare_world_assets.py
 python3 tool/prepare_menu_hub.py
 python3 tool/prepare_hero_assets.py
 python3 tool/prepare_city_assets.py
+python3 tool/prepare_npc_assets.py
 python3 tool/prepare_match_assets.py
 python3 tool/prepare_weapon_assets.py
 python3 tool/prepare_android.py
