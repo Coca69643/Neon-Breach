@@ -39,6 +39,7 @@ void main() {
 
     machine.dispatch(const ManifestValidationCompleted(valid: true));
     expect(machine.snapshot.phase, ArenaPhase.mainMenu);
+    expect(machine.snapshot.selectedHeroId, 'lyra');
   });
 
   test('evento inválido não altera o estado', () {
@@ -46,6 +47,19 @@ void main() {
 
     expect(decision.accepted, isFalse);
     expect(machine.snapshot.phase, ArenaPhase.boot);
+  });
+
+  test('CTA do hub inicia a prévia com o herói atual e pode voltar ao menu', () {
+    reachMainMenu();
+
+    final start = machine.dispatch(const StartRunFromHub());
+    expect(start.accepted, isTrue);
+    expect(machine.snapshot.phase, ArenaPhase.matchLoading);
+    expect(machine.snapshot.selectedHeroId, 'lyra');
+
+    machine.dispatch(const ReturnToMenu());
+    expect(machine.snapshot.phase, ArenaPhase.mainMenu);
+    expect(machine.snapshot.selectedHeroId, 'lyra');
   });
 
   test('abre a seleção com Lyra ativa e permite trocar de herói', () {
@@ -138,7 +152,7 @@ void main() {
     machine.dispatch(const ReturnToMenu());
 
     expect(machine.snapshot.phase, ArenaPhase.mainMenu);
-    expect(machine.snapshot.selectedHeroId, isNull);
+    expect(machine.snapshot.selectedHeroId, 'lyra');
     expect(machine.snapshot.matchOutcome, isNull);
   });
 }
