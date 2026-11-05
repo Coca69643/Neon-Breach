@@ -71,7 +71,7 @@ def fetch(url: str, attempts: int = 4) -> bytes:
 
 
 def git_blob_sha1(payload: bytes) -> str:
-    header = f"blob {len(payload)}\\0".encode("ascii")
+    header = f"blob {len(payload)}\0".encode("ascii")
     return hashlib.sha1(header + payload).hexdigest()
 
 
@@ -87,7 +87,7 @@ def decode_glb(payload: bytes, filename: str) -> tuple[dict, bytes]:
     ):
         raise RuntimeError(f"Invalid GLB 2.0 header: {filename}")
     document = json.loads(
-        payload[20:20 + json_length].decode("utf-8").rstrip(" \\t\\r\\n\\0")
+        payload[20:20 + json_length].decode("utf-8").rstrip(" \t\r\n\0")
     )
     binary_offset = 20 + json_length
     binary_offset += (-binary_offset) % 4
@@ -177,14 +177,14 @@ def main() -> None:
         print(f"Prepared {filename}: {entry['bytes']:,} bytes")
 
     (OUTPUT / "CC0-KENNEY-MINI-CHARACTERS-LICENSE.txt").write_text(
-        "Kenney Mini Characters — CC0 1.0 Universal.\\n"
-        "Source: https://kenney.nl/assets/mini-characters\\n"
+        "Kenney Mini Characters — CC0 1.0 Universal.\n"
+        "Source: https://kenney.nl/assets/mini-characters\n"
         "The models, embedded textures and included animation data are "
-        "released under CC0 1.0 Universal.\\n",
+        "released under CC0 1.0 Universal.\n",
         encoding="utf-8",
     )
     (OUTPUT / "npc-assets-manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
+        json.dumps(manifest, indent=2, ensure_ascii=False) + "\n",
         encoding="utf-8",
     )
     print(f"Prepared {len(ASSETS)} pinned Kenney CC0 NPC GLBs for offline play.")
