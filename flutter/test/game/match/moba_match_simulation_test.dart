@@ -50,6 +50,22 @@ void main() {
       expect(simulation.snapshot.elapsedSeconds, closeTo(1, 0.001));
     });
 
+    test('Bastion spawns on the top avenue and moves clear of the base', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      final start = simulation.snapshot.playerPosition;
+
+      expect(start.x, closeTo(-36.0, 0.6));
+      expect(start.z, -60.0);
+
+      for (var frame = 0; frame < 30; frame++) {
+        simulation.step(1 / 60, moveZ: 1);
+      }
+
+      final end = simulation.snapshot.playerPosition;
+      expect(end.z, greaterThan(start.z + 2.0));
+      expect(ArenaWorldCatalog.isWalkable(end.x, end.z), isTrue);
+    });
+
     test('all three selected heroes can leave their own spawn lane', () {
       for (final hero in MobaHeroId.values) {
         final simulation = MobaMatchSimulation(heroId: hero);
