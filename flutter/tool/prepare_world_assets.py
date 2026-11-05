@@ -10,6 +10,7 @@ from __future__ import annotations
 import base64
 import json
 import math
+from io import BytesIO
 import struct
 import subprocess
 import sys
@@ -182,6 +183,134 @@ def uint_bytes(values: list[int]) -> bytes:
     if sys.byteorder != "little":
         data.byteswap()
     return data.tobytes()
+
+
+def normalize_scene_glb(payload: bytes, source_name: str) -> bytes:
+    """Convert unsupported embedded WebP images to PNG and remove EXT_texture_webp."""
+    from PIL import Image
+
+    if len(payload) < 20:
+        raise RuntimeError(f"GLB is too small to parse: {source_name}")
+    magic, version, declared_length = struct.unpack_from("<4sII", payload, 0)
+    if magic != b"glTF" or version != 2 or declared_length != len(payload):
+        raise RuntimeError(f"Invalid GLB 2.0 source model: {source_name}")
+
+    json_doc: dict | None = None
+    binary = bytearray()
+    offset = 12
+    while offset + 8 <= len(payload):
+        chunk_length, chunk_type = struct.unpack_from("<II", payload, offset)
+        start = offset + 8
+        end = start + chunk_length
+        if end > len(payload):
+            raise RuntimeError(f"Truncated GLB chunk in {source_name}")
+        chunk = payload[start:end]
+        if chunk_type == 0x4E4F534A:
+            json_doc = json.loads(chunk.rstrip(b" \t\r\n\0").decode("utf-8"))
+        elif chunk_type == 0x004E4942:
+            binary = bytearray(chunk)
+        else:
+            raise RuntimeError(f"Unsupported GLB chunk type in {source_name}: {chunk_type}")
+        offset = end
+
+    if json_doc is None:
+        raise RuntimeError(f"GLB JSON chunk missing: {source_name}")
+    buffer_views = json_doc.get("bufferViews", [])
+    images = json_doc.get("images", [])
+    converted = 0
+
+    for image_index, image in enumerate(images):
+        if image.get("mimeType") != "image/webp":
+            continue
+        if "bufferView" not in image:
+            raise RuntimeError(
+                f"WebP image {image_index} in {source_name} is not embedded in a bufferView"
+            )
+        view_index = image["bufferView"]
+        view = buffer_views[view_index]
+        if view.get("buffer", 0) != 0:
+            raise RuntimeError(f"Unsupported external GLB buffer in {source_name}")
+        image_start = view.get("byteOffset", 0)
+        image_end = image_start + view["byteLength"]
+        webp_data = bytes(binary[image_start:image_end])
+        if len(webp_data) != view["byteLength"]:
+            raise RuntimeError(f"Truncated WebP texture in {source_name}")
+
+        with Image.open(BytesIO(webp_data)) as source_image:
+            source_image.load()
+            has_alpha = (
+                "A" in source_image.getbands()
+                or "transparency" in source_image.info
+            )
+            converted_image = source_image.convert("RGBA" if has_alpha else "RGB")
+            png_stream = BytesIO()
+            converted_image.save(
+                png_stream,
+                format="PNG",
+                optimize=True,
+                compress_level=9,
+            )
+            png_data = png_stream.getvalue()
+
+        while len(binary) % 4:
+            binary.append(0)
+        new_view_index = len(buffer_views)
+        new_offset = len(binary)
+        binary.extend(png_data)
+        buffer_views.append({
+            "buffer": 0,
+            "byteOffset": new_offset,
+            "byteLength": len(png_data),
+        })
+        image["bufferView"] = new_view_index
+        image["mimeType"] = "image/png"
+        converted += 1
+
+    for texture in json_doc.get("textures", []):
+        extensions = texture.get("extensions", {})
+        webp_extension = extensions.pop("EXT_texture_webp", None)
+        if webp_extension is not None:
+            texture.setdefault("source", webp_extension["source"])
+        if not extensions:
+            texture.pop("extensions", None)
+
+    for extension_field in ("extensionsUsed", "extensionsRequired"):
+        extensions = json_doc.get(extension_field, [])
+        extensions = [name for name in extensions if name != "EXT_texture_webp"]
+        if extensions:
+            json_doc[extension_field] = extensions
+        else:
+            json_doc.pop(extension_field, None)
+
+    if any(image.get("mimeType") == "image/webp" for image in images):
+        raise RuntimeError(f"WebP texture remained after conversion: {source_name}")
+    if any(
+        "EXT_texture_webp" in texture.get("extensions", {})
+        for texture in json_doc.get("textures", [])
+    ):
+        raise RuntimeError(f"EXT_texture_webp remained in {source_name}")
+
+    if json_doc.get("buffers"):
+        json_doc["buffers"][0]["byteLength"] = len(binary)
+
+    json_chunk = json.dumps(
+        json_doc, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    json_chunk += b" " * ((-len(json_chunk)) % 4)
+    while len(binary) % 4:
+        binary.append(0)
+
+    total_length = 12 + 8 + len(json_chunk) + 8 + len(binary)
+    normalized = (
+        struct.pack("<4sII", b"glTF", 2, total_length)
+        + struct.pack("<II", len(json_chunk), 0x4E4F534A)
+        + json_chunk
+        + struct.pack("<II", len(binary), 0x004E4942)
+        + bytes(binary)
+    )
+    if converted:
+        print(f"Converted {converted} WebP texture(s) to PNG in {source_name}.")
+    return normalized
 
 
 def build_terrain_glb(output: Path) -> None:
@@ -536,10 +665,11 @@ def main() -> None:
         payload = base64.b64decode(encoded, validate=True)
         if len(payload) < 20:
             raise RuntimeError(f"Decoded model is unexpectedly small: {source_name}")
-        magic, version, declared_length = struct.unpack_from("<4sII", payload, 0)
-        if magic != b"glTF" or version != 2 or declared_length != len(payload):
-            raise RuntimeError(f"Invalid GLB 2.0 source model: {source_name}")
-        (output_nature / f"{output_name}.glb").write_bytes(payload)
+        normalized_payload = normalize_scene_glb(payload, source_name)
+        magic, version, declared_length = struct.unpack_from("<4sII", normalized_payload, 0)
+        if magic != b"glTF" or version != 2 or declared_length != len(normalized_payload):
+            raise RuntimeError(f"Normalized GLB validation failed: {source_name}")
+        (output_nature / f"{output_name}.glb").write_bytes(normalized_payload)
 
     # Reuse the project's deterministic, tileable CC0-compatible terrain-map baker.
     subprocess.run(
