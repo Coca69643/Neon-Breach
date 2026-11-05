@@ -31,6 +31,25 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('minion waves keep four readable formation slots per lane', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+
+      advanceFor(simulation, 0.8);
+
+      final topLane = simulation.snapshot.minions
+          .where((unit) =>
+              unit.team == MobaTeam.blue && unit.lane == MobaLane.top)
+          .toList()
+        ..sort((a, b) => a.id.compareTo(b.id));
+      expect(topLane, hasLength(4));
+      final xPositions = topLane.map((unit) => unit.position.x).toList();
+      expect(
+        xPositions.last - xPositions.first,
+        greaterThan(2.0),
+        reason: 'troops must not collapse into one straight centreline',
+      );
+    });
+
     test('core stays protected until one complete lane loses all towers', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
