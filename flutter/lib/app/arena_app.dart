@@ -23,6 +23,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     super.initState();
     _machine = ArenaStateMachine();
     WidgetsBinding.instance.addObserver(this);
+    SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
     _bootstrap();
   }
 
@@ -67,6 +68,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
         state == AppLifecycleState.detached) {
       _machine.dispatch(const AppSuspended());
     } else if (state == AppLifecycleState.resumed) {
+      SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
       _machine.dispatch(const AppResumed());
     }
   }
