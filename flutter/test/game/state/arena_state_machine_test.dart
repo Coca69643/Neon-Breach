@@ -62,6 +62,19 @@ void main() {
     expect(machine.snapshot.selectedHeroId, 'lyra');
   });
 
+  test('preserva o herói escolhido ao sair e reabrir o seletor', () {
+    reachMainMenu();
+    machine.dispatch(const OpenHeroSelection());
+    machine.dispatch(const SelectHero('bastion'));
+    machine.dispatch(const ReturnToMenu());
+
+    expect(machine.snapshot.phase, ArenaPhase.mainMenu);
+    expect(machine.snapshot.selectedHeroId, 'bastion');
+
+    machine.dispatch(const OpenHeroSelection());
+    expect(machine.snapshot.selectedHeroId, 'bastion');
+  });
+
   test('abre a seleção com Lyra ativa e permite trocar de herói', () {
     reachMainMenu();
     machine.dispatch(const OpenHeroSelection());
