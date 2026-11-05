@@ -73,6 +73,7 @@ class MobaBotSnapshot {
     required this.id,
     required this.team,
     required this.lane,
+    required this.heroId,
     required this.position,
     required this.health,
     required this.maxHealth,
@@ -82,6 +83,7 @@ class MobaBotSnapshot {
   final String id;
   final MobaTeam team;
   final MobaLane lane;
+  final MobaHeroId heroId;
   final MobaPoint position;
   final double health;
   final double maxHealth;
@@ -118,6 +120,7 @@ class MobaMatchSnapshot {
     required this.xpForNextLevel,
     required this.playerGold,
     required this.playerSkillCooldown,
+    required this.playerRespawnSeconds,
     required this.blueTeamKills,
     required this.redTeamKills,
     required this.blueCoreHealth,
@@ -144,6 +147,7 @@ class MobaMatchSnapshot {
   final double xpForNextLevel;
   final double playerGold;
   final double playerSkillCooldown;
+  final double playerRespawnSeconds;
   final int blueTeamKills;
   final int redTeamKills;
   final double blueCoreHealth;
@@ -190,6 +194,7 @@ class _Bot {
     required this.team,
     required this.lane,
     required this.role,
+    required this.heroId,
     required this.position,
   });
 
@@ -197,6 +202,7 @@ class _Bot {
   final MobaTeam team;
   final MobaLane lane;
   final int role;
+  final MobaHeroId heroId;
   MobaPoint position;
   double health = 420.0;
   double attackCooldown = 0.4;
@@ -278,6 +284,14 @@ class MobaMatchSimulation {
   double get elapsedSeconds => _elapsed;
   MobaTeam? get winner => _winner;
 
+  MobaHeroId _heroForRole(int role) => switch (role) {
+        0 => MobaHeroId.bastion,
+        1 => MobaHeroId.kairo,
+        2 => MobaHeroId.lyra,
+        3 => MobaHeroId.lyra,
+        _ => MobaHeroId.bastion,
+      };
+
   void _reset() {
     _minions.clear();
     _bots.clear();
@@ -329,7 +343,7 @@ class MobaMatchSimulation {
     ];
     final occupiedRole = switch (heroId) {
       MobaHeroId.bastion => 0,
-      MobaHeroId.kairo => 1,
+      MobaHeroId.kairo => 2,
       MobaHeroId.lyra => 3,
     };
 
@@ -343,6 +357,7 @@ class MobaMatchSimulation {
           team: MobaTeam.blue,
           lane: lane,
           role: role,
+          heroId: _heroForRole(role),
           position: MobaPoint(_laneX(lane, -24), -24 + allyIndex * 0.55),
         ),
       );
@@ -357,6 +372,7 @@ class MobaMatchSimulation {
           team: MobaTeam.red,
           lane: lane,
           role: role,
+          heroId: _heroForRole(role),
           position: MobaPoint(
             _laneX(lane, 24),
             24 - role * 0.45,
@@ -559,7 +575,10 @@ class MobaMatchSimulation {
     required int group,
     double stagger = 0,
   }) {
-    if (_minions.length >= maxMinions) return;
+    // Recycle defeated slots. The match keeps a fixed live-entity budget,
+    // rather than exhausting the first 48 object instances over time.
+    _minions.removeWhere((unit) => !unit.alive);
+    if (_minions.length + 4 > maxMinions) return;
     final z = team.homeZ + team.forward * (group.isEven ? 0 : 1.3);
     for (var slot = 0; slot < 4; slot++) {
       if (_minions.length >= maxMinions) break;
@@ -1005,6 +1024,7 @@ class MobaMatchSimulation {
             id: bot.id,
             team: bot.team,
             lane: bot.lane,
+            heroId: bot.heroId,
             position: bot.position,
             health: bot.health,
             maxHealth: _Bot.maxHealth,
@@ -1037,6 +1057,7 @@ class MobaMatchSimulation {
       xpForNextLevel: currentThreshold,
       playerGold: _playerGold,
       playerSkillCooldown: _playerSkillCooldown,
+      playerRespawnSeconds: _playerRespawn,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
       redTeamKills: _teamKills[MobaTeam.red.index].toInt(),
       blueCoreHealth: _coreHealth[MobaTeam.blue.index],
