@@ -16,9 +16,13 @@ ALLOWED_CLIPS = {
     "HumanArmature|Female_Idle",
     "HumanArmature|Female_Walk",
     "HumanArmature|Female_Run",
+    "HumanArmature|Female_SwordSlash",
+    "HumanArmature|Female_Punch",
     "HumanArmature|Man_Idle",
     "HumanArmature|Man_Walk",
     "HumanArmature|Man_Run",
+    "HumanArmature|Man_SwordSlash",
+    "HumanArmature|Man_Punch",
 }
 
 KAIRO_PALETTE = {
@@ -92,7 +96,9 @@ def prepare_model(source: Path, destination: Path, *, kairo: bool = False) -> st
     present = {animation.get("name") for animation in filtered}
     missing = required - present
     if missing:
-        raise RuntimeError(f"{source.name} is missing locomotion clips: {sorted(missing)}")
+        raise RuntimeError(f"{source.name} is missing required locomotion/combat clips: {sorted(missing)}")
+    if kairo and any(name.startswith("HumanArmature|Female_") for name in present):
+        raise RuntimeError("Kairo source must be a male-rig model, not the female Kairo GLB from the legacy branch.")
 
     document["animations"] = filtered
     if kairo:
