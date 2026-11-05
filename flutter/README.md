@@ -24,9 +24,9 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Máquina de estados de aplicação em Dart: implementada.
 - Validação do manifesto offline: implementada.
 - Dependência Flutter Scene: fixada.
-- Build hook de assets: próximo passo de configuração.
-- Host Android e ativação Flutter GPU: etapa de integração.
-- Cena de teste e modelos de produção: ainda não validados em dispositivo.
+- Build hook de assets: implementado.
+- Script reproduzível do host Android, Flutter GPU e landscape: implementado.
+- Bootstrap dos recursos estáticos Flutter Scene: implementado; cena e modelos de produção ainda não validados em dispositivo.
 - APK: ainda não gerada.
 
 ## Comandos de validação
