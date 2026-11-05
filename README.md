@@ -1,8 +1,12 @@
 # Projeto Arena
 
-MOBA 3D nativo para Android, com partidas 5v5 offline contra IA. Inclui três rotas, selva, acampamentos neutros, torres, objetivos, progressão e seleção de heróis. Desenvolvido com Kotlin, Filament e C++20; orientação landscape, sem WebView e sem conexão de rede durante o jogo.
+MOBA 3D mobile para Android, com arquitetura Flutter + Flutter Scene. Aplicativo offline, orientação landscape e renderização 3D integrada ao Flutter GPU / Impeller.
 
 ## Log de atualizações
+
+- **1.7.2 (64) — migração Flutter Scene:** runtime 3D migrado para Flutter; máquina de estados Dart; preview 3D de Lyra, Bastion e Kairo; hub 3D e sub-telas reorganizadas; Vale das Coroas reconstruído com footprint retangular orgânico, três rotas, rio em S e três pontes. APK ARM64 assinado e validado no CI; teste físico ainda pendente.
+
+## Histórico legado
 
 - **0.16.0 (build de teste)** — Personagens CC0 e NPCs com 3 corpos, animações próprias e paletas por material; terreno PBR, vegetação e iluminação ambiental.
 - **0.15.12** — Corrigida a orientação dos três heróis e aplicadas paletas de materiais individuais.
@@ -14,3 +18,4 @@ MOBA 3D nativo para Android, com partidas 5v5 offline contra IA. Inclui três ro
 - **0.15.5** — Primeiro modelo 3D autoral da Lyra.
 - **0.15.4** — Ajustes de câmera, seleção de heróis e leitura do cenário.
 - **0.15.0** — Reconstrução do mapa, relevo, funções dos personagens e HUB.
+
