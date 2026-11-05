@@ -1,79 +1,62 @@
-# Projeto Arena — arquitetura Flutter / runtime próprio
+# Projeto Arena — arquitetura Flutter Scene
 
 ## Decisão técnica
 
-Flutter é a camada de aplicação, não uma engine de jogo. O projeto não usa Godot, Unity, Unreal, Flame, Filament ou outra engine.
+**Flutter + Flutter Scene** será a stack de aplicação e 3D do Projeto Arena. Flutter Scene é um runtime 3D integrado ao ecossistema Flutter, construído sobre Flutter GPU e Impeller. Não usaremos runtime C++ próprio, OpenGL ES manual, Filament, Godot, Unity, Unreal ou Flame.
 
-- **Flutter/Dart:** inicialização, menus, HUD, input de toque, configurações, ciclo de vida e máquina de estados da aplicação.
-- **C++20 + Android NDK:** runtime 3D próprio, simulação de alta frequência, física, animação, IA dos bots/minions e gerenciamento de recursos.
-- **OpenGL ES:** renderização nativa no Android, com detecção de capacidades do dispositivo.
-- **Dart FFI:** comandos e leitura de snapshots em lotes; não haverá uma chamada FFI por entidade ou por frame.
-- **Flutter Texture / plugin Android:** apresentação no Flutter da superfície produzida pelo renderizador nativo. FFI isoladamente não registra uma textura de plataforma.
+- **Flutter/Dart:** aplicação Android, menus, HUD, input de toque, configurações, ciclo de vida e máquina de estados.
+- **Flutter Scene:** scene graph, renderização 3D, modelos glTF/GLB, materiais, câmera, animação esquelética, partículas e recursos de cena.
+- **Dart:** FSM de bots/minions, regras de partida, navegação de alto nível e orquestração do gameplay.
+- **Asset pipeline Flutter Scene:** conversão dos modelos e materiais incluídos no APK para recursos pré-processados.
+
+Versão fixada: flutter_scene 0.24.3. Requer Flutter 3.47 stable ou superior e Dart 3.10 ou superior. O pacote está em versão 0.x; atualizações serão explícitas e protegidas por CI.
+
+## Política gráfica mobile
+
+O Projeto Arena não usará sombras dinâmicas. A iluminação visual será construída com materiais PBR e mapas de ambiente controlados, cores de vértice, texturas, materiais emissivos e iluminação baked nos próprios assets quando necessário.
+
+Não adicionar luzes com shadow casting, cascatas de sombra ou mapas de sombra em runtime. Ausência de sombras não significa remover iluminação, volume, contraste, materiais ou profundidade.
+
+Metas de produção:
+- 30 FPS sustentados como piso no Realme C53.
+- Perfil gráfico adaptativo para dispositivos mais fracos.
+- Orçamento de draw calls, materiais, texturas e entidades por tela.
+- LOD, frustum culling, instancing e atlas de materiais onde o conteúdo permitir.
+- Limitar transparências e partículas sobrepostas.
+- Medir memória GPU, temperatura e estabilidade em sessões longas.
+
+A cena de teste técnica não representa a direção artística final. A arte de produção usará modelos orgânicos, silhuetas legíveis, rigs e animações próprias, não formas primitivas como substitutos de personagens ou cenário.
 
 ## Máquina de estados
 
-A primeira implementação está em `lib/game/state/arena_state_machine.dart`.
+A implementação principal está em lib/game/state/arena_state_machine.dart.
 
-Fluxo principal:
+Fluxo: BOOT → ASSET_VALIDATION → MAIN_MENU → HERO_SELECTION → MATCH_LOADING → IN_MATCH.
 
-`BOOT → ASSET_VALIDATION → MAIN_MENU → HERO_SELECTION → MATCH_LOADING → IN_MATCH`
+Estados laterais: PAUSED, MATCH_RESULT e RECOVERABLE_ERROR.
 
-Estados laterais:
+Regras: a interface envia eventos; transições inválidas são rejeitadas; seleção de herói precisa ser válida; pausa manual não é removida automaticamente pelo lifecycle; recuperação preserva o estágio que precisa ser repetido.
 
-- `PAUSED`: pausa manual ou interrupção do ciclo de vida Android.
-- `MATCH_RESULT`: resultado formal da partida.
-- `RECOVERABLE_ERROR`: falha com estado-alvo explícito para recuperação.
+A IA dos bots e minions será implementada em Dart com FSMs determinísticas, desacopladas do scene graph. A lógica de decisão não deve depender de animações ou widgets.
 
-Regras:
-1. A interface envia eventos; não altera o estado diretamente.
-2. Transições inválidas são rejeitadas e não notificam a UI.
-3. Uma seleção de herói precisa ser válida antes de iniciar o carregamento.
-4. Pausa manual não é removida automaticamente quando o app volta ao primeiro plano.
-5. A recuperação preserva o estágio que precisa ser repetido.
-6. Os testes unitários verificam o fluxo e os invariantes sem depender de renderização.
+## Integração Flutter Scene
 
-A máquina de estados da aplicação não substitui a IA dos personagens. O primeiro núcleo determinístico de agentes já está em `native/arena_runtime/`: bots e minions possuem transições distintas para patrulha, aquisição, aproximação, ataque, recuo e estado terminal. Detecção real de alvos, navegação e execução de ações ainda serão conectadas ao runtime.
+1. Habilitar Flutter GPU no AndroidManifest com io.flutter.embedding.android.EnableFlutterGPU=true.
+2. Aguardar Scene.initializeStaticResources() antes de criar materiais e geometria que dependam desses recursos.
+3. Pré-processar modelos e materiais incluídos no APK pelo build hook.
+4. Reservar importação GLB em runtime para conteúdo dinâmico; assets embarcados usam o pipeline de build.
+5. Descartar cenas explicitamente para liberar render targets e texturas.
+6. Não liberar uma partida se os assets necessários falharem na validação.
 
-## Renderizador nativo — próxima integração
+## Identidade Android
 
-A integração proposta será um plugin Android estreito, sem engine:
+Preservar applicationId com.duckdream.projectarena, minSdk 23 e usar versionCode maior que 59 na próxima APK instalável. A versão do pacote Flutter permanece 0.17.0+60 nesta fundação.
 
-1. Criar e controlar o contexto EGL/OpenGL ES no lado nativo.
-2. Expor a saída através do registro de texturas de plataforma do Flutter.
-3. Usar FFI para comandos de alto nível, input agregado e snapshots.
-4. Manter simulação e render loop fora do isolate de UI.
-5. Recriar recursos de GPU quando a superfície ou o contexto forem perdidos.
-6. Validar suporte real do dispositivo antes de exigir recursos específicos de OpenGL ES.
+## Critérios de aceite
 
-O loader glTF/GLB será um módulo independente com validação explícita de buffers, imagens, materiais, skins e canais de animação. Bibliotecas de parsing poderão ser consideradas isoladamente, após revisão de licença; isso não autoriza incluir uma engine.
-
-## Escopo da fundação 0.1
-
-Implementado nesta etapa:
-- pacote Flutter isolado em `flutter/`;
-- orientação landscape;
-- manifesto local e validação do contrato de conteúdo;
-- máquina de estados da aplicação;
-- seleção lógica dos três heróis existentes;
-- testes automatizados de transição, pausa, retomada e recuperação.
-
-Ainda não implementado:
-- host Android Flutter definitivo;
-- plugin de textura/OpenGL ES;
-- renderizador 3D, loader GLB, animação ou física;
-- HUD de combate, rede ou simulação de partida.
-
-A validação atual do manifesto **não** afirma que modelos GLB ou texturas já foram auditados. A etapa de assets 3D terá verificações próprias antes de qualquer partida ser liberada.
-
-## Identidade Android e continuidade de instalação
-
-O host Flutter futuro deve preservar `applicationId: com.duckdream.projectarena` para manter a identidade do aplicativo. A `main` atual registra `versionName 0.16.0`, `versionCode 59` e `minSdk 23`; portanto, a próxima APK de atualização deve usar `versionCode` maior que 59 e manter `minSdk 23` salvo decisão explícita. A versão de publicação ainda não foi atribuída nesta fundação.
-
-## Critérios para avançar
-
-Uma etapa só será considerada concluída depois de:
-- análise estática e testes automatizados aprovados;
-- lifecycle Android testado sem perder o estado;
-- teste de superfície/contexto OpenGL em dispositivo real;
-- teste prolongado de temperatura e estabilidade no Realme C53;
-- APK instalado e executado no dispositivo, não apenas compilado.
+- flutter analyze e flutter test aprovados.
+- Build Android release com Flutter GPU habilitado.
+- Cena de teste renderizada em dispositivo Android real.
+- GLB de personagem com rig e animações validado em runtime.
+- FPS, memória e temperatura medidos no Realme C53.
+- APK instalada e executada no dispositivo; compilação isolada não é aceite final.
