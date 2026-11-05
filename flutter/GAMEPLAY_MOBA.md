@@ -56,7 +56,7 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 
 - Flutter/Dart mantém interface, estado da partida e simulação determinística.
 - Flutter Scene renderiza terreno, personagens, tropas, estruturas e efeitos 3D.
-- Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho.
+- Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho. Unidades derrotadas são removidas antes de verificar o limite de 48 tropas, permitindo novas ondas ao longo da partida.
 - Renderização e simulação são separadas: um frame perdido não altera a velocidade lógica da partida.
 - A câmera de combate é traseira e baixa; o arrasto na zona central/direita altera yaw/pitch e o joystick esquerdo altera apenas movimento. A visão estratégica fica no minimapa.
 - Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
@@ -75,6 +75,8 @@ Implementado no branch atual:
 - Seleção manual de alvo por botão touch, com HUD contextual e barra de vida.
 - Marcador de acerto separado da animação de swing; só confirma quando o dano foi aplicado.
 - Quatro interiores com piso, paredes, portas, mobiliário e colisões; três avenidas e três travessias do canal.
+- Seis modelos CC0 com rigs e animações compartilhados por bots, tropas e NPCs, sem reutilizar a aparência dos três heróis selecionáveis.
+- Bots e tropas usam colisão de cenário e pontos de aproximação de estruturas; a pegada das torres não bloqueia o trânsito das unidades de rota.
 - Pipeline verifica o rig masculino de Kairo e os clipes de ataque no GLB empacotado.
 
 Ainda pendente:
@@ -87,19 +89,23 @@ Ainda pendente:
 
 Não anunciar gameplay completo enquanto combate, equipamentos, progressão de itens e validação física não estiverem concluídos.
 
-## Arena, câmera, verticalidade e objetivo — revisão 1.7.7
+## Arena, câmera, verticalidade e objetivo — revisão 1.7.10
 
 - Footprint 180 × 140, terreno urbano sem rodapé de penhasco.
 - Três avenidas em x ≈ -36 / 0 / +36 e z ≈ -70…+70.
 - Quatro interiores com portas, paredes e mobiliário; dois recebem mezaninos com escadas transitáveis. Sem camps ou mecânicas de coleta.
 - Coberturas de entrada são destrutíveis; reator central no cruzamento médio concede bônus de dano por controle territorial.
-- O canal bloqueia movimento fora das três travessias; torres, paredes, mobiliário e limites do mapa têm colisão.
+- O canal bloqueia movimento fora das três travessias; torres, paredes, mobiliário e limites do mapa têm colisão para o jogador. Bots e tropas ignoram apenas a pegada das torres para acessar pontos de ataque fora das estruturas.
+- O movimento do jogador valida o percurso em subpassos; o dash interrompe ao atingir um obstáculo, sem atravessar paredes.
+- O minimapa usa as mesmas posições das três rotas e a linha central do canal do catálogo do mundo.
 - Câmera de ação traseira com follow distance 9.4, look-ahead 3.0, pitch 0.34 rad e FOV 49°. O arrasto central/direito controla a câmera; joystick esquerdo controla movimento.
 
-## Targeting e feedback de combate — revisão 1.7.7
+## Targeting e feedback de combate — revisão 1.7.10
 
 - Botão ALVO percorre heróis e tropas inimigas dentro de 24 unidades, priorizando a menor distância.
 - O HUD mostra nome, classe e vida do alvo selecionado e some quando ele morre ou sai do alcance de seleção.
 - Ataque sem contato mantém o feedback de swing, mas não dispara confirmação de impacto.
 - Dano real em heróis, tropas, coberturas, torres e núcleo ativa um marcador breve de acerto.
 - A seleção manual complementa o auto-target atual; não substitui a lógica contextual de torres e estruturas.
+- Ataques dos bots e minions têm uma janela temporal própria para que o renderer toque clips de golpe em vez de alternar apenas entre Idle e Walk.
+- O processo de pausa/retomada conserva o estado em memória. Savegame que sobreviva ao encerramento forçado do aplicativo ainda não está implementado.
