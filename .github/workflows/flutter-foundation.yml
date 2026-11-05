@@ -56,6 +56,8 @@ jobs:
         run: python3 tool/prepare_city_assets.py
       - name: Prepare offline MOBA character and structure assets
         run: python3 tool/prepare_match_assets.py
+      - name: Prepare pinned Quaternius CC0 hero weapons
+        run: python3 tool/prepare_weapon_assets.py
       - name: Load persistent Project Arena signing key
         if: github.event_name != 'pull_request'
         env:
