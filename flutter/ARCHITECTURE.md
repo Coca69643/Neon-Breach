@@ -47,9 +47,11 @@ O menu principal usa SceneView.declarative em tela cheia, com o terreno contínu
 
 A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra/Kairo e Man_Idle para Bastion. A inicialização estática acontece no bootstrap antes da validação do manifesto e de qualquer SceneView; falhas entram na recuperação e podem ser tentadas novamente. A seleção troca o GLB sem reconstruir a aplicação. Isso ainda precisa de validação em dispositivo.
 
-O mapa Vale das Coroas foi reconstruído como uma arena MOBA de arena larga de contorno retangular orgânico, com cantos mais definidos (superellipse), proporção 88:58 e câmera mais alta, não como a antiga ilha oval. O terreno agora tem três rotas curvas, rio diagonal em S, três pontes, bases opostas e clareiras de selva, com GLB gerado offline e mapas albedo/normal de grama, musgo, solo e rocha. Quatro modelos de vegetação Quaternius CC0 são decodificados do conteúdo já versionado, sem baixar nada durante a partida. SceneModel monta as árvores e arbustos a partir de fontes repetidas, compartilhando geometria/texturas cacheadas pelo runtime. O pixel ratio da prévia é 0.9 e o ritmo é limitado a 30 FPS; estes são limites de configuração, não resultados medidos no Realme C53.
+O mapa Vale das Coroas foi ampliado para 120 × 84 unidades e usa um super-retângulo orgânico de expoente 5.2, em vez do footprint oval anterior. O terreno tem três rotas longitudinais, rio diagonal em S, três pontes, bases opostas, quatro acessos laterais abertos e pátios percorríveis. Não há acampamentos neutros nem loop de coleta. A malha GLB é gerada offline com mapas de grama, musgo, solo, rocha, margens e água; 30 árvores e 12 arbustos CC0 são posicionados no perímetro, deixando os acessos laterais livres. SceneModel reutiliza recursos cacheados.
 
-MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY. Não é uma partida: navegação, unidades, bots, objetivos, HUD e combate ainda não foram migrados para Flutter Scene.
+A navegação do jogador usa o mesmo catálogo geométrico do terreno: respeita os limites do mapa, bloqueia o canal fora das três pontes e considera colisões de troncos e footprints das torres. A altura de navegação sobre pontes é calculada pela elevação do deck, mantendo heróis, bots e minions no nível visual correto.
+
+MATCH_LOADING cria uma sessão da simulação MOBA e abre MobaMatchView: terreno, herói, bots, minions, torres, bases, HUD touch e minimapa. A câmera é uma perspectiva de ação baixa e traseira, suavizada e orientada pela direção de movimento; a câmera não tenta mostrar o mapa inteiro durante o combate. O minimapa preserva a leitura macro das três rotas. O teto de renderização é 30 FPS, mas FPS sustentado, temperatura, enquadramento e resposta de toque ainda precisam de teste no Realme C53.
 
 
 1. Habilitar Flutter GPU no AndroidManifest com io.flutter.embedding.android.EnableFlutterGPU=true.
@@ -62,7 +64,7 @@ MATCH_LOADING apresenta somente uma prévia ambiental rotulada como SEM GAMEPLAY
 
 ## Identidade Android
 
-Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 63 na próxima APK instalável. Esta fundação usa 1.7.2+64 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
+Preservar applicationId com.duckdream.projectarena e usar versionCode maior que 65 na próxima APK instalável. Esta fundação usa 1.7.4+66 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
 
 ## Critérios de aceite
 
