@@ -23,8 +23,8 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Campo 120 × 84 unidades, três lanes, quatro side approaches e três pontes.
 - Navegação usa footprint super-retangular, river-blocking fora dos bridges, colisões de árvore e torre.
 - Câmera de ação traseira: altura 8.8, follow 13.5, look-ahead 5.2, FOV vertical 52°, suavização exponencial.
-- Câmera de combate 3/4: follow distance ~24.5, altura ~15.5, look-ahead ~4.2, vertical FOV 44°.
-- Escalas de leitura: herói 0.68, bots 0.59, minions 0.39–0.42.
+- Câmera de ação traseira: altura 8.8, follow distance 13.5, look-ahead 5.2, FOV vertical 52°, suavização e controles relativos à câmera.
+- Escalas de leitura: herói 0.82, bots 0.68, minions 0.45–0.48.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
 ## Identidade e assinatura Android
@@ -47,12 +47,14 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Mapa do Vale das Coroas reconstruído: footprint retangular orgânico, três rotas curvas, rio diagonal em S, três pontes, bases opostas e clareiras de selva.
-- Pipeline offline do terreno GLB texturizado e quatro modelos CC0 de vegetação.
-- Prévia do mundo em MATCH_LOADING: integrada como visualização, explicitamente sem gameplay.
+- Mapa do Vale das Coroas expandido: 120 × 84 unidades, super-retângulo orgânico, três rotas, rio em S, três pontes e quatro acessos laterais percorríveis.
+- Pipeline offline do terreno GLB texturizado, 30 árvores e 12 arbustos CC0.
+- Colisões de margem, rio, pontes, árvores e torres; o piso da ponte usa a altura do deck.
+- MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
+- Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, build ARM64 e verificação da assinatura.
-- APK 1.7.2+64: build ARM64 assinado e validado no CI; validação visual, FPS sustentado, temperatura e atualização sobre a instalação anterior exigem teste no aparelho.
+- APK 1.7.4+66: build ARM64 assinado e validado no CI; validação visual, FPS sustentado, temperatura e resposta de toque ainda exigem teste no aparelho.
 
 ## Comandos
 
