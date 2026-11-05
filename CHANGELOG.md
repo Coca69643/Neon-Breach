@@ -1,6 +1,22 @@
 # Changelog — Projeto Arena
 
+## [1.7.3] — 2026-11-05
+
+### Câmera e leitura de combate
+- Câmera de acompanhamento reposicionada de aproximadamente 67 para 31 unidades do alvo.
+- Ângulo vertical reduzido de aproximadamente 37° para 27°.
+- FOV vertical ajustado para 44°.
+- Escala do herói aumentada de 0.48 para 0.68.
+- Escala dos bots aumentada de 0.43 para 0.59.
+- Escala dos minions aumentada de 0.31–0.33 para 0.39–0.42.
+- Objetivo: deixar o herói legível em primeiro plano sem remover a leitura estratégica das três rotas no minimapa.
+
+### Validação
+- A revisão de câmera foi enviada ao CI para análise, testes, build ARM64 e verificação de assinatura.
+- Captura visual, FPS sustentado e temperatura no Realme C53 ainda precisam de validação física.
+
 ## [1.7.2] — 2026-11-05
+
 
 ### Plataforma e runtime
 - Migração do runtime de aplicação para Flutter 3.47 / Dart 3.10.
@@ -390,4 +406,5 @@
 - Câmera em perspectiva próxima ao herói, follow camera, menu imersivo e HUD compacto.
 - Campo retangular com rotas de captura, IA de bots baseada em waypoints, habilidades de suporte/impulso/escudo.
 - Assinatura persistente e build 0.6.0 verificada (run #177).
+
 
