@@ -815,8 +815,6 @@ class MobaMatchSimulation {
     double dz, {
     bool allowAxisSlide = true,
   }) {
-    final startX = _playerPosition.x;
-    final startZ = _playerPosition.z;
     final distance = math.sqrt(dx * dx + dz * dz);
     if (distance <= 1e-6) return;
 
