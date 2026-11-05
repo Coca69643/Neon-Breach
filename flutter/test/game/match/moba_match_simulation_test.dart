@@ -20,6 +20,8 @@ void main() {
       expect(state.blueMinions, 12);
       expect(state.redMinions, 12);
       expect(state.towers, hasLength(18));
+      expect(state.covers, hasLength(2));
+      expect(state.covers.every((cover) => cover.health > 0), isTrue);
       expect(state.blueTowersAlive, 9);
       expect(state.redTowersAlive, 9);
       expect(state.playerLevel, 1);
@@ -94,6 +96,44 @@ void main() {
         );
         expect(ArenaWorldCatalog.isWalkable(end.x, end.z), isTrue);
       }
+    });
+
+    test('construction cover blocks a doorway until destroyed', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: const MobaPoint(-63, -38.7),
+      );
+      final cover = simulation.snapshot.covers.firstWhere(
+        (item) => item.id == 'west_south_door_barrier',
+      );
+
+      for (var frame = 0; frame < 60; frame++) {
+        simulation.step(1 / 60, moveZ: -1);
+      }
+      expect(
+        simulation.snapshot.playerPosition.z,
+        greaterThan(cover.position.z - 1.45),
+        reason: 'the live barricade must block the doorway',
+      );
+
+      for (var hit = 0; hit < 4; hit++) {
+        simulation.step(1 / 30, basicAttack: true);
+        if (hit < 3) advanceFor(simulation, 0.82);
+      }
+      final destroyed = simulation.snapshot.covers.firstWhere(
+        (item) => item.id == cover.id,
+      );
+      expect(destroyed.health, 0);
+      expect(destroyed.isDestroyed, isTrue);
+
+      for (var frame = 0; frame < 60; frame++) {
+        simulation.step(1 / 60, moveZ: -1);
+      }
+      expect(
+        simulation.snapshot.playerPosition.z,
+        lessThan(cover.position.z - 1.8),
+        reason: 'destroying the cover must open the entrance',
+      );
     });
 
     test('basic attack has visible feedback even with no target in range', () {
