@@ -54,6 +54,9 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 - Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho.
 - Renderização e simulação são separadas: um frame perdido não altera a velocidade lógica da partida.
 - Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
+- Câmera de combate usa perspectiva 3/4, acompanhando o jogador por trás e um pouco acima; não usar enquadramento de mapa inteiro durante a luta.
+- Configuração inicial: altura 15.5, follow distance 24.5, look-ahead 4.2 e FOV vertical 44° (valores em espaço de cena; adaptar para tela compacta).
+- Escalas de renderização: herói 0.68, bots 0.59 e minions 0.39–0.42; validar proporção relativa às estruturas no aparelho.
 
 ## Estado desta implementação
 
