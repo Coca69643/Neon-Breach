@@ -4,6 +4,7 @@ MOBA 3D mobile para Android, com arquitetura Flutter + Flutter Scene. Aplicativo
 
 ## Log de atualizações
 
+- **1.7.3 (65) — câmera de combate:** enquadramento 3/4 mais baixo e próximo do herói; escala ampliada do personagem jogável, bots e minions para leitura em tela mobile. Build ARM64 submetido ao CI; validação visual e FPS no Realme C53 pendentes.
 - **1.7.2 (64) — migração Flutter Scene:** runtime 3D migrado para Flutter; máquina de estados Dart; preview 3D de Lyra, Bastion e Kairo; hub 3D e sub-telas reorganizadas; Vale das Coroas reconstruído com footprint retangular orgânico, três rotas, rio em S e três pontes. APK ARM64 assinado e validado no CI; teste físico ainda pendente.
 
 ## Histórico legado
