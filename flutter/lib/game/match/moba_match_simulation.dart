@@ -1143,6 +1143,7 @@ class MobaMatchSimulation {
       if (!ArenaWorldCatalog.isWalkable(
         candidate.x,
         candidate.z,
+        includeTowerCollision: false,
         elevation: candidate.elevation,
       ) || _isBlockedByCover(candidate.x, candidate.z, candidate.elevation)) {
         continue;
@@ -1208,7 +1209,10 @@ class MobaMatchSimulation {
       if (!ArenaWorldCatalog.isWalkable(
         candidate.x,
         candidate.z,
+        includeTowerCollision: false,
         elevation: candidate.elevation,
+      ) || _isBlockedByCover(
+        candidate.x, candidate.z, candidate.elevation,
       )) {
         continue;
       }
@@ -1231,7 +1235,10 @@ class MobaMatchSimulation {
         if (ArenaWorldCatalog.isWalkable(
           candidate.x,
           candidate.z,
+          includeTowerCollision: false,
           elevation: candidate.elevation,
+        ) && !_isBlockedByCover(
+          candidate.x, candidate.z, candidate.elevation,
         )) {
           final remaining = candidate.distanceTo(target);
           if (remaining < bestDistance) {
@@ -1362,15 +1369,23 @@ class MobaMatchSimulation {
           ? bot.team.homeZ + bot.team.forward * 4
           : front.position.z + bot.team.forward * 2;
       final tower = _activeTower(bot.team.enemy, bot.lane);
-      final goal = tower?.position ??
-          (_laneOpen(bot.team.enemy, bot.lane)
-              ? _corePosition(bot.team.enemy)
+      final core = _corePosition(bot.team.enemy);
+      final goal = tower != null
+          ? MobaPoint(
+              tower.position.x,
+              tower.position.z - bot.team.forward * 4.0,
+            )
+          : (_laneOpen(bot.team.enemy, bot.lane)
+              ? MobaPoint(
+                  core.x,
+                  core.z - bot.team.forward * 3.7,
+                )
               : MobaPoint(_laneX(bot.lane, targetZ), targetZ));
       final routeGoal = _botRouteWaypoint(bot, goal);
       _moveBot(bot, routeGoal, 2.9, dt);
 
       if (tower != null &&
-          bot.position.distanceTo(tower.position) <= 4.4 &&
+          bot.position.distanceTo(tower.position) <= 4.8 &&
           _hasFriendlyMinionSupport(bot.team, bot.lane, tower.position, 7.2) &&
           bot.attackCooldown <= 0) {
         _markBotAttack(bot, tower.position);
@@ -1378,7 +1393,7 @@ class MobaMatchSimulation {
         bot.attackCooldown = 1.15;
       } else if (tower == null &&
           _laneOpen(bot.team.enemy, bot.lane) &&
-          bot.position.distanceTo(_corePosition(bot.team.enemy)) <= 4 &&
+          bot.position.distanceTo(core) <= 4.2 &&
           bot.attackCooldown <= 0) {
         _markBotAttack(bot, _corePosition(bot.team.enemy));
         _damageCore(bot.team.enemy, 22, bot.lane);
