@@ -223,8 +223,12 @@ def main() -> None:
             "HumanArmature|Man_SwordSlash" in kairo_clips and
             not any(name.startswith("HumanArmature|Female_") for name in kairo_clips),
             "Kairo must ship with male idle, locomotion and sword-attack clips.")
-    require(kairo_doc.get("extras", {}).get("visualRig") == "male",
+    kairo_extras = kairo_doc.get("extras", {})
+    require(kairo_extras.get("visualRig") == "male",
             "Kairo GLB does not declare the validated male visual rig.")
+    require(kairo_extras.get("sourceModel") ==
+            "Quaternius Animated Men Pack / Man-fjHyMd5Wxw (CC0)",
+            "Kairo must use the distinct CC0 male model, not a duplicate Bastion mesh.")
 
     city_assets = (
         "commercial_building_a.glb", "commercial_building_c.glb",
