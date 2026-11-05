@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.3 / 65
+- versionName/versionCode: 1.7.4 / 66
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -20,6 +20,9 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - PBR com iluminação de ambiente controlada e materiais bem trabalhados.
 - Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
 - Meta inicial: 30 FPS sustentados no Realme C53.
+- Campo 120 × 84 unidades, três lanes, quatro side approaches e três pontes.
+- Navegação usa footprint super-retangular, river-blocking fora dos bridges, colisões de árvore e torre.
+- Câmera de ação traseira: altura 8.8, follow 13.5, look-ahead 5.2, FOV vertical 52°, suavização exponencial.
 - Câmera de combate 3/4: follow distance ~24.5, altura ~15.5, look-ahead ~4.2, vertical FOV 44°.
 - Escalas de leitura: herói 0.68, bots 0.59, minions 0.39–0.42.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
@@ -41,7 +44,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Menu principal em hub 3D de tela cheia: Torre do Firmamento central, ilha suspensa, mar magenta, portal e nuvens; ações distribuídas nas bordas.
 - `HERÓIS` abre o seletor independente; `ASCENDER` abre a prévia atual; Baús, Desafios e Mercador aparecem bloqueados até seus sistemas existirem.
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
-- Partida 3D com câmera de acompanhamento mais baixa e personagens ampliados; ainda aguarda validação visual no aparelho.
+- Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
 - Mapa do Vale das Coroas reconstruído: footprint retangular orgânico, três rotas curvas, rio diagonal em S, três pontes, bases opostas e clareiras de selva.
