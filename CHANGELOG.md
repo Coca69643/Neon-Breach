@@ -1,6 +1,29 @@
 # Changelog — Projeto Arena
 
+## [1.7.4] — 2026-11-05
+
+### Arena e navegação
+- Vale das Coroas ampliado de 88 × 58 para 120 × 84 unidades de mundo.
+- Footprint reformulado como super-retângulo orgânico, abandonando o contorno oval.
+- Três rotas reposicionadas e estendidas de norte a sul.
+- Quatro acessos laterais com pátios abertos e rotas secundárias percorríveis.
+- Colisão de movimento com limite do terreno, canal do rio, troncos e footprints das torres.
+- Três pontes mantêm as travessias entre as margens.
+- Bases e torres reposicionadas para o novo comprimento do campo.
+
+### Câmera de combate
+- Câmera de mapa substituída por perspectiva de ação traseira, baixa e próxima do herói.
+- A câmera acompanha suavemente a direção de movimento e aplica look-ahead controlado.
+- minimapa mantém a leitura estratégica das três rotas.
+- Escalas visuais ajustadas: herói 0.82, bots 0.68, minions 0.45–0.48.
+
+### Validação
+- Testes adicionados para footprint expandido, acessibilidade das áreas laterais, bloqueio do rio fora das pontes e colisão das torres.
+- Build ARM64, verificação de assets e assinatura submetidos ao CI.
+- FPS, enquadramento, temperatura e resposta de toque ainda precisam de validação física no Realme C53.
+
 ## [1.7.3] — 2026-11-05
+
 
 ### Câmera e leitura de combate
 - Câmera de acompanhamento reposicionada de aproximadamente 67 para 31 unidades do alvo.
@@ -406,5 +429,6 @@
 - Câmera em perspectiva próxima ao herói, follow camera, menu imersivo e HUD compacto.
 - Campo retangular com rotas de captura, IA de bots baseada em waypoints, habilidades de suporte/impulso/escudo.
 - Assinatura persistente e build 0.6.0 verificada (run #177).
+
 
 
