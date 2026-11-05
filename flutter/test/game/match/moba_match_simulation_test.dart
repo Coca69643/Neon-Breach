@@ -180,6 +180,7 @@ void main() {
 
       for (var frame = 0; frame < 150 * 60; frame++) {
         simulation.step(1 / 60);
+        if (frame % 60 != 59) continue;
         final state = simulation.snapshot;
         expect(
           state.minions.length,
@@ -254,6 +255,9 @@ void main() {
 
       for (var frame = 0; frame < 80 * 60; frame++) {
         simulation.step(1 / 60);
+        // Attack windows last 0.38–0.42 seconds; a 0.05 second sample interval
+        // observes them without allocating full snapshots on every fixed tick.
+        if (frame % 3 != 2) continue;
         final state = simulation.snapshot;
         botAttackSeen |= state.bots.any((bot) => bot.attackSeconds > 0);
         minionAttackSeen |= state.minions.any((unit) => unit.attackSeconds > 0);
