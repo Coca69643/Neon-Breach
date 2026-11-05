@@ -359,7 +359,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       SceneModel('assets/world/city/interior_floor.glb',
         key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
         position: p(x - 6, 0.02, z + 4.5), scale: vm.Vector3(12, 1, 9)),
-      SceneModel('assets/world/city/interior_wall.glb',
+      SceneModel('assets/world/city/interior_wall_window.glb',
         key: ValueKey('interior-back-$id'), name: 'interior_back_wall_$id',
         position: p(x - 6, 0, z + 4.3), scale: vm.Vector3(12, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
