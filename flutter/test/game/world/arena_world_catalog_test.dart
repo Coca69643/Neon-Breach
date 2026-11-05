@@ -49,6 +49,35 @@ void main() {
       expect(ArenaWorldCatalog.isWalkable(58, 40), isFalse);
     });
 
+    test('urban buildings have traversable south doorways and blocked walls', () {
+      for (final center in <(double, double)>[
+        (-39, -20), (39, -20), (-39, 20), (39, 20),
+      ]) {
+        final x = center.$1;
+        final z = center.$2;
+        expect(
+          ArenaWorldCatalog.isWalkable(x, z - 4.3),
+          isTrue,
+          reason: 'south doorway at $x, $z must remain open',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(x - 5.8, z),
+          isFalse,
+          reason: 'side wall at $x, $z must block movement',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(x, z + 4.3),
+          isFalse,
+          reason: 'rear wall at $x, $z must block movement',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(x, z - 2.0),
+          isTrue,
+          reason: 'interior floor at $x, $z must be enterable',
+        );
+      }
+    });
+
     test('three routes remain aligned and continuous', () {
       for (var z = -40.0; z <= 40.0; z += 2.0) {
         expect(ArenaWorldCatalog.laneDistance(-22.5, z), lessThan(1.0));
