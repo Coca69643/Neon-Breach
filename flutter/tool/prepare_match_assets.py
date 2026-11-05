@@ -36,28 +36,71 @@ def glb_json(path: Path) -> dict:
         raise SystemExit(f"Invalid GLB 2.0 container: {path}")
     return json.loads(raw[20:20 + chunk_len].decode("utf-8").rstrip(" \t\r\n\0"))
 
+def convert_gltf_to_glb(source: Path, target: Path) -> None:
+    document = json.loads(source.read_text(encoding="utf-8"))
+    buffers = document.get("buffers", [])
+    if len(buffers) != 1:
+        raise SystemExit(f"Expected one binary buffer in {source.name}")
+    buffer_uri = buffers[0].get("uri")
+    if not buffer_uri or buffer_uri.startswith("data:"):
+        raise SystemExit(f"Expected a pinned external binary buffer in {source.name}")
+    binary_path = source.parent / buffer_uri
+    if not binary_path.is_file():
+        raise SystemExit(f"Missing glTF binary dependency: {binary_path}")
+    binary = bytearray(binary_path.read_bytes())
+
+    for image in document.get("images", []):
+        uri = image.get("uri")
+        if not uri:
+            continue
+        if uri.startswith("data:"):
+            raise SystemExit(f"Unexpected embedded image URI in {source.name}")
+        image_path = source.parent / uri
+        if not image_path.is_file():
+            raise SystemExit(f"Missing glTF image dependency: {image_path}")
+        while len(binary) % 4:
+            binary.append(0)
+        offset = len(binary)
+        payload = image_path.read_bytes()
+        binary.extend(payload)
+        image["bufferView"] = len(document.setdefault("bufferViews", []))
+        document["bufferViews"].append({
+            "buffer": 0,
+            "byteOffset": offset,
+            "byteLength": len(payload),
+        })
+        image["mimeType"] = "image/png"
+        image.pop("uri", None)
+
+    document["buffers"] = [{"byteLength": len(binary)}]
+    json_payload = json.dumps(
+        document, separators=(",", ":"), ensure_ascii=False
+    ).encode("utf-8")
+    json_payload += b" " * ((-len(json_payload)) % 4)
+    while len(binary) % 4:
+        binary.append(0)
+    total_size = 12 + 8 + len(json_payload) + 8 + len(binary)
+    glb = (
+        struct.pack("<4sII", b"glTF", 2, total_size)
+        + struct.pack("<II", len(json_payload), 0x4E4F534A)
+        + json_payload
+        + struct.pack("<II", len(binary), 0x004E4942)
+        + binary
+    )
+    target.write_bytes(glb)
+    parsed = glb_json(target)
+    if not parsed.get("meshes"):
+        raise SystemExit(f"Converted model has no meshes: {target.name}")
+
+
 def copy_gltf_closure(name: str, copied: set[str]) -> None:
     source = KAYKIT_SOURCE / name
     if not source.is_file():
         raise SystemExit(f"Missing pinned CC0 model: {source}")
-    doc = json.loads(source.read_text(encoding="utf-8"))
-    dependencies = set()
-    for section in ("buffers", "images"):
-        for entry in doc.get(section, []):
-            uri = entry.get("uri")
-            if uri and not uri.startswith("data:"):
-                dependencies.add(uri)
     OUTPUT.mkdir(parents=True, exist_ok=True)
-    for relative in {name, *dependencies}:
-        safe = Path(relative)
-        if safe.is_absolute() or ".." in safe.parts:
-            raise SystemExit(f"Unsafe glTF dependency path: {relative}")
-        src = KAYKIT_SOURCE / safe
-        if not src.is_file():
-            raise SystemExit(f"Missing glTF dependency: {src}")
-        dst = OUTPUT / safe.name
-        shutil.copy2(src, dst)
-        copied.add(dst.name)
+    target = OUTPUT / f"{source.stem}.glb"
+    convert_gltf_to_glb(source, target)
+    copied.add(target.name)
 
 def main() -> None:
     OUTPUT.mkdir(parents=True, exist_ok=True)
@@ -107,8 +150,8 @@ def main() -> None:
 
     if len(minion_bytes) < 100_000 or not minion_doc.get("meshes"):
         raise SystemExit("Quaternius minion model failed structural validation.")
-    if len(copied) < 8:
-        raise SystemExit("The CC0 structure dependency closure is incomplete.")
+    if len(copied) != len(MODEL_FILES):
+        raise SystemExit("The self-contained CC0 structure set is incomplete.")
 
     print(
         "Prepared offline MOBA assets: "
