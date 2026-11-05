@@ -536,7 +536,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
             ),
             Positioned(
               left: viewport.maxWidth * 0.42,
-              right: side + 138,
+              right: side + 8,
               top: compact ? 88 : 96,
               bottom: compact ? 104 : 112,
               child: Listener(
@@ -566,6 +566,20 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   }
                 },
                 child: const SizedBox.expand(),
+              ),
+            ),
+            Positioned(
+              right: side + 42,
+              top: viewport.maxHeight * 0.43,
+              child: const IgnorePointer(
+                child: Opacity(
+                  opacity: 0.28,
+                  child: Icon(
+                    Icons.threesixty,
+                    size: 24,
+                    color: Colors.white,
+                  ),
+                ),
               ),
             ),
             const IgnorePointer(
