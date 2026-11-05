@@ -787,6 +787,25 @@ class MobaMatchSimulation {
     _playerAttackCooldown = heroId.basicAttackCooldown;
 
     final damage = heroId.basicDamage * _playerPower;
+    final selectedTarget = _selectedTargetSnapshot();
+    if (selectedTarget != null &&
+        _playerPosition.distanceTo(selectedTarget.position) <= heroId.basicRange) {
+      if (selectedTarget.kind == 'HERO') {
+        for (final bot in _bots) {
+          if ('bot:${bot.id}' != selectedTarget.id) continue;
+          _damageBot(bot, MobaTeam.blue, damage);
+          return;
+        }
+      } else {
+        final minionId = int.tryParse(selectedTarget.id.substring(7));
+        for (final minion in _minions) {
+          if (minion.id != minionId) continue;
+          _damageMinion(minion, MobaTeam.blue, damage);
+          return;
+        }
+      }
+    }
+
     final lane = _nearestLane(_playerPosition);
     final enemyBot = _nearestBot(
       _playerPosition,
