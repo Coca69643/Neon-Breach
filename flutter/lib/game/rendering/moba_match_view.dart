@@ -125,10 +125,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   void _onSceneTick(Duration elapsed, double deltaSeconds) {
     if (!mounted) return;
+    // Joystick input is camera-relative: up moves toward the camera's
+    // look direction and right moves across the screen, even after turning.
+    final facingX = _snapshot.playerFacingX;
+    final facingZ = _snapshot.playerFacingZ;
+    final worldMoveX = _moveX * facingZ + _moveZ * facingX;
+    final worldMoveZ = -_moveX * facingX + _moveZ * facingZ;
     widget.simulation.step(
       deltaSeconds,
-      moveX: _moveX,
-      moveZ: _moveZ,
+      moveX: worldMoveX,
+      moveZ: worldMoveZ,
       basicAttack: _basicAttackHeld,
       castSkill: _skillHeld,
     );
