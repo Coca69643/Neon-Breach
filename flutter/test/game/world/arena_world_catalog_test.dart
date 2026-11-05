@@ -74,6 +74,46 @@ void main() {
       }
     });
 
+    test('two opposing mezzanines require continuous stair traversal', () {
+      expect(ArenaWorldCatalog.verticalAccesses, hasLength(2));
+      for (final access in ArenaWorldCatalog.verticalAccesses) {
+        final z = access.z + 2.4;
+        final startX = access.rampStartX;
+        expect(ArenaWorldCatalog.resolveNavigationElevation(
+          startX, z, 0,
+        ), 0);
+        expect(ArenaWorldCatalog.isWalkable(startX, z), isTrue);
+
+        var elevation = 0.0;
+        for (var step = 1; step <= 25; step++) {
+          final x = startX + access.rampRun * step / 25;
+          final next = ArenaWorldCatalog.resolveNavigationElevation(
+            x, z, elevation,
+          );
+          expect(next, isNotNull,
+              reason: '${access.id} stair must be continuously traversable');
+          elevation = next!;
+          expect(ArenaWorldCatalog.isWalkable(
+            x, z, elevation: elevation,
+          ), isTrue);
+        }
+
+        expect(elevation, closeTo(access.upperHeight, 0.001));
+        final deckX = access.x + access.platformLength * 0.5;
+        expect(ArenaWorldCatalog.isWalkable(
+          deckX, z, elevation: access.upperHeight,
+        ), isTrue);
+        expect(ArenaWorldCatalog.isWalkable(deckX, z), isFalse,
+            reason: 'ground-floor movement must not snap through the deck');
+        expect(ArenaWorldCatalog.resolveNavigationElevation(
+          deckX, z, 0,
+        ), isNull);
+        expect(ArenaWorldCatalog.resolveNavigationElevation(
+          deckX + 0.4, z, access.upperHeight,
+        ), isNull, reason: 'the elevated route must remain bounded');
+      }
+    });
+
     test('urban terrain height remains finite across the playable field', () {
       for (var x = -88.0; x <= 88.0; x += 4.0) {
         for (var z = -68.0; z <= 68.0; z += 4.0) {
