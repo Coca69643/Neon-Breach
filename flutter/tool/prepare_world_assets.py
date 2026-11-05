@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Bake Vale das Coroas as a broad MOBA arena, not an oval island.
 
-The offline GLB has a rounded-rectangle footprint, three curved lanes, a diagonal
-S-river, three bridges, opposing bases and jungle clearings.
+The offline GLB has an expanded rounded-rectangle footprint, three curved lanes,
+a diagonal S-river, three walkable bridges and four open flank approaches.
 """
 from __future__ import annotations
 
@@ -415,10 +415,10 @@ def build_terrain_glb(output: Path) -> None:
                 for i in range(len(path) - 1)
             )
 
-            if slope > 0.33 or (abs(cx) > 32 and abs(cz) < 31 and noise > 0.55):
-                material = "rock"
-            elif lane_dist < 3.0 + 0.24 * noise or access_dist < 1.75:
+            if lane_dist < 3.0 + 0.24 * noise or access_dist < 1.75:
                 material = "soil"
+            elif slope > 0.33 or (abs(cx) > 32 and abs(cz) < 31 and noise > 0.55):
+                material = "rock"
             elif (
                 river_distance < river_width + 5.5 and noise < 0.75
             ) or (
