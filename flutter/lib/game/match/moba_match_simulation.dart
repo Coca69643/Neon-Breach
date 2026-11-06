@@ -1170,6 +1170,7 @@ class MobaMatchSimulation {
         }
       case MobaHeroId.bastion:
         _playerShieldTime = 2.8;
+        _playerAttackPulseSeconds = math.max(_playerAttackPulseSeconds, 0.42);
         final target = _nearestBot(
           _playerPosition,
           MobaTeam.red,
