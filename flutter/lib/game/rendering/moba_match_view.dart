@@ -468,7 +468,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   String _heroAttack(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 'HumanArmature|Female_SwordSlash',
-        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
+        MobaHeroId.bastion => 'HumanArmature|Man_Punch',
+        MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
       };
 
   String _towerAsset(int laneIndex, int tier) {
