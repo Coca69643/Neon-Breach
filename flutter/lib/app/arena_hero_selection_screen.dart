@@ -67,7 +67,7 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
         final panelWidth = math.min(
           420.0,
           math.max(286.0, viewport.maxWidth * 0.34),
-        );
+        ).toDouble();
 
         return Stack(
           fit: StackFit.expand,
