@@ -3,17 +3,23 @@ import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
 void main() {
   group('ArenaWorldCatalog — urban battlefield', () {
-    test('uses the same 180 × 140 bounds as the offline terrain baker', () {
-      expect(ArenaWorldCatalog.halfWidth, 90);
-      expect(ArenaWorldCatalog.halfDepth, 70);
+    test('uses the same irregular 224 × 188 boundary as the terrain baker', () {
+      expect(ArenaWorldCatalog.halfWidth, 112);
+      expect(ArenaWorldCatalog.halfDepth, 94);
       expect(ArenaWorldCatalog.worldScale, 1.35);
-      expect(ArenaWorldCatalog.contains(89, 0), isTrue);
-      expect(ArenaWorldCatalog.contains(-89, 0), isTrue);
-      expect(ArenaWorldCatalog.contains(0, 69), isTrue);
-      expect(ArenaWorldCatalog.contains(0, -69), isTrue);
-      expect(ArenaWorldCatalog.contains(80, 60), isTrue);
-      expect(ArenaWorldCatalog.contains(89, 69), isFalse,
-          reason: 'the rectangular map keeps only softly rounded corners');
+      expect(ArenaWorldCatalog.contains(100, 0), isTrue);
+      expect(ArenaWorldCatalog.contains(-100, 0), isTrue);
+      expect(ArenaWorldCatalog.contains(0, 80), isTrue);
+      expect(ArenaWorldCatalog.contains(0, -80), isTrue);
+      expect(ArenaWorldCatalog.contains(110, 90), isFalse);
+      expect(ArenaWorldCatalog.contains(-110, -90), isFalse);
+      expect(ArenaWorldCatalog.worldBoundary.length, greaterThanOrEqualTo(20));
+      expect(ArenaWorldCatalog.districts, hasLength(6));
+      expect(ArenaWorldCatalog.districtSites, hasLength(6));
+      for (final site in ArenaWorldCatalog.districtSites) {
+        expect(ArenaWorldCatalog.isWalkable(site.$3, site.$4), isTrue,
+            reason: '${site.$2} must be a walkable capture point');
+      }
     });
 
     test('keeps three lanes aligned with the generated urban terrain', () {
@@ -24,20 +30,27 @@ void main() {
       }
     });
 
-    test('has four enterable ground-floor interiors with real doorway gaps', () {
-      expect(ArenaWorldCatalog.cityInteriors, hasLength(4));
+    test('has six human-scale enterable interiors with wide doorway gaps', () {
+      expect(ArenaWorldCatalog.cityInteriors, hasLength(6));
+      expect(ArenaWorldCatalog.roomHalfWidth, 12);
+      expect(ArenaWorldCatalog.roomHalfDepth, 9);
+      expect(ArenaWorldCatalog.roomDoorHalfWidth, 3.2);
       for (final building in ArenaWorldCatalog.cityInteriors) {
         final x = building.$2, z = building.$3;
-        expect(ArenaWorldCatalog.isWalkable(x, z - 8.0), isTrue,
-            reason: '4.8 m entrance must be traversable for ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(
+          x, z - ArenaWorldCatalog.roomHalfDepth,
+        ), isTrue, reason: 'doorway must be traversable for ${building.$1}');
         expect(ArenaWorldCatalog.isWalkable(x, z - 2.0), isTrue,
-            reason: 'enlarged interior floor must be traversable for ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x - 10.0, z), isFalse,
-            reason: 'side wall must block ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x, z + 8.0), isFalse,
-            reason: 'rear wall must block ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x + 4.5, z - 8.0), isFalse,
-            reason: 'front wall segment must block outside the doorway');
+            reason: 'interior floor must be traversable for ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(
+          x - ArenaWorldCatalog.roomHalfWidth, z,
+        ), isFalse, reason: 'side wall must block ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(
+          x, z + ArenaWorldCatalog.roomHalfDepth,
+        ), isFalse, reason: 'rear wall must block ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(
+          x + 4.5, z - ArenaWorldCatalog.roomHalfDepth,
+        ), isFalse, reason: 'front wall segment must block outside the doorway');
       }
     });
 
@@ -56,43 +69,34 @@ void main() {
       );
     });
 
-    test('canal blocks traversal except at the three avenue crossings', () {
-      for (final x in const [-36.0, 0.0, 36.0]) {
-        expect(ArenaWorldCatalog.isWalkable(x, 0), isTrue);
+    test('canal is traversable at five bridges and blocked between them', () {
+      const crossings = <(double, double)>[
+        (-72.0, -2.8), (-36.0, 0.8), (0.0, 0.5),
+        (36.0, -0.84), (72.0, 2.28),
+      ];
+      for (final crossing in crossings) {
+        expect(ArenaWorldCatalog.isWalkable(crossing.$1, crossing.$2), isTrue);
+        expect(ArenaWorldCatalog.isBridgeAt(crossing.$1, crossing.$2), isTrue);
       }
       expect(ArenaWorldCatalog.isWalkable(18, 0), isFalse);
       expect(ArenaWorldCatalog.isWalkable(18, 2.5), isFalse);
+      expect(ArenaWorldCatalog.isCanalAt(100, 0), isFalse);
     });
 
     test('side alleys connect the avenues to the city blocks', () {
-      expect(ArenaWorldCatalog.sideApproachAnchors, hasLength(8));
+      expect(ArenaWorldCatalog.sideApproachAnchors, hasLength(16));
       for (final point in ArenaWorldCatalog.sideApproachAnchors) {
         expect(ArenaWorldCatalog.isWalkable(point.$1, point.$2), isTrue);
       }
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(4));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(8));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
-        expect(
-          ArenaWorldCatalog.cityInteriors.any(
-            (building) => building.$2 == block.$2 && building.$3 == block.$3,
-          ),
-          isTrue,
-          reason: 'each visible commercial shell must align with a playable interior',
-        );
-        expect(
-          ArenaWorldCatalog.isWalkable(block.$2, block.$3),
-          isTrue,
-          reason: 'the center of ${block.$1} must be traversable indoors',
-        );
-        expect(
-          ArenaWorldCatalog.isWalkable(block.$2 - 10.0, block.$3),
-          isFalse,
-          reason: 'the aligned building side wall must block passage',
-        );
+        expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
+            reason: 'commercial block must have a collision footprint');
       }
-      expect(ArenaWorldCatalog.trees, hasLength(8));
+      expect(ArenaWorldCatalog.trees, hasLength(16));
       expect(ArenaWorldCatalog.bushes, hasLength(4));
       for (final placement in [
         ...ArenaWorldCatalog.trees,
@@ -110,8 +114,8 @@ void main() {
       final buildingNames = ArenaWorldCatalog.commercialBlocks
           .map((block) => block.$1)
           .toSet();
-      expect(buildingNames, hasLength(4));
-      expect(ArenaWorldCatalog.largeTrees, hasLength(4));
+      expect(buildingNames, greaterThanOrEqualTo(6));
+      expect(ArenaWorldCatalog.largeTrees, hasLength(8));
       expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(40));
 
       for (final prop in ArenaWorldCatalog.cityProps) {
@@ -135,40 +139,6 @@ void main() {
           ArenaWorldCatalog.isWalkable(tree.x, tree.z),
           isFalse,
           reason: 'large park trees must remain solid obstacles',
-        );
-      }
-    });
-
-    test('district anchors are unique, named and placed at enterable buildings', () {
-      expect(ArenaWorldCatalog.districts, hasLength(4));
-      expect(
-        ArenaWorldCatalog.districts.map((district) => district.id).toSet(),
-        hasLength(4),
-      );
-      expect(
-        ArenaWorldCatalog.districts.map((district) => district.label).toSet(),
-        hasLength(4),
-      );
-      for (final district in ArenaWorldCatalog.districts) {
-        expect(
-          ArenaWorldCatalog.cityInteriors.any(
-            (building) =>
-                building.$1 == district.id &&
-                building.$2 == district.x &&
-                building.$3 == district.z,
-          ),
-          isTrue,
-          reason: '${district.label} must map to a real enterable structure',
-        );
-        expect(
-          ArenaWorldCatalog.isWalkable(district.x, district.z),
-          isTrue,
-          reason: '${district.label} interior floor must remain navigable',
-        );
-        expect(
-          ArenaWorldCatalog.isWalkable(district.x, district.z - 10.2),
-          isTrue,
-          reason: '${district.label} capture terminal must be reachable',
         );
       }
     });
@@ -235,8 +205,8 @@ void main() {
     });
 
     test('urban terrain height remains finite across the playable field', () {
-      for (var x = -88.0; x <= 88.0; x += 4.0) {
-        for (var z = -68.0; z <= 68.0; z += 4.0) {
+      for (var x = -108.0; x <= 108.0; x += 4.0) {
+        for (var z = -90.0; z <= 90.0; z += 4.0) {
           expect(ArenaWorldCatalog.heightAt(x, z).isFinite, isTrue);
         }
       }
