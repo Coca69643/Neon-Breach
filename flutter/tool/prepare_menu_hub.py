@@ -27,6 +27,10 @@ MATERIALS = {
     "glow_cyan":    ([0.12, 0.72, 0.88, 1], 0.0, 0.25, [0.08, 0.58, 0.92]),
     "glow_pink":    ([0.84, 0.18, 0.58, 1], 0.0, 0.26, [0.72, 0.05, 0.42]),
     "banner":       ([0.13, 0.37, 0.46, 1], 0.0, 0.74, None),
+    "glass_blue":   ([0.045, 0.15, 0.22, 1], 0.42, 0.22, None),
+    "metal":        ([0.20, 0.27, 0.32, 1], 0.68, 0.38, None),
+    "concrete":     ([0.57, 0.60, 0.61, 1], 0.04, 0.88, None),
+    "paving_dark":  ([0.18, 0.24, 0.29, 1], 0.12, 0.84, None),
 }
 
 class HubMesh:
@@ -172,9 +176,9 @@ def make_hub(mesh: HubMesh):
     # Grounded civic command tower in a paved urban plaza.
     # The tower is an original architectural landmark, not a floating hub.
     mesh.box(0, -0.28, 0, 72, 0.56, 56, "stone_dark")
-    mesh.box(0, 0.02, 0, 68, 0.12, 52, "stone")
+    mesh.box(0, 0.02, 0, 68, 0.12, 52, "concrete")
     mesh.box(0, 0.105, 9.5, 34, 0.08, 21, "stone_light")
-    mesh.box(0, 0.11, -11.0, 42, 0.08, 17, "stone_warm")
+    mesh.box(0, 0.11, -11.0, 42, 0.08, 17, "paving_dark")
 
     # A broad stepped foundation makes the tower visibly meet the ground.
     mesh.box(0, 0.42, 0, 25, 0.52, 21, "stone_dark")
@@ -188,7 +192,7 @@ def make_hub(mesh: HubMesh):
         mesh.box(x, 3.92, -1.0, 9.0, 0.26, 12.5, "stone_light")
         for offset in (-3.0, 0.0, 3.0):
             mesh.box(x + offset, 2.5, 5.08, 1.05, 1.55, 0.12, "stone_dark")
-            mesh.box(x + offset, 2.5, 5.18, 0.18, 1.82, 0.10, "teal")
+            mesh.box(x + offset, 2.5, 5.18, 0.18, 1.82, 0.10, "glass_blue")
             mesh.box(x + offset - 0.78, 2.5, 5.12, 0.10, 1.82, 0.15, "gold")
 
     # Main podium: wide lower block, recessed windows and a clear front entry.
@@ -197,13 +201,13 @@ def make_hub(mesh: HubMesh):
     mesh.box(0, 5.62, 0, 18.1, 0.16, 14.7, "stone_warm")
     for x in (-7.0, -4.2, -1.4, 1.4, 4.2, 7.0):
         mesh.box(x, 3.45, 7.27, 1.45, 2.1, 0.10, "stone_dark")
-        mesh.box(x, 3.48, 7.34, 1.08, 1.72, 0.08, "teal")
+        mesh.box(x, 3.48, 7.34, 1.08, 1.72, 0.08, "glass_blue")
         mesh.box(x - 0.78, 3.45, 7.30, 0.12, 2.25, 0.16, "gold")
         mesh.box(x + 0.78, 3.45, 7.30, 0.12, 2.25, 0.16, "gold")
 
     # Deep entrance recess with an authored stone frame and restrained signage.
     mesh.box(0, 2.85, 7.30, 3.9, 3.5, 0.16, "stone_dark")
-    mesh.box(0, 2.8, 7.42, 2.65, 2.95, 0.10, "teal")
+    mesh.box(0, 2.8, 7.42, 2.65, 2.95, 0.10, "glass_blue")
     mesh.arch_frame(0, 1.0, 7.48, 4.8, 4.2, 0.7, "stone_warm", 10)
     mesh.box(0, 5.45, 7.42, 5.2, 0.22, 0.22, "gold")
     mesh.box(0, 4.95, 7.48, 2.15, 0.10, 0.12, "glow_cyan")
@@ -214,21 +218,21 @@ def make_hub(mesh: HubMesh):
     mesh.box(0, 15.32, -0.4, 13.9, 0.16, 11.7, "gold")
     for side in (-1, 1):
         x = side * 6.2
-        mesh.box(x, 10.6, 5.35, 0.78, 8.2, 0.46, "stone_warm")
+        mesh.box(x, 10.6, 5.35, 0.78, 8.2, 0.46, "metal")
         mesh.box(x - side * 0.12, 10.6, 5.62, 0.16, 6.8, 0.12, "glow_cyan")
     for y in (8.2, 10.3, 12.4):
         for x in (-3.9, -1.3, 1.3, 3.9):
             mesh.box(x, y, 5.36, 1.58, 1.45, 0.12, "stone_dark")
-            mesh.box(x, y, 5.44, 1.18, 1.08, 0.08, "teal")
+            mesh.box(x, y, 5.44, 1.18, 1.08, 0.08, "glass_blue")
 
     # Upper observation level is offset and slimmer, with a clear roof edge.
     mesh.box(0.7, 19.0, -0.8, 9.8, 7.1, 8.8, "stone_dark")
     mesh.box(0.7, 22.65, -0.8, 10.7, 0.34, 9.6, "stone_light")
     mesh.box(0.7, 22.92, -0.8, 10.0, 0.16, 9.0, "gold")
     for x in (-3.0, -0.5, 2.0, 4.5):
-        mesh.box(x, 19.15, 3.68, 1.15, 3.85, 0.12, "teal")
-        mesh.box(x - 0.68, 19.15, 3.62, 0.10, 4.1, 0.16, "stone_warm")
-        mesh.box(x + 0.68, 19.15, 3.62, 0.10, 4.1, 0.16, "stone_warm")
+        mesh.box(x, 19.15, 3.68, 1.15, 3.85, 0.12, "glass_blue")
+        mesh.box(x - 0.68, 19.15, 3.62, 0.10, 4.1, 0.16, "metal")
+        mesh.box(x + 0.68, 19.15, 3.62, 0.10, 4.1, 0.16, "metal")
 
     # Rooftop communications mast and compact service equipment.
     mesh.box(0.7, 24.6, -0.8, 3.2, 3.0, 3.2, "stone")
@@ -258,8 +262,8 @@ def make_hub(mesh: HubMesh):
 
     # Short paving strips lead into the entrance; all geometry rests on the plaza.
     for x in (-6.0, -3.0, 0.0, 3.0, 6.0):
-        mesh.box(x, 0.18, 13.2, 1.8, 0.06, 8.0, "stone_light")
-    mesh.box(0, 0.19, 18.2, 18.0, 0.08, 1.2, "stone_warm")
+        mesh.box(x, 0.18, 13.2, 1.8, 0.06, 8.0, "paving_dark")
+    mesh.box(0, 0.19, 18.2, 18.0, 0.08, 1.2, "concrete")
 
 
 
@@ -338,11 +342,11 @@ def write_glb(mesh: HubMesh, output: Path):
         materials.append(material)
 
     document = {
-        "asset": {"version": "2.0", "generator": "Duck Dream Studios — original floating hub bake"},
+        "asset": {"version": "2.0", "generator": "Duck Dream Studios — grounded civic tower bake"},
         "scene": 0,
         "scenes": [{"nodes": [0]}],
-        "nodes": [{"name": "Project Arena — Bastião do Firmamento", "mesh": 0}],
-        "meshes": [{"name": "Stylized tower island and sky fragments", "primitives": primitives}],
+        "nodes": [{"name": "Project Arena — Civic Command Tower", "mesh": 0}],
+        "meshes": [{"name": "Grounded civic tower and public plaza", "primitives": primitives}],
         "materials": materials,
         "bufferViews": buffer_views,
         "accessors": accessors,
@@ -351,7 +355,8 @@ def write_glb(mesh: HubMesh, output: Path):
             "purpose": "main_menu_hub",
             "originalAsset": True,
             "dynamicShadows": False,
-            "design": "floating fantasy tower, pink sea, broken halo and clouds",
+            "design": "grounded urban command tower with stepped concrete volumes, vertical glazing, plaza, service wings and communications mast",
+            "floatingGeometry": False,
         },
     }
 
