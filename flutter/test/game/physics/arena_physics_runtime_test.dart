@@ -91,7 +91,7 @@ void main() {
       final access = ArenaWorldCatalog.verticalAccesses.first;
       final z = (access.corridorMinZ + access.corridorMaxZ) * 0.5;
       physics.teleport(MobaPoint(access.rampStartX + 0.2, z));
-      await advance(frames: 150, moveX: 1);
+      await advance(frames: 70, moveX: 1);
 
       expect(
         physics.playerPosition.x,
