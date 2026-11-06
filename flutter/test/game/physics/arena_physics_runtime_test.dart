@@ -116,7 +116,7 @@ void main() {
 
     test('surface traction changes speed and releases momentum smoothly',
         () async {
-      await advance(frames: 90, moveZ: 1);
+      await advance(frames: 90, moveZ: -1);
       final pavedSpeed = physics.horizontalSpeed;
       expect(pavedSpeed, greaterThan(4.6));
 
