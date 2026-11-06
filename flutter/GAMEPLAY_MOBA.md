@@ -91,7 +91,7 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 
 ## Arena, câmera, verticalidade e objetivo — revisão 1.7.10
 
-- Footprint 180 × 140, terreno urbano sem rodapé de penhasco.
+- Footprint 224 × 188, terreno urbano sem rodapé de penhasco.
 - Três avenidas em x ≈ -36 / 0 / +36 e z ≈ -70…+70.
 - Quatro interiores com portas, paredes e mobiliário; dois recebem mezaninos com escadas transitáveis. Sem camps ou mecânicas de coleta.
 - Coberturas de entrada são destrutíveis; reator central no cruzamento médio concede bônus de dano por controle territorial.
