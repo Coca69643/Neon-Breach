@@ -274,6 +274,7 @@ class MobaMatchSnapshot {
     required this.playerGold,
     required this.playerSkillCooldown,
     required this.playerRespawnSeconds,
+    required this.playerSpawnShieldSeconds,
     required this.playerMoving,
     required this.playerAttackSeconds,
     required this.playerHitConfirmSeconds,
@@ -311,6 +312,7 @@ class MobaMatchSnapshot {
   final double playerGold;
   final double playerSkillCooldown;
   final double playerRespawnSeconds;
+  final double playerSpawnShieldSeconds;
   final bool playerMoving;
   final double playerAttackSeconds;
   final double playerHitConfirmSeconds;
@@ -1916,6 +1918,7 @@ class MobaMatchSimulation {
       playerGold: _playerGold,
       playerSkillCooldown: _playerSkillCooldown,
       playerRespawnSeconds: _playerRespawn,
+      playerSpawnShieldSeconds: _playerShieldTime,
       playerMoving: _playerMoving,
       playerAttackSeconds: _playerAttackPulseSeconds,
       playerHitConfirmSeconds: _playerHitConfirmSeconds,
