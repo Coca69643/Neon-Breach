@@ -1248,49 +1248,21 @@ class MobaMatchSimulation {
       2 => 0.45,
       _ => 1.35,
     };
-
-    // Once the lane is open, minions converge toward the core instead of
-    // being pulled back to x=±36 by the lane formation rule.
-    final desiredX = laneOpen
+    final preferredX = laneOpen
         ? target.x + formationOffset * 0.28
         : _laneX(unit.lane, next.z) + formationOffset;
-    final lateralBlend = (dt * speed * 1.4).clamp(0.0, 1.0).toDouble();
-    final direct = MobaPoint(
-      before.x + (desiredX - before.x) * lateralBlend,
-      next.z,
-      elevation: before.elevation,
+    final resolved = _resolveAgentMovement(
+      before, target, speed, dt, preferredX: preferredX,
     );
-    final candidates = <MobaPoint>[
-      direct,
-      MobaPoint(before.x, next.z, elevation: before.elevation),
-      MobaPoint(direct.x, before.z, elevation: before.elevation),
-    ];
-    MobaPoint? best;
-    var bestDistance = double.infinity;
-    for (final candidate in candidates) {
-      if (!ArenaWorldCatalog.isWalkable(
-        candidate.x,
-        candidate.z,
-        includeTowerCollision: false,
-        elevation: candidate.elevation,
-      ) || _isBlockedByCover(candidate.x, candidate.z, candidate.elevation)) {
-        continue;
-      }
-      final distance = candidate.distanceTo(target);
-      if (distance < bestDistance) {
-        best = candidate;
-        bestDistance = distance;
-      }
-    }
-    if (best == null) return;
-    final dx = best.x - before.x;
-    final dz = best.z - before.z;
+    if (resolved == null) return;
+    unit.position = resolved;
+    final dx = resolved.x - before.x;
+    final dz = resolved.z - before.z;
     if (dx.abs() + dz.abs() > 0.0001) {
       unit.facingX = dx;
       unit.facingZ = dz;
       unit.moving = true;
     }
-    unit.position = best;
   }
 
   void _markMinionAttack(_Minion unit, MobaPoint target) {
@@ -1316,32 +1288,69 @@ class MobaMatchSimulation {
   }
 
   void _moveBot(_Bot bot, MobaPoint target, double speed, double dt) {
-    final dx = target.x - bot.position.x;
-    final dz = target.z - bot.position.z;
-    final distance = math.sqrt(dx * dx + dz * dz);
-    if (distance < 0.001) return;
+    final before = bot.position;
+    final resolved = _resolveAgentMovement(before, target, speed, dt);
+    if (resolved == null) return;
+    bot.position = resolved;
+    final dx = resolved.x - before.x;
+    final dz = resolved.z - before.z;
+    if (dx.abs() + dz.abs() > 0.0001) {
+      bot.facingX = dx;
+      bot.facingZ = dz;
+      bot.moving = true;
+    }
+  }
 
+  /// Shared steering and collision gate for autonomous ground units.
+  /// Role AI chooses the target; this motor owns how an agent reaches it.
+  /// The fixed simulation clock keeps movement frame-rate independent.
+  MobaPoint? _resolveAgentMovement(
+    MobaPoint origin,
+    MobaPoint target,
+    double speed,
+    double dt, {
+    double? preferredX,
+  }) {
+    final dx = target.x - origin.x;
+    final dz = target.z - origin.z;
+    final distance = math.sqrt(dx * dx + dz * dz);
+    if (distance < 0.001 || speed <= 0 || dt <= 0) return null;
     final step = math.min(distance, speed * dt);
-    final baseAngle = math.atan2(dx, dz);
-    const offsets = <double>[0, 0.62, -0.62, 1.15, -1.15, math.pi / 2, -math.pi / 2];
+    final angle = math.atan2(dx, dz);
+    const offsets = <double>[
+      0, 0.42, -0.42, 0.86, -0.86, 1.3, -1.3, math.pi / 2, -math.pi / 2,
+    ];
+    final candidates = <MobaPoint>[];
+    for (final offset in offsets) {
+      final heading = angle + offset;
+      candidates.add(MobaPoint(
+        origin.x + math.sin(heading) * step,
+        origin.z + math.cos(heading) * step,
+        elevation: origin.elevation,
+      ));
+    }
+    if (preferredX != null) {
+      final blend = (dt * speed * 1.4).clamp(0.0, 1.0).toDouble();
+      candidates.insert(0, MobaPoint(
+        origin.x + (preferredX - origin.x) * blend,
+        origin.z + dz.sign * math.min(dz.abs(), step),
+        elevation: origin.elevation,
+      ));
+    }
+    candidates.addAll([
+      MobaPoint(origin.x + dx.sign * step, origin.z,
+          elevation: origin.elevation),
+      MobaPoint(origin.x, origin.z + dz.sign * step,
+          elevation: origin.elevation),
+    ]);
     MobaPoint? best;
     var bestDistance = double.infinity;
-
-    for (final offset in offsets) {
-      final angle = baseAngle + offset;
-      final candidate = MobaPoint(
-        bot.position.x + math.sin(angle) * step,
-        bot.position.z + math.cos(angle) * step,
-        elevation: bot.position.elevation,
-      );
+    for (final candidate in candidates) {
       if (!ArenaWorldCatalog.isWalkable(
-        candidate.x,
-        candidate.z,
+        candidate.x, candidate.z,
         includeTowerCollision: false,
         elevation: candidate.elevation,
-      ) || _isBlockedByCover(
-        candidate.x, candidate.z, candidate.elevation,
-      )) {
+      ) || _isBlockedByCover(candidate.x, candidate.z, candidate.elevation)) {
         continue;
       }
       final remaining = candidate.distanceTo(target);
@@ -1350,42 +1359,7 @@ class MobaMatchSimulation {
         bestDistance = remaining;
       }
     }
-
-    // If the direct sweep is blocked, permit axis sliding around the obstacle.
-    if (best == null) {
-      final candidates = <MobaPoint>[
-        MobaPoint(bot.position.x + dx.sign * step, bot.position.z,
-            elevation: bot.position.elevation),
-        MobaPoint(bot.position.x, bot.position.z + dz.sign * step,
-            elevation: bot.position.elevation),
-      ];
-      for (final candidate in candidates) {
-        if (ArenaWorldCatalog.isWalkable(
-          candidate.x,
-          candidate.z,
-          includeTowerCollision: false,
-          elevation: candidate.elevation,
-        ) && !_isBlockedByCover(
-          candidate.x, candidate.z, candidate.elevation,
-        )) {
-          final remaining = candidate.distanceTo(target);
-          if (remaining < bestDistance) {
-            best = candidate;
-            bestDistance = remaining;
-          }
-        }
-      }
-    }
-
-    if (best == null) return;
-    final movedX = best.x - bot.position.x;
-    final movedZ = best.z - bot.position.z;
-    bot.position = best;
-    if (movedX.abs() + movedZ.abs() > 0.0001) {
-      bot.facingX = movedX;
-      bot.facingZ = movedZ;
-      bot.moving = true;
-    }
+    return best;
   }
 
   MobaPoint? _botFlankWaypoint(_Bot bot) {
