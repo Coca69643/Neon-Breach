@@ -143,10 +143,12 @@ def main() -> None:
     (OUTPUT / "CC0-QUATERNIUS-LICENSE.txt").write_text(
         LICENSE_TEXT, encoding="utf-8"
     )
-    (OUTPUT / "weapon-assets-manifest.json").write_text(
-        json.dumps(manifest, indent=2, ensure_ascii=False) + "\\n",
-        encoding="utf-8",
-    )
+    manifest_path = OUTPUT / "weapon-assets-manifest.json"
+    manifest_payload = json.dumps(manifest, indent=2, ensure_ascii=False)
+    # Fail the asset bake if serialization ever produces a malformed manifest.
+    json.loads(manifest_payload)
+    manifest_path.write_text(manifest_payload + "\n", encoding="utf-8")
+    json.loads(manifest_path.read_text(encoding="utf-8"))
     print(
         f"Prepared {len(ASSETS)} pinned Quaternius CC0 hero weapons "
         f"({total_bytes:,} bytes)."
