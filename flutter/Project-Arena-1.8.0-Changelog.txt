@@ -1,0 +1,21 @@
+Project Arena
+Versão 1.8.0
+
+ADICIONADO
+- Campo urbano expandido para 224 × 188 unidades.
+- Seis distritos com captura territorial e recompensas de equipe.
+- Bônus de dano escalonado por distrito controlado.
+- Marcadores 3D e HUD para posse/contestação dos distritos.
+- Seis interiores acessíveis e duas rotas elevadas por mezanino.
+- Ruas secundárias e cinco travessias do canal.
+
+ALTERADO
+- Bots roamers priorizam distritos neutros ou controlados pelo adversário.
+- Direção dos rigs alinhada ao vetor de deslocamento.
+- Escala dos bots ajustada para 0.98 e dos minions para 0.94–1.02.
+- Escalas de armas reduzidas por rig.
+- Terreno, interiores, navegação e física usam o mesmo catálogo espacial.
+- Assets CC0 preparados offline e incluídos no pacote Android.
+
+REMOVIDO
+- Dependência exclusiva das três avenidas como rotas de rotação.
