@@ -270,6 +270,26 @@ void main() {
           reason: 'minion strikes must be visible to the renderer');
     });
 
+    test('lane units eventually damage a tower instead of only exchanging attacks', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+
+      advanceFor(simulation, 120);
+
+      final damagedTowers = simulation.snapshot.towers
+          .where((tower) => tower.health < tower.maxHealth)
+          .toList(growable: false);
+      expect(
+        damagedTowers,
+        isNotEmpty,
+        reason: 'supported bots and minions must be able to reach tower attack points',
+      );
+      expect(
+        damagedTowers.every((tower) => tower.health >= 0),
+        isTrue,
+        reason: 'tower health must never become negative',
+      );
+    });
+
     test('core stays protected until one complete lane loses all towers', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
