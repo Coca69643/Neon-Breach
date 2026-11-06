@@ -1,8 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
-
-import '../../../lib/game/physics/arena_physics_runtime.dart';
-import '../../../lib/game/world/arena_world_catalog.dart';
-import '../../../lib/game/match/moba_match_simulation.dart';
+import 'package:project_arena_flutter/game/match/moba_match_simulation.dart';
+import 'package:project_arena_flutter/game/physics/arena_physics_runtime.dart';
+import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
