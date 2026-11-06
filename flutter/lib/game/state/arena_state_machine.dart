@@ -308,7 +308,9 @@ class ArenaStateMachine extends ChangeNotifier {
         (current.phase == ArenaPhase.heroSelection ||
             current.phase == ArenaPhase.matchLoading ||
             current.phase == ArenaPhase.paused ||
-            current.phase == ArenaPhase.matchResult)) {
+            current.phase == ArenaPhase.matchResult ||
+            (current.phase == ArenaPhase.recoverableError &&
+                current.recoveryPhase == ArenaPhase.matchLoading))) {
       return current.copyWith(
         phase: ArenaPhase.mainMenu,
         clearErrorMessage: true,
