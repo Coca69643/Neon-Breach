@@ -19,6 +19,7 @@ ALTERADO
 - Movimento com aceleração, frenagem, tração por superfície e colisão contínua via Rapier em passo fixo.
 - Locomoção troca entre caminhada e corrida conforme a velocidade física real.
 - Herói gira para o alvo ao atacar, evitando animação de golpe desalinhada.
+- Bastion usa animação de soco pesado na habilidade de escudo; Lyra e Kairo mantêm cortes de espada.
 - Assets CC0 preparados offline e incluídos no pacote Android.
 
 REMOVIDO
