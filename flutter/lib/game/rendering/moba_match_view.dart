@@ -439,6 +439,17 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         _buildWorldProp(ArenaWorldCatalog.cityProps[i], 'city-detail-$i'),
       for (final building in ArenaWorldCatalog.cityInteriors)
         ..._buildCityInterior(building),
+      for (final district in ArenaWorldCatalog.districts)
+        SceneModel(
+          'assets/world/city/interior_computer_screen.glb',
+          key: ValueKey('district-terminal-${district.id}'),
+          name: 'district_terminal_${district.id}',
+          position: _worldPosition(
+            MobaPoint(district.x, district.z - 10.2),
+            heightOffset: 0.04,
+          ),
+          scale: vm.Vector3.all(1.25),
+        ),
       for (final access in ArenaWorldCatalog.verticalAccesses)
         ..._buildVerticalAccess(access),
       for (final block in ArenaWorldCatalog.commercialBlocks)
