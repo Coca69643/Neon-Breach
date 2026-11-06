@@ -92,7 +92,7 @@ abstract final class ArenaWorldCatalog {
   static const districts = <(String, String, double, double)>[
     ('civic', 'Distrito Cívico', -72.0, 56.0),
     ('park', 'Reserva Verde', -86.0, 14.0),
-    ('market', 'Mercado Central', 0.0, -54.0),
+    ('market', 'Mercado Central', 12.0, -54.0),
     ('industrial', 'Pátio Industrial', 82.0, -48.0),
     ('transit', 'Estação Intermodal', 76.0, 53.0),
     ('riverside', 'Orla do Canal', 0.0, 17.0),
