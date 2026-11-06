@@ -151,6 +151,66 @@ void main() {
       expect(physics.grounded, isTrue);
     });
 
+    test('diagonal input is normalized and never exceeds forward speed', () async {
+      await advance(frames: 90, moveX: 1, moveZ: 1);
+
+      expect(
+        physics.horizontalSpeed,
+        lessThanOrEqualTo(ArenaPhysicsRuntime.moveSpeed * 1.03),
+      );
+    });
+
+    test('direction reversal brakes before building speed in the new direction',
+        () async {
+      await advance(frames: 60, moveX: 1);
+      final beforeReverse = physics.playerPosition.x;
+      expect(physics.horizontalSpeed, greaterThan(4.6));
+
+      await advance(frames: 12, moveX: -1);
+
+      expect(
+        physics.horizontalSpeed,
+        lessThan(1.0),
+        reason: 'the motor must absorb forward momentum before reversing',
+      );
+      expect(
+        physics.playerPosition.x,
+        greaterThan(beforeReverse),
+        reason: 'the character must not instantly teleport into reverse motion',
+      );
+
+      await advance(frames: 36, moveX: -1);
+      expect(physics.playerPosition.x, lessThan(beforeReverse));
+    });
+
+    test('fixed-step movement stays consistent across render frame rates',
+        () async {
+      final secondRuntime = await ArenaPhysicsRuntime.create(
+        spawn: const MobaPoint(0, -60),
+      );
+      try {
+        physics.setInput(1, 0);
+        secondRuntime.setInput(1, 0);
+        for (var frame = 0; frame < 60; frame++) {
+          physics.update(1 / 60);
+        }
+        for (var frame = 0; frame < 30; frame++) {
+          secondRuntime.update(1 / 30);
+        }
+
+        expect(
+          physics.playerPosition.x,
+          closeTo(secondRuntime.playerPosition.x, 0.08),
+        );
+        expect(
+          physics.playerPosition.z,
+          closeTo(secondRuntime.playerPosition.z, 0.08),
+        );
+      } finally {
+        secondRuntime.dispose();
+      }
+    });
+
     test('teleport is an explicit respawn operation and resets velocity',
         () async {
       await advance(frames: 30, moveX: 1);
