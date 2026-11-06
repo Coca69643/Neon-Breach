@@ -1,37 +1,26 @@
 Projeto Arena
 Versão 1.7.10
 
-NOVIDADES
-- A morte do herói agora mantém o ponto de eliminação visível até o fim da contagem de retorno.
-- O herói reaparece na base aliada somente após os cinco segundos, com vida restaurada e proteção curta de spawn.
-- Armas dos três heróis foram reduzidas para proporções menos exageradas.
-- Quatro distritos internos com ambientação e funções visuais distintas.
-- Novos detalhes urbanos CC0: iluminação, sinalização, travessias, marquises, floreiras e vegetação.
-- NPCs de serviço agora patrulham os interiores e reagem à interação.
-- Comandos táticos pelo minimapa redirecionam um aliado de flanco.
-- O reator central comunica visualmente o controle e a disputa entre equipes.
+ADICIONADO
+- Movimento físico do herói com gravidade, aceleração, desaceleração e colisão por cápsula.
+- Rampa contínua e mezanino elevado nos interiores oeste-sul e leste-norte.
+- Colisões físicas para terreno, margens do canal, edifícios, árvores, estruturas e plataformas.
+- Travessia física do canal limitada aos três corredores de ponte.
+- Ciclo de eliminação com permanência no local e retorno temporizado à base.
 
-ALTERAÇÕES
-- Substituídas fachadas repetidas por seis silhuetas comerciais CC0.
-- Diferenciadas as salas de operações, oficina, parque e convivência.
-- Adicionadas quatro árvores grandes com colisão própria.
-- Mantida a rota de patrulha dos NPCs em superfícies transitáveis.
-- Ajustado o minimapa para aceitar comandos apenas em terreno acessível.
-- Corrigida a reciclagem das tropas derrotadas para manter novas ondas.
-- Corrigido o movimento por colisões e bordas do mapa.
-- Corrigido o avanço das tropas até os núcleos após a queda das torres.
-- Bots e tropas exibem animações de ataque próprias.
-- Torres destruídas deixam de aparecer na partida e no minimapa.
-- Reforçada a validação dos assets offline, da versão e da assinatura do APK.
+ALTERADO
+- Campo ampliado e remodelado para uma planta retangular com cantos arredondados.
+- Escala do cenário e proporção entre ruas, interiores e rotas ajustadas.
+- Interiores ampliados para 20 × 16 unidades, com entradas frontais de 4,8 unidades.
+- Movimento do jogador sincronizado à posição física real, sem deslocamento lógico duplicado.
+- Animação de locomoção sincronizada ao deslocamento efetivo.
+- Colisões e navegação dos mezaninos alinhadas à inclinação contínua da rampa.
+- NPCs de serviço, botões táticos e rotas de patrulha ajustados para o novo espaço.
+- Reaparecimento limitado à conclusão do temporizador, com reinício da velocidade física.
 
-EXCLUSÕES
-- Removida a dependência de fachadas comerciais repetidas nos quatro blocos principais.
-- Removido o posicionamento fixo dos NPCs nos interiores.
-- Removido o comportamento de bots de flanco limitado a waypoints permanentes.
-- Removida a rotação invertida que fazia os personagens andarem de costas.
-- Removido o bloqueio permanente das ondas ao atingir o limite de tropas.
-
-VALIDAÇÃO
-- Análise estática, testes unitários, build ARM64, inspeção do pacote e verificação de assinatura passaram no CI.
-- O upload de APK de atualização foi bloqueado na branch de desenvolvimento; a publicação permanece restrita à main.
-- Teste visual/funcional e desempenho sustentado no Realme C53 ainda precisam de validação física.
+REMOVIDO
+- Silhueta oval antiga do campo.
+- Colisor de piso concorrente sob a rampa e o mezanino.
+- Movimento duplicado entre o controlador físico e a simulação da partida.
+- Teleporte automático durante o movimento normal; teleporte fica restrito ao respawn explícito.
+- Bloqueios físicos nas áreas reservadas às três pontes.
