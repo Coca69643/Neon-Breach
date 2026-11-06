@@ -937,7 +937,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     right: side,
                     child: Row(
                       children: [
-                        _MiniMap(snapshot: snapshot),
+                        _MiniMap(
+                          snapshot: snapshot,
+                          onPing: (point) {
+                            if (!widget.simulation.issueTeamPing(point)) return;
+                            setState(() {
+                              _snapshot = widget.simulation.snapshot;
+                            });
+                          },
+                        ),
                         const SizedBox(width: 9),
                         _PauseButton(onTap: widget.onPause),
                       ],
@@ -1675,18 +1683,36 @@ class _PauseButton extends StatelessWidget {
 }
 
 class _MiniMap extends StatelessWidget {
-  const _MiniMap({required this.snapshot});
+  const _MiniMap({
+    required this.snapshot,
+    required this.onPing,
+  });
 
   final MobaMatchSnapshot snapshot;
+  final ValueChanged<MobaPoint> onPing;
 
   @override
   Widget build(BuildContext context) {
     return _HudPlate(
       padding: const EdgeInsets.all(4),
-      child: SizedBox(
-        width: 120,
-        height: 76,
-        child: CustomPaint(painter: _MiniMapPainter(snapshot)),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: (details) {
+          const mapWidth = 120.0;
+          const mapHeight = 76.0;
+          final x = (details.localPosition.dx / mapWidth) *
+                  (ArenaWorldCatalog.halfWidth * 2) -
+              ArenaWorldCatalog.halfWidth;
+          final z = (details.localPosition.dy / mapHeight) *
+                  (ArenaWorldCatalog.halfDepth * 2) -
+              ArenaWorldCatalog.halfDepth;
+          onPing(MobaPoint(x, z));
+        },
+        child: SizedBox(
+          width: 120,
+          height: 76,
+          child: CustomPaint(painter: _MiniMapPainter(snapshot)),
+        ),
       ),
     );
   }
@@ -1766,6 +1792,26 @@ class _MiniMapPainter extends CustomPainter {
         marker,
         1.25,
         Paint()..color = const Color(0xFF17342F),
+      );
+    }
+
+    final ping = snapshot.teamPingTarget;
+    if (ping != null && snapshot.teamPingSeconds > 0) {
+      final center = project(ping);
+      final pulse = (snapshot.teamPingSeconds % 1.0);
+      final radius = 3.5 + (1.0 - pulse) * 3.8;
+      canvas.drawCircle(
+        center,
+        radius,
+        Paint()
+          ..color = const Color(0xFFFFD58A).withValues(alpha: 0.92 * pulse)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+      canvas.drawCircle(
+        center,
+        2.2,
+        Paint()..color = const Color(0xFFFFD58A),
       );
     }
 
