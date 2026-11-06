@@ -1,6 +1,16 @@
 Projeto Arena
 Versão 1.7.10
 
+ETAPA EM DESENVOLVIMENTO — FÍSICA E ESTADO DE PARTIDA
+- Backend Rapier 3D com controlador cinemático do herói, cápsula, gravidade vertical e colisão em paredes, edifícios, pontes, rampas e mezaninos.
+- Movimento físico sincronizado com a simulação MOBA, sem aplicar o deslocamento duas vezes.
+- Ao ser derrotado, o herói permanece no ponto da derrota com vida zero durante cinco segundos; retorna à base e recupera a vida somente no fim da contagem.
+- HUD exibe valor numérico de vida e estado de derrota.
+- Bots e tropas recebem barras de vida no espaço 3D e ajuste de escala para melhorar leitura.
+- Torre do menu recebe contrafortes, janelas recuadas, torreões, escadaria de entrada e vegetação na ilha.
+- CI e teste visual no Realme C53 ainda pendentes; mapa principal mantém a topologia e as dimensões atuais nesta etapa.
+
+
 NOVIDADES
 - Quatro distritos internos com ambientação e funções visuais distintas.
 - Novos detalhes urbanos CC0: iluminação, sinalização, travessias, marquises, floreiras e vegetação.
