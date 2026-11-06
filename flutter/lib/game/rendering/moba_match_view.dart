@@ -468,31 +468,32 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final bot in snapshot.bots)
         if (bot.respawnSeconds <= 0) _buildBot(bot),
       for (final minion in snapshot.minions) _buildMinion(minion),
-      SceneModel(
-        _heroAsset(snapshot.heroId),
-        key: const ValueKey('match-player-hero'),
-        name: 'player_${snapshot.heroId.id}',
-        onLoaded: (modelRoot) {
-          _markWorldAssetReady('player');
-          unawaited(HeroWeaponSocket.attach(modelRoot, snapshot.heroId));
-        },
-        position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
-        rotation: _playerFacing(snapshot),
-        scale: vm.Vector3.all(1.0),
-        animations: [
-          SceneAnimationSpec(
-            snapshot.playerAttackSeconds > 0
-                ? _heroAttack(snapshot.heroId)
-                : (snapshot.playerMoving
-                    ? _heroWalk(snapshot.heroId)
-                    : _heroIdle(snapshot.heroId)),
-            loop: snapshot.playerAttackSeconds <= 0,
-            speed: snapshot.playerAttackSeconds > 0
-                ? 1.2
-                : (snapshot.playerMoving ? 1.08 : 0.78),
-          ),
-        ],
-      ),
+      if (snapshot.playerHealth > 0)
+        SceneModel(
+          _heroAsset(snapshot.heroId),
+          key: const ValueKey('match-player-hero'),
+          name: 'player_${snapshot.heroId.id}',
+          onLoaded: (modelRoot) {
+            _markWorldAssetReady('player');
+            unawaited(HeroWeaponSocket.attach(modelRoot, snapshot.heroId));
+          },
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
+          rotation: _playerFacing(snapshot),
+          scale: vm.Vector3.all(1.0),
+          animations: [
+            SceneAnimationSpec(
+              snapshot.playerAttackSeconds > 0
+                  ? _heroAttack(snapshot.heroId)
+                  : (snapshot.playerMoving
+                      ? _heroWalk(snapshot.heroId)
+                      : _heroIdle(snapshot.heroId)),
+              loop: snapshot.playerAttackSeconds <= 0,
+              speed: snapshot.playerAttackSeconds > 0
+                  ? 1.2
+                  : (snapshot.playerMoving ? 1.08 : 0.78),
+            ),
+          ],
+        ),
     ];
   }
 
@@ -1544,14 +1545,26 @@ class _PlayerHud extends StatelessWidget {
           _Bar(value: xp, color: const Color(0xFF62B8E8), height: 4),
           if (snapshot.playerRespawnSeconds > 0)
             Padding(
-              padding: const EdgeInsets.only(top: 4),
-              child: Text(
-                'RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
-                style: const TextStyle(
-                  color: Color(0xFFFFD68E),
-                  fontSize: 9,
-                  fontWeight: FontWeight.w800,
-                ),
+              padding: const EdgeInsets.only(top: 5),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(
+                    Icons.close_rounded,
+                    color: Color(0xFFFF7777),
+                    size: 12,
+                  ),
+                  const SizedBox(width: 4),
+                  Text(
+                    'ELIMINADO  •  RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
+                    style: const TextStyle(
+                      color: Color(0xFFFFA0A0),
+                      fontSize: 9,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.35,
+                    ),
+                  ),
+                ],
               ),
             ),
         ],

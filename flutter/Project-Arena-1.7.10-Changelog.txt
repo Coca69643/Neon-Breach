@@ -2,6 +2,9 @@ Projeto Arena
 Versão 1.7.10
 
 NOVIDADES
+- A morte do herói agora mantém o ponto de eliminação visível até o fim da contagem de retorno.
+- O herói reaparece na base aliada somente após os cinco segundos, com vida restaurada e proteção curta de spawn.
+- Armas dos três heróis foram reduzidas para proporções menos exageradas.
 - Quatro distritos internos com ambientação e funções visuais distintas.
 - Novos detalhes urbanos CC0: iluminação, sinalização, travessias, marquises, floreiras e vegetação.
 - NPCs de serviço agora patrulham os interiores e reagem à interação.
