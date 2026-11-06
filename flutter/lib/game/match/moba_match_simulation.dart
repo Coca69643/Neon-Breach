@@ -295,6 +295,8 @@ class MobaMatchSnapshot {
     required this.covers,
     required this.centralObjective,
     required this.selectedTarget,
+    required this.teamPingTarget,
+    required this.teamPingSeconds,
     required this.winner,
   });
 
@@ -330,6 +332,8 @@ class MobaMatchSnapshot {
   final List<MobaCoverSnapshot> covers;
   final MobaObjectiveSnapshot centralObjective;
   final MobaTargetSnapshot? selectedTarget;
+  final MobaPoint? teamPingTarget;
+  final double teamPingSeconds;
   final MobaTeam? winner;
 
   bool get isFinished => winner != null;
@@ -490,6 +494,9 @@ class MobaMatchSimulation {
   double _lastMoveX = 0;
   double _lastMoveZ = 1;
   bool _playerMoving = false;
+  MobaPoint? _teamPingTarget;
+  double _teamPingSeconds = 0;
+  String? _teamPingBotId;
 
   MobaMatchSnapshot get snapshot => _makeSnapshot();
 
@@ -498,6 +505,48 @@ class MobaMatchSimulation {
   int get totalTowerCount => _towers.length;
   double get elapsedSeconds => _elapsed;
   MobaTeam? get winner => _winner;
+
+  /// Orders the nearest active blue-side roamer to investigate a world point.
+  /// Invalid terrain, water, walls and blocked interiors are rejected so the
+  /// ping never sends a bot toward an unreachable position.
+  bool issueTeamPing(MobaPoint point) {
+    if (_winner != null ||
+        !point.x.isFinite ||
+        !point.z.isFinite ||
+        !ArenaWorldCatalog.isWalkable(
+          point.x,
+          point.z,
+          includeTowerCollision: false,
+          elevation: point.elevation,
+        ) ||
+        _isBlockedByCover(point.x, point.z, point.elevation)) {
+      return false;
+    }
+
+    final roamers = _bots
+        .where((bot) =>
+            bot.team == MobaTeam.blue &&
+            (bot.role == 3 || bot.role == 4) &&
+            bot.alive)
+        .toList(growable: false);
+    if (roamers.isEmpty) return false;
+
+    _Bot? selected;
+    var nearest = double.infinity;
+    for (final bot in roamers) {
+      final distance = bot.position.distanceTo(point);
+      if (distance < nearest) {
+        nearest = distance;
+        selected = bot;
+      }
+    }
+    if (selected == null) return false;
+
+    _teamPingTarget = point;
+    _teamPingBotId = selected.id;
+    _teamPingSeconds = 8.0;
+    return true;
+  }
 
   MobaHeroId _heroForRole(int role) => switch (role) {
         0 => MobaHeroId.bastion,
@@ -569,6 +618,9 @@ class MobaMatchSimulation {
     _lastMoveX = 0;
     _lastMoveZ = 1;
     _playerMoving = false;
+    _teamPingTarget = null;
+    _teamPingSeconds = 0;
+    _teamPingBotId = null;
     _coreHealth
       ..[0] = coreMaxHealth
       ..[1] = coreMaxHealth;
@@ -781,6 +833,13 @@ class MobaMatchSimulation {
     required bool basicAttack,
     required bool castSkill,
   }) {
+    if (_teamPingSeconds > 0) {
+      _teamPingSeconds = math.max(0, _teamPingSeconds - dt);
+      if (_teamPingSeconds <= 0) {
+        _teamPingTarget = null;
+        _teamPingBotId = null;
+      }
+    }
     _elapsed += dt;
     _playerAttackCooldown = math.max(0, _playerAttackCooldown - dt);
     _playerAttackPulseSeconds =
@@ -1355,6 +1414,29 @@ class MobaMatchSimulation {
         continue;
       }
 
+      // A map ping temporarily overrides macro rotation for exactly one
+      // available roamer. Hero combat still wins, so a ping never cancels a
+      // fight already in progress.
+      final pingTarget = _teamPingTarget;
+      if (bot.team == MobaTeam.blue &&
+          bot.id == _teamPingBotId &&
+          pingTarget != null &&
+          _teamPingSeconds > 0) {
+        final distance = bot.position.distanceTo(pingTarget);
+        if (distance > 2.7) {
+          _moveBot(bot, pingTarget, 3.35, dt);
+        } else {
+          bot.moving = false;
+          final dx = pingTarget.x - bot.position.x;
+          final dz = pingTarget.z - bot.position.z;
+          if (dx.abs() + dz.abs() > 0.001) {
+            bot.facingX = dx;
+            bot.facingZ = dz;
+          }
+        }
+        continue;
+      }
+
       // Side-lane roamers must complete their flank approach before being
       // pulled back onto the minion line. Nearby enemy heroes still take
       // combat priority, but minion aggro cannot cancel the route every tick.
@@ -1837,6 +1919,8 @@ class MobaMatchSimulation {
         redPresence: _objective.redPresence,
       ),
       selectedTarget: _selectedTargetSnapshot(),
+      teamPingTarget: _teamPingSeconds > 0 ? _teamPingTarget : null,
+      teamPingSeconds: _teamPingSeconds,
       winner: _winner,
     );
   }
