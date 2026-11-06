@@ -48,7 +48,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Mapa District Control: 180 × 140, quatro distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e quatro interiores ampliados.
+- Mapa District Control: 224 × 188, seis distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e seis interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
@@ -59,7 +59,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.7.10+72: cidade com fachadas e adereços CC0 variados, interiores diferenciados, patrulha de NPCs, comando tático por minimapa e anel de controle do reator. CI validou análise, testes, build ARM64, assets do pacote e assinatura; upload/release não são permitidos na branch de desenvolvimento. Teste físico e desempenho sustentado no Realme C53 continuam pendentes.
+- Build 1.8.0+73: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes. Teste físico e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
