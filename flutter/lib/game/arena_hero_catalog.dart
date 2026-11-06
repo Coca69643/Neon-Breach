@@ -120,6 +120,10 @@ abstract final class ArenaHeroCatalog {
         .toList(growable: false);
   }
 
+  /// Keep category navigation out of the UI until the roster actually spans
+  /// more than one species. New categories appear automatically with new heroes.
+  static bool get hasMultipleSpecies => availableSpecies.length > 1;
+
   static ArenaHeroDefinition? byId(String? id) {
     for (final hero in playable) {
       if (hero.id == id) return hero;
