@@ -203,6 +203,15 @@ def make_hub(mesh: HubMesh):
         mesh.box(x, 6.4, z + 0.02, 0.28, 3.0, 0.98, "glow_cyan", yaw=-angle)
         mesh.box(x, 10.1, z, 0.98, 0.36, 1.1, "gold", yaw=-angle)
 
+    # Deep lower plinth and radial stone ribs break the single-cylinder read.
+    for i in range(16):
+        angle = 2 * math.pi * i / 16 + math.pi / 16
+        radius = 6.35
+        x, z = radius * math.cos(angle), radius * math.sin(angle)
+        mesh.box(x, 5.55, z, 0.54, 4.1, 0.88, "stone_light", yaw=-angle)
+        mesh.box(x, 7.62, z, 0.76, 0.24, 1.02, "stone_warm", yaw=-angle)
+        mesh.box(x, 3.52, z, 0.82, 0.32, 1.12, "stone_dark", yaw=-angle)
+
     # Second body, ringed balcony and a row of vertical windows.
     mesh.cylinder(0, 0, 10.45, 17.2, 4.95, 4.02, "stone_dark", 16, math.pi/16)
     mesh.ring_band(0, 0, 16.75, 17.5, 3.9, 5.0, "stone_light", 32)
@@ -213,6 +222,19 @@ def make_hub(mesh: HubMesh):
         mesh.box(x, 13.75, z, 0.52, 2.2, 0.30, "stone_warm", yaw=-angle)
         mesh.box(x, 13.78, z + 0.035, 0.22, 1.58, 0.32, "glow_pink", yaw=-angle)
         mesh.box(x, 15.05, z + 0.04, 0.56, 0.18, 0.38, "gold", yaw=-angle)
+
+    # Recessed upper windows, stone lintels and narrow luminous insets.
+    for i in range(12):
+        angle = 2 * math.pi * i / 12 + math.pi / 12
+        radial_x, radial_z = math.cos(angle), math.sin(angle)
+        x, z = 4.18 * radial_x, 4.18 * radial_z
+        mesh.box(x, 13.25, z, 0.42, 2.18, 0.24, "stone_dark", yaw=-angle)
+        mesh.box(x + radial_x * 0.16, 13.28, z + radial_z * 0.16,
+                 0.18, 1.54, 0.12, "glow_cyan", yaw=-angle)
+        mesh.box(x + radial_x * 0.20, 14.48, z + radial_z * 0.20,
+                 0.62, 0.16, 0.34, "stone_light", yaw=-angle)
+        mesh.box(x + radial_x * 0.20, 12.06, z + radial_z * 0.20,
+                 0.62, 0.16, 0.34, "stone_warm", yaw=-angle)
 
     # Third body and its open colonnade.
     mesh.cylinder(0, 0, 17.4, 23.65, 3.82, 2.92, "stone", 16, math.pi/16)
@@ -225,6 +247,15 @@ def make_hub(mesh: HubMesh):
         mesh.cylinder(x, z, 18.0, 22.95, 0.22, 0.16, "stone_warm", 8, angle)
         mesh.cylinder(x, z, 22.7, 23.12, 0.32, 0.24, "gold", 8, angle)
         mesh.ellipsoid(x, 20.5, z, 0.23, 0.18, 0.23, "glow_cyan", 5, 8)
+
+    # Four compact corner turrets create a distinct upper skyline.
+    for i in range(4):
+        angle = math.pi / 4 + i * math.pi / 2
+        x, z = 3.35 * math.cos(angle), 3.35 * math.sin(angle)
+        mesh.cylinder(x, z, 23.2, 26.5, 0.72, 0.58, "stone_warm", 10, angle)
+        mesh.ring_band(x, z, 25.9, 26.25, 0.54, 0.82, "gold", 16)
+        mesh.cylinder(x, z, 26.35, 28.4, 0.66, 0.02, "stone_dark", 10, angle)
+        mesh.cylinder(x, z, 26.32, 26.52, 0.72, 0.72, "stone_light", 10, angle)
 
     # Crown spire and a floating segmented halo.
     mesh.cylinder(0, 0, 23.85, 27.0, 3.25, 2.3, "stone_dark", 12, math.pi/12)
@@ -261,11 +292,41 @@ def make_hub(mesh: HubMesh):
     mesh.ellipsoid(0, 30.9, -0.69, 1.35, 1.98, 0.12, "glow_pink",
                    rings=8, segments=20)
 
+    # A broad seven-step approach makes the entrance readable at menu scale.
+    for i in range(7):
+        step_y = 0.14 + i * 0.19
+        step_z = 10.15 - i * 0.56
+        step_material = "stone_light" if i % 2 == 0 else "stone_warm"
+        mesh.box(0, step_y, step_z, 3.7, 0.28, 0.72, step_material)
+        mesh.box(-1.95, step_y + 0.18, step_z, 0.22, 0.35, 0.82,
+                 "stone_dark")
+        mesh.box(1.95, step_y + 0.18, step_z, 0.22, 0.35, 0.82,
+                 "stone_dark")
+
     # A strong ground-level entrance, framed by an original arch.
     mesh.box(0, 1.7, 6.1, 2.0, 3.8, 0.40, "stone_dark")
     mesh.box(0, 1.7, 6.34, 1.25, 2.9, 0.12, "glow_cyan")
     mesh.arch_frame(0, -0.15, 6.36, 3.25, 4.1, 0.74, "stone_light", 9)
     mesh.arch_frame(0, -0.1, 6.52, 2.62, 3.55, 0.22, "gold", 9)
+
+    # Garden buttresses and warm lantern plinths connect the tower to the island.
+    for i in range(4):
+        angle = math.pi / 4 + i * math.pi / 2
+        x, z = 8.0 * math.cos(angle), 6.9 * math.sin(angle)
+        mesh.box(x, 0.22, z, 2.1, 0.44, 1.0, "stone_warm", yaw=-angle)
+        mesh.box(x, 0.72, z, 1.55, 0.16, 0.74, "stone_light", yaw=-angle)
+        mesh.cylinder(x, z, 0.0, 1.45, 0.16, 0.12, "gold", 8, angle)
+        mesh.ellipsoid(x, 1.56, z, 0.28, 0.35, 0.28, "glow_cyan", 6, 10)
+
+    # Small trees and clustered foliage give the island a lived-in scale cue.
+    for i in range(5):
+        angle = i * (2 * math.pi / 5) + 0.25
+        x, z = 9.1 * math.cos(angle), 7.1 * math.sin(angle)
+        mesh.cylinder(x, z, -0.08, 1.25, 0.15, 0.11, "stone_warm", 7, angle)
+        mesh.ellipsoid(x, 1.75, z, 0.72, 0.82, 0.68, "grass", 6, 9,
+                       phase=angle, irregularity=0.18)
+        mesh.ellipsoid(x - 0.24, 2.05, z + 0.12, 0.4, 0.45, 0.38,
+                       "teal", 5, 8, phase=angle + 0.3)
 
     # Small flags and finials give the skyline a more organic silhouette.
     for side in (-1, 1):
