@@ -11,7 +11,7 @@ ADICIONADO
 
 ALTERADO
 - Bots roamers priorizam distritos neutros ou controlados pelo adversário.
-- Orientação dos rigs corrigida para o eixo frontal local -Z, alinhando o rosto ao vetor de deslocamento.
+- Heróis jogáveis (GLBs Quaternius Animated Men/Women): orientação local -Z alinhada ao deslocamento; rigs de bots, tropas e NPCs mantêm seu eixo local +Z.
 - Direção dos rigs alinhada ao vetor de deslocamento.
 - Escala dos bots ajustada para 0.98 e dos minions para 0.94–1.02.
 - Escalas de armas reduzidas por rig.
