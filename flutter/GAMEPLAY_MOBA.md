@@ -2,25 +2,25 @@
 
 ## Direção obrigatória
 
-Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop principal é disputa de rotas, combate entre heróis e tropas, controle de estruturas, progressão durante a partida e destruição do núcleo adversário.
+Projeto Arena é um MOBA 5v5 mobile de controle territorial. As rotas mantêm pressão de siege; os seis distritos e o reator central direcionam rotação, recompensas e vantagem estratégica.
 
-## Loop de partida
+## Loop de partida — District Control
 
-1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base da equipe.
-2. As três rotas recebem ondas periódicas de tropas aliadas e adversárias.
-3. Heróis, bots e tropas disputam espaço, experiência, ouro e estruturas.
-4. Torres protegem cada rota; uma torre só pode ser atacada com pressão de tropas aliadas.
-5. Destruir as três torres de uma rota abre o acesso ao núcleo daquela equipe.
-6. A equipe que destrói o núcleo inimigo vence.
+1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base.
+2. A partida abre com tropas nas rotas e disputa simultânea dos seis distritos.
+3. Bots roamers procuram distritos neutros ou adversários; o bot central contesta o reator.
+4. Capturar um distrito concede ouro, experiência e bônus territorial de 3,5% de dano à equipe.
+5. O reator central mantém seu bônus separado; as tropas continuam necessárias para pressionar estruturas.
+6. Uma rota aberta permite avançar sobre o núcleo; vence a equipe que o destruir.
 
 ## Campo de batalha
 
-- Três rotas: superior, central e inferior, estendidas por um campo urbano de 180 × 140 unidades.
-- Formação sem jungler: distribuição 2–1–2, com flex para reforçar rota.
-- Três torres por rota e por equipe: externas, intermediárias e internas (18 no total).
-- Núcleo de cada equipe.
-- Canal central leste-oeste, três travessias, becos laterais e quatro edifícios de piso térreo com interiores percorríveis; sem acampamentos de selva.
-- Orçamento de tropas ativo limitado a 48 unidades.
+- Arena urbana de 224 × 188 com seis distritos: Distrito Cívico, Reserva Verde, Mercado Central, Pátio Industrial, Estação Intermodal e Orla do Canal.
+- Cinco pontes sobre o canal e ruas secundárias pavimentadas conectam os distritos sem obrigar o jogador a usar três corredores fixos.
+- Quatro consoles neutros de captura; cada distrito controlado concede bônus territorial.
+- Quatro interiores ampliados para 24 × 18 unidades, com portas de 6,4 unidades, mobiliário e colisões; dois têm mezaninos.
+- Três linhas de tropas continuam como pressão de siege, enquanto heróis e bots fazem rotação territorial.
+- Núcleo de cada equipe; orçamento ativo limitado a 48 minions.
 
 ## Sistemas de gameplay
 
