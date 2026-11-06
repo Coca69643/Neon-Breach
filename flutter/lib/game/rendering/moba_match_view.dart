@@ -3,6 +3,8 @@ import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
+import 'package:flutter_scene/physics.dart' as physics;
+import 'package:flutter_scene_rapier/flutter_scene_rapier.dart';
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../match/moba_match_simulation.dart';
@@ -75,6 +77,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ..baseColorFactor = vm.Vector4(0.98, 0.25, 0.27, 0.96);
   static final UnlitMaterial _relayContestedMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(1.0, 0.78, 0.42, 1.0);
+  static final CuboidGeometry _unitHealthBackGeometry =
+      CuboidGeometry(vm.Vector3(1.08, 0.075, 0.055));
+  static final CuboidGeometry _unitHealthFillGeometry =
+      CuboidGeometry(vm.Vector3(1.0, 0.052, 0.07));
+  static final UnlitMaterial _unitHealthBackMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.035, 0.055, 0.07, 0.94);
+  static final UnlitMaterial _unitHealthFillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.30, 0.82, 0.48, 1.0);
   static const String _terrainAsset = 'assets/world/arena_terrain.glb';
 
   static const _ambientNpcs = <_AmbientNpc>[
@@ -137,6 +147,28 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   ];
 
   late MobaMatchSnapshot _snapshot;
+  late final physics.PhysicsWorld _physicsWorld = physics.PhysicsWorld(
+    RapierWorld(gravity: vm.Vector3(0, -18.0, 0)),
+  );
+  final SceneNodeController _playerPhysicsNode = SceneNodeController();
+  late final physics.RigidBody _playerPhysicsBody =
+      physics.RigidBody(type: physics.BodyType.kinematic);
+  late final physics.Collider _playerPhysicsCollider = physics.Collider(
+    shape: physics.CapsuleShape(radius: 0.38, halfHeight: 0.48),
+  );
+  late final physics.KinematicCharacterController _playerPhysicsController =
+      physics.KinematicCharacterController(
+    maxSlopeClimbAngle: 0.72,
+    minSlopeSlideAngle: 0.86,
+    snapToGround: 0.28,
+    autostep: true,
+    autostepMaxHeight: 0.45,
+    autostepMinWidth: 0.25,
+  );
+  late final List<Widget> _physicsStaticColliders =
+      _buildPhysicsStaticColliders();
+  int _physicsWarmupFrames = 0;
+  double _playerVerticalVelocity = 0;
   double _cameraYaw = 0;
   double _cameraPitch = 0.34;
   int? _cameraPointerId;
@@ -225,12 +257,73 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final rightZ = -math.sin(_cameraYaw);
     final worldMoveX = _moveX * rightX + _moveZ * forwardX;
     final worldMoveZ = _moveX * rightZ + _moveZ * forwardZ;
+
+    var physicsDriven = false;
+    final actor = _playerPhysicsNode.node;
+    if (actor != null) {
+      if (_physicsWarmupFrames < 2) {
+        // Rapier must see the initial ground/wall colliders before move().
+        _physicsWarmupFrames++;
+      } else {
+        physicsDriven = true;
+        if (_snapshot.playerRespawnSeconds > 0) {
+          _playerVerticalVelocity = 0;
+        } else {
+          final dt = deltaSeconds.clamp(0.001, 0.05).toDouble();
+          final inputLength = math.sqrt(
+            worldMoveX * worldMoveX + worldMoveZ * worldMoveZ,
+          );
+          final nx = inputLength > 1 ? worldMoveX / inputLength : worldMoveX;
+          final nz = inputLength > 1 ? worldMoveZ / inputLength : worldMoveZ;
+          final movement = _playerPhysicsController.move(
+            vm.Vector3(
+              nx * MobaMatchSimulation.playerMoveSpeed * dt,
+              _playerVerticalVelocity * dt,
+              nz * MobaMatchSimulation.playerMoveSpeed * dt,
+            ),
+            deltaSeconds: dt,
+          );
+          if (movement.grounded && _playerVerticalVelocity < 0) {
+            _playerVerticalVelocity = 0;
+          } else {
+            _playerVerticalVelocity =
+                math.max(-24.0, _playerVerticalVelocity - 18.0 * dt);
+          }
+          final physicalPosition = actor.globalTransform.getTranslation();
+          final elevation = ArenaWorldCatalog.authoredElevationAt(
+            physicalPosition.x,
+            physicalPosition.z,
+          );
+          final accepted = widget.simulation.syncPlayerPhysicsState(
+            MobaPoint(
+              physicalPosition.x,
+              physicalPosition.z,
+              elevation: elevation,
+            ),
+            moving: inputLength >= 0.06,
+            facingX: nx,
+            facingZ: nz,
+          );
+          if (!accepted) {
+            // The map catalog remains the final water/bounds guard.
+            final previous = widget.simulation.snapshot.playerPosition;
+            actor.localTransform = vm.Matrix4.compose(
+              _worldPosition(previous, heightOffset: 0.86),
+              _playerFacing(widget.simulation.snapshot),
+              vm.Vector3.all(1),
+            );
+            _playerVerticalVelocity = 0;
+          }
+        }
+      }
+    }
     widget.simulation.step(
       deltaSeconds,
-      moveX: worldMoveX,
-      moveZ: worldMoveZ,
+      moveX: physicsDriven ? 0 : worldMoveX,
+      moveZ: physicsDriven ? 0 : worldMoveZ,
       basicAttack: _basicAttackHeld,
       castSkill: _skillHeld,
+      playerPhysicsDriven: physicsDriven,
     );
     final next = widget.simulation.snapshot;
     _advanceCameraRig(next, deltaSeconds);
@@ -427,9 +520,180 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ];
   }
 
+  Widget _physicsBox(
+    String id,
+    vm.Vector3 position,
+    vm.Vector3 halfExtents, {
+    vm.Quaternion? rotation,
+  }) {
+    return SceneNode(
+      key: ValueKey('arena-physics-$id'),
+      name: 'physics_$id',
+      position: position,
+      rotation: rotation,
+      components: [
+        physics.RigidBody(type: physics.BodyType.fixed),
+        physics.Collider(shape: physics.BoxShape(halfExtents: halfExtents)),
+      ],
+    );
+  }
+
+  List<Widget> _buildPhysicsStaticColliders() {
+    final colliders = <Widget>[
+      // Keep the canal physically open; only the authored bridges cross it.
+      _physicsBox('ground-south', vm.Vector3(0, -0.5, -36.5),
+          vm.Vector3(90, 0.5, 33.0)),
+      _physicsBox('ground-north', vm.Vector3(0, -0.5, 36.5),
+          vm.Vector3(90, 0.5, 33.0)),
+      _physicsBox('boundary-west', vm.Vector3(-90, 2.5, 0),
+          vm.Vector3(0.45, 2.5, 70)),
+      _physicsBox('boundary-east', vm.Vector3(90, 2.5, 0),
+          vm.Vector3(0.45, 2.5, 70)),
+      _physicsBox('boundary-south', vm.Vector3(0, 2.5, -70),
+          vm.Vector3(90, 2.5, 0.45)),
+      _physicsBox('boundary-north', vm.Vector3(0, 2.5, 70),
+          vm.Vector3(90, 2.5, 0.45)),
+    ];
+    final initial = widget.simulation.snapshot;
+
+    for (final building in ArenaWorldCatalog.cityInteriors) {
+      final id = building.$1, x = building.$2, z = building.$3;
+      final ground = ArenaWorldCatalog.heightAt(x, z);
+      colliders.addAll([
+        _physicsBox('$id-wall-north', vm.Vector3(x, ground + 1.45, z + 4.3),
+            vm.Vector3(6.0, 1.45, 0.22)),
+        _physicsBox('$id-wall-west', vm.Vector3(x - 5.8, ground + 1.45, z),
+            vm.Vector3(0.22, 1.45, 4.5)),
+        _physicsBox('$id-wall-east', vm.Vector3(x + 5.8, ground + 1.45, z),
+            vm.Vector3(0.22, 1.45, 4.5)),
+        _physicsBox('$id-wall-south-west',
+            vm.Vector3(x - 3.8, ground + 1.45, z - 4.3),
+            vm.Vector3(2.2, 1.45, 0.22)),
+        _physicsBox('$id-wall-south-east',
+            vm.Vector3(x + 3.8, ground + 1.45, z - 4.3),
+            vm.Vector3(2.2, 1.45, 0.22)),
+      ]);
+      final hasVerticalAccess = ArenaWorldCatalog.verticalAccesses
+          .any((entry) => entry.id == id);
+      colliders.add(_physicsBox(
+        '$id-counter',
+        hasVerticalAccess
+            ? vm.Vector3(x - 3.5, ground + 0.48, z - 1.45)
+            : vm.Vector3(x, ground + 0.48, z + 1.35),
+        hasVerticalAccess
+            ? vm.Vector3(1.05, 0.48, 0.52)
+            : vm.Vector3(1.95, 0.48, 0.52),
+      ));
+    }
+
+    for (final access in ArenaWorldCatalog.verticalAccesses) {
+      final base = ArenaWorldCatalog.heightAt(access.x, access.z) + 0.035;
+      final angle = math.atan2(
+        ArenaVerticalAccess.upperHeight,
+        ArenaVerticalAccess.rampRun,
+      );
+      final centerZ = (access.corridorMinZ + access.corridorMaxZ) * 0.5;
+      colliders.add(_physicsBox(
+        '${access.id}-ramp',
+        vm.Vector3(
+          access.rampStartX + ArenaVerticalAccess.rampRun * 0.5,
+          base + ArenaVerticalAccess.upperHeight * 0.5,
+          centerZ,
+        ),
+        vm.Vector3(
+          ArenaVerticalAccess.rampRun * 0.5,
+          0.16,
+          ArenaVerticalAccess.platformDepth * 0.5,
+        ),
+        rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 0, 1), angle),
+      ));
+      colliders.add(_physicsBox(
+        '${access.id}-mezzanine',
+        vm.Vector3(
+          access.rampEndX + ArenaVerticalAccess.platformLength * 0.5,
+          base + ArenaVerticalAccess.upperHeight - 0.14,
+          centerZ,
+        ),
+        vm.Vector3(
+          ArenaVerticalAccess.platformLength * 0.5,
+          0.14,
+          ArenaVerticalAccess.platformDepth * 0.5,
+        ),
+      ));
+    }
+
+    for (final bridgeX in const [-36.0, 0.0, 36.0]) {
+      colliders.add(_physicsBox(
+        'bridge-${bridgeX.toInt()}',
+        vm.Vector3(bridgeX, 0.14, 0),
+        vm.Vector3(4.5, 0.14, 4.8),
+      ));
+    }
+    for (final block in ArenaWorldCatalog.commercialBlocks) {
+      final ground = ArenaWorldCatalog.heightAt(block.$2, block.$3);
+      colliders.add(_physicsBox(
+        'building-${block.$2.toInt()}-${block.$3.toInt()}',
+        vm.Vector3(block.$2, ground + 2.8, block.$3),
+        vm.Vector3(6.8, 2.8, 6.8),
+      ));
+    }
+    for (final tower in initial.towers) {
+      final ground = ArenaWorldCatalog.heightAt(tower.position.x, tower.position.z);
+      colliders.add(_physicsBox(
+        'tower-${tower.team.name}-${tower.lane.name}-${tower.tier}',
+        vm.Vector3(tower.position.x, ground + 2.35, tower.position.z),
+        vm.Vector3(2.45, 2.35, 2.45),
+      ));
+    }
+    return colliders;
+  }
+
+  Widget _buildPlayerPhysicsActor(MobaMatchSnapshot snapshot) {
+    return SceneNode(
+      key: const ValueKey('match-player-physics-actor'),
+      name: 'player_physics_actor',
+      controller: _playerPhysicsNode,
+      position: _worldPosition(snapshot.playerPosition, heightOffset: 0.86),
+      rotation: _playerFacing(snapshot),
+      visible: snapshot.playerHealth > 0,
+      components: [
+        _playerPhysicsBody,
+        _playerPhysicsCollider,
+        _playerPhysicsController,
+      ],
+      children: [
+        SceneModel(
+          _heroAsset(snapshot.heroId),
+          key: const ValueKey('match-player-hero'),
+          name: 'player_${snapshot.heroId.id}',
+          onLoaded: (modelRoot) {
+            _markWorldAssetReady('player');
+            unawaited(HeroWeaponSocket.attach(modelRoot, snapshot.heroId));
+          },
+          position: vm.Vector3(0, -0.86, 0),
+          scale: vm.Vector3.all(1.0),
+          animations: [
+            SceneAnimationSpec(
+              snapshot.playerAttackSeconds > 0
+                  ? _heroAttack(snapshot.heroId)
+                  : (snapshot.playerMoving
+                      ? _heroWalk(snapshot.heroId)
+                      : _heroIdle(snapshot.heroId)),
+              loop: snapshot.playerAttackSeconds <= 0,
+              speed: snapshot.playerAttackSeconds > 0
+                  ? 1.2
+                  : (snapshot.playerMoving ? 1.08 : 0.78),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
     return <Widget>[
       ..._staticSceneChildren,
+      ..._physicsStaticColliders,
       SceneMesh(
         name: 'central_relay_control_ring',
         geometry: _relayRingGeometry,
@@ -468,31 +732,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final bot in snapshot.bots)
         if (bot.respawnSeconds <= 0) _buildBot(bot),
       for (final minion in snapshot.minions) _buildMinion(minion),
-      SceneModel(
-        _heroAsset(snapshot.heroId),
-        key: const ValueKey('match-player-hero'),
-        name: 'player_${snapshot.heroId.id}',
-        onLoaded: (modelRoot) {
-          _markWorldAssetReady('player');
-          unawaited(HeroWeaponSocket.attach(modelRoot, snapshot.heroId));
-        },
-        position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
-        rotation: _playerFacing(snapshot),
-        scale: vm.Vector3.all(1.0),
-        animations: [
-          SceneAnimationSpec(
-            snapshot.playerAttackSeconds > 0
-                ? _heroAttack(snapshot.heroId)
-                : (snapshot.playerMoving
-                    ? _heroWalk(snapshot.heroId)
-                    : _heroIdle(snapshot.heroId)),
-            loop: snapshot.playerAttackSeconds <= 0,
-            speed: snapshot.playerAttackSeconds > 0
-                ? 1.2
-                : (snapshot.playerMoving ? 1.08 : 0.78),
-          ),
-        ],
-      ),
+      _buildPlayerPhysicsActor(snapshot),
     ];
   }
 
@@ -987,7 +1227,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   ),
                 ),
               ),
-              children: _buildSceneChildren(snapshot),
+              children: [
+                SceneNode(
+                  key: const ValueKey('arena-physics-world-root'),
+                  name: 'arena_physics_world_root',
+                  components: [_physicsWorld],
+                  children: _buildSceneChildren(snapshot),
+                ),
+              ],
             ),
             Positioned(
               left: viewport.maxWidth * 0.42,
@@ -1540,6 +1787,30 @@ class _PlayerHud extends StatelessWidget {
           ),
           const SizedBox(height: 6),
           _Bar(value: health, color: const Color(0xFF69C98A), height: 7),
+          const SizedBox(height: 3),
+          Row(
+            children: [
+              Text(
+                'VIDA ${snapshot.playerHealth.round()} / ${snapshot.playerMaxHealth.round()}',
+                style: const TextStyle(
+                  color: Color(0xFFD7E0E3),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+              const Spacer(),
+              if (snapshot.playerRespawnSeconds > 0)
+                const Text(
+                  'DERROTADO',
+                  style: TextStyle(
+                    color: Color(0xFFFF8888),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.7,
+                  ),
+                ),
+            ],
+          ),
           const SizedBox(height: 4),
           _Bar(value: xp, color: const Color(0xFF62B8E8), height: 4),
           if (snapshot.playerRespawnSeconds > 0)
