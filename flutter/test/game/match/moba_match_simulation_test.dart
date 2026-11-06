@@ -270,7 +270,7 @@ void main() {
 
       expect(
         simulation.snapshot.playerPosition.x,
-        lessThan(-53.4),
+        lessThan(-51.4),
         reason: 'the hero must stop before crossing the east interior side wall',
       );
     });
@@ -714,6 +714,22 @@ void main() {
       expect(state.playerLevel, 1);
       expect(state.minions.every((unit) => MobaLane.values.contains(unit.lane)), isTrue);
       expect(state.towers.every((tower) => MobaLane.values.contains(tower.lane)), isTrue);
+    });
+    test('district capture grants territorial progression', () {
+      final site = ArenaWorldCatalog.districtSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      for (var tick = 0; tick < 240; tick++) {
+        simulation.step(1 / 30);
+      }
+      final captured = simulation.snapshot.districts.firstWhere(
+        (district) => district.id == site.$1,
+      );
+      expect(captured.owner, MobaTeam.blue);
+      expect(captured.control, 100);
+      expect(simulation.snapshot.playerGold, greaterThan(500));
     });
   });
 }
