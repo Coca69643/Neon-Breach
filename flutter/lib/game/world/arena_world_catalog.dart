@@ -35,6 +35,8 @@ class ArenaVerticalAccess {
   }
 }
 
+enum ArenaSurfaceType { asphalt, concrete, grass, interior }
+
 class ArenaWorldPlacement {
   const ArenaWorldPlacement({
     required this.asset,
@@ -88,6 +90,34 @@ abstract final class ArenaWorldCatalog {
     ('west_depot', -88.0, -18.0),
     ('east_depot', 88.0, 18.0),
   ];
+
+  /// Shared furniture footprints used by both path validation and Rapier.
+  /// Each record stores (kind, roomId, x, z, halfWidth, halfDepth).
+  static final interiorFurnitureFootprints =
+      _makeInteriorFurnitureFootprints();
+
+  static List<(String, String, double, double, double, double)>
+      _makeInteriorFurnitureFootprints() {
+    final items = <(String, String, double, double, double, double)>[];
+    for (final building in cityInteriors) {
+      final id = building.$1, x = building.$2, z = building.$3;
+      final hasVerticalAccess =
+          verticalAccesses.any((access) => access.id == id);
+      final deskX = hasVerticalAccess ? x - 6.0 : x - 5.2;
+      final deskZ = hasVerticalAccess ? z - 2.4 : z + 2.5;
+      final chairZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
+      final benchZ = hasVerticalAccess ? z - 4.2 : z - 3.0;
+      items
+        ..add(('desk', id, deskX, deskZ,
+            hasVerticalAccess ? 2.0 : 1.6, 0.72))
+        ..add(('chair', id, x + 1.6, chairZ, 0.42, 0.42))
+        ..add(('bench', id, x + 3.0, benchZ, 1.0, 0.55));
+      if (!hasVerticalAccess) {
+        items.add(('shelf', id, x - 8.5, z + 4.0, 0.6, 1.8));
+      }
+    }
+    return List.unmodifiable(items);
+  }
 
   static const districts = <(String, String, double, double)>[
     ('civic', 'Distrito Cívico', -72.0, 56.0),
@@ -287,20 +317,14 @@ abstract final class ArenaWorldCatalog {
           dz.abs() <= roomHalfDepth + roomWallHalfThickness) {
         return true;
       }
-      final hasVerticalAccess = verticalAccesses.any(
-        (access) => access.id == building.$1,
-      );
-      final counterZ = hasVerticalAccess ? cz - 2.4 : cz + 2.5;
-      final counterDistanceX = hasVerticalAccess
-          ? (x - (cx - 6.0)).abs()
-          : dx;
-      if (counterDistanceX <= (hasVerticalAccess ? 2.0 : 3.0) &&
-          (z - counterZ).abs() <= 0.8) {
-        return true;
-      }
-      if (!hasVerticalAccess &&
-          (dx - 8.5).abs() <= 0.6 &&
-          (z - (cz + 4.0)).abs() <= 1.8) {
+    }
+    return false;
+  }
+
+  static bool _insideBuildingFurniture(double x, double z) {
+    for (final item in interiorFurnitureFootprints) {
+      if ((x - item.$3).abs() <= item.$5 + 0.38 &&
+          (z - item.$4).abs() <= item.$6 + 0.38) {
         return true;
       }
     }
@@ -375,7 +399,8 @@ abstract final class ArenaWorldCatalog {
     }
     if (isCanalAt(x, z) && !isBridgeAt(x, z)) return false;
     if ((includeTowerCollision && _insideTowerFootprint(x, z)) ||
-        _insideBuildingWall(x, z)) {
+        _insideBuildingWall(x, z) ||
+        _insideBuildingFurniture(x, z)) {
       return false;
     }
     for (final block in commercialBlocks) {
@@ -397,6 +422,46 @@ abstract final class ArenaWorldCatalog {
     }
     return true;
   }
+
+  /// Surface classification is shared by movement tuning and world tests.
+  /// Paved siege lanes are fastest, while grass and interiors have distinct
+  /// traction so the same input does not feel identical on every floor.
+  static ArenaSurfaceType surfaceAt(double x, double z) {
+    for (final building in cityInteriors) {
+      final dx = (x - building.$2).abs();
+      final dz = (z - building.$3).abs();
+      if (dx < roomHalfWidth - 0.65 &&
+          dz < roomHalfDepth - 0.65) {
+        return ArenaSurfaceType.interior;
+      }
+    }
+    if (isBridgeAt(x, z) || laneDistance(x, z) <= 3.4) {
+      return ArenaSurfaceType.asphalt;
+    }
+    if (flankPathDistance(x, z) <= 2.8 ||
+        sideApproachAnchors.any((point) =>
+            math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <= 3.2 * 3.2)) {
+      return ArenaSurfaceType.concrete;
+    }
+    return ArenaSurfaceType.grass;
+  }
+
+  static double movementSpeedMultiplierAt(double x, double z) =>
+      switch (surfaceAt(x, z)) {
+        ArenaSurfaceType.asphalt => 1.0,
+        ArenaSurfaceType.concrete => 0.96,
+        ArenaSurfaceType.interior => 0.92,
+        ArenaSurfaceType.grass => 0.86,
+      };
+
+  /// Horizontal velocity damping per second; lower values preserve more glide.
+  static double groundFrictionAt(double x, double z) =>
+      switch (surfaceAt(x, z)) {
+        ArenaSurfaceType.asphalt => 7.5,
+        ArenaSurfaceType.concrete => 9.0,
+        ArenaSurfaceType.interior => 10.0,
+        ArenaSurfaceType.grass => 12.0,
+      };
 
   static double navigationHeightAt(
     double x,
