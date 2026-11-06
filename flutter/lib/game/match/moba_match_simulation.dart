@@ -244,6 +244,19 @@ class MobaTargetSnapshot {
   final double maxHealth;
 }
 
+class MobaDistrictSnapshot {
+  const MobaDistrictSnapshot({
+    required this.id, required this.name, required this.position,
+    required this.control, required this.owner, required this.contested,
+  });
+  final String id;
+  final String name;
+  final MobaPoint position;
+  final double control;
+  final MobaTeam? owner;
+  final bool contested;
+}
+
 class MobaObjectiveSnapshot {
   const MobaObjectiveSnapshot({
     required this.control,
@@ -294,6 +307,7 @@ class MobaMatchSnapshot {
     required this.minions,
     required this.towers,
     required this.covers,
+    required this.districts,
     required this.centralObjective,
     required this.selectedTarget,
     required this.teamPingTarget,
@@ -332,6 +346,7 @@ class MobaMatchSnapshot {
   final List<MobaMinionSnapshot> minions;
   final List<MobaTowerSnapshot> towers;
   final List<MobaCoverSnapshot> covers;
+  final List<MobaDistrictSnapshot> districts;
   final MobaObjectiveSnapshot centralObjective;
   final MobaTargetSnapshot? selectedTarget;
   final MobaPoint? teamPingTarget;
@@ -433,6 +448,14 @@ class _Cover {
   bool get alive => health > 0;
 }
 
+class _DistrictControlPoint {
+  _DistrictControlPoint({required this.id, required this.name, required this.position});
+  final String id;
+  final String name;
+  final MobaPoint position;
+  final MobaObjectiveControl control = MobaObjectiveControl();
+}
+
 class MobaMatchSimulation {
   MobaMatchSimulation({
     required this.heroId,
@@ -465,12 +488,23 @@ class MobaMatchSimulation {
   static const double _targetCycleRange = 24.0;
   static const MobaPoint _objectivePosition = MobaPoint(0, 0);
   static const double objectiveRadius = 8.0;
+  static const double districtRadius = 7.5;
   final MobaObjectiveControl _objective = MobaObjectiveControl();
+  final List<_DistrictControlPoint> _districts = [
+    for (final site in ArenaWorldCatalog.districtSites)
+      _DistrictControlPoint(id: site.$1, name: site.$2,
+        position: MobaPoint(site.$3, site.$4)),
+  ];
 
   MobaTeam? get _objectiveOwner => _objective.owner;
 
+  double _districtDamageMultiplier(MobaTeam team) =>
+      1.0 + 0.035 * _districts
+          .where((district) => district.control.owner == team).length;
+
   double _objectiveDamageMultiplier(MobaTeam attackingTeam) =>
-      _objectiveOwner == attackingTeam ? 1.12 : 1.0;
+      (_objectiveOwner == attackingTeam ? 1.12 : 1.0) *
+      _districtDamageMultiplier(attackingTeam);
   final List<double> _coreHealth = [coreMaxHealth, coreMaxHealth];
   final List<double> _teamKills = [0, 0];
   final List<double> _teamGold = [500, 500];
@@ -582,6 +616,9 @@ class MobaMatchSimulation {
     _bots.clear();
     _towers.clear();
     _objective.reset();
+    for (final district in _districts) {
+      district.control.reset();
+    }
     _selectedTargetKey = null;
     _covers
       ..clear()
@@ -895,6 +932,7 @@ class MobaMatchSimulation {
     _updateMinions(dt);
     _updateBots(dt);
     _updateCentralObjective(dt);
+    _updateDistricts(dt);
     _updateTowers(dt);
     _checkWinner();
   }
@@ -1377,15 +1415,27 @@ class MobaMatchSimulation {
     return bot.position.distanceTo(waypoint) > 3.2 ? waypoint : null;
   }
 
+  MobaPoint? _botDistrictWaypoint(_Bot bot) {
+    if (bot.role != 4) return null;
+    _DistrictControlPoint? nearest;
+    var nearestDistance = double.infinity;
+    for (final district in _districts) {
+      if (district.control.owner == bot.team) continue;
+      final distance = bot.position.distanceTo(district.position);
+      if (distance < nearestDistance) {
+        nearest = district;
+        nearestDistance = distance;
+      }
+    }
+    return nearest?.position;
+  }
+
   MobaPoint _botRouteWaypoint(_Bot bot, MobaPoint laneGoal) {
-    // The middle role rotates through the central relay instead of remaining
-    // locked to one straight lane. Side roles take a flank waypoint first.
-    if (bot.role == 2 &&
-        _objectiveOwner != bot.team &&
+    if (bot.role == 2 && _objectiveOwner != bot.team &&
         bot.position.distanceTo(_objectivePosition) > objectiveRadius + 2.0) {
       return _objectivePosition;
     }
-    return _botFlankWaypoint(bot) ?? laneGoal;
+    return _botDistrictWaypoint(bot) ?? _botFlankWaypoint(bot) ?? laneGoal;
   }
 
   void _updateBots(double dt) {
@@ -1470,6 +1520,16 @@ class MobaMatchSimulation {
       final flankWaypoint = _botFlankWaypoint(bot);
       if (flankWaypoint != null) {
         _moveBot(bot, flankWaypoint, 2.9, dt);
+        continue;
+      }
+
+      final districtWaypoint = _botDistrictWaypoint(bot);
+      if (districtWaypoint != null) {
+        if (bot.position.distanceTo(districtWaypoint) > districtRadius - 1.0) {
+          _moveBot(bot, districtWaypoint, 3.0, dt);
+        } else {
+          bot.moving = false;
+        }
         continue;
       }
 
@@ -1621,6 +1681,28 @@ class MobaMatchSimulation {
     if (capturedTeam != null) {
       _awardGold(capturedTeam, 150);
       _awardXp(capturedTeam, 90);
+    }
+  }
+
+  void _updateDistricts(double dt) {
+    for (final district in _districts) {
+      var blue = 0.0;
+      var red = 0.0;
+      bool inside(MobaPoint point) => point.distanceTo(district.position) <= districtRadius;
+      if (_playerRespawn <= 0 && inside(_playerPosition)) blue += 2.0;
+      for (final bot in _bots.where((unit) => unit.alive)) {
+        if (!inside(bot.position)) continue;
+        if (bot.team == MobaTeam.blue) { blue += 1.5; } else { red += 1.5; }
+      }
+      for (final minion in _minions.where((unit) => unit.alive)) {
+        if (!inside(minion.position)) continue;
+        if (minion.team == MobaTeam.blue) { blue += 0.35; } else { red += 0.35; }
+      }
+      final capturedTeam = district.control.update(dt, blue: blue, red: red);
+      if (capturedTeam != null) {
+        _awardGold(capturedTeam, 95);
+        _awardXp(capturedTeam, 60);
+      }
     }
   }
 
@@ -1942,6 +2024,14 @@ class MobaMatchSimulation {
       minions: List.unmodifiable(minions),
       towers: List.unmodifiable(towers),
       covers: List.unmodifiable(covers),
+      districts: List.unmodifiable([
+        for (final district in _districts)
+          MobaDistrictSnapshot(
+            id: district.id, name: district.name, position: district.position,
+            control: district.control.control, owner: district.control.owner,
+            contested: district.control.contested,
+          ),
+      ]),
       centralObjective: MobaObjectiveSnapshot(
         control: _objective.control,
         owner: _objective.owner,
