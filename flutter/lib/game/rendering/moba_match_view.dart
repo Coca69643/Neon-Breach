@@ -62,6 +62,19 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ..baseColorFactor = vm.Vector4(0.16, 0.62, 0.98, 1);
   static final UnlitMaterial _redTeamRingMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.98, 0.28, 0.30, 1);
+  static final RingGeometry _relayRingGeometry = RingGeometry(
+    innerRadius: 5.35,
+    outerRadius: 5.75,
+    segments: 40,
+  );
+  static final UnlitMaterial _relayNeutralMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.82, 0.66, 0.36, 0.92);
+  static final UnlitMaterial _relayBlueMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.18, 0.62, 0.98, 0.96);
+  static final UnlitMaterial _relayRedMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.98, 0.25, 0.27, 0.96);
+  static final UnlitMaterial _relayContestedMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(1.0, 0.78, 0.42, 1.0);
   static const String _terrainAsset = 'assets/world/arena_terrain.glb';
 
   static const _ambientNpcs = <_AmbientNpc>[
@@ -417,6 +430,26 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
     return <Widget>[
       ..._staticSceneChildren,
+      SceneMesh(
+        name: 'central_relay_control_ring',
+        geometry: _relayRingGeometry,
+        material: snapshot.centralObjective.contested
+            ? _relayContestedMaterial
+            : (snapshot.centralObjective.owner == MobaTeam.blue ||
+                    (snapshot.centralObjective.owner == null &&
+                        snapshot.centralObjective.control > 0)
+                ? _relayBlueMaterial
+                : (snapshot.centralObjective.owner == MobaTeam.red ||
+                        (snapshot.centralObjective.owner == null &&
+                            snapshot.centralObjective.control < 0)
+                    ? _relayRedMaterial
+                    : _relayNeutralMaterial)),
+        position: vm.Vector3(
+          0,
+          _groundHeight(const MobaPoint(0, 0)) + 0.055,
+          0,
+        ),
+      ),
       for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
         if (tower.health > 0)
