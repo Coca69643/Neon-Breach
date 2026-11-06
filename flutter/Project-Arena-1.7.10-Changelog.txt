@@ -2,17 +2,33 @@ Projeto Arena
 Versão 1.7.10
 
 NOVIDADES
-- Bots e tropas exibem animações de ataque próprias.
+- Quatro distritos internos com ambientação e funções visuais distintas.
+- Novos detalhes urbanos CC0: iluminação, sinalização, travessias, marquises, floreiras e vegetação.
+- NPCs de serviço agora patrulham os interiores e reagem à interação.
+- Comandos táticos pelo minimapa redirecionam um aliado de flanco.
+- O reator central comunica visualmente o controle e a disputa entre equipes.
 
 ALTERAÇÕES
+- Substituídas fachadas repetidas por seis silhuetas comerciais CC0.
+- Diferenciadas as salas de operações, oficina, parque e convivência.
+- Adicionadas quatro árvores grandes com colisão própria.
+- Mantida a rota de patrulha dos NPCs em superfícies transitáveis.
+- Ajustado o minimapa para aceitar comandos apenas em terreno acessível.
 - Corrigida a reciclagem das tropas derrotadas para manter novas ondas.
-- Corrigida a movimentação por colisões e bordas do mapa.
+- Corrigido o movimento por colisões e bordas do mapa.
 - Corrigido o avanço das tropas até os núcleos após a queda das torres.
-- Ajustadas as rotas dos bots ao redor das estruturas.
-- Corrigida a orientação dos personagens durante a movimentação.
+- Bots e tropas exibem animações de ataque próprias.
 - Torres destruídas deixam de aparecer na partida e no minimapa.
-- Reforçada a validação dos assets e da assinatura do APK.
+- Reforçada a validação dos assets offline, da versão e da assinatura do APK.
 
 EXCLUSÕES
+- Removida a dependência de fachadas comerciais repetidas nos quatro blocos principais.
+- Removido o posicionamento fixo dos NPCs nos interiores.
+- Removido o comportamento de bots de flanco limitado a waypoints permanentes.
 - Removida a rotação invertida que fazia os personagens andarem de costas.
 - Removido o bloqueio permanente das ondas ao atingir o limite de tropas.
+
+VALIDAÇÃO
+- Análise estática, testes unitários, build ARM64, inspeção do pacote e verificação de assinatura passaram no CI.
+- O upload de APK de atualização foi bloqueado na branch de desenvolvimento; a publicação permanece restrita à main.
+- Teste visual/funcional e desempenho sustentado no Realme C53 ainda precisam de validação física.
