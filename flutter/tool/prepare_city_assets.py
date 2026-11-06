@@ -242,9 +242,9 @@ def main() -> None:
         "sourceCommit": SOURCE_COMMIT,
         "assets": [],
         "layoutPolicy": (
-            "Three-lane urban MOBA with distinct commercial silhouettes, "
-            "hand-authored street dressing, canal promenade, readable crossings "
-            "and four enterable service interiors; no survival, crafting or gathering loop."
+            "District Control urban MOBA with eight commercial silhouettes, "
+            "hand-authored street dressing, five canal crossings, paved bypasses, "
+            "four enlarged enterable interiors and four capture consoles; no gathering loop."
         ),
     }
     total_bytes = 0
