@@ -52,7 +52,7 @@ void main() {
       expect(
         physics.playerPosition.z,
         greaterThan(-47),
-        reason: 'the capsule must pass through the 4.8-unit doorway',
+        reason: 'the capsule must pass through the 6.4-unit doorway',
       );
 
       physics.teleport(const MobaPoint(-63, -38));
