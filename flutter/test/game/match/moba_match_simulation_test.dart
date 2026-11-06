@@ -2,10 +2,21 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:project_arena_flutter/game/match/moba_match_simulation.dart';
 import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
-void advanceFor(MobaMatchSimulation simulation, double seconds) {
+void advanceFor(
+  MobaMatchSimulation simulation,
+  double seconds, {
+  double moveX = 0,
+  double moveZ = 0,
+  bool externalPlayerMovement = false,
+}) {
   final frames = (seconds * 60).round();
   for (var frame = 0; frame < frames; frame++) {
-    simulation.step(1 / 60);
+    simulation.step(
+      1 / 60,
+      moveX: moveX,
+      moveZ: moveZ,
+      externalPlayerMovement: externalPlayerMovement,
+    );
   }
 }
 
