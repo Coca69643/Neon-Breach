@@ -159,7 +159,9 @@ class _ArenaScreen extends StatelessWidget {
     return Scaffold(
       body: snapshot.phase == ArenaPhase.mainMenu
           ? _immersiveMainMenu()
-          : DecoratedBox(
+          : snapshot.phase == ArenaPhase.heroSelection
+              ? _heroSelectionFullScreen(context)
+              : DecoratedBox(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -351,7 +353,7 @@ class _ArenaScreen extends StatelessWidget {
       case ArenaPhase.mainMenu:
         return const SizedBox.shrink();
       case ArenaPhase.heroSelection:
-        return _heroSelection(compact: compact);
+        return const SizedBox.shrink();
       case ArenaPhase.matchLoading:
       case ArenaPhase.inMatch:
         return _matchView();
@@ -364,10 +366,10 @@ class _ArenaScreen extends StatelessWidget {
     }
   }
 
-  Widget _heroSelection({required bool compact}) {
+  Widget _heroSelectionFullScreen(BuildContext context) {
     return ArenaHeroSelectionScreen(
       selectedHeroId: snapshot.selectedHeroId ?? 'lyra',
-      compact: compact,
+      compact: MediaQuery.sizeOf(context).height < 440,
       onSelect: (heroId) => onEvent(SelectHero(heroId)),
       onBack: () => onEvent(const ReturnToMenu()),
       onConfirm: () => onEvent(const ConfirmHeroSelection()),
