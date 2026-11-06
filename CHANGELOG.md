@@ -2,26 +2,39 @@
 
 ## [1.7.10] — 2026-11-05
 
+### Direção visual e ambiente
+- Quatro fachadas comerciais com silhuetas diferentes, em vez de repetir o mesmo modelo.
+- Ruas recebem iluminação, semáforos, placas, faixas de pedestres, marquises e pontos de praça.
+- Novas árvores grandes e floreiras reforçam a separação entre avenida, canal e áreas verdes.
+- Operações, oficina, informação do parque e convivência têm interiores com arranjos próprios.
+- O reator central comunica posse e disputa diretamente na geometria do cenário.
+
+### Vida e sistemas táticos
+- NPCs de serviço patrulham rotas curtas, pausam e respondem quando abordados.
+- Um toque no minimapa ordena o aliado de flanco mais próximo a investigar um ponto acessível.
+- Comandos táticos rejeitam água, paredes, torres, mezaninos e posições fora do mapa.
+- A ordem expira automaticamente; combate contra heróis mantém prioridade.
+
 ### Correções de simulação e navegação
 - Ondas de tropas removem unidades derrotadas antes de verificar o limite de entidades.
 - Movimento do jogador e dash do Kairo validam o percurso em subpassos para impedir atravessar paredes.
-- Bots e tropas podem passar pelas pegadas das torres aliadas sem ocupar o centro das torres inimigas.
-- Tropas e bots usam pontos de aproximação próprios para atacar torres e núcleos.
+- Bots e tropas usam pontos de aproximação para atacar torres e núcleos.
 - Tropas convergem ao núcleo após abrir uma rota, em vez de permanecerem presas ao alinhamento lateral.
-- Bots e tropas expõem estados de ataque para reproduzir as animações correspondentes.
+- Bots e tropas expõem estados de ataque para reproduzir animações correspondentes.
 - Torres destruídas deixam de aparecer na cena e no minimapa.
 - Corrigida a orientação dos rigs no movimento e o alinhamento das rotas no minimapa.
 
 ### Integridade de build
-- CI passa a executar análise e testes também em pull requests.
-- A chave persistente de assinatura só é carregada em builds da branch principal.
-- A publicação ocorre em job separado, após o build verificado, e não substitui uma tag existente.
-- Verificador do APK exige os clips de ataque usados pelos novos modelos de NPC.
+- CI executa análise estática, testes, geração de assets, build ARM64, inspeção do pacote e verificação de assinatura.
+- A chave persistente de assinatura só é carregada em builds confiáveis da branch principal.
+- Publicação isolada após o build verificado; tags e assets existentes não são sobrescritos.
+- O verificador exige todos os novos GLBs e cenas compiladas.
 
-### Validação pendente
-- CI da 1.7.10: análise, testes, geração dos assets, build ARM64 e assinatura.
-- Teste visual e funcional no Realme C53.
-- Persistência de partida após encerramento forçado do processo ainda não está implementada; pausa/retomada preserva a simulação apenas enquanto o processo permanece ativo.
+### Validação
+- CI de validação da branch: análise, testes, build ARM64, inspeção de assets e verificação de assinatura passaram.
+- O upload do APK de atualização e a publicação foram pulados por política: a branch é de desenvolvimento, não a `main`.
+- Teste visual/funcional e medição prolongada de FPS, temperatura e memória no Realme C53 ainda precisam de validação física.
+- Savegame após encerramento forçado do processo ainda não está implementado; pausa/retomada preserva estado apenas enquanto o processo permanece ativo.
 
 ## [1.7.8] — 2026-11-05
 
