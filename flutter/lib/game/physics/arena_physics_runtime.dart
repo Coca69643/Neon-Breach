@@ -173,6 +173,7 @@ class ArenaPhysicsRuntime {
     final response = (_active ? acceleration : deceleration) * dt;
     _velocityX = _approach(_velocityX, targetX, response);
     _velocityZ = _approach(_velocityZ, targetZ, response);
+    _preventOffBridgeCanalEntry(dt);
 
     if (_active) {
       _verticalVelocity = math.max(-28.0, _verticalVelocity - gravity * dt);
@@ -216,6 +217,54 @@ class ArenaPhysicsRuntime {
       vm.Quaternion.identity(),
     );
     _world.step(dt);
+  }
+
+  /// The river is a non-walkable volume; only the catalogued bridge spans
+  /// may connect the two banks. The clearance includes the capsule radius and
+  /// a small numerical margin, so the character stops before its leading edge
+  /// enters the canal instead of relying on a thin bank collider to catch it.
+  void _preventOffBridgeCanalEntry(double dt) {
+    if (!_active || !_grounded || dt <= 0) return;
+
+    final fromX = _playerPose.translation.x;
+    final fromZ = _playerPose.translation.z;
+    final toX = fromX + _velocityX * dt;
+    final toZ = fromZ + _velocityZ * dt;
+    if (ArenaWorldCatalog.isBridgeAt(toX, toZ)) return;
+
+    final fromSouth = ArenaWorldCatalog.canalBankZAt(
+      fromX,
+      north: false,
+    );
+    final fromNorth = ArenaWorldCatalog.canalBankZAt(
+      fromX,
+      north: true,
+    );
+    final toSouth = ArenaWorldCatalog.canalBankZAt(
+      toX,
+      north: false,
+    );
+    final toNorth = ArenaWorldCatalog.canalBankZAt(
+      toX,
+      north: true,
+    );
+
+    final fromCenter = (fromSouth + fromNorth) * 0.5;
+    final toCenter = (toSouth + toNorth) * 0.5;
+    final fromDistance = (fromZ - fromCenter).abs();
+    final toDistance = (toZ - toCenter).abs();
+    final clearance = capsuleRadius + 0.12;
+    final fromHalfWidth = (fromNorth - fromSouth) * 0.5 + clearance;
+    final toHalfWidth = (toNorth - toSouth) * 0.5 + clearance;
+    final entersOrMovesDeeper = toDistance < toHalfWidth &&
+        (fromDistance >= fromHalfWidth ||
+            toDistance < fromDistance - 1e-4);
+
+    if (entersOrMovesDeeper) {
+      // The canal runs predominantly along X, so Z is its crossing axis.
+      // Lateral steering along the bank remains available.
+      _velocityZ = 0;
+    }
   }
 
   static double _approach(double value, double target, double amount) {
@@ -538,32 +587,50 @@ class ArenaPhysicsRuntime {
   }
 
   void _buildMezzanines() {
+    const steps = 24;
+    const treadHalfHeight = 0.09;
+
     for (final access in ArenaWorldCatalog.verticalAccesses) {
       final z0 = access.corridorMinZ;
       final z1 = access.corridorMaxZ;
-      final startX = access.rampStartX;
-      final endX = access.rampEndX;
-      final y0 = ArenaWorldCatalog.navigationHeightAt(startX, z0);
-      final y1 = ArenaWorldCatalog.navigationHeightAt(endX, z0) +
-          ArenaVerticalAccess.upperHeight;
-      final vertices = Float32List.fromList([
-        startX, y0, z0,
-        endX, y1, z0,
-        startX, y0, z1,
-        endX, y1, z1,
-      ]);
-      final indices = Uint32List.fromList([0, 2, 1, 1, 2, 3]);
-      final ramp = TriMeshShape(vertices: vertices, indices: indices);
-      final handles = _world.createColliders(_staticBody, ramp);
-      if (handles.isEmpty) {
-        throw StateError('Rapier rejected ramp ${access.id}.');
+      final centerZ = (z0 + z1) * 0.5;
+      final halfDepth = (z1 - z0) * 0.5;
+      final stepRun = access.rampRun / steps;
+
+      for (var index = 0; index < steps; index++) {
+        final centerX = access.rampStartX + (index + 0.5) * stepRun;
+        final groundY = ArenaWorldCatalog.navigationHeightAt(
+          centerX,
+          centerZ,
+        );
+        final topY = groundY +
+            ArenaVerticalAccess.upperHeight * (index + 1) / steps;
+        _addStaticShape(
+          BoxShape(
+            halfExtents: vm.Vector3(
+              stepRun * 0.57,
+              treadHalfHeight,
+              halfDepth,
+            ),
+          ),
+          vm.Vector3(
+            centerX,
+            topY - treadHalfHeight,
+            centerZ,
+          ),
+          label: 'mezzanine_ramp_${access.id}_step_$index',
+        );
       }
 
-      final deckCenterX = access.x + ArenaVerticalAccess.platformLength * 0.5;
-      final deckCenterZ = (z0 + z1) * 0.5;
+      // The upper deck uses a thin top collider. Its shallow edge avoids a
+      // deep vertical lip that could obstruct the final ramp transition.
+      final deckCenterX =
+          access.x + ArenaVerticalAccess.platformLength * 0.5;
+      final deckCenterZ = centerZ;
+      const deckHalfHeight = 0.06;
       final deckHalf = vm.Vector3(
         ArenaVerticalAccess.platformLength * 0.5,
-        0.15,
+        deckHalfHeight,
         ArenaVerticalAccess.platformDepth * 0.5,
       );
       final deckY = ArenaWorldCatalog.navigationHeightAt(
@@ -571,7 +638,7 @@ class ArenaPhysicsRuntime {
             deckCenterZ,
           ) +
           ArenaVerticalAccess.upperHeight -
-          deckHalf.y;
+          deckHalfHeight;
       _addStaticShape(
         BoxShape(halfExtents: deckHalf),
         vm.Vector3(deckCenterX, deckY, deckCenterZ),
