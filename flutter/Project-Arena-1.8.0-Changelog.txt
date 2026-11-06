@@ -11,7 +11,7 @@ ADICIONADO
 
 ALTERADO
 - Bots roamers priorizam distritos neutros ou controlados pelo adversário.
-- Orientação dos rigs corrigida para o eixo frontal local +Z, eliminando o moonwalk.
+- Orientação dos rigs corrigida para o eixo frontal local -Z, alinhando o rosto ao vetor de deslocamento.
 - Direção dos rigs alinhada ao vetor de deslocamento.
 - Escala dos bots ajustada para 0.98 e dos minions para 0.94–1.02.
 - Escalas de armas reduzidas por rig.
@@ -32,3 +32,12 @@ SELEÇÃO DE PERSONAGENS
 - Filtros de espécie gerados automaticamente a partir do elenco disponível.
 - Prévia 3D com escala, enquadramento e orientação configuráveis por modelo.
 - Lista preparada para crescer sem alterar a estrutura da tela.
+
+APRESENTAÇÃO E HUD
+- Menu principal passa a usar o terreno urbano real da partida, com edifícios e detalhes CC0; removida a torre flutuante isolada.
+- Seleção de heróis passa a ocupar a tela inteira, com palco 3D e elenco lateral integrado.
+- Filtros de espécie ficam ocultos enquanto o elenco tiver apenas uma espécie; categorias adicionais aparecem quando forem necessárias.
+- Escala do herói em partida ajustada individualmente pelo catálogo (0,76 para o elenco atual).
+- Câmera de acompanhamento recuada para dar mais espaço ao personagem e à leitura do campo.
+- HUD estratégico consolidado em uma faixa; status do jogador reduzido e minimapa compacto.
+- Removido o indicador permanente de rotação de câmera que ocupava a área de jogo.
