@@ -114,6 +114,40 @@ void main() {
       expect(physics.grounded, isTrue);
     });
 
+    test('surface traction changes speed and releases momentum smoothly',
+        () async {
+      await advance(frames: 90, moveX: 1);
+      final pavedSpeed = physics.horizontalSpeed;
+      expect(pavedSpeed, greaterThan(4.6));
+
+      physics.teleport(const MobaPoint(-86, 14));
+      await advance(frames: 90, moveX: 1);
+      final grassSpeed = physics.horizontalSpeed;
+      expect(grassSpeed, lessThan(pavedSpeed * 0.9));
+
+      await advance(frames: 30);
+      expect(physics.horizontalSpeed, lessThan(grassSpeed * 0.35));
+    });
+
+    test('Rapier dash is swept, short and blocked by interior walls', () async {
+      physics.teleport(const MobaPoint(0, -60));
+      expect(physics.triggerDash(1, 0), isTrue);
+      await advance(frames: 22);
+      expect(physics.playerPosition.x, greaterThan(3.2));
+      expect(physics.playerPosition.x, lessThan(5.4));
+      expect(physics.grounded, isTrue);
+
+      physics.teleport(const MobaPoint(-71, -38));
+      expect(physics.triggerDash(-1, 0), isTrue);
+      await advance(frames: 22);
+      expect(
+        physics.playerPosition.x,
+        greaterThan(-74.5),
+        reason: 'the dash must stop at the physical interior wall',
+      );
+      expect(physics.grounded, isTrue);
+    });
+
     test('teleport is an explicit respawn operation and resets velocity',
         () async {
       await advance(frames: 30, moveX: 1);
