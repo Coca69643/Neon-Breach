@@ -497,8 +497,8 @@ abstract final class ArenaWorldCatalog {
     for (final building in cityInteriors) {
       final x = building.$2;
       final z = building.$3;
-      add('detail_awning_wide.glb', x, z - 4.55,
-          scale: 6.8, yaw: math.pi, y: 1.25);
+      add('detail_awning_wide.glb', x, z - 8.55,
+          scale: 7.8, yaw: math.pi, y: 1.25);
       add('interior_trashcan.glb', x + (x < 0 ? 5.0 : -5.0), z - 3.1,
           scale: 2.1);
     }
