@@ -560,7 +560,8 @@ void main() {
 
     test('defeated hero remains at defeat location until respawn completes', () {
       const defeatPoint = MobaPoint(0, 12);
-      const homePoint = MobaPoint(-36, -60);
+      final homePoint =
+          MobaMatchSimulation(heroId: MobaHeroId.bastion).snapshot.playerPosition;
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
         spawnPosition: defeatPoint,
