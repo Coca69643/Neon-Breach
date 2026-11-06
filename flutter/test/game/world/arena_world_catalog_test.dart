@@ -122,6 +122,43 @@ void main() {
       }
     });
 
+    test('service NPC patrol points remain walkable inside their own interiors', () {
+      const routes = <List<MobaPoint>>[
+        [
+          MobaPoint(-63.0, -40.0),
+          MobaPoint(-65.2, -40.0),
+          MobaPoint(-61.0, -40.0),
+        ],
+        [
+          MobaPoint(63.0, -40.5),
+          MobaPoint(60.7, -40.5),
+          MobaPoint(65.3, -40.5),
+        ],
+        [
+          MobaPoint(-63.0, 35.5),
+          MobaPoint(-65.3, 35.5),
+          MobaPoint(-60.7, 35.5),
+        ],
+        [
+          MobaPoint(63.0, 35.5),
+          MobaPoint(65.3, 35.5),
+          MobaPoint(60.7, 35.5),
+        ],
+      ];
+
+      expect(routes, hasLength(4));
+      for (final route in routes) {
+        expect(route, hasLength(3));
+        for (final point in route) {
+          expect(
+            ArenaWorldCatalog.isWalkable(point.x, point.z),
+            isTrue,
+            reason: 'NPC patrol must stay inside an accessible interior floor',
+          );
+        }
+      }
+    });
+
     test('two opposing mezzanines require continuous stair traversal', () {
       expect(ArenaWorldCatalog.verticalAccesses, hasLength(2));
       for (final access in ArenaWorldCatalog.verticalAccesses) {
