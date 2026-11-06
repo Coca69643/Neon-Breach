@@ -329,6 +329,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       if (alive) {
         widget.simulation.applyPhysicsPlayerPosition(physics.playerPosition);
       }
+      if (physics.consumeDashCompletion()) {
+        widget.simulation.resolvePhysicsDashAt(physics.playerPosition);
+      }
     }
 
     widget.simulation.step(
