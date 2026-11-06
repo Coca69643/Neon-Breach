@@ -159,6 +159,43 @@ void main() {
     expect(machine.snapshot.errorMessage, isNull);
   });
 
+  test('runtime loading failure can be retried or exited to the hub', () {
+    reachMatchLoading();
+
+    machine.dispatch(
+      const MatchRuntimeCompleted(
+        success: false,
+        reason: 'Timeout de carregamento.',
+      ),
+    );
+    expect(machine.snapshot.phase, ArenaPhase.recoverableError);
+    expect(machine.snapshot.recoveryPhase, ArenaPhase.matchLoading);
+
+    final returned = machine.dispatch(const ReturnToMenu());
+    expect(returned.accepted, isTrue);
+    expect(machine.snapshot.phase, ArenaPhase.mainMenu);
+    expect(machine.snapshot.errorMessage, isNull);
+    expect(machine.snapshot.resumePhase, isNull);
+  });
+
+  test('invalid manifest recovery cannot bypass asset validation', () {
+    machine.dispatch(const BootCompleted());
+    machine.dispatch(
+      const ManifestValidationCompleted(
+        valid: false,
+        reason: 'Asset obrigatório ausente.',
+      ),
+    );
+
+    expect(machine.snapshot.phase, ArenaPhase.recoverableError);
+    expect(machine.snapshot.recoveryPhase, ArenaPhase.assetValidation);
+    expect(
+      machine.dispatch(const ReturnToMenu()).accepted,
+      isFalse,
+      reason: 'the application must not bypass a failed content manifest',
+    );
+  });
+
   test('fim de partida limpa o contexto ao voltar ao menu', () {
     reachMatchLoading();
     machine.dispatch(const MatchRuntimeCompleted(success: true));
