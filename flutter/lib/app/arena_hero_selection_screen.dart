@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:flutter/material.dart';
 
 import '../game/arena_hero_catalog.dart';
@@ -40,10 +42,9 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
         : ArenaHeroCatalog.playable
             .where((hero) => hero.species == species)
             .toList(growable: false);
-
     if (nextHeroes.isEmpty) return;
-    setState(() => _speciesFilter = species);
 
+    setState(() => _speciesFilter = species);
     if (!nextHeroes.any((hero) => hero.id == widget.selectedHeroId)) {
       widget.onSelect(nextHeroes.first.id);
     }
@@ -51,42 +52,101 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final roster = _visibleHeroes;
     final selectedHero = ArenaHeroCatalog.byId(widget.selectedHeroId) ??
         ArenaHeroCatalog.fallback;
-    final totalIndex =
+    final roster = _visibleHeroes;
+    final total = ArenaHeroCatalog.playable.length;
+    final selectedIndex =
         ArenaHeroCatalog.playable.indexWhere((hero) => hero.id == selectedHero.id) + 1;
 
     return LayoutBuilder(
       builder: (context, viewport) {
-        final compact =
-            widget.compact || viewport.maxHeight < 440 || viewport.maxWidth < 720;
-        final narrow = viewport.maxWidth < 820;
+        final compact = widget.compact ||
+            viewport.maxHeight < 440 ||
+            viewport.maxWidth < 760;
+        final panelWidth = math.min(
+          420.0,
+          math.max(286.0, viewport.maxWidth * 0.34),
+        );
 
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        return Stack(
+          fit: StackFit.expand,
           children: [
-            Expanded(
-              flex: narrow ? 11 : 13,
-              child: _HeroSpotlight(
-                hero: selectedHero,
-                index: totalIndex,
-                total: ArenaHeroCatalog.playable.length,
-                compact: compact,
+            ArenaHeroPreview(heroId: selectedHero.id),
+            const IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.centerLeft,
+                    end: Alignment.centerRight,
+                    stops: [0.0, 0.40, 0.60, 1.0],
+                    colors: [
+                      Color(0x18101A22),
+                      Color(0x00101820),
+                      Color(0x80101820),
+                      Color(0xF0101820),
+                    ],
+                  ),
+                ),
               ),
             ),
-            SizedBox(width: compact ? 10 : 16),
-            Expanded(
-              flex: narrow ? 9 : 8,
-              child: _HeroRosterPanel(
-                heroes: roster,
-                selectedHeroId: selectedHero.id,
-                speciesFilter: _speciesFilter,
-                compact: compact,
-                onSelect: widget.onSelect,
-                onFilter: _setSpeciesFilter,
-                onBack: widget.onBack,
-                onConfirm: widget.onConfirm,
+            const IgnorePointer(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    stops: [0.0, 0.18, 0.72, 1.0],
+                    colors: [
+                      Color(0x50101A22),
+                      Color(0x000E1720),
+                      Color(0x000E1720),
+                      Color(0xA90A1219),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            SafeArea(
+              child: Stack(
+                children: [
+                  Positioned(
+                    left: compact ? 16 : 26,
+                    top: compact ? 10 : 18,
+                    right: panelWidth + (compact ? 30 : 42),
+                    child: _StageTopline(
+                      index: selectedIndex,
+                      total: total,
+                      compact: compact,
+                    ),
+                  ),
+                  Positioned(
+                    left: compact ? 18 : 30,
+                    bottom: compact ? 16 : 24,
+                    right: panelWidth + (compact ? 34 : 52),
+                    child: _SelectedHeroIdentity(
+                      hero: selectedHero,
+                      compact: compact,
+                    ),
+                  ),
+                  Positioned(
+                    top: compact ? 8 : 18,
+                    bottom: compact ? 8 : 18,
+                    right: compact ? 8 : 22,
+                    width: panelWidth,
+                    child: _HeroRosterPanel(
+                      heroes: roster,
+                      selectedHeroId: selectedHero.id,
+                      speciesFilter: _speciesFilter,
+                      showSpeciesFilters: ArenaHeroCatalog.hasMultipleSpecies,
+                      compact: compact,
+                      onSelect: widget.onSelect,
+                      onFilter: _setSpeciesFilter,
+                      onBack: widget.onBack,
+                      onConfirm: widget.onConfirm,
+                    ),
+                  ),
+                ],
               ),
             ),
           ],
@@ -96,174 +156,122 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
   }
 }
 
-class _HeroSpotlight extends StatelessWidget {
-  const _HeroSpotlight({
-    required this.hero,
+class _StageTopline extends StatelessWidget {
+  const _StageTopline({
     required this.index,
     required this.total,
     required this.compact,
   });
 
-  final ArenaHeroDefinition hero;
   final int index;
   final int total;
   final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return ClipRRect(
-      borderRadius: BorderRadius.circular(14),
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          border: Border.all(color: const Color(0x465C8590)),
-          gradient: const RadialGradient(
-            center: Alignment(0, -0.1),
-            radius: 1.0,
-            colors: [
-              Color(0xFF263E48),
-              Color(0xFF15232D),
-              Color(0xFF0D151D),
-            ],
+    return Row(
+      children: [
+        const Icon(Icons.shield_outlined, color: Color(0xFF8DDBC7), size: 16),
+        const SizedBox(width: 8),
+        Flexible(
+          child: Text(
+            'PROJETO ARENA  /  SELEÇÃO',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: const Color(0xFFDCE8E8),
+              fontSize: compact ? 9 : 10,
+              fontWeight: FontWeight.w800,
+              letterSpacing: 1.25,
+              shadows: const [Shadow(color: Color(0x99000000), blurRadius: 8)],
+            ),
           ),
         ),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            ArenaHeroPreview(heroId: hero.id),
-            const IgnorePointer(
-              child: DecoratedBox(
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topCenter,
-                    end: Alignment.bottomCenter,
-                    stops: [0, 0.36, 0.72, 1],
-                    colors: [
-                      Color(0x60101A22),
-                      Color(0x000E1720),
-                      Color(0x16101820),
-                      Color(0xD90A1219),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            Positioned(
-              top: compact ? 12 : 18,
-              left: compact ? 14 : 20,
-              right: compact ? 14 : 20,
-              child: Row(
-                children: [
-                  const Icon(
-                    Icons.hub_outlined,
-                    size: 15,
-                    color: Color(0xFF80DCC5),
-                  ),
-                  const SizedBox(width: 7),
-                  Text(
-                    'ARENA  /  SELEÇÃO DE COMBATENTE',
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFFD9E6E8),
-                      fontSize: compact ? 9 : 10,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                  const Spacer(),
-                  _StageCounter(index: index, total: total),
-                ],
-              ),
-            ),
-            Positioned(
-              left: compact ? 16 : 24,
-              right: compact ? 16 : 24,
-              bottom: compact ? 14 : 22,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Text(
-                    hero.name,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFFF2F7F6),
-                      fontSize: compact ? 25 : 34,
-                      height: 1,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 1.3,
-                      shadows: const [
-                        Shadow(
-                          color: Color(0xAA000000),
-                          blurRadius: 12,
-                          offset: Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                  ),
-                  SizedBox(height: compact ? 7 : 10),
-                  Wrap(
-                    spacing: 7,
-                    runSpacing: 6,
-                    children: [
-                      _HeroInfoTag(label: hero.species.label),
-                      _HeroInfoTag(label: hero.role),
-                    ],
-                  ),
-                  SizedBox(height: compact ? 6 : 9),
-                  Text(
-                    hero.summary,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      color: const Color(0xFFC5D1D4),
-                      fontSize: compact ? 10 : 12,
-                      height: 1.25,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
+        const Spacer(),
+        Text(
+          '${index.toString().padLeft(2, '0')} / ${total.toString().padLeft(2, '0')}',
+          style: const TextStyle(
+            color: Color(0xFFE6F0EF),
+            fontSize: 10,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1,
+            shadows: [Shadow(color: Color(0xAA000000), blurRadius: 7)],
+          ),
         ),
-      ),
+      ],
     );
   }
 }
 
-class _StageCounter extends StatelessWidget {
-  const _StageCounter({required this.index, required this.total});
+class _SelectedHeroIdentity extends StatelessWidget {
+  const _SelectedHeroIdentity({
+    required this.hero,
+    required this.compact,
+  });
 
-  final int index;
-  final int total;
+  final ArenaHeroDefinition hero;
+  final bool compact;
 
   @override
   Widget build(BuildContext context) {
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        color: const Color(0xA916252F),
-        border: Border.all(color: const Color(0x6079D6BD)),
-        borderRadius: BorderRadius.circular(5),
-      ),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
-        child: Text(
-          '${index.toString().padLeft(2, '0')}  /  ${total.toString().padLeft(2, '0')}',
-          style: const TextStyle(
-            color: Color(0xFFE3F3EF),
-            fontSize: 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1,
+    final nonHuman = hero.species != ArenaHeroSpecies.human;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          hero.name,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
+          style: TextStyle(
+            color: const Color(0xFFF4F7F4),
+            fontSize: compact ? 28 : 39,
+            height: 1,
+            fontWeight: FontWeight.w900,
+            letterSpacing: 1.2,
+            shadows: const [
+              Shadow(
+                color: Color(0xC9000000),
+                blurRadius: 14,
+                offset: Offset(0, 2),
+              ),
+            ],
           ),
         ),
-      ),
+        SizedBox(height: compact ? 7 : 10),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _IdentityTag(label: hero.role),
+            if (nonHuman) ...[
+              const SizedBox(width: 7),
+              _IdentityTag(label: hero.species.label),
+            ],
+          ],
+        ),
+        SizedBox(height: compact ? 5 : 8),
+        ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 390),
+          child: Text(
+            hero.summary,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: const Color(0xFFD5DFE0),
+              fontSize: compact ? 10 : 12,
+              height: 1.3,
+              shadows: const [Shadow(color: Color(0xAA000000), blurRadius: 8)],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }
 
-class _HeroInfoTag extends StatelessWidget {
-  const _HeroInfoTag({required this.label});
+class _IdentityTag extends StatelessWidget {
+  const _IdentityTag({required this.label});
 
   final String label;
 
@@ -271,19 +279,19 @@ class _HeroInfoTag extends StatelessWidget {
   Widget build(BuildContext context) {
     return DecoratedBox(
       decoration: BoxDecoration(
-        color: const Color(0xA81A3039),
-        border: Border.all(color: const Color(0x7779D6BD)),
+        color: const Color(0xA51A3037),
+        border: Border.all(color: const Color(0x9879D6BD)),
         borderRadius: BorderRadius.circular(4),
       ),
       child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         child: Text(
           label,
           style: const TextStyle(
-            color: Color(0xFF9CE1D1),
+            color: Color(0xFFA9E7D7),
             fontSize: 9,
             fontWeight: FontWeight.w900,
-            letterSpacing: 0.8,
+            letterSpacing: 0.85,
           ),
         ),
       ),
@@ -296,6 +304,7 @@ class _HeroRosterPanel extends StatelessWidget {
     required this.heroes,
     required this.selectedHeroId,
     required this.speciesFilter,
+    required this.showSpeciesFilters,
     required this.compact,
     required this.onSelect,
     required this.onFilter,
@@ -306,6 +315,7 @@ class _HeroRosterPanel extends StatelessWidget {
   final List<ArenaHeroDefinition> heroes;
   final String selectedHeroId;
   final ArenaHeroSpecies? speciesFilter;
+  final bool showSpeciesFilters;
   final bool compact;
   final ValueChanged<String> onSelect;
   final ValueChanged<ArenaHeroSpecies?> onFilter;
@@ -314,136 +324,134 @@ class _HeroRosterPanel extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          'ELENCO DE COMBATENTES',
-          style: TextStyle(
-            color: const Color(0xFF79D6BD),
-            fontSize: compact ? 9 : 10,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.7,
-          ),
-        ),
-        SizedBox(height: compact ? 4 : 7),
-        Text(
-          'Escolha seu herói',
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-          style: TextStyle(
-            color: const Color(0xFFF0F4F4),
-            fontSize: compact ? 19 : 25,
-            fontWeight: FontWeight.w800,
-            letterSpacing: -0.5,
-          ),
-        ),
-        SizedBox(height: compact ? 10 : 16),
-        Text(
-          'ESPÉCIE',
-          style: TextStyle(
-            color: const Color(0xFF9BAAB0),
-            fontSize: 9,
-            fontWeight: FontWeight.w800,
-            letterSpacing: 1.2,
-          ),
-        ),
-        SizedBox(height: compact ? 5 : 8),
-        _SpeciesFilters(
-          selected: speciesFilter,
-          onSelect: onFilter,
-          compact: compact,
-        ),
-        SizedBox(height: compact ? 10 : 15),
-        Row(
-          children: [
-            const Text(
-              'PERSONAGENS',
-              style: TextStyle(
-                color: Color(0xFFD5E0E1),
-                fontSize: 9,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 1.1,
-              ),
+    return Padding(
+      padding: EdgeInsets.symmetric(
+        horizontal: compact ? 10 : 16,
+        vertical: compact ? 8 : 12,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'HERÓIS',
+            style: TextStyle(
+              color: const Color(0xFF8DDBC7),
+              fontSize: compact ? 9 : 10,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 1.8,
             ),
-            const Spacer(),
-            Text(
-              '${heroes.length.toString().padLeft(2, '0')} DISPONÍVEIS',
-              style: const TextStyle(
-                color: Color(0xFF91A3AA),
-                fontSize: 8,
-                fontWeight: FontWeight.w800,
-                letterSpacing: 0.7,
-              ),
+          ),
+          SizedBox(height: compact ? 4 : 7),
+          Text(
+            'Escolha seu herói',
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: TextStyle(
+              color: const Color(0xFFF0F4F4),
+              fontSize: compact ? 19 : 25,
+              fontWeight: FontWeight.w800,
+              letterSpacing: -0.5,
             ),
+          ),
+          SizedBox(height: compact ? 8 : 12),
+          if (showSpeciesFilters) ...[
+            _SpeciesFilters(
+              selected: speciesFilter,
+              onSelect: onFilter,
+              compact: compact,
+            ),
+            SizedBox(height: compact ? 8 : 12),
           ],
-        ),
-        SizedBox(height: compact ? 6 : 9),
-        Expanded(
-          child: ListView.separated(
-            padding: EdgeInsets.zero,
-            itemCount: heroes.length,
-            separatorBuilder: (_, __) => SizedBox(height: compact ? 5 : 8),
-            itemBuilder: (context, index) {
-              final hero = heroes[index];
-              return _HeroRosterCard(
-                hero: hero,
-                selected: hero.id == selectedHeroId,
-                compact: compact,
-                onTap: () => onSelect(hero.id),
-              );
-            },
-          ),
-        ),
-        SizedBox(height: compact ? 7 : 10),
-        Row(
-          children: [
-            TextButton(
-              onPressed: onBack,
-              style: TextButton.styleFrom(
-                foregroundColor: const Color(0xFFB7C4C9),
-                minimumSize: const Size(84, 48),
-                padding: const EdgeInsets.symmetric(horizontal: 10),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(6),
-                ),
-              ),
-              child: const Text(
-                'VOLTAR',
+          Row(
+            children: [
+              Text(
+                'ELENCO',
                 style: TextStyle(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  letterSpacing: 1,
+                  color: const Color(0xFFD5E0E1),
+                  fontSize: compact ? 8 : 9,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 1.1,
                 ),
               ),
+              const Spacer(),
+              Text(
+                '${heroes.length.toString().padLeft(2, '0')} DISPONÍVEIS',
+                style: const TextStyle(
+                  color: Color(0xFF9DADB3),
+                  fontSize: 8,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: compact ? 6 : 9),
+          Expanded(
+            child: ListView.separated(
+              padding: EdgeInsets.zero,
+              itemCount: heroes.length,
+              separatorBuilder: (_, __) => SizedBox(height: compact ? 5 : 7),
+              itemBuilder: (context, index) {
+                final hero = heroes[index];
+                return _HeroRosterCard(
+                  hero: hero,
+                  selected: hero.id == selectedHeroId,
+                  compact: compact,
+                  onTap: () => onSelect(hero.id),
+                );
+              },
             ),
-            const Spacer(),
-            SizedBox(
-              height: 48,
-              width: compact ? 132 : 158,
-              child: FilledButton(
-                onPressed: onConfirm,
-                style: FilledButton.styleFrom(
-                  backgroundColor: const Color(0xFF79D6BD),
-                  foregroundColor: const Color(0xFF102B2B),
-                  elevation: 0,
+          ),
+          SizedBox(height: compact ? 7 : 10),
+          Row(
+            children: [
+              TextButton(
+                onPressed: onBack,
+                style: TextButton.styleFrom(
+                  foregroundColor: const Color(0xFFD0DADD),
+                  minimumSize: const Size(74, 46),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
+                    borderRadius: BorderRadius.circular(5),
                   ),
                 ),
                 child: const Text(
-                  'CONFIRMAR',
+                  'VOLTAR',
                   style: TextStyle(
                     fontSize: 10,
-                    fontWeight: FontWeight.w900,
-                    letterSpacing: 1,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.9,
                   ),
                 ),
               ),
-            ),
-          ],
-        ),
-      ],
+              const Spacer(),
+              SizedBox(
+                height: 46,
+                width: compact ? 128 : 150,
+                child: FilledButton(
+                  onPressed: onConfirm,
+                  style: FilledButton.styleFrom(
+                    backgroundColor: const Color(0xFF83D6C1),
+                    foregroundColor: const Color(0xFF122C2C),
+                    elevation: 0,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(5),
+                    ),
+                  ),
+                  child: const Text(
+                    'CONFIRMAR',
+                    style: TextStyle(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w900,
+                      letterSpacing: 0.9,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
     );
   }
 }
@@ -465,7 +473,7 @@ class _SpeciesFilters extends StatelessWidget {
       scrollDirection: Axis.horizontal,
       child: Row(
         children: [
-          _SpeciesFilterChip(
+          _SpeciesChip(
             label: 'TODOS',
             selected: selected == null,
             compact: compact,
@@ -473,7 +481,7 @@ class _SpeciesFilters extends StatelessWidget {
           ),
           for (final species in ArenaHeroCatalog.availableSpecies) ...[
             const SizedBox(width: 6),
-            _SpeciesFilterChip(
+            _SpeciesChip(
               label: species.pluralLabel,
               selected: selected == species,
               compact: compact,
@@ -486,8 +494,8 @@ class _SpeciesFilters extends StatelessWidget {
   }
 }
 
-class _SpeciesFilterChip extends StatelessWidget {
-  const _SpeciesFilterChip({
+class _SpeciesChip extends StatelessWidget {
+  const _SpeciesChip({
     required this.label,
     required this.selected,
     required this.compact,
@@ -502,32 +510,32 @@ class _SpeciesFilterChip extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0x283B9A84) : const Color(0x141D2B33),
-      borderRadius: BorderRadius.circular(5),
+      color: selected ? const Color(0x333F9D88) : const Color(0x22202E34),
+      borderRadius: BorderRadius.circular(4),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(5),
+        borderRadius: BorderRadius.circular(4),
         child: Container(
-          constraints: BoxConstraints(minHeight: compact ? 36 : 40),
+          constraints: BoxConstraints(minHeight: compact ? 34 : 38),
           padding: EdgeInsets.symmetric(horizontal: compact ? 9 : 11),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             border: Border.all(
               color: selected
-                  ? const Color(0xFF79D6BD)
-                  : const Color(0x604B6069),
+                  ? const Color(0xFF83D6C1)
+                  : const Color(0x655D747A),
             ),
-            borderRadius: BorderRadius.circular(5),
+            borderRadius: BorderRadius.circular(4),
           ),
           child: Text(
             label,
             style: TextStyle(
               color: selected
-                  ? const Color(0xFF9CE4D2)
-                  : const Color(0xFFB3C0C5),
+                  ? const Color(0xFFACE9D9)
+                  : const Color(0xFFC1CCCF),
               fontSize: compact ? 8 : 9,
               fontWeight: FontWeight.w900,
-              letterSpacing: 0.6,
+              letterSpacing: 0.55,
             ),
           ),
         ),
@@ -558,51 +566,47 @@ class _HeroRosterCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final nonHuman = hero.species != ArenaHeroSpecies.human;
     final accent = selected
-        ? const Color(0xFF79D6BD)
-        : const Color(0xFF52636D);
+        ? const Color(0xFF83D6C1)
+        : const Color(0xFF53656D);
 
     return Material(
       color: selected
-          ? const Color(0x273C8C7B)
-          : const Color(0x171E2B33),
-      borderRadius: BorderRadius.circular(7),
+          ? const Color(0x453A8E7E)
+          : const Color(0x30202C33),
+      borderRadius: BorderRadius.circular(6),
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(7),
+        borderRadius: BorderRadius.circular(6),
         child: Container(
-          constraints: BoxConstraints(minHeight: compact ? 58 : 66),
+          constraints: BoxConstraints(minHeight: compact ? 54 : 62),
           padding: EdgeInsets.symmetric(
-            horizontal: compact ? 9 : 12,
-            vertical: compact ? 7 : 9,
+            horizontal: compact ? 9 : 11,
+            vertical: compact ? 6 : 8,
           ),
           decoration: BoxDecoration(
             border: Border.all(
-              color: accent.withValues(alpha: selected ? 0.95 : 0.42),
-              width: selected ? 1.4 : 0.9,
+              color: accent.withValues(alpha: selected ? 0.95 : 0.48),
+              width: selected ? 1.35 : 0.9,
             ),
-            borderRadius: BorderRadius.circular(7),
+            borderRadius: BorderRadius.circular(6),
           ),
           child: Row(
             children: [
               Container(
-                width: compact ? 34 : 39,
-                height: compact ? 34 : 39,
+                width: compact ? 34 : 38,
+                height: compact ? 34 : 38,
                 decoration: BoxDecoration(
-                  color: const Color(0x332D4952),
-                  borderRadius: BorderRadius.circular(5),
-                  border: Border.all(
-                    color: selected
-                        ? const Color(0x8879D6BD)
-                        : const Color(0x445F7780),
-                  ),
+                  color: const Color(0x362D454C),
+                  borderRadius: BorderRadius.circular(4),
                 ),
                 child: Icon(
                   _speciesIcon,
-                  size: compact ? 18 : 20,
+                  size: compact ? 18 : 19,
                   color: selected
-                      ? const Color(0xFF94E0CD)
-                      : const Color(0xFF9AAEB4),
+                      ? const Color(0xFFA5E7D5)
+                      : const Color(0xFFA6B6BA),
                 ),
               ),
               SizedBox(width: compact ? 8 : 10),
@@ -618,23 +622,25 @@ class _HeroRosterCard extends StatelessWidget {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         color: selected
-                            ? const Color(0xFFB1EBDD)
-                            : const Color(0xFFE1E8E9),
+                            ? const Color(0xFFB4EBDD)
+                            : const Color(0xFFF0F4F4),
                         fontSize: compact ? 12 : 14,
                         fontWeight: FontWeight.w900,
-                        letterSpacing: 0.7,
+                        letterSpacing: 0.65,
                       ),
                     ),
                     const SizedBox(height: 3),
                     Text(
-                      '${hero.species.label}  ·  ${hero.role}',
+                      nonHuman
+                          ? '${hero.species.label}  ·  ${hero.role}'
+                          : hero.role,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
-                        color: const Color(0xFF9DADB3),
+                        color: const Color(0xFFB2BFC2),
                         fontSize: compact ? 8 : 9,
                         fontWeight: FontWeight.w700,
-                        letterSpacing: 0.35,
+                        letterSpacing: 0.45,
                       ),
                     ),
                   ],
@@ -643,10 +649,10 @@ class _HeroRosterCard extends StatelessWidget {
               SizedBox(width: compact ? 5 : 8),
               Icon(
                 selected ? Icons.check_circle_rounded : Icons.circle_outlined,
-                size: compact ? 17 : 19,
+                size: compact ? 18 : 19,
                 color: selected
-                    ? const Color(0xFF79D6BD)
-                    : const Color(0xFF687981),
+                    ? const Color(0xFF83D6C1)
+                    : const Color(0xFF72838A),
               ),
             ],
           ),
