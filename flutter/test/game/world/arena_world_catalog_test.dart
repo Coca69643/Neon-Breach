@@ -89,6 +89,39 @@ void main() {
       }
     });
 
+    test('city districts use distinct architecture and authored street dressing', () {
+      final buildingNames = ArenaWorldCatalog.commercialBlocks
+          .map((block) => block.$1)
+          .toSet();
+      expect(buildingNames, hasLength(4));
+      expect(ArenaWorldCatalog.largeTrees, hasLength(4));
+      expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(40));
+
+      for (final prop in ArenaWorldCatalog.cityProps) {
+        expect(prop.x.isFinite && prop.y.isFinite && prop.z.isFinite, isTrue);
+        expect(prop.scale, greaterThan(0));
+        expect(
+          ArenaWorldCatalog.isWalkable(prop.x, prop.z),
+          isTrue,
+          reason: '${prop.asset} must dress a walkable point, not block an entrance or lane',
+        );
+      }
+      for (final tree in ArenaWorldCatalog.largeTrees) {
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            tree.x, tree.z, includeTreeCollision: false,
+          ),
+          isTrue,
+          reason: 'large park trees must stay inside the playable land footprint',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(tree.x, tree.z),
+          isFalse,
+          reason: 'large park trees must remain solid obstacles',
+        );
+      }
+    });
+
     test('two opposing mezzanines require continuous stair traversal', () {
       expect(ArenaWorldCatalog.verticalAccesses, hasLength(2));
       for (final access in ArenaWorldCatalog.verticalAccesses) {
