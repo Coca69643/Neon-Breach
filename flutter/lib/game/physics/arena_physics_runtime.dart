@@ -345,6 +345,7 @@ class ArenaPhysicsRuntime {
       // Lateral steering along the bank remains available.
       if (duringDash) {
         _dashVelocityZ = 0;
+        _velocityZ = 0;
         _dashRemaining = 0;
       } else {
         _velocityZ = 0;
@@ -697,7 +698,6 @@ class ArenaPhysicsRuntime {
         ),
         label: 'interior_${item.$2}_${item.$1}',
       );
-    }
     }
   }
 
