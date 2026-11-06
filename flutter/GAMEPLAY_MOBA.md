@@ -109,3 +109,15 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 - A seleção manual complementa o auto-target atual; não substitui a lógica contextual de torres e estruturas.
 - Ataques dos bots e minions têm uma janela temporal própria para que o renderer toque clips de golpe em vez de alternar apenas entre Idle e Walk.
 - O processo de pausa/retomada conserva o estado em memória. Savegame que sobreviva ao encerramento forçado do aplicativo ainda não está implementado.
+
+## Cidade viva e comando tático — revisão 1.7.10
+
+- Quatro distritos internos têm funções visuais distintas: operações, oficina, informação do parque e convivência.
+- Os quarteirões usam fachadas CC0 variadas; ruas recebem semáforos, placas, iluminação, faixas, marquises, floreiras e pontos de praça.
+- Quatro NPCs de serviço seguem patrulhas determinísticas curtas, com caminhada, pausas e animação de interação.
+- Um toque no minimapa em terreno acessível envia o aliado de flanco mais próximo a um ponto por oito segundos.
+- A ordem tática é temporária e não cancela combate contra heróis; água, estruturas, paredes e pontos fora do mundo são rejeitados.
+- O reator central mostra visualmente o controle azul/vermelho e o estado contestado por meio de um anel no cenário.
+- Modelos e texturas são preparados no build a partir de assets CC0 fixados por hash; a partida não baixa conteúdo pela rede.
+- Os novos detalhes são colocados em pontos navegáveis e não alteram as rotas de colisão existentes.
+
