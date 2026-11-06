@@ -49,7 +49,7 @@ class ArenaHeroPreview extends StatelessWidget {
           SceneModel(
             hero.modelAsset,
             key: ValueKey(hero.id),
-            name: 'playable_hero_' + hero.id,
+            name: 'playable_hero_${hero.id}',
             position: vm.Vector3(0, 0, 0),
             // The default calibration presents the model's front to the stage.
             // Individual non-humanoid models can override this yaw in the catalog.
@@ -61,7 +61,7 @@ class ArenaHeroPreview extends StatelessWidget {
             animations: [
               SceneAnimationSpec(hero.idleAnimation, loop: true, speed: 1),
             ],
-            onLoaded: (_) => debugPrint('Hero GLB loaded: ' + hero.id),
+            onLoaded: (_) => debugPrint('Hero GLB loaded: ${hero.id}'),
           ),
         ],
       ),
