@@ -230,7 +230,10 @@ class ArenaPhysicsRuntime {
     final fromZ = _playerPose.translation.z;
     final toX = fromX + _velocityX * dt;
     final toZ = fromZ + _velocityZ * dt;
-    if (ArenaWorldCatalog.isBridgeAt(toX, toZ)) return;
+    if (!ArenaWorldCatalog.isCanalAt(toX, toZ) ||
+        ArenaWorldCatalog.isBridgeAt(toX, toZ)) {
+      return;
+    }
 
     final fromSouth = ArenaWorldCatalog.canalBankZAt(
       fromX,
@@ -469,26 +472,36 @@ class ArenaPhysicsRuntime {
   }
 
   void _buildCanalBanks() {
-    const spans = <(double, double)>[
-      (-90.0, -40.2), (-31.8, -4.2),
-      (4.2, 31.8), (40.2, 90.0),
-    ];
-    // A continuous high bank face gives the capsule controller a reliable
-    // vertical obstacle even where the baked river edge dips below the field.
-    // The X gaps remain centered on the three bridge corridors.
+    // Generate bank colliders from the same five bridge gaps as the terrain.
+    // Short segments follow the river's curve without sealing crossings.
+    final spans = <(double, double)>[];
+    var cursor = ArenaWorldCatalog.canalStartX;
+    for (final bridgeX in ArenaWorldCatalog.bridgePositions) {
+      final bankEnd = bridgeX - ArenaWorldCatalog.bridgeHalfWidth - 0.18;
+      if (bankEnd > cursor) spans.add((cursor, bankEnd));
+      cursor = bridgeX + ArenaWorldCatalog.bridgeHalfWidth + 0.18;
+    }
+    if (cursor < ArenaWorldCatalog.canalEndX) {
+      spans.add((cursor, ArenaWorldCatalog.canalEndX));
+    }
+
     for (final span in spans) {
-      final centerX = (span.$1 + span.$2) * 0.5;
-      final halfLength = (span.$2 - span.$1) * 0.5;
-      for (final north in [false, true]) {
-        final z = ArenaWorldCatalog.canalBankZAt(
-          centerX,
-          north: north,
-        );
-        _addStaticShape(
-          BoxShape(halfExtents: vm.Vector3(halfLength, 3.0, 0.75)),
-          vm.Vector3(centerX, 1.5, z),
-          label: 'canal_bank_${centerX}_${north ? 'north' : 'south'}',
-        );
+      final segmentCount = math.max(1, ((span.$2 - span.$1) / 8.0).ceil());
+      for (var index = 0; index < segmentCount; index++) {
+        final startX = span.$1 +
+            (span.$2 - span.$1) * index / segmentCount;
+        final endX = span.$1 +
+            (span.$2 - span.$1) * (index + 1) / segmentCount;
+        final centerX = (startX + endX) * 0.5;
+        final halfLength = (endX - startX) * 0.5 + 0.08;
+        for (final north in [false, true]) {
+          final z = ArenaWorldCatalog.canalBankZAt(centerX, north: north);
+          _addStaticShape(
+            BoxShape(halfExtents: vm.Vector3(halfLength, 3.0, 0.75)),
+            vm.Vector3(centerX, 1.5, z),
+            label: 'canal_bank_${centerX}_${north ? 'north' : 'south'}',
+          );
+        }
       }
     }
   }
@@ -532,11 +545,11 @@ class ArenaPhysicsRuntime {
       final access = ArenaWorldCatalog.verticalAccesses.any(
         (entry) => entry.id == building.$1,
       );
-      final counterX = access ? x - 5.2 : x;
-      final counterZ = access ? z - 2.0 : z + 2.2;
+      final counterX = access ? x - 6.0 : x;
+      final counterZ = access ? z - 2.4 : z + 2.5;
       final counterHalf = access
-          ? vm.Vector3(1.5, 0.7, 0.7)
-          : vm.Vector3(2.6, 0.7, 0.7);
+          ? vm.Vector3(2.0, 0.8, 0.8)
+          : vm.Vector3(3.0, 0.8, 0.8);
       _addStaticShape(
         BoxShape(halfExtents: counterHalf),
         vm.Vector3(counterX, baseY + counterHalf.y, counterZ),
@@ -544,8 +557,8 @@ class ArenaPhysicsRuntime {
       );
       if (!access) {
         _addStaticShape(
-          BoxShape(halfExtents: vm.Vector3(0.55, 0.8, 1.8)),
-          vm.Vector3(x - 7.0, baseY + 0.8, z + 3.2),
+          BoxShape(halfExtents: vm.Vector3(0.6, 0.8, 1.8)),
+          vm.Vector3(x - 8.5, baseY + 0.8, z + 4.0),
           label: '${building.$1}_shelf',
         );
       }
