@@ -1005,9 +1005,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _npcAsset(bot.visualId),
       key: ValueKey('match-bot-${bot.id}'),
       name: bot.id,
-      onLoaded: (modelRoot) {
-        unawaited(HeroWeaponSocket.attach(modelRoot, bot.heroId));
-      },
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
       scale: vm.Vector3.all(0.90),
