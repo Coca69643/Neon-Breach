@@ -291,6 +291,7 @@ class MobaMatchSnapshot {
     required this.playerMoving,
     required this.playerAttackSeconds,
     required this.playerHitConfirmSeconds,
+    required this.playerSkillPulseSeconds,
     required this.playerFacingX,
     required this.playerFacingZ,
     required this.blueTeamKills,
@@ -330,6 +331,7 @@ class MobaMatchSnapshot {
   final bool playerMoving;
   final double playerAttackSeconds;
   final double playerHitConfirmSeconds;
+  final double playerSkillPulseSeconds;
   final double playerFacingX;
   final double playerFacingZ;
   final int blueTeamKills;
@@ -518,7 +520,9 @@ class MobaMatchSimulation {
   double _playerAttackCooldown = 0;
   double _playerAttackPulseSeconds = 0;
   double _playerHitConfirmSeconds = 0;
+  double _playerSkillPulseSeconds = 0;
   double _playerSkillCooldown = 0;
+  MobaPoint? _pendingPhysicsDash;
   double _playerShieldTime = 0;
   double _playerXp = 0;
   double _playerGold = 500;
@@ -535,6 +539,13 @@ class MobaMatchSimulation {
   String? _teamPingBotId;
 
   MobaMatchSnapshot get snapshot => _makeSnapshot();
+
+  /// Transfers a requested dash to the authoritative Rapier body exactly once.
+  MobaPoint? consumePhysicsDashRequest() {
+    final request = _pendingPhysicsDash;
+    _pendingPhysicsDash = null;
+    return request;
+  }
 
   int get activeMinionCount => _minions.where((unit) => unit.alive).length;
   int get activeBotCount => _bots.where((bot) => bot.alive).length;
@@ -892,6 +903,8 @@ class MobaMatchSimulation {
         math.max(0, _playerAttackPulseSeconds - dt);
     _playerHitConfirmSeconds =
         math.max(0, _playerHitConfirmSeconds - dt);
+    _playerSkillPulseSeconds =
+        math.max(0, _playerSkillPulseSeconds - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
     _playerShieldTime = math.max(0, _playerShieldTime - dt);
     final wasRespawning = _playerRespawn > 0;
@@ -925,7 +938,9 @@ class MobaMatchSimulation {
         _movePlayer(moveX, moveZ, dt);
       }
       if (basicAttack && _playerAttackCooldown <= 0) _playerAttack();
-      if (castSkill && _playerSkillCooldown <= 0) _castHeroSkill();
+      if (castSkill && _playerSkillCooldown <= 0) {
+        _castHeroSkill(externalPlayerMovement: externalPlayerMovement);
+      }
     }
 
     _updateWaves(dt);
@@ -1099,7 +1114,8 @@ class MobaMatchSimulation {
     _playerHitConfirmSeconds = 0.22;
   }
 
-  void _castHeroSkill() {
+  void _castHeroSkill({required bool externalPlayerMovement}) {
+    _playerSkillPulseSeconds = 0.82;
     switch (heroId) {
       case MobaHeroId.lyra:
         _playerHealth = math.min(_playerMaxHealth, _playerHealth + 76);
@@ -1121,13 +1137,33 @@ class MobaMatchSimulation {
         final length = math.sqrt(_lastMoveX * _lastMoveX + _lastMoveZ * _lastMoveZ);
         final dx = length > 0 ? _lastMoveX / length : 0;
         final dz = length > 0 ? _lastMoveZ / length : 1;
-        _tryMovePlayer(dx * 5, dz * 5, allowAxisSlide: false);
-        final target = _nearestBot(
-          _playerPosition,
-          MobaTeam.red,
-          maxRange: 3.0,
-        );
-        if (target != null) _damageBot(target, MobaTeam.blue, 72);
+        final dashX = dx * 5.0;
+        final dashZ = dz * 5.0;
+        if (externalPlayerMovement) {
+          // Rapier resolves the same burst against the live collision world.
+          // Target selection uses the expected dash endpoint without moving the
+          // simulation's player copy ahead of the physical capsule.
+          _pendingPhysicsDash = MobaPoint(dashX, dashZ);
+          final endpoint = MobaPoint(
+            _playerPosition.x + dashX,
+            _playerPosition.z + dashZ,
+            elevation: _playerPosition.elevation,
+          );
+          final target = _nearestBot(
+            endpoint,
+            MobaTeam.red,
+            maxRange: 3.0,
+          );
+          if (target != null) _damageBot(target, MobaTeam.blue, 72);
+        } else {
+          _tryMovePlayer(dashX, dashZ, allowAxisSlide: false);
+          final target = _nearestBot(
+            _playerPosition,
+            MobaTeam.red,
+            maxRange: 3.0,
+          );
+          if (target != null) _damageBot(target, MobaTeam.blue, 72);
+        }
     }
     _playerSkillCooldown = 9.0;
   }
@@ -2004,6 +2040,7 @@ class MobaMatchSimulation {
       playerMoving: _playerMoving,
       playerAttackSeconds: _playerAttackPulseSeconds,
       playerHitConfirmSeconds: _playerHitConfirmSeconds,
+      playerSkillPulseSeconds: _playerSkillPulseSeconds,
       playerFacingX: _lastMoveX,
       playerFacingZ: _lastMoveZ,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
