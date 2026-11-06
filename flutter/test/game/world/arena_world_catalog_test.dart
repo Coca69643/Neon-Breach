@@ -6,12 +6,14 @@ void main() {
     test('uses the same 180 × 140 bounds as the offline terrain baker', () {
       expect(ArenaWorldCatalog.halfWidth, 90);
       expect(ArenaWorldCatalog.halfDepth, 70);
-      expect(ArenaWorldCatalog.worldScale, 1);
-      expect(ArenaWorldCatalog.contains(80, 0), isTrue);
-      expect(ArenaWorldCatalog.contains(-80, 0), isTrue);
-      expect(ArenaWorldCatalog.contains(0, 62), isTrue);
-      expect(ArenaWorldCatalog.contains(0, -62), isTrue);
-      expect(ArenaWorldCatalog.contains(89, 69), isFalse);
+      expect(ArenaWorldCatalog.worldScale, 1.35);
+      expect(ArenaWorldCatalog.contains(89, 0), isTrue);
+      expect(ArenaWorldCatalog.contains(-89, 0), isTrue);
+      expect(ArenaWorldCatalog.contains(0, 69), isTrue);
+      expect(ArenaWorldCatalog.contains(0, -69), isTrue);
+      expect(ArenaWorldCatalog.contains(80, 60), isTrue);
+      expect(ArenaWorldCatalog.contains(89, 69), isFalse,
+          reason: 'the rectangular map keeps only softly rounded corners');
     });
 
     test('keeps three lanes aligned with the generated urban terrain', () {
@@ -26,15 +28,15 @@ void main() {
       expect(ArenaWorldCatalog.cityInteriors, hasLength(4));
       for (final building in ArenaWorldCatalog.cityInteriors) {
         final x = building.$2, z = building.$3;
-        expect(ArenaWorldCatalog.isWalkable(x, z - 4.3), isTrue,
-            reason: 'south doorway must be traversable for ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(x, z - 8.0), isTrue,
+            reason: '4.8 m entrance must be traversable for ${building.$1}');
         expect(ArenaWorldCatalog.isWalkable(x, z - 2.0), isTrue,
-            reason: 'interior floor must be traversable for ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x - 5.8, z), isFalse,
+            reason: 'enlarged interior floor must be traversable for ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(x - 10.0, z), isFalse,
             reason: 'side wall must block ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x, z + 4.3), isFalse,
+        expect(ArenaWorldCatalog.isWalkable(x, z + 8.0), isFalse,
             reason: 'rear wall must block ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x + 4.5, z - 4.3), isFalse,
+        expect(ArenaWorldCatalog.isWalkable(x + 4.5, z - 8.0), isFalse,
             reason: 'front wall segment must block outside the doorway');
       }
     });
@@ -124,15 +126,15 @@ void main() {
 
     test('service NPC patrol points remain walkable inside their own interiors', () {
       const routes = <List<(double, double)>>[
-        [(-63.0, -40.0), (-65.2, -40.0), (-61.0, -40.0)],
-        [(63.0, -40.5), (60.7, -40.5), (65.3, -40.5)],
-        [(-63.0, 35.5), (-65.3, 35.5), (-60.7, 35.5)],
-        [(63.0, 35.5), (65.3, 35.5), (60.7, 35.5)],
+        [(-61.0, -43.0), (-56.0, -43.0), (-56.0, -34.0), (-61.0, -34.0)],
+        [(66.0, -43.0), (71.0, -43.0), (71.0, -34.0), (66.0, -34.0)],
+        [(-67.0, 34.0), (-58.0, 34.0), (-58.0, 43.0), (-67.0, 43.0)],
+        [(64.0, 34.0), (69.0, 34.0), (69.0, 43.0), (64.0, 43.0)],
       ];
 
       expect(routes, hasLength(4));
       for (final route in routes) {
-        expect(route, hasLength(3));
+        expect(route, hasLength(4));
         for (final point in route) {
           expect(
             ArenaWorldCatalog.isWalkable(point.$1, point.$2),
