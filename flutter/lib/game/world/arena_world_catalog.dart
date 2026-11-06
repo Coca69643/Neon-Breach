@@ -13,7 +13,7 @@ class ArenaVerticalAccess {
 
   static const double rampRun = 5.014;
   static const double upperHeight = 3.35;
-  static const int rampCollisionSteps = 20;
+  static const int rampCollisionSteps = 10;
   static const double platformLength = 5.0;
   static const double platformDepth = 2.3;
   static const double corridorMinOffset = 1.22;
