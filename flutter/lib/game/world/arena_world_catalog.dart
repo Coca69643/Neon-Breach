@@ -378,7 +378,8 @@ abstract final class ArenaWorldCatalog {
     for (final block in commercialBlocks) {
       final dx = (x - block.$2).abs();
       final dz = (z - block.$3).abs();
-      if (dx < 6.8 && dz < 6.8) return false;
+      final half = block.$4;
+      if (dx < half + 0.3 && dz < half + 0.3) return false;
     }
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
