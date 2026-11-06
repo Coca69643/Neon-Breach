@@ -13,6 +13,7 @@ class ArenaVerticalAccess {
 
   static const double rampRun = 5.014;
   static const double upperHeight = 3.35;
+  static const int rampCollisionSteps = 20;
   static const double platformLength = 5.0;
   static const double platformDepth = 2.3;
   static const double corridorMinOffset = 1.22;
@@ -28,7 +29,8 @@ class ArenaVerticalAccess {
     if (pz < corridorMinZ || pz > corridorMaxZ) return null;
     if (px >= rampStartX && px <= rampEndX) {
       final t = ((px - rampStartX) / rampRun).clamp(0.0, 1.0).toDouble();
-      return upperHeight * t;
+      final stepIndex = (t * rampCollisionSteps).ceil();
+      return upperHeight * stepIndex / rampCollisionSteps;
     }
     if (px > rampEndX && px <= platformEndX) return upperHeight;
     return null;
