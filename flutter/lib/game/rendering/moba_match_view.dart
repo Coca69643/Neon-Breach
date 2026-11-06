@@ -63,8 +63,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   static final UnlitMaterial _redTeamRingMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.98, 0.28, 0.30, 1);
   static final RingGeometry _relayRingGeometry = RingGeometry(
-    innerRadius: 5.35,
-    outerRadius: 5.75,
+    innerRadius: 3.2,
+    outerRadius: 3.55,
     segments: 40,
   );
   static final UnlitMaterial _relayNeutralMaterial = UnlitMaterial()
