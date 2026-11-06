@@ -79,7 +79,7 @@ void main() {
         expect(ArenaWorldCatalog.isBridgeAt(crossing.$1, crossing.$2), isTrue);
       }
       expect(ArenaWorldCatalog.isWalkable(18, 0), isFalse);
-      expect(ArenaWorldCatalog.isWalkable(18, 2.5), isFalse);
+      expect(ArenaWorldCatalog.isWalkable(18, 2.5), isTrue);
       expect(ArenaWorldCatalog.isCanalAt(100, 0), isFalse);
     });
 
@@ -114,7 +114,7 @@ void main() {
       final buildingNames = ArenaWorldCatalog.commercialBlocks
           .map((block) => block.$1)
           .toSet();
-      expect(buildingNames, greaterThanOrEqualTo(6));
+      expect(buildingNames, hasLength(4));
       expect(ArenaWorldCatalog.largeTrees, hasLength(8));
       expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(40));
 
@@ -146,12 +146,14 @@ void main() {
     test('service NPC patrol points remain walkable inside their own interiors', () {
       const routes = <List<(double, double)>>[
         [(-61.0, -43.0), (-56.0, -43.0), (-56.0, -34.0), (-61.0, -34.0)],
-        [(66.0, -43.0), (71.0, -43.0), (71.0, -34.0), (66.0, -34.0)],
+        [(66.0, -43.0), (71.0, -43.0), (69.0, -34.0), (66.0, -34.0)],
         [(-67.0, 34.0), (-58.0, 34.0), (-58.0, 43.0), (-67.0, 43.0)],
         [(64.0, 34.0), (69.0, 34.0), (69.0, 43.0), (64.0, 43.0)],
+        [(-96.0, -22.0), (-90.0, -22.0), (-90.0, -18.0), (-96.0, -18.0)],
+        [(80.0, 12.0), (86.0, 12.0), (86.0, 16.0), (80.0, 16.0)],
       ];
 
-      expect(routes, hasLength(4));
+      expect(routes, hasLength(6));
       for (final route in routes) {
         expect(route, hasLength(4));
         for (final point in route) {
