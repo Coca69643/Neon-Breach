@@ -262,6 +262,10 @@ abstract final class ArenaWorldCatalog {
     return null;
   }
 
+  /// Shared authored elevation for ramps/mezzanines used by physics sync.
+  static double authoredElevationAt(double x, double z) =>
+      _accessForPoint(x, z)?.localSurfaceHeight(x, z) ?? 0.0;
+
   /// Returns the vertical offset required by the stair or mezzanine surface.
   /// A player can only change elevation by following the stair run incrementally.
   static double? resolveNavigationElevation(
