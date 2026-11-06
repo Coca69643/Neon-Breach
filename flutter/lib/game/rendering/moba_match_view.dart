@@ -450,7 +450,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           SceneModel(
             'assets/world/city/road_straight.glb',
             key: ValueKey('street-$laneX-$roadZ'),
-            name: 'urban_avenue_\${laneX}_$roadZ',
+            name: 'urban_avenue_${laneX}_$roadZ',
             position: _worldPosition(MobaPoint(laneX, roadZ)),
             rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi / 2),
             scale: vm.Vector3(12.0, 1.0, 20.0),
@@ -461,7 +461,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           SceneModel(
             'assets/world/city/road_straight.glb',
             key: ValueKey('district-street-$roadX-$roadZ'),
-            name: 'district_connector_\${roadX}_$roadZ',
+            name: 'district_connector_${roadX}_$roadZ',
             position: _worldPosition(MobaPoint(roadX, roadZ)),
             rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), 0),
             scale: vm.Vector3(12.0, 1.0, 20.0),
@@ -469,8 +469,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final bridge in _bridges)
         SceneModel(
           'assets/world/city/road_crossroad.glb',
-          key: ValueKey('crossroad-\${bridge.$1}'),
-          name: 'canal_crossing_\${bridge.$1}',
+          key: ValueKey('crossroad-${bridge.$1}'),
+          name: 'canal_crossing_${bridge.$1}',
           position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
           scale: vm.Vector3(9.0, 1.0, 10.0),
         ),
@@ -497,8 +497,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final bridge in _bridges)
         SceneModel(
           'assets/world/city/road_bridge.glb',
-          key: ValueKey('match-bridge-\${bridge.$1}'),
-          name: 'district_bridge_\${bridge.$1}',
+          key: ValueKey('match-bridge-${bridge.$1}'),
+          name: 'district_bridge_${bridge.$1}',
           position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
           rotation: vm.Quaternion.axisAngle(
             vm.Vector3(0, 1, 0),
