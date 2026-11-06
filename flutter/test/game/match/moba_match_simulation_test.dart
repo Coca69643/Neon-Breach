@@ -485,7 +485,7 @@ void main() {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
       for (final building in ArenaWorldCatalog.cityInteriors) {
-        final door = MobaPoint(building.$2, building.$3 - 4.3);
+        final door = MobaPoint(building.$2, building.$3 - 8.0);
         final blockingCover = simulation.snapshot.covers.any(
           (cover) => cover.position.distanceTo(door) < 1.8,
         );
@@ -551,7 +551,7 @@ void main() {
       expect(
         ArenaWorldCatalog.isWalkable(
           southDoor.$2,
-          southDoor.$3 - 4.3,
+          southDoor.$3 - 8.0,
         ),
         isTrue,
         reason: 'the entrance stays physically accessible before and after the side cover is destroyed',
