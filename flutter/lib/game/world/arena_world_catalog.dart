@@ -13,7 +13,6 @@ class ArenaVerticalAccess {
 
   static const double rampRun = 5.014;
   static const double upperHeight = 3.35;
-  static const int rampCollisionSteps = 10;
   static const double platformLength = 5.0;
   static const double platformDepth = 2.3;
   static const double corridorMinOffset = 1.22;
@@ -29,8 +28,7 @@ class ArenaVerticalAccess {
     if (pz < corridorMinZ || pz > corridorMaxZ) return null;
     if (px >= rampStartX && px <= rampEndX) {
       final t = ((px - rampStartX) / rampRun).clamp(0.0, 1.0).toDouble();
-      final stepIndex = (t * rampCollisionSteps).ceil();
-      return upperHeight * stepIndex / rampCollisionSteps;
+      return upperHeight * t;
     }
     if (px > rampEndX && px <= platformEndX) return upperHeight;
     return null;
@@ -290,8 +288,8 @@ abstract final class ArenaWorldCatalog {
     return null;
   }
 
-  /// Returns the vertical offset required by the stair or mezzanine surface.
-  /// A player can only change elevation by following the stair run incrementally.
+  /// Returns the vertical offset required by the continuous ramp or mezzanine.
+  /// Elevation must be followed incrementally to prevent snapping through the deck.
   static double? resolveNavigationElevation(
     double x,
     double z,
