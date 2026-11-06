@@ -558,10 +558,18 @@ abstract final class ArenaWorldCatalog {
     for (final building in cityInteriors) {
       final x = building.$2;
       final z = building.$3;
+      final hasVerticalAccess = verticalAccesses.any(
+        (access) => access.id == building.$1,
+      );
       add('detail_awning_wide.glb', x, z - 9.55,
           scale: 1.8, yaw: math.pi, y: 1.25);
-      add('interior_trashcan.glb', x + (x < 0 ? 7.0 : -7.0), z - 3.1,
-          scale: 0.9);
+      // Keep indoor props outside the counter footprint and mezzanine ramp.
+      add(
+        'interior_trashcan.glb',
+        hasVerticalAccess ? x + 7.0 : x + (x < 0 ? 7.0 : -7.0),
+        hasVerticalAccess ? z + 3.1 : z - 3.1,
+        scale: 0.9,
+      );
     }
 
     // Side plazas use parasols and planters as visual anchors.
