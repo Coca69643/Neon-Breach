@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bake a broad urban MOBA district with roads, alleys and a central canal.
+"""Bake the irregular six-district Project Arena battlefield.
 
-The offline GLB has a 180 × 140 urban footprint, three avenues, a straight canal,
-three walkable crossings and eight alternate alley approaches.
+The offline GLB has a 224 × 188 navigable footprint, a curved canal with five
+crossings, three combat corridors, six enterable interiors and side routes.
 """
 from __future__ import annotations
 
@@ -21,20 +21,27 @@ FLUTTER_ASSETS = ROOT / "flutter" / "assets" / "world"
 NATURE_SOURCE = ROOT / "app/src/main/assets/world/nature"
 TERRAIN_SOURCE = ROOT / "app/src/main/assets/world/terrain"
 WORLD_SCALE = 1.0
-# A large urban combat district: 180 x 140 world units.
-HALF_X = 90.0
-HALF_Z = 70.0
-GRID_X = 180
-GRID_Z = 140
-CORNER_RADIUS = 10.0
+# Expanded six-district combat footprint; polygon is mirrored in Dart.
+HALF_X = 112.0
+HALF_Z = 94.0
+GRID_X = 224
+GRID_Z = 188
+WORLD_BOUNDARY = [
+    (-72.0, -86.0), (-40.0, -92.0), (8.0, -89.0), (48.0, -93.0),
+    (82.0, -84.0), (101.0, -69.0), (109.0, -44.0), (104.0, -17.0),
+    (111.0, 10.0), (104.0, 37.0), (91.0, 60.0), (71.0, 82.0),
+    (42.0, 87.0), (8.0, 82.0), (-24.0, 88.0), (-56.0, 82.0),
+    (-82.0, 70.0), (-101.0, 48.0), (-108.0, 22.0), (-103.0, -6.0),
+    (-109.0, -34.0), (-97.0, -62.0), (-84.0, -78.0),
+]
+BRIDGES = (-72.0, -36.0, 0.0, 36.0, 72.0)
 
-# A narrow east-west city canal separates districts; all three main avenues
-# cross it at raised pedestrian/vehicle crossings.
+# Meandering canal follows the edge between the six city districts.
 RIVER = [
-    (-90.0, 0.0, 1.55), (-60.0, 0.2, 1.85),
-    (-30.0, -0.15, 2.05), (0.0, 0.1, 2.15),
-    (30.0, -0.1, 2.05), (60.0, 0.15, 1.85),
-    (90.0, 0.0, 1.55),
+    (-90.0, -4.0, 1.55), (-60.0, -2.0, 1.85),
+    (-30.0, 1.5, 2.05), (0.0, 0.5, 2.15),
+    (30.0, -1.5, 2.05), (60.0, 1.8, 1.85),
+    (90.0, 3.0, 1.55),
 ]
 LANES = [
     [(-36.0, -70), (-36.5, -52), (-35.8, -35), (-36.2, -18),
@@ -45,8 +52,7 @@ LANES = [
      (35.8, 0), (36.2, 18), (35.8, 35), (36.5, 52), (36.0, 70)],
 ]
 
-# District connectors form real alternate routes between the avenues and
-# the four ground-floor interiors; they are navigation paths, not resource loops.
+# Curved connectors lead from the three main combat corridors to six buildings.
 ACCESS_PATHS = [
     [(-36, -36), (-46, -36), (-56, -36), (-64, -36)],
     [(36, -36), (46, -36), (56, -36), (64, -36)],
@@ -56,6 +62,12 @@ ACCESS_PATHS = [
     [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
     [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
     [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
+    [(-36, -18), (-52, -18), (-70, -18), (-88, -18)],
+    [(36, 18), (52, 18), (70, 18), (88, 18)],
+    [(-92, -40), (-92, -24), (-88, -18)],
+    [(92, 40), (92, 24), (88, 18)],
+    [(-88, -18), (-92, -4), (-92, 12), (-76, 24), (-64, 36)],
+    [(88, 18), (92, 4), (92, -12), (76, -24), (64, -36)],
 ]
 
 
@@ -117,13 +129,20 @@ def normal_at(x: float, z: float) -> tuple[float, float, float]:
 
 
 def inside_island(x: float, z: float) -> bool:
-    # Flat-sided rounded rectangle; gameplay, Rapier terrain and rendered
-    # terrain now share the same district footprint instead of an oval edge.
+    # Ray casting over the same irregular polygon as ArenaWorldCatalog.contains.
     if abs(x) > HALF_X or abs(z) > HALF_Z:
         return False
-    corner_x = max(0.0, abs(x) - (HALF_X - CORNER_RADIUS))
-    corner_z = max(0.0, abs(z) - (HALF_Z - CORNER_RADIUS))
-    return corner_x * corner_x + corner_z * corner_z <= CORNER_RADIUS ** 2 + 1e-6
+    inside = False
+    j = len(WORLD_BOUNDARY) - 1
+    for i, (xi, zi) in enumerate(WORLD_BOUNDARY):
+        xj, zj = WORLD_BOUNDARY[j]
+        crosses = ((zi > z) != (zj > z)) and (
+            x < (xj - xi) * (z - zi) / (zj - zi) + xi
+        )
+        if crosses:
+            inside = not inside
+        j = i
+    return inside
 
 
 def point_segment_distance(px: float, pz: float, a: tuple[float, float],
@@ -377,7 +396,8 @@ def build_terrain_glb(output: Path) -> None:
 
             river_distance = abs(cz - river_center_z(cx))
             river_width = river_half_width(cx)
-            if river_distance < river_width + 1.0 and abs(cx) < 57.0:
+            on_bridge = any(abs(cx - bridge_x) <= 2.2 for bridge_x in BRIDGES)
+            if river_distance < river_width + 1.0 and not on_bridge:
                 continue
 
             nx, _, nz = normal_at(cx, cz)
@@ -483,8 +503,8 @@ def build_terrain_glb(output: Path) -> None:
                 add_up_triangle(group_name, prev[3], cur[3], cur[2])
             previous[group_name] = tuple(current_indices)
 
-    # Three wide, walkable crossings connect each route across the river.
-    for lane_x in (-36.0, 0.0, 36.0):
+    # Five broad, walkable bridges connect the six districts across the canal.
+    for lane_x in BRIDGES:
         river_z = river_center_z(lane_x)
         river_width = river_half_width(lane_x)
         bank_a = height(lane_x, river_z - river_width - 1.25)
@@ -678,13 +698,13 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "180x140 urban MOBA arena with three avenues, an east-west canal, four districts and enterable interiors",
-            "mapShape": "large-urban-superrectangle",
+            "layout": "224x188 irregular six-district battlefield with three combat corridors, a meandering canal, five bridges, six enterable interiors and CC0 urban/park assets",
+            "mapShape": "irregular-six-district-polygon",
             "laneCount": 3,
-            "bridgeCount": 3,
-            "districtCount": 4,
-            "enterableGroundFloorCount": 4,
-            "sideApproachCount": 8,
+            "bridgeCount": 5,
+            "districtCount": 6,
+            "enterableGroundFloorCount": 6,
+            "sideApproachCount": 14,
             "walkableSideCourtyards": True,
             "baseCount": 2,
             "dynamicShadows": False,
