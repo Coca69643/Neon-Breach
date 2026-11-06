@@ -300,7 +300,9 @@ abstract final class ArenaWorldCatalog {
     final channelWidth = _riverHalfWidth(x) + riverBankMargin;
     if (riverDistance < channelWidth && !_isOnBridge(x, z)) return false;
     if ((includeTowerCollision && _insideTowerFootprint(x, z)) ||
-        _insideBuildingWall(x, z)) return false;
+        _insideBuildingWall(x, z)) {
+      return false;
+    }
     for (final block in commercialBlocks) {
       final dx = (x - block.$2).abs();
       final dz = (z - block.$3).abs();
