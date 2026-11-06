@@ -1,43 +1,40 @@
-Project Arena
-Versão 1.8.0
+PROJECT ARENA
+Versão 1.8.0 — Changelog incremental
 
-ADICIONADO
-- Campo urbano expandido para 224 × 188 unidades.
+BASE DE GAMEPLAY
+- Campo urbano de 224 × 188 unidades.
 - Seis distritos com captura territorial e recompensas de equipe.
-- Bônus de dano escalonado por distrito controlado.
-- Marcadores 3D e HUD para posse/contestação dos distritos.
-- Seis interiores acessíveis e duas rotas elevadas por mezanino.
-- Ruas secundárias e cinco travessias do canal.
+- Bônus territorial de dano, reator central e pressão das três rotas.
+- Cinco travessias do canal, rotas secundárias e dois mezaninos.
+- Seis interiores previstos no catálogo de navegação.
+- Física Rapier em passo fixo, aceleração, frenagem, tração por superfície e colisão contínua.
+- Movimento normalizado na diagonal e testes de estabilidade entre 30/60 FPS.
 
-ALTERADO
-- Bots roamers priorizam distritos neutros ou controlados pelo adversário.
-- Heróis jogáveis (GLBs Quaternius Animated Men/Women): orientação local -Z alinhada ao deslocamento; rigs de bots, tropas e NPCs mantêm seu eixo local +Z.
-- Direção dos rigs alinhada ao vetor de deslocamento.
-- Escala dos bots ajustada para 0.98 e dos minions para 0.94–1.02.
-- Escalas de armas reduzidas por rig.
-- Terreno, interiores, navegação e física usam o mesmo catálogo espacial.
-- Movimento com aceleração, frenagem, tração por superfície e colisão contínua via Rapier em passo fixo.
-- Locomoção troca entre caminhada e corrida conforme a velocidade física real.
-- Herói gira para o alvo ao atacar, evitando animação de golpe desalinhada.
-- Bastion usa animação de soco pesado na habilidade de escudo; Lyra e Kairo mantêm cortes de espada.
-- Assets CC0 preparados offline e incluídos no pacote Android.
+ELENCO E APRESENTAÇÃO
+- Catálogo de heróis orientado a dados: espécie, função, descrição, modelo e calibração individual de prévia.
+- Seleção em tela cheia, com personagem em destaque e elenco lateral.
+- Filtros de espécie aparecem apenas quando o catálogo possui mais de uma espécie.
+- Prévia com orientação, escala e enquadramento configuráveis por personagem.
+- Menu com torre urbana original e praça apoiada no chão; o mapa de combate não é mais usado como cenário do menu.
 
-REMOVIDO
-- Dependência exclusiva das três avenidas como rotas de rotação.
+ETAPA 1 — TERRENO URBANO E MENU
+- Ruas principais e acessos passam a integrar uma única malha contínua de terreno.
+- Asfalto e calçadas de concreto recebem materiais próprios, gerados offline.
+- Faixas de rua e calçadas seguem a altura da malha; a classificação de superfície da física usa os mesmos limites.
+- Removidas peças de estrada, cruzamentos e pontes em escala excessiva que eram desenhadas sobre o terreno e criavam placas e emendas.
+- Travessias do canal permanecem integradas ao terreno.
+- Torre do menu reconstruída com volumes arquitetônicos escalonados, fachada envidraçada, base, alas de serviço, praça e antena de comunicação.
+- Menu usa modelos urbanos Kenney CC0 como cenário auxiliar, sem exibir a arena de combate.
+- Assets 3D de cidade e natureza permanecem empacotados offline.
 
+PENDÊNCIAS DAS PRÓXIMAS ETAPAS
+- Reequilibrar visibilidade e escala dos minions e bots.
+- Tornar NPCs e interiores mais evidentes e interativos.
+- Exibir vida, valores de dano e origem do dano de forma legível.
+- Adicionar um personagem não humano com rig e animações quadrúpedes próprios.
+- Projetar progressão e loja com preços transparentes e itens cosméticos, sem recompensas aleatórias.
+- Validar a apresentação e o desempenho prolongado no Realme C53.
 
-SELEÇÃO DE PERSONAGENS
-- Tela reorganizada em palco 3D e catálogo de combatentes.
-- Catálogo orientado a dados com espécie, função, descrição e modelo por personagem.
-- Filtros de espécie gerados automaticamente a partir do elenco disponível.
-- Prévia 3D com escala, enquadramento e orientação configuráveis por modelo.
-- Lista preparada para crescer sem alterar a estrutura da tela.
-
-APRESENTAÇÃO E HUD
-- Menu principal passa a usar o terreno urbano real da partida, com edifícios e detalhes CC0; removida a torre flutuante isolada.
-- Seleção de heróis passa a ocupar a tela inteira, com palco 3D e elenco lateral integrado.
-- Filtros de espécie ficam ocultos enquanto o elenco tiver apenas uma espécie; categorias adicionais aparecem quando forem necessárias.
-- Escala do herói em partida ajustada individualmente pelo catálogo (0,76 para o elenco atual).
-- Câmera de acompanhamento recuada para dar mais espaço ao personagem e à leitura do campo.
-- HUD estratégico consolidado em uma faixa; status do jogador reduzido e minimapa compacto.
-- Removido o indicador permanente de rotação de câmera que ocupava a área de jogo.
+RELEASE
+- Esta etapa ainda não produz APK para instalação.
+- A versão final só será distribuída após validar a assinatura de atualização existente e confirmar que ela corresponde ao certificado da instalação atual.
