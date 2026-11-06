@@ -42,6 +42,10 @@ void main() {
       );
     });
 
+    test('single-species roster does not need a species filter', () {
+      expect(ArenaHeroCatalog.hasMultipleSpecies, isFalse);
+    });
+
     test('current roster previews use the front-facing calibration', () {
       for (final hero in ArenaHeroCatalog.playable) {
         expect(hero.previewYawRadians, 0);
