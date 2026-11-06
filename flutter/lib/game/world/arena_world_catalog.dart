@@ -133,12 +133,13 @@ abstract final class ArenaWorldCatalog {
     ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
-  // Four distinct silhouettes establish recognizable blocks at each corner.
+  // Exterior shells are aligned with their matching interior collision rooms.
+  // A visible building and its playable interior must occupy the same footprint.
   static const commercialBlocks = <(String, double, double, double)>[
-    ('commercial_building_b.glb', -82.0, -60.0, 6.5),
-    ('commercial_building_c.glb', 82.0, -60.0, 6.5),
-    ('commercial_building_f.glb', -82.0, 60.0, 6.5),
-    ('commercial_building_h.glb', 82.0, 60.0, 6.5),
+    ('commercial_building_b.glb', -63.0, -38.0, 6.5),
+    ('commercial_building_c.glb', 63.0, -38.0, 6.5),
+    ('commercial_building_f.glb', -63.0, 38.0, 6.5),
+    ('commercial_building_h.glb', 63.0, 38.0, 6.5),
   ];
 
   static const sideApproachAnchors = <(double, double)>[
@@ -385,7 +386,14 @@ abstract final class ArenaWorldCatalog {
     for (final block in commercialBlocks) {
       final dx = (x - block.$2).abs();
       final dz = (z - block.$3).abs();
-      if (dx < 6.8 && dz < 6.8) return false;
+      final hasPlayableInterior = cityInteriors.any(
+        (building) =>
+            building.$2 == block.$2 &&
+            building.$3 == block.$3 &&
+            dx <= roomHalfWidth &&
+            dz <= roomHalfDepth,
+      );
+      if (dx < 6.8 && dz < 6.8 && !hasPlayableInterior) return false;
     }
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
