@@ -123,27 +123,11 @@ void main() {
     });
 
     test('service NPC patrol points remain walkable inside their own interiors', () {
-      const routes = <List<MobaPoint>>[
-        [
-          MobaPoint(-63.0, -40.0),
-          MobaPoint(-65.2, -40.0),
-          MobaPoint(-61.0, -40.0),
-        ],
-        [
-          MobaPoint(63.0, -40.5),
-          MobaPoint(60.7, -40.5),
-          MobaPoint(65.3, -40.5),
-        ],
-        [
-          MobaPoint(-63.0, 35.5),
-          MobaPoint(-65.3, 35.5),
-          MobaPoint(-60.7, 35.5),
-        ],
-        [
-          MobaPoint(63.0, 35.5),
-          MobaPoint(65.3, 35.5),
-          MobaPoint(60.7, 35.5),
-        ],
+      const routes = <List<(double, double)>>[
+        [(-63.0, -40.0), (-65.2, -40.0), (-61.0, -40.0)],
+        [(63.0, -40.5), (60.7, -40.5), (65.3, -40.5)],
+        [(-63.0, 35.5), (-65.3, 35.5), (-60.7, 35.5)],
+        [(63.0, 35.5), (65.3, 35.5), (60.7, 35.5)],
       ];
 
       expect(routes, hasLength(4));
@@ -151,7 +135,7 @@ void main() {
         expect(route, hasLength(3));
         for (final point in route) {
           expect(
-            ArenaWorldCatalog.isWalkable(point.x, point.z),
+            ArenaWorldCatalog.isWalkable(point.$1, point.$2),
             isTrue,
             reason: 'NPC patrol must stay inside an accessible interior floor',
           );
