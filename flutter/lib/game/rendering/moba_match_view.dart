@@ -415,9 +415,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _entityFacing(snapshot.playerFacingX, snapshot.playerFacingZ);
 
   static const _bridges = <(String, double, double)>[
-    ('west', -36.0, 0.0),
-    ('central', 0.0, 0.1),
-    ('east', 36.0, -0.1),
+    ('west_outer', -72.0, -2.8),
+    ('west', -36.0, 0.8),
+    ('central', 0.0, 0.5),
+    ('east', 36.0, -0.84),
+    ('east_outer', 72.0, 2.28),
   ];
 
   List<Widget> _buildStaticSceneChildren() {
@@ -442,23 +444,35 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ..._buildVerticalAccess(access),
       for (final block in ArenaWorldCatalog.commercialBlocks)
         _buildCommercialBlock(block),
+      // The three tactical avenues remain the combat backbone.
       for (final laneX in const [-36.0, 0.0, 36.0])
         for (final roadZ in const [-60.0, -40.0, -20.0, 20.0, 40.0, 60.0])
           SceneModel(
             'assets/world/city/road_straight.glb',
             key: ValueKey('street-$laneX-$roadZ'),
-            name: 'urban_avenue_${laneX}_$roadZ',
+            name: 'urban_avenue_\${laneX}_$roadZ',
             position: _worldPosition(MobaPoint(laneX, roadZ)),
             rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi / 2),
             scale: vm.Vector3(12.0, 1.0, 20.0),
           ),
-      for (final laneX in const [-36.0, 0.0, 36.0])
+      // Cross-streets join side districts to the main avenues.
+      for (final roadZ in const [-52.0, -28.0, 28.0, 52.0])
+        for (final roadX in const [-88.0, -58.0, -28.0, 28.0, 58.0, 88.0])
+          SceneModel(
+            'assets/world/city/road_straight.glb',
+            key: ValueKey('district-street-$roadX-$roadZ'),
+            name: 'district_connector_\${roadX}_$roadZ',
+            position: _worldPosition(MobaPoint(roadX, roadZ)),
+            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), 0),
+            scale: vm.Vector3(12.0, 1.0, 20.0),
+          ),
+      for (final bridge in _bridges)
         SceneModel(
           'assets/world/city/road_crossroad.glb',
-          key: ValueKey('crossroad-$laneX'),
-          name: 'canal_crossing_$laneX',
-          position: _worldPosition(MobaPoint(laneX, 0)),
-          scale: vm.Vector3(12.0, 1.0, 12.0),
+          key: ValueKey('crossroad-\${bridge.$1}'),
+          name: 'canal_crossing_\${bridge.$1}',
+          position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
+          scale: vm.Vector3(9.0, 1.0, 10.0),
         ),
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
@@ -482,15 +496,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       ),
       for (final bridge in _bridges)
         SceneModel(
-          'assets/world/city/road_straight.glb',
-          key: ValueKey('match-bridge-${bridge.$1}'),
-          name: 'lane_bridge_${bridge.$1}',
+          'assets/world/city/road_bridge.glb',
+          key: ValueKey('match-bridge-\${bridge.$1}'),
+          name: 'district_bridge_\${bridge.$1}',
           position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
           rotation: vm.Quaternion.axisAngle(
             vm.Vector3(0, 1, 0),
             math.pi / 2,
           ),
-          scale: vm.Vector3(8.0, 1.0, 9.0),
+          scale: vm.Vector3(2.2, 1.0, 1.8),
         ),
     ];
   }
@@ -595,59 +609,69 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       (access) => access.id == id,
     );
     final ground = _groundHeight(MobaPoint(x, z));
+    const halfWidth = ArenaWorldCatalog.roomHalfWidth;
+    const halfDepth = ArenaWorldCatalog.roomHalfDepth;
+    const doorHalfWidth = ArenaWorldCatalog.roomDoorHalfWidth;
+    const wallHeightScale = 2.8;
+    const wallThicknessScale = 1.0;
     vm.Vector3 p(double px, double py, double pz) =>
         vm.Vector3(px, ground + py, pz);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
-    final deskZ = hasVerticalAccess ? z - 2.0 : z + 2.2;
-    final chairZ = hasVerticalAccess ? z - 2.0 : z + 2.0;
-    final screenZ = hasVerticalAccess ? z - 2.0 : z + 2.0;
-    final benchZ = hasVerticalAccess ? z - 4.0 : z - 2.8;
+    final segmentHalf = (halfWidth - doorHalfWidth) * 0.5;
+    final segmentOffset = doorHalfWidth + segmentHalf;
+    final deskZ = hasVerticalAccess ? z - 2.4 : z + 2.5;
+    final chairZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
+    final screenZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
+    final benchZ = hasVerticalAccess ? z - 4.2 : z - 3.0;
 
     return [
       SceneModel('assets/world/city/interior_floor.glb',
         key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
-        position: p(x - 10, 0.02, z + 8), scale: vm.Vector3(20, 1, 16)),
+        position: p(x - halfWidth, 0.02, z + halfDepth),
+        scale: vm.Vector3(halfWidth * 2, 1, halfDepth * 2)),
       SceneModel('assets/world/city/interior_wall_window.glb',
         key: ValueKey('interior-back-$id'), name: 'interior_back_wall_$id',
-        position: p(x - 10, 0, z + 8), scale: vm.Vector3(20, 2.5, 1)),
+        position: p(x - halfWidth, 0, z + halfDepth),
+        scale: vm.Vector3(halfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
-        position: p(x - 10, 0, z), rotation: yaw(math.pi / 2),
-        scale: vm.Vector3(16, 2.5, 1)),
+        position: p(x - halfWidth, 0, z), rotation: yaw(math.pi / 2),
+        scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
-        position: p(x + 10, 0, z), rotation: yaw(-math.pi / 2),
-        scale: vm.Vector3(16, 2.5, 1)),
-      SceneModel('assets/world/city/interior_wall.glb',
-        key: ValueKey('interior-front-left-$id'), name: 'interior_front_left_$id',
-        position: p(x - 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
-      SceneModel('assets/world/city/interior_wall.glb',
-        key: ValueKey('interior-front-right-$id'), name: 'interior_front_right_$id',
-        position: p(x + 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
+        position: p(x + halfWidth, 0, z), rotation: yaw(-math.pi / 2),
+        scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
+      for (final sign in const [-1.0, 1.0])
+        SceneModel('assets/world/city/interior_wall.glb',
+          key: ValueKey('interior-front-$id-$sign'),
+          name: 'interior_front_wall_$id-$sign',
+          position: p(x + sign * segmentOffset, 0, z - halfDepth),
+          scale: vm.Vector3(segmentHalf * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x, 0, z - 8), scale: vm.Vector3(4.8, 2.5, 1)),
+        position: p(x, 0, z - halfDepth),
+        scale: vm.Vector3(doorHalfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
-        position: p(hasVerticalAccess ? x - 5.2 : x - 4.5, 0, deskZ),
-        scale: vm.Vector3(3.2, 2, 2)),
+        position: p(hasVerticalAccess ? x - 6.0 : x - 5.2, 0, deskZ),
+        scale: vm.Vector3(1.6, 1.05, 1.05)),
       SceneModel('assets/world/city/interior_chair.glb',
         key: ValueKey('interior-chair-$id'), name: 'interior_chair_$id',
-        position: p(x + 1.4, 0, chairZ), scale: vm.Vector3.all(2)),
+        position: p(x + 1.6, 0, chairZ), scale: vm.Vector3.all(1.0)),
       SceneModel('assets/world/city/interior_computer_screen.glb',
         key: ValueKey('interior-screen-$id'), name: 'interior_terminal_$id',
-        position: p(x - 0.6, 0.78, screenZ), scale: vm.Vector3.all(2)),
+        position: p(x - 0.8, 0.8, screenZ), scale: vm.Vector3.all(1.0)),
       SceneModel('assets/world/city/interior_bench.glb',
         key: ValueKey('interior-bench-$id'), name: 'interior_cover_bench_$id',
-        position: p(x + 2.7, 0, benchZ), scale: vm.Vector3(4, 2, 2)),
+        position: p(x + 3.0, 0, benchZ), scale: vm.Vector3(1.8, 0.9, 0.9)),
       if (id == 'west_south')
         SceneModel(
           'assets/world/city/interior_computer_screen.glb',
           key: const ValueKey('interior-ops-wall-terminal'),
           name: 'operations_wall_terminal',
           position: p(x + 4.0, 1.0, z + 2.7),
-          scale: vm.Vector3.all(1.8),
+          scale: vm.Vector3.all(1.0),
         ),
       if (id == 'east_south')
         SceneModel(
@@ -655,7 +679,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           key: const ValueKey('interior-workshop-bin'),
           name: 'workshop_service_bin',
           position: p(x + 4.4, 0, z + 2.7),
-          scale: vm.Vector3.all(1.8),
+          scale: vm.Vector3.all(0.9),
         ),
       if (id == 'west_north') ...[
         SceneModel(
@@ -663,14 +687,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           key: const ValueKey('interior-park-planter'),
           name: 'park_information_planter',
           position: p(x - 4.4, 0, z + 2.7),
-          scale: vm.Vector3.all(3.8),
+          scale: vm.Vector3.all(1.0),
         ),
         SceneModel(
           'assets/world/city/interior_plant.glb',
           key: const ValueKey('interior-park-plant'),
           name: 'park_information_plant',
           position: p(x + 4.1, 0, z + 2.8),
-          scale: vm.Vector3.all(4.4),
+          scale: vm.Vector3.all(1.0),
         ),
       ],
       if (id == 'east_north') ...[
@@ -679,16 +703,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           key: const ValueKey('interior-community-plant'),
           name: 'community_room_plant',
           position: p(x - 4.2, 0, z + 2.8),
-          scale: vm.Vector3.all(4.5),
+          scale: vm.Vector3.all(1.0),
         ),
         SceneModel(
           'assets/world/city/interior_bench.glb',
           key: const ValueKey('interior-community-seat'),
           name: 'community_room_seat',
           position: p(x + 3.3, 0, z + 2.8),
-          scale: vm.Vector3(3.2, 1.6, 1.8),
+          scale: vm.Vector3(1.5, 0.9, 0.9),
         ),
       ],
+      if (id == 'west_depot' || id == 'east_depot')
+        SceneModel(
+          'assets/world/city/interior_trashcan.glb',
+          key: ValueKey('service-depot-bin-$id'),
+          name: 'service_depot_storage_detail_$id',
+          position: p(x + (id == 'west_depot' ? 7.0 : -7.0), 0, z + 3.4),
+          scale: vm.Vector3.all(0.9),
+        ),
     ];
   }
 
