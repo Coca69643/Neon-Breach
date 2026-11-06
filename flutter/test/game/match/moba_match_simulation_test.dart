@@ -692,6 +692,26 @@ void main() {
       expect(kairo.snapshot.playerPosition.z, greaterThan(-56));
     });
 
+    test('Kairo dash is handed to Rapier when physics owns player movement', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.kairo);
+      final start = simulation.snapshot.playerPosition;
+
+      simulation.step(
+        1 / 30,
+        moveZ: 1,
+        castSkill: true,
+        externalPlayerMovement: true,
+      );
+
+      final request = simulation.consumePhysicsDashRequest();
+      expect(request, isNotNull);
+      expect(request!.x, closeTo(0, 1e-5));
+      expect(request.z, closeTo(5.0, 1e-5));
+      expect(simulation.snapshot.playerPosition.distanceTo(start), 0);
+      expect(simulation.consumePhysicsDashRequest(), isNull);
+      expect(simulation.snapshot.playerSkillPulseSeconds, greaterThan(0));
+    });
+
     test('long simulation keeps minion count within its fixed mobile budget', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
