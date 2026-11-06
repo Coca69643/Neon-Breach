@@ -24,7 +24,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Distritos com silhuetas comerciais distintas, sinalização/iluminação de rua, praças laterais, árvores grandes e mobiliário urbano CC0.
 - Navegação com colisão de paredes/mobiliário, portas, cinco travessias do canal e duas escadas que conectam mezaninos com elevação real.
 - Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
-- Implementado nesta revisão: seleção touch de alvo, HUD contextual e confirmação visual apenas em acerto. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
+- Implementado nesta revisão: seleção touch de alvo, HUD contextual, confirmação de acerto, locomoção walk/run vinculada à velocidade Rapier e rotação do herói para o alvo durante ataques. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
 - Escalas de leitura: herói 1.0, bots 0.98, minions 0.94–1.02.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
@@ -56,10 +56,12 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Coberturas CC0 nas entradas recebem dano; destruí-las remove a colisão e abre a passagem.
 - Reator central capturável/contestável; equipe controladora recebe +12% de dano e recompensa inicial.
 - Armas CC0 distintas de Lyra, Bastion e Kairo anexadas ao rig; bots, tropas e NPCs usam seis aparências CC0 independentes dos heróis selecionáveis.
-- Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
+- Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado e balanço sutil proporcional à velocidade física.
+- Locomoção com aceleração, frenagem, tração por superfície, colisão de cápsula e passo fixo Rapier a 60 Hz.
+- Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.8.0+73: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes. Teste físico e desempenho sustentado no Realme C53 continuam pendentes.
+- Build 1.8.0+73: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
