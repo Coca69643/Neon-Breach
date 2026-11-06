@@ -321,8 +321,12 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       ),
       for (var i = 0; i < ArenaWorldCatalog.trees.length; i++)
         _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
+      for (var i = 0; i < ArenaWorldCatalog.largeTrees.length; i++)
+        _buildWorldProp(ArenaWorldCatalog.largeTrees[i], 'match-large-tree-$i'),
       for (var i = 0; i < ArenaWorldCatalog.bushes.length; i++)
         _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
+      for (var i = 0; i < ArenaWorldCatalog.cityProps.length; i++)
+        _buildWorldProp(ArenaWorldCatalog.cityProps[i], 'city-detail-$i'),
       for (final building in ArenaWorldCatalog.cityInteriors)
         ..._buildCityInterior(building),
       for (final access in ArenaWorldCatalog.verticalAccesses)
@@ -765,6 +769,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               key: const ValueKey('live-moba-scene'),
               pixelRatio: 0.82,
               maxFrameRate: 30,
+              environmentIntensity: 1.18,
+              exposure: 1.04,
               cameraBuilder: (elapsed) {
                 // Smoothed trailing perspective with a restrained motion
                 // response. The battlefield overview remains in the minimap.
