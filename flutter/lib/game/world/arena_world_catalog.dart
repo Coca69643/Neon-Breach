@@ -35,6 +35,22 @@ class ArenaVerticalAccess {
   }
 }
 
+class ArenaDistrict {
+  const ArenaDistrict({
+    required this.id,
+    required this.label,
+    required this.role,
+    required this.x,
+    required this.z,
+  });
+
+  final String id;
+  final String label;
+  final String role;
+  final double x;
+  final double z;
+}
+
 class ArenaWorldPlacement {
   const ArenaWorldPlacement({
     required this.asset,
@@ -74,6 +90,40 @@ abstract final class ArenaWorldCatalog {
     ('east_south', 63.0, -38.0),
     ('west_north', -63.0, 38.0),
     ('east_north', 63.0, 38.0),
+  ];
+
+  /// District anchors share their coordinates with the four enterable
+  /// service buildings. Each terminal is a future capture/interact point;
+  /// geometry, collision and simulation can reference the same catalog.
+  static const districts = <ArenaDistrict>[
+    ArenaDistrict(
+      id: 'west_south',
+      label: 'Mercado Oeste',
+      role: 'COMÉRCIO',
+      x: -63.0,
+      z: -38.0,
+    ),
+    ArenaDistrict(
+      id: 'east_south',
+      label: 'Pátio Industrial',
+      role: 'INDÚSTRIA',
+      x: 63.0,
+      z: -38.0,
+    ),
+    ArenaDistrict(
+      id: 'west_north',
+      label: 'Parque Cívico',
+      role: 'SERVIÇOS',
+      x: -63.0,
+      z: 38.0,
+    ),
+    ArenaDistrict(
+      id: 'east_north',
+      label: 'Terminal Norte',
+      role: 'TRANSPORTE',
+      x: 63.0,
+      z: 38.0,
+    ),
   ];
 
   /// Two opposing mezzanine routes create a real height layer without
