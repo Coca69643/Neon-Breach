@@ -53,6 +53,7 @@ class ArenaPhysicsRuntime {
   double _dashVelocityX = 0;
   double _dashVelocityZ = 0;
   double _dashRemaining = 0;
+  bool _dashCompletionPending = false;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -65,6 +66,13 @@ class ArenaPhysicsRuntime {
   double get movementSpeedRatio =>
       (_actualHorizontalSpeed / moveSpeed).clamp(0.0, 1.35).toDouble();
   bool get dashing => _dashRemaining > 0;
+
+  /// True once the swept dash has ended, including a wall/canal interruption.
+  bool consumeDashCompletion() {
+    final completed = _dashCompletionPending;
+    _dashCompletionPending = false;
+    return completed;
+  }
 
   MobaPoint get playerPosition {
     final x = _playerPose.translation.x;
@@ -159,6 +167,7 @@ class ArenaPhysicsRuntime {
       _dashVelocityX = 0;
       _dashVelocityZ = 0;
       _dashRemaining = 0;
+      _dashCompletionPending = false;
       _actualHorizontalSpeed = 0;
     }
   }
@@ -189,6 +198,7 @@ class ArenaPhysicsRuntime {
     _dashVelocityX = directionX / length * speed;
     _dashVelocityZ = directionZ / length * speed;
     _dashRemaining = duration;
+    _dashCompletionPending = false;
     _velocityX = 0;
     _velocityZ = 0;
     return true;
@@ -276,6 +286,7 @@ class ArenaPhysicsRuntime {
       if (_dashRemaining <= 0) {
         _dashVelocityX = 0;
         _dashVelocityZ = 0;
+        _dashCompletionPending = true;
       }
     }
     _grounded = movement.grounded;
@@ -428,6 +439,7 @@ class ArenaPhysicsRuntime {
     _dashVelocityX = 0;
     _dashVelocityZ = 0;
     _dashRemaining = 0;
+    _dashCompletionPending = false;
     _actualHorizontalSpeed = 0;
     _grounded = false;
     _world.step(fixedStep);
