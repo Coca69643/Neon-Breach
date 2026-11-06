@@ -507,15 +507,15 @@ abstract final class ArenaWorldCatalog {
     for (final point in const [
       (-92.0, -60.0), (-60.0, -62.0), (-20.0, -62.0),
       (20.0, 62.0), (60.0, 62.0), (92.0, 60.0),
-      (-94.0, 36.0), (94.0, -36.0),
+      (-92.0, 20.0), (92.0, -20.0),
     ]) {
-      add('street_light_square.glb', point.$1, point.$2, scale: 1.6);
+      add('street_light_square.glb', point.$1, point.$2, scale: 1.2);
     }
 
     // Each of the five crossings is signalled from both approaches.
     for (final bridgeX in bridgePositions) {
       add('traffic_light.glb', bridgeX - 6.0,
-          _riverCenterZ(bridgeX) - 5.0, scale: 1.5);
+          _riverCenterZ(bridgeX) - 5.0, scale: 1.2);
       add('traffic_light.glb', bridgeX + 6.0,
           _riverCenterZ(bridgeX) + 5.0, scale: 1.5);
     }
@@ -542,26 +542,23 @@ abstract final class ArenaWorldCatalog {
     }
 
     // CC0 road pieces make the side districts feel connected, not tiled.
-    add('road_roundabout.glb', -58.0, 18.0, scale: 3.2);
-    add('road_roundabout.glb', 58.0, -18.0, scale: 3.2);
-    add('road_curve.glb', -96.0, -8.0, scale: 1.8, yaw: math.pi / 2);
-    add('road_curve.glb', 96.0, 8.0, scale: 1.8, yaw: -math.pi / 2);
-    add('road_intersection_path.glb', -58.0, -48.0, scale: 1.8);
+    add('road_roundabout.glb', -58.0, 18.0, scale: 1.1);
+    add('road_roundabout.glb', 58.0, -18.0, scale: 1.1);
+    add('road_curve.glb', -96.0, -8.0, scale: 1.0, yaw: math.pi / 2);
+    add('road_curve.glb', 96.0, 8.0, scale: 1.0, yaw: -math.pi / 2);
+    add('road_intersection_path.glb', -58.0, -48.0, scale: 1.0);
     add('road_intersection_path.glb', 58.0, 48.0, scale: 1.8);
-    add('road_side_entry.glb', -92.0, 2.0, scale: 1.6);
+    add('road_side_entry.glb', -92.0, 2.0, scale: 1.0);
     add('road_side_entry.glb', 92.0, -2.0, scale: 1.6);
-    for (final bridgeX in bridgePositions) {
-      add('road_bridge.glb', bridgeX, _riverCenterZ(bridgeX), scale: 2.2);
-    }
 
     // Every service entrance receives its own canopy and a small street-level prop.
     for (final building in cityInteriors) {
       final x = building.$2;
       final z = building.$3;
-      add('detail_awning_wide.glb', x, z - 8.55,
-          scale: 7.8, yaw: math.pi, y: 1.25);
-      add('interior_trashcan.glb', x + (x < 0 ? 5.0 : -5.0), z - 3.1,
-          scale: 2.1);
+      add('detail_awning_wide.glb', x, z - 9.55,
+          scale: 1.8, yaw: math.pi, y: 1.25);
+      add('interior_trashcan.glb', x + (x < 0 ? 7.0 : -7.0), z - 3.1,
+          scale: 0.9);
     }
 
     // Side plazas use parasols and planters as visual anchors.
@@ -569,16 +566,16 @@ abstract final class ArenaWorldCatalog {
       (-54.0, -14.0), (54.0, -14.0),
       (-54.0, 14.0), (54.0, 14.0),
     ]) {
-      add('detail_parasol_a.glb', point.$1, point.$2, scale: 6.1);
+      add('detail_parasol_a.glb', point.$1, point.$2, scale: 1.25);
       add('city_planter.glb', point.$1 + (point.$1 < 0 ? 2.6 : -2.6),
-          point.$2 + 1.6, scale: 5.0);
+          point.$2 + 1.6, scale: 1.1);
     }
 
     // Planted edges soften the hard canal geometry without filling the lanes.
     for (final point in const [
       (-15.0, -5.4), (15.0, -5.4), (-15.0, 5.4), (15.0, 5.4),
     ]) {
-      add('interior_plant.glb', point.$1, point.$2, scale: 4.6);
+      add('interior_plant.glb', point.$1, point.$2, scale: 1.0);
     }
 
     return List<ArenaWorldPlacement>.unmodifiable(props);
