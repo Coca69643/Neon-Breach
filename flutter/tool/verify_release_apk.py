@@ -165,7 +165,7 @@ def main() -> None:
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
     require(version_code == 72,
-            f"expected versionCode 72 for Projeto Arena 1.7.9, got {version_code!r}")
+            f"expected versionCode 72 for Projeto Arena 1.7.10, got {version_code!r}")
     require(application.get("label") == "Projeto Arena",
             f"unexpected launcher label: {application.get('label')!r}")
 
@@ -291,11 +291,18 @@ def main() -> None:
                 f"hero weapon asset is missing: {asset}")
 
     city_assets = (
-        "commercial_building_a.glb", "commercial_building_c.glb",
-        "commercial_building_e.glb", "commercial_low_a.glb",
+        "commercial_building_a.glb", "commercial_building_b.glb",
+        "commercial_building_c.glb", "commercial_building_e.glb",
+        "commercial_building_f.glb", "commercial_building_h.glb",
+        "commercial_low_a.glb",
         "commercial_low_b.glb", "commercial_low_c.glb", "commercial_low_d.glb",
         "road_straight.glb", "road_crossroad.glb", "road_bend.glb", "road_side.glb",
         "construction_barrier.glb", "construction_fence.glb",
+        "street_light_square.glb", "traffic_light.glb",
+        "road_sign_street.glb", "road_sign_warning.glb",
+        "road_crossing.glb", "detail_awning_wide.glb",
+        "detail_parasol_a.glb", "city_planter.glb", "tree_large.glb",
+        "interior_trashcan.glb", "interior_plant.glb",
         "interior_floor.glb", "interior_wall.glb", "interior_doorway_wide.glb",
         "interior_wall_window.glb", "interior_stairs.glb", "interior_doorway_open.glb",
         "interior_desk.glb", "interior_bench.glb", "interior_chair.glb",
@@ -313,10 +320,16 @@ def main() -> None:
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
         "arena_menu_hub", "quaternius_minion", "tower_blue", "tower_red",
         "castle_blue", "castle_red", "home_blue", "home_red", "bridge_a",
-        "commercial_building_a", "commercial_building_c", "commercial_building_e",
+        "commercial_building_a", "commercial_building_b",
+        "commercial_building_c", "commercial_building_e",
+        "commercial_building_f", "commercial_building_h",
         "commercial_low_a", "commercial_low_b", "commercial_low_c", "commercial_low_d",
         "road_straight", "road_crossroad", "road_bend", "road_side",
         "construction_barrier", "construction_fence",
+        "street_light_square", "traffic_light", "road_sign_street",
+        "road_sign_warning", "road_crossing", "detail_awning_wide",
+        "detail_parasol_a", "city_planter", "tree_large",
+        "interior_trashcan", "interior_plant",
         "interior_floor", "interior_wall", "interior_doorway_wide", "interior_wall_window",
         "interior_stairs", "interior_doorway_open", "interior_desk", "interior_bench",
         "interior_chair", "interior_computer_screen",
