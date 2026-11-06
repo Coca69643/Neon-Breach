@@ -174,7 +174,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     // Do not advance the match clock while the terrain/player model is still
     // loading. This prevents a delayed GPU import from starting a live match
     // with elapsed time or movement already consumed.
-    if (!mounted || !_worldReady || !_readySent) return;
+    if (!mounted || _runtimeFailureSent || !_worldReady || !_readySent) {
+      return;
+    }
     // Movement is camera-relative but never feeds back into camera yaw.
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
@@ -212,7 +214,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   void _markWorldAssetReady(String assetKey) {
-    if (!mounted || _worldReady) return;
+    if (!mounted || _runtimeFailureSent || _worldReady) return;
     if (!_criticalSceneAssetsLoaded.add(assetKey)) return;
     const requiredAssets = {'terrain', 'player'};
     if (!_criticalSceneAssetsLoaded.containsAll(requiredAssets)) return;
