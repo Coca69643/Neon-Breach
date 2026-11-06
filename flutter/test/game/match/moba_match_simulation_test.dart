@@ -709,6 +709,10 @@ void main() {
       expect(request.z, closeTo(5.0, 1e-5));
       expect(simulation.snapshot.playerPosition.distanceTo(start), 0);
       expect(simulation.consumePhysicsDashRequest(), isNull);
+      final resolved = MobaPoint(0, start.z + 4.2);
+      simulation.applyPhysicsPlayerPosition(resolved);
+      simulation.resolvePhysicsDashAt(resolved);
+      expect(simulation.snapshot.playerPosition.z, resolved.z);
       expect(simulation.snapshot.playerSkillPulseSeconds, greaterThan(0));
     });
 
