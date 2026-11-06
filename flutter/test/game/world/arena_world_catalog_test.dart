@@ -124,6 +124,40 @@ void main() {
       }
     });
 
+    test('district anchors are unique, named and placed at enterable buildings', () {
+      expect(ArenaWorldCatalog.districts, hasLength(4));
+      expect(
+        ArenaWorldCatalog.districts.map((district) => district.id).toSet(),
+        hasLength(4),
+      );
+      expect(
+        ArenaWorldCatalog.districts.map((district) => district.label).toSet(),
+        hasLength(4),
+      );
+      for (final district in ArenaWorldCatalog.districts) {
+        expect(
+          ArenaWorldCatalog.cityInteriors.any(
+            (building) =>
+                building.$1 == district.id &&
+                building.$2 == district.x &&
+                building.$3 == district.z,
+          ),
+          isTrue,
+          reason: '${district.label} must map to a real enterable structure',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(district.x, district.z),
+          isTrue,
+          reason: '${district.label} interior floor must remain navigable',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(district.x, district.z - 10.2),
+          isTrue,
+          reason: '${district.label} capture terminal must be reachable',
+        );
+      }
+    });
+
     test('service NPC patrol points remain walkable inside their own interiors', () {
       const routes = <List<(double, double)>>[
         [(-61.0, -43.0), (-56.0, -43.0), (-56.0, -34.0), (-61.0, -34.0)],
