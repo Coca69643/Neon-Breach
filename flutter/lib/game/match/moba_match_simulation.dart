@@ -522,6 +522,7 @@ class MobaMatchSimulation {
   double _playerHitConfirmSeconds = 0;
   double _playerSkillPulseSeconds = 0;
   double _playerSkillCooldown = 0;
+  double _playerFacingLockSeconds = 0;
   MobaPoint? _pendingPhysicsDash;
   double _playerShieldTime = 0;
   double _playerXp = 0;
@@ -674,6 +675,7 @@ class MobaMatchSimulation {
     _playerAttackPulseSeconds = 0;
     _playerHitConfirmSeconds = 0;
     _playerSkillCooldown = 0;
+    _playerFacingLockSeconds = 0;
     _playerShieldTime = 0;
     _playerXp = 0;
     _playerGold = 500;
@@ -921,6 +923,8 @@ class MobaMatchSimulation {
     _playerAttackCooldown = math.max(0, _playerAttackCooldown - dt);
     _playerAttackPulseSeconds =
         math.max(0, _playerAttackPulseSeconds - dt);
+    _playerFacingLockSeconds =
+        math.max(0, _playerFacingLockSeconds - dt);
     _playerHitConfirmSeconds =
         math.max(0, _playerHitConfirmSeconds - dt);
     _playerSkillPulseSeconds =
@@ -941,13 +945,14 @@ class MobaMatchSimulation {
       _playerMoving = false;
       _lastMoveX = 0;
       _lastMoveZ = 1;
+      _playerFacingLockSeconds = 0;
       _playerShieldTime = 1.4;
     }
 
     if (_playerRespawn <= 0) {
       _playerMoving = moveX.abs() >= 0.06 || moveZ.abs() >= 0.06;
       if (externalPlayerMovement) {
-        if (_playerMoving) {
+        if (_playerMoving && _playerFacingLockSeconds <= 0) {
           final length = math.sqrt(moveX * moveX + moveZ * moveZ);
           if (length > 1e-6) {
             _lastMoveX = moveX / length;
@@ -1000,8 +1005,10 @@ class MobaMatchSimulation {
     final length = math.sqrt(x * x + z * z);
     final nx = length > 1 ? x / length : x;
     final nz = length > 1 ? z / length : z;
-    _lastMoveX = nx;
-    _lastMoveZ = nz;
+    if (_playerFacingLockSeconds <= 0) {
+      _lastMoveX = nx;
+      _lastMoveZ = nz;
+    }
     _tryMovePlayer(nx * playerMoveSpeed * dt, nz * playerMoveSpeed * dt);
   }
 
@@ -1143,6 +1150,7 @@ class MobaMatchSimulation {
     if (length <= 1e-4) return;
     _lastMoveX = dx / length;
     _lastMoveZ = dz / length;
+    _playerFacingLockSeconds = 0.46;
   }
 
   void _confirmPlayerHit() {
