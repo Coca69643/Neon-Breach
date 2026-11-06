@@ -270,6 +270,79 @@ void main() {
           reason: 'minion strikes must be visible to the renderer');
     });
 
+    test('a valid tactical map ping redirects one allied roamer', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      const target = MobaPoint(-54, -42);
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          target.x, target.z, includeTowerCollision: false,
+        ),
+        isTrue,
+      );
+
+      final roamers = simulation.snapshot.bots
+          .where((bot) =>
+              bot.team == MobaTeam.blue &&
+              (bot.id == 'blue_bot_3' || bot.id == 'blue_bot_4'))
+          .toList(growable: false);
+      expect(roamers, isNotEmpty);
+      final assigned = roamers.reduce(
+        (a, b) => a.position.distanceTo(target) < b.position.distanceTo(target)
+            ? a
+            : b,
+      );
+      final beforeDistance = assigned.position.distanceTo(target);
+
+      expect(simulation.issueTeamPing(target), isTrue);
+      expect(simulation.snapshot.teamPingTarget, target);
+      expect(simulation.snapshot.teamPingSeconds, greaterThan(7.9));
+
+      advanceFor(simulation, 2.0);
+
+      final after = simulation.snapshot.bots.firstWhere(
+        (bot) => bot.id == assigned.id,
+      );
+      expect(
+        after.position.distanceTo(target),
+        lessThan(beforeDistance - 1.0),
+        reason: 'the selected roamer must move toward the player's map command',
+      );
+      expect(
+        simulation.snapshot.teamPingTarget,
+        target,
+        reason: 'the command marker remains visible while the order is active',
+      );
+    });
+
+    test('tactical pings reject water and inaccessible points', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      expect(
+        simulation.issueTeamPing(const MobaPoint(18, 0)),
+        isFalse,
+        reason: 'a roamer must not be ordered into the canal away from a bridge',
+      );
+      expect(
+        simulation.issueTeamPing(const MobaPoint(200, 0)),
+        isFalse,
+        reason: 'out-of-world tactical commands must be rejected',
+      );
+      expect(simulation.snapshot.teamPingTarget, isNull);
+      expect(simulation.snapshot.teamPingSeconds, 0);
+    });
+
+    test('tactical ping expires and releases its assigned roamer', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      expect(
+        simulation.issueTeamPing(const MobaPoint(-54, -42)),
+        isTrue,
+      );
+
+      advanceFor(simulation, 8.5);
+
+      expect(simulation.snapshot.teamPingTarget, isNull);
+      expect(simulation.snapshot.teamPingSeconds, 0);
+    });
+
     test('lane units eventually damage a tower instead of only exchanging attacks', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
