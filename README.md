@@ -4,7 +4,7 @@ MOBA 3D mobile para Android, com Flutter + Flutter Scene. Offline, landscape e r
 
 ## Log de atualizações
 
-- **1.7.10 (72) — robustez da partida:** ondas de tropas recicláveis, colisão varrida para movimento e dash, rotas de bots/minions até torres e núcleos, ataques de IA com animações próprias, orientação corrigida e torres destruídas removidas da cena/minimapa. CI e teste físico ainda precisam ser confirmados.
+- **1.7.10 (72) — cidade viva e comando tático:** fachadas CC0 variadas, iluminação/sinalização urbana, quatro interiores com funções distintas, NPCs em patrulha, ping no minimapa que redireciona um aliado e reator com estado visual de controle. Inclui correções de colisão, ondas, rotas e animações de combate. CI validou análise, testes, build ARM64, pacote e assinatura; distribuição e teste físico no Realme C53 continuam pendentes.
 - **1.7.9 (71) — diversidade visual:** seis modelos CC0 independentes para bots, tropas e NPCs; interiores e entradas ajustados.
 - **1.7.8 (70) — combate legível:** botão touch de seleção de alvo, HUD contextual com vida do inimigo e marcador de impacto somente quando o ataque acerta.
 
