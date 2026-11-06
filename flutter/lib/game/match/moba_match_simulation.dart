@@ -899,6 +899,8 @@ class MobaMatchSimulation {
       _playerShieldTime = 1.75;
       _selectedTargetKey = null;
       _playerMoving = false;
+      _lastMoveX = 0;
+      _lastMoveZ = 1;
     }
 
     if (_playerRespawn <= 0) {
