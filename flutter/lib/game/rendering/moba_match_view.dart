@@ -9,6 +9,7 @@ import '../match/moba_match_simulation.dart';
 import '../physics/arena_physics_runtime.dart';
 import '../world/arena_world_catalog.dart';
 import 'hero_weapon_socket.dart';
+import 'humanoid_orientation.dart';
 
 class MobaMatchView extends StatefulWidget {
   const MobaMatchView({
@@ -441,6 +442,30 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Walk',
       };
 
+  String _heroRun(MobaHeroId hero) => switch (hero) {
+        MobaHeroId.lyra => 'HumanArmature|Female_Run',
+        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Run',
+      };
+
+  String _heroLocomotionClip(MobaMatchSnapshot snapshot) {
+    if (!snapshot.playerMoving) return _heroIdle(snapshot.heroId);
+    return _locomotionRatio >= 0.88
+        ? _heroRun(snapshot.heroId)
+        : _heroWalk(snapshot.heroId);
+  }
+
+  double _heroLocomotionRate(MobaMatchSnapshot snapshot) {
+    if (!snapshot.playerMoving) return 0.82;
+    if (_locomotionRatio >= 0.88) {
+      return (0.96 + (_locomotionRatio - 0.88) * 0.35)
+          .clamp(0.96, 1.12)
+          .toDouble();
+    }
+    return (0.78 + _locomotionRatio * 0.22)
+        .clamp(0.78, 0.98)
+        .toDouble();
+  }
+
   String _heroAttack(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 'HumanArmature|Female_SwordSlash',
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
@@ -476,7 +501,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
     // The bundled Quaternius and Kenney humanoid rigs face local +Z.
     // Do not add a half-turn: +Z movement must make the character face +Z.
-    final yaw = math.atan2(facingX, facingZ) + math.pi;
+    final yaw = HumanoidOrientation.yawForDirection(facingX, facingZ);
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -682,15 +707,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
             SceneAnimationSpec(
               snapshot.playerAttackSeconds > 0
                   ? _heroAttack(snapshot.heroId)
-                  : (snapshot.playerMoving
-                      ? _heroWalk(snapshot.heroId)
-                      : _heroIdle(snapshot.heroId)),
+                  : _heroLocomotionClip(snapshot),
               loop: snapshot.playerAttackSeconds <= 0,
               speed: snapshot.playerAttackSeconds > 0
                   ? 1.2
-                  : (snapshot.playerMoving
-                      ? 0.82 + _locomotionRatio * 0.48
-                      : 0.78),
+                  : _heroLocomotionRate(snapshot),
             ),
           ],
         ),
