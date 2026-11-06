@@ -74,8 +74,23 @@ void main() {
     test('commercial blocks and park dressing are deterministic', () {
       expect(ArenaWorldCatalog.commercialBlocks, hasLength(4));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
-        expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
-            reason: 'commercial block must have a collision footprint');
+        expect(
+          ArenaWorldCatalog.cityInteriors.any(
+            (building) => building.$2 == block.$2 && building.$3 == block.$3,
+          ),
+          isTrue,
+          reason: 'each visible commercial shell must align with a playable interior',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(block.$2, block.$3),
+          isTrue,
+          reason: 'the center of ${block.$1} must be traversable indoors',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(block.$2 - 10.0, block.$3),
+          isFalse,
+          reason: 'the aligned building side wall must block passage',
+        );
       }
       expect(ArenaWorldCatalog.trees, hasLength(8));
       expect(ArenaWorldCatalog.bushes, hasLength(4));
