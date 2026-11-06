@@ -509,7 +509,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   vm.Quaternion _playerFacing(MobaMatchSnapshot snapshot) =>
-      _entityFacing(snapshot.playerFacingX, snapshot.playerFacingZ);
+      vm.Quaternion.axisAngle(
+        vm.Vector3(0, 1, 0),
+        HumanoidOrientation.yawForNegativeZDirection(
+          snapshot.playerFacingX,
+          snapshot.playerFacingZ,
+        ),
+      );
 
   static const _bridges = <(String, double, double)>[
     ('west_outer', -72.0, -2.8),
