@@ -558,6 +558,60 @@ void main() {
       );
     });
 
+    test('defeated hero remains at defeat location until respawn completes', () {
+      const defeatPoint = MobaPoint(0, 12);
+      const homePoint = MobaPoint(-36, -60);
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: defeatPoint,
+      );
+
+      simulation.applyPlayerDamage(9999);
+      expect(simulation.snapshot.playerHealth, 0);
+      expect(simulation.snapshot.playerRespawnSeconds, 5);
+      expect(simulation.snapshot.playerPosition.x, defeatPoint.x);
+      expect(simulation.snapshot.playerPosition.z, defeatPoint.z);
+
+      advanceFor(simulation, 4.5);
+      expect(simulation.snapshot.playerHealth, 0);
+      expect(simulation.snapshot.playerRespawnSeconds, greaterThan(0));
+      expect(simulation.snapshot.playerPosition.x, defeatPoint.x);
+      expect(simulation.snapshot.playerPosition.z, defeatPoint.z);
+
+      advanceFor(simulation, 0.6);
+      expect(simulation.snapshot.playerHealth, simulation.snapshot.playerMaxHealth);
+      expect(simulation.snapshot.playerRespawnSeconds, 0);
+      expect(simulation.snapshot.playerPosition.x, homePoint.x);
+      expect(simulation.snapshot.playerPosition.z, homePoint.z);
+    });
+
+    test('physics-resolved player pose rejects water and accepts a lane point', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      final initial = simulation.snapshot.playerPosition;
+
+      expect(
+        simulation.syncPlayerPhysicsState(
+          const MobaPoint(18, 0),
+          moving: true,
+          facingX: 1,
+          facingZ: 0,
+        ),
+        isFalse,
+      );
+      expect(simulation.snapshot.playerPosition.x, initial.x);
+      expect(
+        simulation.syncPlayerPhysicsState(
+          const MobaPoint(-31, -54),
+          moving: true,
+          facingX: 1,
+          facingZ: 0,
+        ),
+        isTrue,
+      );
+      expect(simulation.snapshot.playerPosition.x, closeTo(-31, 0.001));
+      expect(simulation.snapshot.playerMoving, isTrue);
+    });
+
     test('basic attack shows swing feedback but no hit confirm out of range', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
       final healthBefore = simulation.snapshot.playerHealth;
