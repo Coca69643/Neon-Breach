@@ -852,7 +852,18 @@ class MobaMatchSimulation {
     final wasRespawning = _playerRespawn > 0;
     _playerRespawn = math.max(0, _playerRespawn - dt);
     if (wasRespawning && _playerRespawn <= 0) {
+      // Respawn is a real state transition: the hero remains at the death
+      // location while the timer runs, then returns to the allied spawn.
+      _playerPosition = _spawnPosition ??
+          MobaPoint(
+            _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
+            MobaTeam.blue.homeZ,
+          );
       _playerHealth = _playerMaxHealth;
+      _playerMoving = false;
+      _lastMoveX = 0;
+      _lastMoveZ = 1;
+      _playerShieldTime = 1.4;
     }
 
     if (_playerRespawn <= 0) {
@@ -1754,6 +1765,8 @@ class MobaMatchSimulation {
   double _xpThreshold(int level) => 220 + (level - 1) * 85.0;
 
   void _damagePlayer(double damage) {
+    // Ignore additional hits during the death/respawn window.
+    if (_playerRespawn > 0 || _playerHealth <= 0) return;
     final mitigation = _playerShieldTime > 0 ? 0.58 : 1.0;
     final objectiveMultiplier =
         _objectiveDamageMultiplier(MobaTeam.red);
@@ -1764,10 +1777,11 @@ class MobaMatchSimulation {
     if (_playerHealth <= 0) {
       _playerHealth = 0;
       _playerRespawn = 5;
-      _playerPosition = MobaPoint(
-        _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
-        MobaTeam.blue.homeZ,
-      );
+      _playerMoving = false;
+      _playerAttackPulseSeconds = 0;
+      _playerHitConfirmSeconds = 0;
+      // Keep the defeated hero at the combat location. The spawn teleport
+      // happens only after the respawn timer expires in _tick().
     }
   }
 
