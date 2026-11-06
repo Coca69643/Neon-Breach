@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - migration/flutter-scene-mobile-v0.1
+      - feature/arena-physics-gameplay-v0.1
       - main
     paths:
       - "flutter/**"
