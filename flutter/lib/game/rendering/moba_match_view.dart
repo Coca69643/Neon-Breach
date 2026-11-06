@@ -279,6 +279,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       castSkill: _skillHeld,
       externalPlayerMovement: physics != null,
     );
+    if (physics != null) {
+      widget.simulation.setPhysicsMovementState(
+        moving: physics.grounded && physics.horizontalSpeed > 0.15,
+      );
+    }
     final next = widget.simulation.snapshot;
     if (physics != null) {
       // The only legal teleport is the explicit defeated -> respawn transition.
