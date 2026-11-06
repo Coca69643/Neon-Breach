@@ -114,7 +114,7 @@ void main() {
       final buildingNames = ArenaWorldCatalog.commercialBlocks
           .map((block) => block.$1)
           .toSet();
-      expect(buildingNames, hasLength(4));
+      expect(buildingNames, hasLength(8));
       expect(ArenaWorldCatalog.largeTrees, hasLength(8));
       expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(40));
 
