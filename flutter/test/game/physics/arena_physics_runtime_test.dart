@@ -135,6 +135,8 @@ void main() {
       await advance(frames: 22);
       expect(physics.playerPosition.x, greaterThan(3.2));
       expect(physics.playerPosition.x, lessThan(5.4));
+      expect(physics.consumeDashCompletion(), isTrue);
+      expect(physics.consumeDashCompletion(), isFalse);
       expect(physics.grounded, isTrue);
 
       physics.teleport(const MobaPoint(-71, -38));
@@ -145,6 +147,7 @@ void main() {
         greaterThan(-74.5),
         reason: 'the dash must stop at the physical interior wall',
       );
+      expect(physics.consumeDashCompletion(), isTrue);
       expect(physics.grounded, isTrue);
     });
 
