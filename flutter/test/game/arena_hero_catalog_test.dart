@@ -31,8 +31,8 @@ void main() {
 
     test('species filters are derived from the playable roster', () {
       expect(
-        ArenaHeroCatalog.availableSpecies,
-        containsAll(ArenaHeroCatalog.playable.map((hero) => hero.species)),
+        ArenaHeroCatalog.availableSpecies.toSet(),
+        ArenaHeroCatalog.playable.map((hero) => hero.species).toSet(),
       );
       expect(
         ArenaHeroCatalog.availableSpecies.toSet().length,
