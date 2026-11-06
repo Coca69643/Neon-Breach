@@ -586,46 +586,40 @@ class ArenaPhysicsRuntime {
   }
 
   void _buildMezzanines() {
-    const steps = ArenaVerticalAccess.rampCollisionSteps;
-
     for (final access in ArenaWorldCatalog.verticalAccesses) {
       final z0 = access.corridorMinZ;
       final z1 = access.corridorMaxZ;
-      final centerZ = (z0 + z1) * 0.5;
-      final halfDepth = (z1 - z0) * 0.5;
-      final stepRun = ArenaVerticalAccess.rampRun / steps;
-      final stepRise = ArenaVerticalAccess.upperHeight / steps;
-      final treadHalfHeight = stepRise * 0.5;
+      final startX = access.rampStartX;
+      final endX = access.rampEndX;
 
-      for (var index = 0; index < steps; index++) {
-        final centerX = access.rampStartX + (index + 0.5) * stepRun;
-        final groundY = ArenaWorldCatalog.navigationHeightAt(
-          centerX,
-          centerZ,
-        );
-        final bottomY = groundY + stepRise * index;
-        _addStaticShape(
-          BoxShape(
-            halfExtents: vm.Vector3(
-              stepRun * 0.5 + 0.01,
-              treadHalfHeight,
-              halfDepth,
-            ),
-          ),
-          vm.Vector3(
-            centerX,
-            bottomY + treadHalfHeight,
-            centerZ,
-          ),
-          label: 'mezzanine_ramp_${access.id}_step_$index',
-        );
+      // One continuous inclined surface prevents the capsule controller from
+      // catching on stair risers. Navigation and Rapier share the same linear
+      // rise, so the character gains height progressively while moving.
+      final rampVertices = <double>[];
+      for (final point in <(double, double)>[
+        (startX, z0),
+        (endX, z0),
+        (startX, z1),
+        (endX, z1),
+      ]) {
+        final elevation = access.localSurfaceHeight(point.$1, point.$2)!;
+        final y = ArenaWorldCatalog.navigationHeightAt(point.$1, point.$2) +
+            elevation;
+        rampVertices.addAll([point.$1, y, point.$2]);
+      }
+      final ramp = TriMeshShape(
+        vertices: Float32List.fromList(rampVertices),
+        indices: Uint32List.fromList([0, 2, 1, 1, 2, 3]),
+      );
+      final rampHandles = _world.createColliders(_staticBody, ramp);
+      if (rampHandles.isEmpty) {
+        throw StateError('Rapier rejected mezzanine ramp: ${access.id}');
       }
 
-      // The upper deck uses a thin top collider. Its shallow edge avoids a
-      // deep vertical lip that could obstruct the final ramp transition.
+      // The deck's top surface meets the ramp at the exact upper elevation.
       final deckCenterX =
           access.x + ArenaVerticalAccess.platformLength * 0.5;
-      final deckCenterZ = centerZ;
+      final deckCenterZ = (z0 + z1) * 0.5;
       const deckHalfHeight = 0.06;
       final deckHalf = vm.Vector3(
         ArenaVerticalAccess.platformLength * 0.5,
