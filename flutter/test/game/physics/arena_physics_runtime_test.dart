@@ -72,7 +72,16 @@ void main() {
       expect(
         physics.playerPosition.z,
         lessThan(-3.0),
-        reason: 'the canal bank must stop movement away from a bridge',
+        reason: 'the capsule must stop before entering the canal away from a bridge',
+      );
+      expect(physics.grounded, isTrue);
+      expect(
+        ArenaWorldCatalog.isCanalAt(
+          physics.playerPosition.x,
+          physics.playerPosition.z,
+        ),
+        isFalse,
+        reason: 'the character must remain on the near bank',
       );
 
       physics.teleport(const MobaPoint(0, -5));
@@ -90,7 +99,7 @@ void main() {
       final access = ArenaWorldCatalog.verticalAccesses.first;
       final z = (access.corridorMinZ + access.corridorMaxZ) * 0.5;
       physics.teleport(MobaPoint(access.rampStartX + 0.2, z));
-      await advance(frames: 70, moveX: 1);
+      await advance(frames: 90, moveX: 1);
 
       expect(
         physics.playerPosition.x,
