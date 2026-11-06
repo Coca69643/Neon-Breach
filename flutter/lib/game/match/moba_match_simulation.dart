@@ -513,10 +513,11 @@ class MobaMatchSimulation {
     if (_winner != null ||
         !point.x.isFinite ||
         !point.z.isFinite ||
+        !point.elevation.isFinite ||
+        point.elevation.abs() > 0.22 ||
         !ArenaWorldCatalog.isWalkable(
           point.x,
           point.z,
-          includeTowerCollision: false,
           elevation: point.elevation,
         ) ||
         _isBlockedByCover(point.x, point.z, point.elevation)) {
