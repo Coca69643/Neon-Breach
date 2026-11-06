@@ -53,13 +53,19 @@ class ArenaWorldPlacement {
   final double yaw;
 }
 
-/// Shared 180 × 140 urban MOBA battlefield. Coordinates match the offline
-/// terrain baker; movement, camera and rendered structures use the same axes.
+/// Logical 180 × 140 battlefield. Rendering applies a single 1.35× scene
+/// transform; simulation and Rapier keep these coordinates as their source
+/// of truth so camera, navigation and collision never drift apart.
 abstract final class ArenaWorldCatalog {
-  static const double worldScale = 1.0;
+  static const double worldScale = 1.35;
   static const double halfWidth = 90.0;
   static const double halfDepth = 70.0;
-  static const double footprintExponent = 8.5;
+  static const double cornerRadius = 10.0;
+  static const double roomHalfWidth = 10.0;
+  static const double roomHalfDepth = 8.0;
+  static const double roomDoorHalfWidth = 2.4;
+  static const double roomWallHalfThickness = 0.42;
+  static const double roomWallHalfHeight = 1.5;
   static const double riverBankMargin = 0.55;
   static const double treeCollisionRadius = 1.35;
 
@@ -79,10 +85,10 @@ abstract final class ArenaWorldCatalog {
 
   // Four distinct silhouettes establish recognizable blocks at each corner.
   static const commercialBlocks = <(String, double, double, double)>[
-    ('commercial_building_b.glb', -77.0, -52.0, 6.5),
-    ('commercial_building_c.glb', 77.0, -52.0, 6.5),
-    ('commercial_building_f.glb', -77.0, 52.0, 6.5),
-    ('commercial_building_h.glb', 77.0, 52.0, 6.5),
+    ('commercial_building_b.glb', -82.0, -60.0, 6.5),
+    ('commercial_building_c.glb', 82.0, -60.0, 6.5),
+    ('commercial_building_f.glb', -82.0, 60.0, 6.5),
+    ('commercial_building_h.glb', 82.0, 60.0, 6.5),
   ];
 
   static const sideApproachAnchors = <(double, double)>[
@@ -123,31 +129,41 @@ abstract final class ArenaWorldCatalog {
   static const _towerLanes = <double>[-36.0, 0.0, 36.0];
   static const _towerRows = <double>[-52.0, -36.0, -20.0, 20.0, 36.0, 52.0];
 
-  static const _treeBlockers = <(double, double)>[
+  static const treeBlockerPoints = <(double, double)>[
     (-82, -16), (-82, 16), (82, -16), (82, 16),
     (-72, -58), (72, -58), (-72, 58), (72, 58),
   ];
 
-  static const _largeTreePoints = <(double, double)>[
+  static const largeTreePoints = <(double, double)>[
     (-84, -38), (84, -38), (-84, 38), (84, 38),
   ];
 
-  static double _edgeWobble(double angle) =>
-      1.0 + 0.022 * math.sin(angle * 5.0) +
-      0.014 * math.sin(angle * 9.0 + 1.4) +
-      0.010 * math.cos(angle * 13.0) +
-      0.006 * math.sin(angle * 17.0 + 0.8);
-
+  /// A flat-sided rounded rectangle replaces the old superellipse/egg
+  /// silhouette. The same function is mirrored in the offline terrain baker.
   static bool contains(double x, double z) {
-    if (x.abs() > halfWidth * 1.025 || z.abs() > halfDepth * 1.025) {
-      return false;
-    }
-    final angle = math.atan2(z / halfDepth, x / halfWidth);
-    final edge = _edgeWobble(angle);
-    final extent = math.pow(x.abs() / halfWidth, footprintExponent) +
-        math.pow(z.abs() / halfDepth, footprintExponent);
-    return extent <= math.pow(edge, footprintExponent);
+    if (x.abs() > halfWidth || z.abs() > halfDepth) return false;
+    final cornerX = math.max(0.0, x.abs() - (halfWidth - cornerRadius));
+    final cornerZ = math.max(0.0, z.abs() - (halfDepth - cornerRadius));
+    return cornerX * cornerX + cornerZ * cornerZ <=
+        cornerRadius * cornerRadius + 1e-6;
   }
+
+  static bool isCanalAt(double x, double z) =>
+      (z - _riverCenterZ(x)).abs() <
+      _riverHalfWidth(x) + riverBankMargin;
+
+  static bool isBridgeAt(double x, double z) => _isOnBridge(x, z);
+
+  static double canalBankZAt(double x, {required bool north}) {
+    final half = _riverHalfWidth(x) + riverBankMargin;
+    return _riverCenterZ(x) + (north ? half : -half);
+  }
+
+  static List<(double, double)> get towerCollisionPositions =>
+      List<(double, double)>.unmodifiable([
+        for (final laneX in _towerLanes)
+          for (final rowZ in _towerRows) (laneX, rowZ),
+      ]);
 
   static int _riverSegment(double x) {
     if (x <= _river.first.$1) return 0;
@@ -211,25 +227,35 @@ abstract final class ArenaWorldCatalog {
     for (final building in cityInteriors) {
       final cx = building.$2, cz = building.$3;
       final dx = (x - cx).abs(), dz = z - cz;
-      // 12 × 9 m room, with a real 3.2 m south-facing doorway.
-      if (dx <= 6.0 && (dz - 4.3).abs() <= 0.42) return true;
-      if (dx <= 6.0 && (dz + 4.3).abs() <= 0.42 && dx > 1.6) return true;
-      if ((dx - 5.8).abs() <= 0.42 && dz.abs() <= 4.5) return true;
+      // 20 × 16 m playable room with a 4.8 m south-facing entrance.
+      if (dx <= roomHalfWidth &&
+          (dz - roomHalfDepth).abs() <= roomWallHalfThickness) {
+        return true;
+      }
+      if (dx <= roomHalfWidth &&
+          (dz + roomHalfDepth).abs() <= roomWallHalfThickness &&
+          dx > roomDoorHalfWidth) {
+        return true;
+      }
+      if ((dx - roomHalfWidth).abs() <= roomWallHalfThickness &&
+          dz.abs() <= roomHalfDepth + roomWallHalfThickness) {
+        return true;
+      }
       // Counter and shelving are physical interior obstacles.
       final hasVerticalAccess = verticalAccesses.any(
         (access) => access.id == building.$1,
       );
-      final counterZ = hasVerticalAccess ? cz - 1.45 : cz + 1.35;
+      final counterZ = hasVerticalAccess ? cz - 2.0 : cz + 2.2;
       final counterDistanceX = hasVerticalAccess
-          ? (x - (cx - 3.5)).abs()
+          ? (x - (cx - 5.2)).abs()
           : dx;
-      if (counterDistanceX <= (hasVerticalAccess ? 1.05 : 1.95) &&
-          (z - counterZ).abs() <= 0.52) {
+      if (counterDistanceX <= (hasVerticalAccess ? 1.5 : 2.6) &&
+          (z - counterZ).abs() <= 0.7) {
         return true;
       }
       if (!hasVerticalAccess &&
-          (dx - 4.35).abs() <= 0.48 &&
-          (z - (cz + 2.1)).abs() <= 1.35) {
+          (dx - 7.0).abs() <= 0.55 &&
+          (z - (cz + 3.2)).abs() <= 1.8) {
         return true;
       }
     }
@@ -301,9 +327,7 @@ abstract final class ArenaWorldCatalog {
     if (!contains(x, z) || !_isVerticalSurface(x, z, elevation)) {
       return false;
     }
-    final riverDistance = (z - _riverCenterZ(x)).abs();
-    final channelWidth = _riverHalfWidth(x) + riverBankMargin;
-    if (riverDistance < channelWidth && !_isOnBridge(x, z)) return false;
+    if (isCanalAt(x, z) && !isBridgeAt(x, z)) return false;
     if ((includeTowerCollision && _insideTowerFootprint(x, z)) ||
         _insideBuildingWall(x, z)) {
       return false;
@@ -315,11 +339,11 @@ abstract final class ArenaWorldCatalog {
     }
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
-      for (final tree in _treeBlockers) {
+      for (final tree in treeBlockerPoints) {
         final dx = x - tree.$1, dz = z - tree.$2;
         if (dx * dx + dz * dz < radiusSquared) return false;
       }
-      for (final tree in _largeTreePoints) {
+      for (final tree in largeTreePoints) {
         final dx = x - tree.$1, dz = z - tree.$2;
         if (dx * dx + dz * dz < radiusSquared) return false;
       }
@@ -361,12 +385,12 @@ abstract final class ArenaWorldCatalog {
   static List<ArenaWorldPlacement> _makeTrees() {
     const variants = <String>['tree_oak', 'tree_pine', 'tree_broadleaf'];
     return List<ArenaWorldPlacement>.unmodifiable(
-      _treeBlockers.indexed.map((entry) {
+      treeBlockerPoints.indexed.map((entry) {
         final index = entry.$1, point = entry.$2;
         return ArenaWorldPlacement(
           asset: 'assets/world/nature/${variants[index % variants.length]}.glb',
-          x: point.$1 * worldScale,
-          z: point.$2 * worldScale,
+          x: point.$1,
+          z: point.$2,
           y: heightAt(point.$1, point.$2),
           scale: 0.82 + (index % 3) * 0.07,
           yaw: (index * 2.399) % (2 * math.pi),
@@ -384,8 +408,8 @@ abstract final class ArenaWorldCatalog {
         final index = entry.$1, point = entry.$2;
         return ArenaWorldPlacement(
           asset: 'assets/world/nature/bush_common.glb',
-          x: point.$1 * worldScale,
-          z: point.$2 * worldScale,
+          x: point.$1,
+          z: point.$2,
           y: heightAt(point.$1, point.$2),
           scale: 0.62 + (index % 2) * 0.08,
           yaw: (index * 1.71) % (2 * math.pi),
@@ -396,7 +420,7 @@ abstract final class ArenaWorldCatalog {
 
   static List<ArenaWorldPlacement> _makeLargeTrees() {
     return List<ArenaWorldPlacement>.unmodifiable(
-      _largeTreePoints.indexed.map((entry) {
+      largeTreePoints.indexed.map((entry) {
         final index = entry.$1;
         final point = entry.$2;
         return ArenaWorldPlacement(
