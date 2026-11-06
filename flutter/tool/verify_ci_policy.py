@@ -59,6 +59,29 @@ def main() -> None:
             "release job must declare its own write permission.")
     require("overwrite_files: false" in release_job,
             "published release assets must never be silently replaced.")
+
+    artifact_step = workflow.split("Upload trusted ARM64 update artifact", 1)
+    require(len(artifact_step) == 2, "trusted APK artifact upload step is missing.")
+    artifact_header = artifact_step[1].split("uses:", 1)[0]
+    require(
+        "if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'"
+        in artifact_header,
+        "update APK artifacts may only be uploaded from trusted main builds.",
+    )
+
+    legacy_workflow_path = REPOSITORY_ROOT / ".github" / "workflows" / "android.yml"
+    legacy_workflow = legacy_workflow_path.read_text(encoding="utf-8")
+    legacy_job = legacy_workflow.split("jobs:\\n  build:", 1)
+    require(len(legacy_job) == 2, "legacy Android job definition is missing.")
+    legacy_job_header = legacy_job[1].split("steps:", 1)[0]
+    require(
+        "if: false" in legacy_job_header,
+        "the archived native Android workflow must remain disabled.",
+    )
+    require(
+        "NEON_BREACH_KEYSTORE_BASE64" not in legacy_workflow,
+        "the archived native workflow must not contain persistent signing secrets.",
+    )
     require("Refuse to overwrite an existing version tag" in release_job,
             "release job must reject an existing version tag.")
     require("softprops/action-gh-release" not in build_job,
