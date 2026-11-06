@@ -18,6 +18,8 @@ void main() {
         expect(hero.modelAsset, isNotEmpty);
         expect(hero.idleAnimation, isNotEmpty);
         expect(hero.previewScale, greaterThan(0));
+        expect(hero.matchScale, greaterThan(0));
+        expect(hero.matchScale, lessThanOrEqualTo(1));
         expect(hero.previewCameraDistance, greaterThan(0));
       }
     });
