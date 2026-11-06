@@ -21,6 +21,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
 - Meta inicial: 30 FPS sustentados no Realme C53.
 - Arena urbana 180 × 140, com três avenidas, quatro edifícios de piso térreo acessíveis, interiores, ruas e cruzamentos.
+- Distritos com silhuetas comerciais distintas, sinalização/iluminação de rua, praças laterais, árvores grandes e mobiliário urbano CC0.
 - Navegação com colisão de paredes/mobiliário, portas, três travessias do canal e duas escadas que conectam mezaninos com elevação real.
 - Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
 - Implementado nesta revisão: seleção touch de alvo, HUD contextual e confirmação visual apenas em acerto. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
@@ -31,7 +32,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 
 O host Android gerado reutiliza o ícone vetorial e a identidade "Projeto Arena" já existentes no repositório. O applicationId permanece idêntico ao APK 0.16.0, e o versionCode é maior que 59.
 
-Builds de CI carregam o mesmo keystore persistente usado pelo pipeline Android anterior (variáveis NEON_BREACH_KEYSTORE_*). Isso preserva a assinatura necessária para atualizar uma instalação existente. Builds locais sem essas variáveis usam a assinatura de debug do Flutter e não devem ser tratados como APK de atualização.
+A chave persistente de atualização (variáveis NEON_BREACH_KEYSTORE_*) só é carregada em execuções confiáveis da branch `main`. Builds de branches de desenvolvimento executam análise, testes, build ARM64 e verificação da assinatura, mas não recebem essa chave e não publicam APK de atualização. Builds locais sem essas variáveis usam a assinatura de debug do Flutter e não devem ser instalados como substituição de uma versão assinada.
 
 O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android suportado para API 24.
 
@@ -58,7 +59,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.7.10+72: correções de navegação, colisão, reciclagem de tropas, rotas até núcleos, orientação e animações de ataque. O CI valida análise, testes, assets, build ARM64 e assinatura; a validação visual e de desempenho sustentado no Realme C53 continua pendente.
+- Build 1.7.10+72: cidade com fachadas e adereços CC0 variados, interiores diferenciados, patrulha de NPCs, comando tático por minimapa e anel de controle do reator. CI validou análise, testes, build ARM64, assets do pacote e assinatura; upload/release não são permitidos na branch de desenvolvimento. Teste físico e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
