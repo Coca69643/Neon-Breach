@@ -208,6 +208,15 @@ void main() {
       expect(simulation.snapshot.playerSpawnShieldSeconds, greaterThan(0));
     });
 
+    test('Bastion shield strike exposes the heavy punch animation window', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+
+      simulation.step(1 / 60, castSkill: true);
+
+      expect(simulation.snapshot.playerSkillPulseSeconds, greaterThan(0.8));
+      expect(simulation.snapshot.playerAttackSeconds, greaterThan(0.4));
+    });
+
     test('attacks turn the hero toward the target and hold that facing through the strike', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.lyra,
