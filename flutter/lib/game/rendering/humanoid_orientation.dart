@@ -18,6 +18,6 @@ abstract final class HumanoidOrientation {
     if (!x.isFinite || !z.isFinite || x * x + z * z < 1e-12) {
       return 0;
     }
-    return yaw + math.pi;
+    return (yaw + math.pi) % (2 * math.pi);
   }
 }
