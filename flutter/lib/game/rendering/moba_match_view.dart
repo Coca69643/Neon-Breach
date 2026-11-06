@@ -549,6 +549,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
             district.position.z,
           ),
         ),
+      for (final district in snapshot.districts)
+        SceneModel(
+          'assets/world/city/interior_computer_screen.glb',
+          key: ValueKey('district-console-${district.id}'),
+          name: 'district-console-${district.id}',
+          position: _worldPosition(district.position, heightOffset: 0.08),
+          scale: vm.Vector3.all(1.25),
+        ),
       for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
         if (tower.health > 0)
