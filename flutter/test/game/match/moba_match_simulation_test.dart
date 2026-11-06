@@ -276,7 +276,7 @@ void main() {
     });
 
     test('player stays on the island while moving diagonally toward the border', () {
-      final spawn = const MobaPoint(80, 24);
+      final spawn = const MobaPoint(80, 30);
       expect(ArenaWorldCatalog.isWalkable(spawn.x, spawn.z), isTrue);
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.kairo,
