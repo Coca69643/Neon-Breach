@@ -276,9 +276,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _cameraX = x - forwardX * horizontalDistance;
     _cameraY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     _cameraZ = z - forwardZ * horizontalDistance;
-    _lookX = x + forwardX * 3.0 * _worldScale;
+    _lookX = x + forwardX * 3.6 * _worldScale;
     _lookY = ground + 1.2 * _worldScale;
-    _lookZ = z + forwardZ * 3.6 * _worldScale
+    _lookZ = z + forwardZ * 3.6 * _worldScale;
   }
 
   void _advanceCameraRig(MobaMatchSnapshot snapshot, double deltaSeconds) {
@@ -294,9 +294,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final desiredX = x - forwardX * horizontalDistance;
     final desiredY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     final desiredZ = z - forwardZ * horizontalDistance;
-    final desiredLookX = x + forwardX * 3.0 * _worldScale;
+    final desiredLookX = x + forwardX * 3.6 * _worldScale;
     final desiredLookY = ground + 1.2 * _worldScale;
-    final desiredLookZ = z + forwardZ * 3.6 * _worldScale
+    final desiredLookZ = z + forwardZ * 3.6 * _worldScale;
     final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
     _cameraX += (desiredX - _cameraX) * blend;
