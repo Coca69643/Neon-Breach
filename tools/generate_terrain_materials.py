@@ -49,19 +49,19 @@ def surface_pixel(kind: str, u: float, v: float) -> tuple[tuple[int, int, int], 
         height = 0.045 * broad + 0.026 * mid + 0.013 * fine
         light = 6.5 * broad + 3.6 * mid + 2.3 * fine + 4.0 * moss + 1.5 * grain
         color = (48 + light * 0.72, 68 + light, 38 + light * 0.67)
-    elif kind == "soil":
+    elif kind == "asphalt":
         # Main avenues and alleys: dark aggregate asphalt.
         pebble = max(0.0, periodic(u, v, 23, 17, 0.7)) ** 12
         height = 0.030 * broad + 0.020 * mid + 0.012 * fine + 0.008 * pebble
         light = 6.0 * broad + 3.6 * mid + 2.0 * fine + 4.0 * pebble + 1.5 * grain
-        color = (39 + light, 44 + light, 48 + light)
-    elif kind == "rock":
+        color = (36 + light, 42 + light, 47 + light)
+    elif kind == "concrete":
         # Sidewalks and canal retaining edges: pale poured stone.
         strata = periodic(u, v, 4, 1, 0.8) + 0.38 * periodic(u, v, 9, 2, 1.4)
         seams = max(0.0, periodic(u, v, 8, 8, 0.4)) ** 20
         height = 0.040 * broad + 0.026 * mid + 0.014 * fine + 0.006 * seams
         light = 7.0 * broad + 4.0 * mid + 2.5 * fine + 1.8 * grain + 2.0 * strata
-        color = (132 + light, 137 + light, 139 + light)
+        color = (145 + light, 150 + light, 152 + light)
     else:
         raise ValueError(kind)
     return tuple(clamp(channel) for channel in color), height
@@ -99,7 +99,7 @@ def build_maps(kind: str) -> tuple[bytes, bytes]:
 def main() -> None:
     OUT.mkdir(parents=True, exist_ok=True)
     total = 0
-    for material in ("grass", "moss", "soil", "rock"):
+    for material in ("grass", "moss", "asphalt", "concrete"):
         albedo, normal = build_maps(material)
         for suffix, payload in (("albedo", albedo), ("normal", normal)):
             path = OUT / f"{material}_{suffix}.png"
