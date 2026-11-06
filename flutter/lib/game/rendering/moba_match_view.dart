@@ -36,6 +36,8 @@ class _AmbientNpc {
     required this.asset,
     required this.x,
     required this.z,
+    required this.patrol,
+    required this.phaseOffset,
     required this.dialogue,
   });
 
@@ -44,6 +46,8 @@ class _AmbientNpc {
   final String asset;
   final double x;
   final double z;
+  final List<MobaPoint> patrol;
+  final double phaseOffset;
   final String dialogue;
 }
 
@@ -66,7 +70,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       label: 'Central de Operações',
       asset: 'assets/npcs/npc_female_b.glb',
       x: -63.0,
-      z: -38.0,
+      z: -40.0,
+      patrol: [
+        MobaPoint(-63.0, -40.0),
+        MobaPoint(-65.2, -40.0),
+        MobaPoint(-61.0, -40.0),
+      ],
+      phaseOffset: 0.0,
       dialogue: 'As três rotas estão ativas. Observe o minimapa antes de avançar.',
     ),
     _AmbientNpc(
@@ -74,7 +84,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       label: 'Técnico de Campo',
       asset: 'assets/npcs/npc_male_c.glb',
       x: 63.0,
-      z: -38.0,
+      z: -40.5,
+      patrol: [
+        MobaPoint(63.0, -40.5),
+        MobaPoint(60.7, -40.5),
+        MobaPoint(65.3, -40.5),
+      ],
+      phaseOffset: 1.15,
       dialogue: 'As passagens laterais permitem contornar os bloqueios da avenida.',
     ),
     _AmbientNpc(
@@ -82,7 +98,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       label: 'Responsável pelo Parque',
       asset: 'assets/npcs/npc_female_c.glb',
       x: -63.0,
-      z: 38.0,
+      z: 35.5,
+      patrol: [
+        MobaPoint(-63.0, 35.5),
+        MobaPoint(-65.3, 35.5),
+        MobaPoint(-60.7, 35.5),
+      ],
+      phaseOffset: 2.3,
       dialogue: 'O canal só pode ser atravessado pelas três pontes sinalizadas.',
     ),
     _AmbientNpc(
@@ -90,7 +112,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       label: 'Morador do Distrito',
       asset: 'assets/npcs/npc_male_b.glb',
       x: 63.0,
-      z: 38.0,
+      z: 35.5,
+      patrol: [
+        MobaPoint(63.0, 35.5),
+        MobaPoint(65.3, 35.5),
+        MobaPoint(60.7, 35.5),
+      ],
+      phaseOffset: 3.45,
       dialogue: 'O reator central muda o ritmo da disputa quando uma equipe o controla.',
     ),
   ];
@@ -678,31 +706,106 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     );
   }
 
+  ({
+    MobaPoint position,
+    bool moving,
+    double facingX,
+    double facingZ,
+  }) _ambientNpcPose(
+    _AmbientNpc npc,
+    double elapsedSeconds, {
+    bool stopped = false,
+  }) {
+    const travelSeconds = 3.2;
+    const pauseSeconds = 1.8;
+    const segmentSeconds = travelSeconds + pauseSeconds;
+    final route = npc.patrol;
+    if (route.length < 2) {
+      return (
+        position: MobaPoint(npc.x, npc.z),
+        moving: false,
+        facingX: 0.0,
+        facingZ: 1.0,
+      );
+    }
+
+    final cycleSeconds = segmentSeconds * route.length;
+    final phase = (elapsedSeconds + npc.phaseOffset) % cycleSeconds;
+    final segment = (phase / segmentSeconds).floor();
+    final segmentPhase = phase - segment * segmentSeconds;
+    final from = route[segment];
+    final to = route[(segment + 1) % route.length];
+    final dx = to.x - from.x;
+    final dz = to.z - from.z;
+
+    if (segmentPhase >= travelSeconds || stopped) {
+      final t = segmentPhase >= travelSeconds
+          ? 1.0
+          : (segmentPhase / travelSeconds).clamp(0.0, 1.0).toDouble();
+      return (
+        position: MobaPoint(
+          from.x + dx * t,
+          from.z + dz * t,
+          elevation: from.elevation,
+        ),
+        moving: false,
+        facingX: dx,
+        facingZ: dz,
+      );
+    }
+
+    final t = (segmentPhase / travelSeconds).clamp(0.0, 1.0).toDouble();
+    return (
+      position: MobaPoint(
+        from.x + dx * t,
+        from.z + dz * t,
+        elevation: from.elevation,
+      ),
+      moving: true,
+      facingX: dx,
+      facingZ: dz,
+    );
+  }
+
   Widget _buildAmbientNpc(_AmbientNpc npc, MobaMatchSnapshot snapshot) {
-    final activeNpc = _nearestAmbientNpc(snapshot.playerPosition);
+    final activeNpc = _nearestAmbientNpc(
+      snapshot.playerPosition,
+      snapshot.elapsedSeconds,
+    );
     final interacting = activeNpc?.id == npc.id && _activeNpcId == npc.id;
-    final point = MobaPoint(npc.x, npc.z);
+    final pose = _ambientNpcPose(
+      npc,
+      snapshot.elapsedSeconds,
+      stopped: interacting,
+    );
     return SceneModel(
       npc.asset,
-      key: ValueKey('ambient-npc-${npc.id}'),
+      key: ValueKey('ambient-npc_${npc.id}'),
       name: 'ambient_npc_${npc.id}',
-      position: _worldPosition(point, heightOffset: 0.015),
+      position: _worldPosition(pose.position, heightOffset: 0.015),
+      rotation: _entityFacing(pose.facingX, pose.facingZ),
       scale: vm.Vector3.all(0.96),
       animations: [
         SceneAnimationSpec(
-          interacting ? 'emote-yes' : 'idle',
+          interacting
+              ? 'emote-yes'
+              : (pose.moving ? 'walk' : 'idle'),
           loop: !interacting,
-          speed: interacting ? 1.0 : 0.84,
+          speed: interacting ? 1.0 : (pose.moving ? 0.92 : 0.84),
         ),
       ],
     );
   }
 
-  _AmbientNpc? _nearestAmbientNpc(MobaPoint player) {
+  _AmbientNpc? _nearestAmbientNpc(
+    MobaPoint player,
+    double elapsedSeconds,
+  ) {
     _AmbientNpc? nearest;
     var nearestDistance = 4.8;
     for (final npc in _ambientNpcs) {
-      final distance = player.distanceTo(MobaPoint(npc.x, npc.z));
+      final position = _ambientNpcPose(npc, elapsedSeconds).position;
+      final distance = player.distanceTo(position);
       if (distance <= nearestDistance) {
         nearest = npc;
         nearestDistance = distance;
@@ -746,7 +849,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       builder: (context, viewport) {
         final compact = viewport.maxHeight < 430;
         final side = compact ? 12.0 : 18.0;
-        final nearbyNpc = _nearestAmbientNpc(snapshot.playerPosition);
+        final nearbyNpc = _nearestAmbientNpc(
+          snapshot.playerPosition,
+          snapshot.elapsedSeconds,
+        );
         final showNpcDialogue =
             nearbyNpc != null && _activeNpcId == nearbyNpc.id;
         return Stack(
