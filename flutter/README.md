@@ -57,7 +57,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Reator central capturável/contestável; equipe controladora recebe +12% de dano e recompensa inicial.
 - Armas CC0 distintas de Lyra, Bastion e Kairo anexadas ao rig; bots, tropas e NPCs usam seis aparências CC0 independentes dos heróis selecionáveis.
 - Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado e balanço sutil proporcional à velocidade física.
-- Locomoção com aceleração, frenagem, tração por superfície, colisão de cápsula e passo fixo Rapier a 60 Hz.
+- Locomoção com aceleração, frenagem, tração por superfície, colisão de cápsula e passo fixo Rapier a 60 Hz. Bastion usa golpe pesado próprio; Lyra e Kairo mantêm cortes de espada distintos.
 - Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
