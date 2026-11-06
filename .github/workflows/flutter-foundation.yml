@@ -121,8 +121,8 @@ jobs:
         run: |
           cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.7.10-arm64.apk
           sha256sum Project-Arena-1.7.10-arm64.apk > Project-Arena-1.7.10-arm64.apk.sha256
-      - name: Upload ARM64 verification artifact
-        if: github.event_name != 'pull_request'
+      - name: Upload trusted ARM64 update artifact
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
           name: project-arena-1.7.10-arm64
