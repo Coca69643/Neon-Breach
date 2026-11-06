@@ -121,3 +121,11 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 - Modelos e texturas são preparados no build a partir de assets CC0 fixados por hash; a partida não baixa conteúdo pela rede.
 - Os novos detalhes são colocados em pontos navegáveis e não alteram as rotas de colisão existentes.
 
+## Reconstrução das mecânicas — fundação de navegação
+
+- O jogador continua usando o controlador cinemático Rapier 3D com cápsula, gravidade, snap-to-ground, autostep, rampas, mezaninos e colliders estáticos do terreno/edifícios.
+- Bots e minions agora compartilham um único resolvedor de movimento de agentes: steering, contorno por ângulos alternativos, deslizamento por eixos e validação de terreno/cobertura.
+- A IA escolhe o objetivo tático; o motor compartilhado resolve a locomoção. Formação dos minions é aplicada como preferência lateral, sem duplicar a lógica de colisão.
+- O passo é alimentado pelo relógio fixo da simulação. O resolvedor rejeita posições fora da malha navegável, água, paredes e cobertura destrutível.
+- Esta etapa ainda não transforma todos os agentes em corpos Rapier: somente o jogador possui cápsula física no mundo 3D. A próxima integração deve adicionar colisão física aos heróis controlados pela IA e, depois, às tropas em lotes de baixo custo.
+- A expansão do mapa e a reconstrução de interiores devem acontecer em conjunto com a malha física e a navegação; não basta escalar as fachadas sobre a mesma ilha compacta.
