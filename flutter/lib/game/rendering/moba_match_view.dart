@@ -103,7 +103,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       patrol: [
         MobaPoint(66.0, -43.0),
         MobaPoint(71.0, -43.0),
-        MobaPoint(71.0, -34.0),
+        MobaPoint(69.0, -34.0),
         MobaPoint(66.0, -34.0),
       ],
       phaseOffset: 1.15,
@@ -122,7 +122,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaPoint(-67.0, 43.0),
       ],
       phaseOffset: 2.3,
-      dialogue: 'O canal só pode ser atravessado pelas três pontes sinalizadas.',
+      dialogue: 'O canal só pode ser atravessado pelas cinco pontes sinalizadas.',
     ),
     _AmbientNpc(
       id: 'resident',
@@ -138,6 +138,36 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       ],
       phaseOffset: 3.45,
       dialogue: 'O reator central muda o ritmo da disputa quando uma equipe o controla.',
+    ),
+    _AmbientNpc(
+      id: 'quartermaster',
+      label: 'Coordenador de Suprimentos',
+      asset: 'assets/npcs/npc_male_a.glb',
+      x: -96.0,
+      z: -22.0,
+      patrol: [
+        MobaPoint(-96.0, -22.0),
+        MobaPoint(-90.0, -22.0),
+        MobaPoint(-90.0, -18.0),
+        MobaPoint(-96.0, -18.0),
+      ],
+      phaseOffset: 4.6,
+      dialogue: 'O Mercado Central abastece a equipe que mantém suas rotas protegidas.',
+    ),
+    _AmbientNpc(
+      id: 'station-agent',
+      label: 'Agente Intermodal',
+      asset: 'assets/npcs/npc_female_a.glb',
+      x: 80.0,
+      z: 12.0,
+      patrol: [
+        MobaPoint(80.0, 12.0),
+        MobaPoint(86.0, 12.0),
+        MobaPoint(86.0, 16.0),
+        MobaPoint(80.0, 16.0),
+      ],
+      phaseOffset: 5.75,
+      dialogue: 'Controlar a Estação Intermodal abre uma rotação mais rápida entre setores.',
     ),
   ];
 
