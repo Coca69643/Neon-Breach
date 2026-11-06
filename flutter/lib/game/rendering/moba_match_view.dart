@@ -590,38 +590,38 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         vm.Vector3(px, ground + py, pz);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
-    final deskZ = hasVerticalAccess ? z - 1.8 : z + 1.7;
-    final chairZ = hasVerticalAccess ? z - 1.8 : z + 1.5;
-    final screenZ = hasVerticalAccess ? z - 1.8 : z + 1.5;
-    final benchZ = hasVerticalAccess ? z - 3.1 : z - 1.8;
+    final deskZ = hasVerticalAccess ? z - 2.0 : z + 2.2;
+    final chairZ = hasVerticalAccess ? z - 2.0 : z + 2.0;
+    final screenZ = hasVerticalAccess ? z - 2.0 : z + 2.0;
+    final benchZ = hasVerticalAccess ? z - 4.0 : z - 2.8;
 
     return [
       SceneModel('assets/world/city/interior_floor.glb',
         key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
-        position: p(x - 6, 0.02, z + 4.5), scale: vm.Vector3(12, 1, 9)),
+        position: p(x - 10, 0.02, z + 8), scale: vm.Vector3(20, 1, 16)),
       SceneModel('assets/world/city/interior_wall_window.glb',
         key: ValueKey('interior-back-$id'), name: 'interior_back_wall_$id',
-        position: p(x - 6, 0, z + 4.3), scale: vm.Vector3(12, 2.5, 1)),
+        position: p(x - 10, 0, z + 8), scale: vm.Vector3(20, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
-        position: p(x - 5.8, 0, z + 4.3), rotation: yaw(math.pi / 2),
-        scale: vm.Vector3(8.6, 2.5, 1)),
+        position: p(x - 10, 0, z), rotation: yaw(math.pi / 2),
+        scale: vm.Vector3(16, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
-        position: p(x + 5.8, 0, z - 4.3), rotation: yaw(-math.pi / 2),
-        scale: vm.Vector3(8.6, 2.5, 1)),
+        position: p(x + 10, 0, z), rotation: yaw(-math.pi / 2),
+        scale: vm.Vector3(16, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-front-left-$id'), name: 'interior_front_left_$id',
-        position: p(x - 6.0, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
+        position: p(x - 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-front-right-$id'), name: 'interior_front_right_$id',
-        position: p(x + 1.6, 0, z - 4.3), scale: vm.Vector3(4.4, 2.5, 1)),
+        position: p(x + 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x - 1.6, 0, z - 4.3), scale: vm.Vector3(3.2, 2.5, 1)),
+        position: p(x, 0, z - 8), scale: vm.Vector3(4.8, 2.5, 1)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
-        position: p(hasVerticalAccess ? x - 3.5 : x - 1.8, 0, deskZ),
+        position: p(hasVerticalAccess ? x - 5.2 : x - 4.5, 0, deskZ),
         scale: vm.Vector3(3.2, 2, 2)),
       SceneModel('assets/world/city/interior_chair.glb',
         key: ValueKey('interior-chair-$id'), name: 'interior_chair_$id',
