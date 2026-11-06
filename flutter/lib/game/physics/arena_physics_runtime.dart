@@ -224,7 +224,7 @@ class ArenaPhysicsRuntime {
   /// a small numerical margin, so the character stops before its leading edge
   /// enters the canal instead of relying on a thin bank collider to catch it.
   void _preventOffBridgeCanalEntry(double dt) {
-    if (!_active || !_grounded || dt <= 0) return;
+    if (!_active || dt <= 0) return;
 
     final fromX = _playerPose.translation.x;
     final fromZ = _playerPose.translation.z;
@@ -587,7 +587,7 @@ class ArenaPhysicsRuntime {
   }
 
   void _buildMezzanines() {
-    const steps = 20;
+    const steps = ArenaVerticalAccess.rampCollisionSteps;
 
     for (final access in ArenaWorldCatalog.verticalAccesses) {
       final z0 = access.corridorMinZ;
