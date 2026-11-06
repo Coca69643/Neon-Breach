@@ -50,7 +50,7 @@ class ArenaHeroPreview extends StatelessWidget {
             hero.modelAsset,
             key: ValueKey(hero.id),
             name: 'playable_hero_${hero.id}',
-            position: vm.Vector3(0, 0, 0),
+            position: vm.Vector3(hero.previewOffsetX, 0, 0),
             // The default calibration presents the model's front to the stage.
             // Individual non-humanoid models can override this yaw in the catalog.
             rotation: vm.Quaternion.axisAngle(
