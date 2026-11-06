@@ -228,10 +228,16 @@ class ArenaPhysicsRuntime {
   /// effect of reaching zero health.
   void teleport(MobaPoint point) {
     if (_disposed) return;
+    final resolvedElevation = ArenaWorldCatalog.resolveNavigationElevation(
+          point.x,
+          point.z,
+          point.elevation,
+        ) ??
+        point.elevation;
     final y = ArenaWorldCatalog.navigationHeightAt(
           point.x,
           point.z,
-          elevation: point.elevation,
+          elevation: resolvedElevation,
         ) +
         footOffset;
     final translation = vm.Vector3(point.x, y, point.z);
@@ -331,14 +337,47 @@ class ArenaPhysicsRuntime {
     final halfW = ArenaWorldCatalog.halfWidth;
     final halfD = ArenaWorldCatalog.halfDepth;
     final step = _terrainCellSize;
+    final xCoordinates = <double>{
+      for (var x = -halfW; x < halfW - 1e-6; x += step) x,
+      halfW,
+      for (final access in ArenaWorldCatalog.verticalAccesses)
+        access.rampStartX,
+      for (final access in ArenaWorldCatalog.verticalAccesses)
+        access.rampEndX,
+      for (final access in ArenaWorldCatalog.verticalAccesses)
+        access.platformEndX,
+    }.toList()
+      ..sort();
+    final zCoordinates = <double>{
+      for (var z = -halfD; z < halfD - 1e-6; z += step) z,
+      halfD,
+      for (final access in ArenaWorldCatalog.verticalAccesses)
+        access.corridorMinZ,
+      for (final access in ArenaWorldCatalog.verticalAccesses)
+        access.corridorMaxZ,
+    }.toList()
+      ..sort();
 
-    for (var z = -halfD; z < halfD - 1e-6; z += step) {
-      for (var x = -halfW; x < halfW - 1e-6; x += step) {
-        final x1 = math.min(x + step, halfW);
-        final z1 = math.min(z + step, halfD);
+    for (var zi = 0; zi < zCoordinates.length - 1; zi++) {
+      final z = zCoordinates[zi];
+      final z1 = zCoordinates[zi + 1];
+      for (var xi = 0; xi < xCoordinates.length - 1; xi++) {
+        final x = xCoordinates[xi];
+        final x1 = xCoordinates[xi + 1];
         final centerX = (x + x1) * 0.5;
         final centerZ = (z + z1) * 0.5;
         if (!ArenaWorldCatalog.contains(centerX, centerZ)) continue;
+
+        // The ramp and raised deck own this footprint. Leaving the ground mesh
+        // underneath creates two competing contact surfaces that block ascent.
+        final overVerticalAccess = ArenaWorldCatalog.verticalAccesses.any(
+          (access) =>
+              centerX >= access.rampStartX &&
+              centerX <= access.platformEndX &&
+              centerZ >= access.corridorMinZ &&
+              centerZ <= access.corridorMaxZ,
+        );
+        if (overVerticalAccess) continue;
 
         final corners = <(double, double)>[
           (x, z), (x1, z), (x, z1), (x1, z1),
@@ -386,6 +425,9 @@ class ArenaPhysicsRuntime {
       (-90.0, -40.2), (-31.8, -4.2),
       (4.2, 31.8), (40.2, 90.0),
     ];
+    // A continuous high bank face gives the capsule controller a reliable
+    // vertical obstacle even where the baked river edge dips below the field.
+    // The X gaps remain centered on the three bridge corridors.
     for (final span in spans) {
       final centerX = (span.$1 + span.$2) * 0.5;
       final halfLength = (span.$2 - span.$1) * 0.5;
@@ -394,10 +436,9 @@ class ArenaPhysicsRuntime {
           centerX,
           north: north,
         );
-        final y = ArenaWorldCatalog.navigationHeightAt(centerX, z) + 1.35;
         _addStaticShape(
-          BoxShape(halfExtents: vm.Vector3(halfLength, 1.35, 0.42)),
-          vm.Vector3(centerX, y, z),
+          BoxShape(halfExtents: vm.Vector3(halfLength, 3.0, 0.75)),
+          vm.Vector3(centerX, 1.5, z),
           label: 'canal_bank_${centerX}_${north ? 'north' : 'south'}',
         );
       }
