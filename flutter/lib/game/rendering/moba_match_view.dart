@@ -765,7 +765,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               top: compact ? 88 : 96,
               bottom: compact ? 104 : 112,
               child: Listener(
-                behavior: HitTestBehavior.translucent,
+                // Camera drag should receive only empty-space gestures in
+                // its dedicated zone, never pointer events from HUD buttons,
+                // minimap controls or NPC dialogue layered above it.
+                behavior: HitTestBehavior.opaque,
                 onPointerDown: (event) {
                   if (event.position.dx < viewport.maxWidth * 0.42) return;
                   _cameraPointerId = event.pointer;
