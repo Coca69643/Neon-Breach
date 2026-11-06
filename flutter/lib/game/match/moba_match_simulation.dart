@@ -490,6 +490,7 @@ class MobaMatchSimulation {
   int _playerLevel = 1;
   int _nextMinionId = 0;
   MobaPoint _playerPosition = const MobaPoint(0, -63);
+  MobaPoint _playerSpawnPosition = const MobaPoint(-36, -60);
   MobaTeam? _winner;
   double _lastMoveX = 0;
   double _lastMoveZ = 1;
@@ -505,6 +506,42 @@ class MobaMatchSimulation {
   int get totalTowerCount => _towers.length;
   double get elapsedSeconds => _elapsed;
   MobaTeam? get winner => _winner;
+
+  /// Applies damage through the same validated path used by combat simulation.
+  void applyPlayerDamage(double damage) => _damagePlayer(damage);
+
+  /// Accepts a collision-resolved pose from the 3D character controller.
+  /// Life, attacks and respawn stay authoritative in this simulation.
+  bool syncPlayerPhysicsState(
+    MobaPoint position, {
+    required bool moving,
+    required double facingX,
+    required double facingZ,
+  }) {
+    if (_winner != null || _playerRespawn > 0 ||
+        !position.x.isFinite || !position.z.isFinite ||
+        !facingX.isFinite || !facingZ.isFinite) {
+      return false;
+    }
+    final elevation = ArenaWorldCatalog.resolveNavigationElevation(
+      position.x,
+      position.z,
+      _playerPosition.elevation,
+    );
+    if (elevation == null ||
+        !ArenaWorldCatalog.isWalkable(position.x, position.z, elevation: elevation) ||
+        _isBlockedByCover(position.x, position.z, elevation)) {
+      return false;
+    }
+    _playerPosition = MobaPoint(position.x, position.z, elevation: elevation);
+    _playerMoving = moving;
+    final facingLength = math.sqrt(facingX * facingX + facingZ * facingZ);
+    if (facingLength > 1e-5) {
+      _lastMoveX = facingX / facingLength;
+      _lastMoveZ = facingZ / facingLength;
+    }
+    return true;
+  }
 
   /// Orders the nearest active blue-side roamer to investigate a world point.
   /// Invalid terrain, water, walls and blocked interiors are rejected so the
@@ -610,11 +647,12 @@ class MobaMatchSimulation {
     _playerPower = 1;
     _playerLevel = 1;
     _nextMinionId = 0;
-    _playerPosition = _spawnPosition ??
-        MobaPoint(
-          _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
-          MobaTeam.blue.homeZ,
-        );
+    _playerSpawnPosition = MobaPoint(
+      _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
+      MobaTeam.blue.homeZ,
+    );
+    // Test/preview overrides affect only the initial pose, not team respawn.
+    _playerPosition = _spawnPosition ?? _playerSpawnPosition;
     _winner = null;
     _lastMoveX = 0;
     _lastMoveZ = 1;
@@ -794,6 +832,7 @@ class MobaMatchSimulation {
     double moveZ = 0,
     bool basicAttack = false,
     bool castSkill = false,
+    bool playerPhysicsDriven = false,
   }) {
     if (_winner != null || !frameDelta.isFinite || frameDelta <= 0) return;
     final safeDelta = frameDelta.clamp(0.0, 0.25).toDouble();
@@ -820,6 +859,7 @@ class MobaMatchSimulation {
         moveZ: normalizedZ,
         basicAttack: basicAttack,
         castSkill: castSkill,
+        playerPhysicsDriven: playerPhysicsDriven,
       );
       _accumulator -= _fixedStep;
       steps++;
@@ -833,6 +873,7 @@ class MobaMatchSimulation {
     required double moveZ,
     required bool basicAttack,
     required bool castSkill,
+    required bool playerPhysicsDriven,
   }) {
     if (_teamPingSeconds > 0) {
       _teamPingSeconds = math.max(0, _teamPingSeconds - dt);
@@ -852,12 +893,19 @@ class MobaMatchSimulation {
     final wasRespawning = _playerRespawn > 0;
     _playerRespawn = math.max(0, _playerRespawn - dt);
     if (wasRespawning && _playerRespawn <= 0) {
+      // Respawn is a transition, not an instant reset on the death frame.
       _playerHealth = _playerMaxHealth;
+      _playerPosition = _playerSpawnPosition;
+      _playerShieldTime = 1.75;
+      _selectedTargetKey = null;
+      _playerMoving = false;
     }
 
     if (_playerRespawn <= 0) {
-      _playerMoving = moveX.abs() >= 0.06 || moveZ.abs() >= 0.06;
-      _movePlayer(moveX, moveZ, dt);
+      if (!playerPhysicsDriven) {
+        _playerMoving = moveX.abs() >= 0.06 || moveZ.abs() >= 0.06;
+        _movePlayer(moveX, moveZ, dt);
+      }
       if (basicAttack && _playerAttackCooldown <= 0) _playerAttack();
       if (castSkill && _playerSkillCooldown <= 0) _castHeroSkill();
     }
@@ -1754,6 +1802,7 @@ class MobaMatchSimulation {
   double _xpThreshold(int level) => 220 + (level - 1) * 85.0;
 
   void _damagePlayer(double damage) {
+    if (_playerRespawn > 0 || !damage.isFinite || damage <= 0) return;
     final mitigation = _playerShieldTime > 0 ? 0.58 : 1.0;
     final objectiveMultiplier =
         _objectiveDamageMultiplier(MobaTeam.red);
@@ -1763,11 +1812,12 @@ class MobaMatchSimulation {
     );
     if (_playerHealth <= 0) {
       _playerHealth = 0;
-      _playerRespawn = 5;
-      _playerPosition = MobaPoint(
-        _laneX(heroId.assignedLane, MobaTeam.blue.homeZ),
-        MobaTeam.blue.homeZ,
-      );
+      _playerRespawn = 5.0;
+      _playerMoving = false;
+      _selectedTargetKey = null;
+      _playerAttackPulseSeconds = 0;
+      _playerHitConfirmSeconds = 0;
+      // Keep the defeat position visible until the countdown is complete.
     }
   }
 
