@@ -336,11 +336,11 @@ def build_terrain_glb(output: Path) -> None:
     normals: list[float] = []
     texcoords: list[float] = []
     groups: dict[str, list[int]] = {
-        "grass": [], "moss": [], "soil": [], "rock": [], "water": [],
+        "grass": [], "moss": [], "asphalt": [], "concrete": [], "water": [],
         "stone": [], "accent_blue": [], "accent_gold": [],
     }
     material_names = [
-        "grass", "moss", "soil", "rock", "water",
+        "grass", "moss", "asphalt", "concrete", "water",
         "stone", "accent_blue", "accent_gold",
     ]
     vertex_rows = GRID_X + 1
@@ -410,10 +410,12 @@ def build_terrain_glb(output: Path) -> None:
                 for i in range(len(path) - 1)
             )
 
-            if lane_dist < 4.8 or access_dist < 3.0:
-                material = "soil"
+            if lane_dist <= 4.8 or access_dist <= 3.0:
+                material = "asphalt"
+            elif lane_dist <= 7.4 or access_dist <= 4.4:
+                material = "concrete"
             elif river_distance < river_width + 2.8:
-                material = "rock"
+                material = "concrete"
             elif (
                 math.sin(cx * 0.11 - cz * 0.17) + math.cos(cx * 0.19 + cz * 0.13) < -0.55
             ):
@@ -470,10 +472,10 @@ def build_terrain_glb(output: Path) -> None:
             add_up_triangle("water", water_indices[0], water_indices[1], prev[1])
         previous["water"] = tuple(water_indices)
 
-        # Moss and soil each form two strips, one on either side of the channel.
+        # Moss and concrete each form two strips, one on either side of the channel.
         bands = (
             ("moss", half_width * 0.70, half_width * 0.92),
-            ("soil", half_width * 0.92, half_width + 0.82),
+            ("concrete", half_width * 0.92, half_width + 0.82),
         )
         for group_name, inner, outer in bands:
             current_indices = []
@@ -579,7 +581,7 @@ def build_terrain_glb(output: Path) -> None:
     )
 
     primitive_materials = {
-        "grass": 0, "moss": 1, "soil": 2, "rock": 3, "water": 4,
+        "grass": 0, "moss": 1, "asphalt": 2, "concrete": 3, "water": 4,
         "stone": 5, "accent_blue": 6, "accent_gold": 7,
     }
     primitives = []
@@ -606,7 +608,7 @@ def build_terrain_glb(output: Path) -> None:
     materials: list[dict] = []
     sampler = {"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}
 
-    for material_name in ("grass", "moss", "soil", "rock"):
+    for material_name in ("grass", "moss", "asphalt", "concrete"):
         albedo_path = TERRAIN_SOURCE / f"{material_name}_albedo.png"
         normal_path = TERRAIN_SOURCE / f"{material_name}_normal.png"
         if not albedo_path.is_file() or not normal_path.is_file():
@@ -698,7 +700,9 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "224x188 irregular six-district battlefield with three combat corridors, a meandering canal, five bridges, six enterable interiors and CC0 urban/park assets",
+            "layout": "224x188 irregular six-district city battlefield with one continuous height-following terrain mesh, baked asphalt corridors, concrete sidewalks, a meandering canal, five bridges, six enterable interiors and CC0 city/park dressing",
+            "roadSurface": "continuous-mesh",
+            "roadGeometry": "height-following asphalt corridors and concrete sidewalk bands; no independent road tile slabs",
             "mapShape": "irregular-six-district-polygon",
             "laneCount": 3,
             "bridgeCount": 5,
@@ -773,8 +777,8 @@ def main() -> None:
         (output_nature / f"{name}.glb").stat().st_size for name in models
     )
     print(
-        "Prepared offline world: 1 organic terrain GLB, 4 CC0 nature GLBs, "
-        f"5 terrain material groups, {total_bytes:,} bytes."
+        "Prepared offline world: one continuous terrain/road mesh, 4 CC0 nature GLBs, "
+        f"asphalt/concrete transitions, 5 terrain material groups, {total_bytes:,} bytes."
     )
 
 
