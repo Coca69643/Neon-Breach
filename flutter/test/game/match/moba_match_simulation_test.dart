@@ -208,6 +208,41 @@ void main() {
       expect(simulation.snapshot.playerSpawnShieldSeconds, greaterThan(0));
     });
 
+    test('attacks turn the hero toward the target and hold that facing through the strike', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.lyra,
+        spawnPosition: const MobaPoint(-3.0, 65.0),
+      );
+      simulation.cyclePlayerTarget();
+
+      simulation.step(
+        1 / 60,
+        moveX: 0,
+        moveZ: -1,
+        basicAttack: true,
+        externalPlayerMovement: true,
+      );
+
+      expect(simulation.snapshot.playerFacingX, greaterThan(0.8));
+      expect(simulation.snapshot.playerFacingZ.abs(), lessThan(0.35));
+
+      for (var frame = 0; frame < 10; frame++) {
+        simulation.step(
+          1 / 60,
+          moveX: 0,
+          moveZ: -1,
+          externalPlayerMovement: true,
+        );
+      }
+
+      expect(
+        simulation.snapshot.playerFacingX,
+        greaterThan(0.8),
+        reason: 'movement input must not overwrite target-facing during the strike',
+      );
+      expect(simulation.snapshot.playerFacingZ.abs(), lessThan(0.35));
+    });
+
     test('external physics position disables duplicate logical movement', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
       final start = simulation.snapshot.playerPosition;
