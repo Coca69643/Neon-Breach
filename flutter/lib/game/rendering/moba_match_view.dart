@@ -2,8 +2,8 @@ import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
-import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:flutter_scene/physics.dart' as physics;
+import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:flutter_scene_rapier/flutter_scene_rapier.dart';
 import 'package:vector_math/vector_math.dart' as vm;
 
