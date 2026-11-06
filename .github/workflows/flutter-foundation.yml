@@ -132,6 +132,17 @@ jobs:
             flutter/Project-Arena-1.7.10-Changelog.txt
           if-no-files-found: error
           retention-days: 30
+      - name: Upload ARM64 test APK
+        if: github.ref != 'refs/heads/main'
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-arena-1.7.10-arm64-test
+          path: |
+            flutter/Project-Arena-1.7.10-arm64.apk
+            flutter/Project-Arena-1.7.10-arm64.apk.sha256
+            flutter/Project-Arena-1.7.10-Changelog.txt
+          if-no-files-found: error
+          retention-days: 30
 
 
   publish-release:
