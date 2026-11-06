@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
+import '../arena_hero_catalog.dart';
 import '../match/moba_match_simulation.dart';
 import '../physics/arena_physics_runtime.dart';
 import '../world/arena_world_catalog.dart';
@@ -55,6 +56,7 @@ class _AmbientNpc {
 
 class _MobaMatchViewState extends State<MobaMatchView> {
   static const double _worldScale = ArenaWorldCatalog.worldScale;
+  static const double _cameraFollowDistance = 10.8;
   static final RingGeometry _teamRingGeometry = RingGeometry(
     innerRadius: 0.82,
     outerRadius: 1.0,
@@ -268,15 +270,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
     final horizontalDistance =
-        9.4 * math.cos(_cameraPitch) * _worldScale;
+        _cameraFollowDistance * math.cos(_cameraPitch) * _worldScale;
     final ground = _groundHeight(snapshot.playerPosition) * _worldScale;
 
     _cameraX = x - forwardX * horizontalDistance;
-    _cameraY = ground + (1.25 + 9.4 * math.sin(_cameraPitch)) * _worldScale;
+    _cameraY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     _cameraZ = z - forwardZ * horizontalDistance;
     _lookX = x + forwardX * 3.0 * _worldScale;
     _lookY = ground + 1.2 * _worldScale;
-    _lookZ = z + forwardZ * 3.0;
+    _lookZ = z + forwardZ * 3.6 * _worldScale
   }
 
   void _advanceCameraRig(MobaMatchSnapshot snapshot, double deltaSeconds) {
@@ -285,16 +287,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
     final horizontalDistance =
-        9.4 * math.cos(_cameraPitch) * _worldScale;
+        _cameraFollowDistance * math.cos(_cameraPitch) * _worldScale;
     final ground = _groundHeight(snapshot.playerPosition) * _worldScale;
 
     // Camera yaw/pitch are controlled only by the right-side drag zone.
     final desiredX = x - forwardX * horizontalDistance;
-    final desiredY = ground + (1.25 + 9.4 * math.sin(_cameraPitch)) * _worldScale;
+    final desiredY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     final desiredZ = z - forwardZ * horizontalDistance;
     final desiredLookX = x + forwardX * 3.0 * _worldScale;
     final desiredLookY = ground + 1.2 * _worldScale;
-    final desiredLookZ = z + forwardZ * 3.0;
+    final desiredLookZ = z + forwardZ * 3.6 * _worldScale
     final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
     _cameraX += (desiredX - _cameraX) * blend;
@@ -703,7 +705,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           },
           position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
           rotation: _playerFacing(snapshot),
-          scale: vm.Vector3.all(1.0),
+          scale: vm.Vector3.all(
+            ArenaHeroCatalog.byId(snapshot.heroId.name)?.matchScale ?? 0.76,
+          ),
           animations: [
             SceneAnimationSpec(
               snapshot.playerAttackSeconds > 0
@@ -1329,20 +1333,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 child: const SizedBox.expand(),
               ),
             ),
-            Positioned(
-              right: side + 42,
-              top: viewport.maxHeight * 0.43,
-              child: const IgnorePointer(
-                child: Opacity(
-                  opacity: 0.28,
-                  child: Icon(
-                    Icons.threesixty,
-                    size: 24,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-            ),
             const IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -1390,25 +1380,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                             snapshot.redCoreMaxHealth,
                         blueTowers: snapshot.blueTowersAlive,
                         redTowers: snapshot.redTowersAlive,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 64,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: _ObjectiveHud(
+                        districts: snapshot.districts,
                         objective: snapshot.centralObjective,
                       ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 96,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: _DistrictHud(districts: snapshot.districts),
                     ),
                   ),
                   if (nearbyNpc != null)
@@ -1478,9 +1452,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     ),
                   ),
                   Positioned(
-                    left: compact ? 132 : 150,
-                    right: compact ? 182 : 208,
-                    bottom: compact ? 12 : 16,
+                    left: side,
+                    bottom: compact ? 130 : 140,
                     child: _PlayerHud(snapshot: snapshot),
                   ),
                   Positioned(
@@ -1491,7 +1464,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         _TargetLockButton(
-                          size: compact ? 48 : 52,
+                          size: compact ? 44 : 48,
                           onTap: () {
                             widget.simulation.cyclePlayerTarget();
                             setState(() => _snapshot = widget.simulation.snapshot);
@@ -1501,7 +1474,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         _MatchActionButton(
                           label: 'SKILL',
                           icon: Icons.auto_awesome,
-                          size: compact ? 60 : 68,
+                          size: compact ? 56 : 62,
                           secondary: true,
                           cooldown: snapshot.playerSkillCooldown,
                           onPress: () => setState(() => _skillHeld = true),
@@ -1511,7 +1484,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         _MatchActionButton(
                           label: 'ATAQUE',
                           icon: Icons.flash_on,
-                          size: compact ? 72 : 82,
+                          size: compact ? 68 : 74,
                           onPress: () =>
                               setState(() => _basicAttackHeld = true),
                           onRelease: () =>
@@ -1601,19 +1574,43 @@ class _CoreHud extends StatelessWidget {
     required this.redHealth,
     required this.blueTowers,
     required this.redTowers,
+    required this.districts,
+    required this.objective,
   });
 
   final double blueHealth;
   final double redHealth;
   final int blueTowers;
   final int redTowers;
+  final List<MobaDistrictSnapshot> districts;
+  final MobaObjectiveSnapshot objective;
 
   @override
   Widget build(BuildContext context) {
+    final blueDistricts =
+        districts.where((item) => item.owner == MobaTeam.blue).length;
+    final redDistricts =
+        districts.where((item) => item.owner == MobaTeam.red).length;
+    final neutralDistricts = districts.length - blueDistricts - redDistricts;
+    final status = objective.contested
+        ? 'DISPUTADO'
+        : objective.owner == MobaTeam.blue
+            ? 'AZUL'
+            : objective.owner == MobaTeam.red
+                ? 'VERMELHO'
+                : 'NEUTRO';
+    final statusColor = objective.contested
+        ? const Color(0xFFFFD68E)
+        : objective.owner == MobaTeam.blue
+            ? const Color(0xFF83C9F0)
+            : objective.owner == MobaTeam.red
+                ? const Color(0xFFEF9298)
+                : const Color(0xFFC4CED1);
+
     return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: SizedBox(
-        width: 232,
+        width: 246,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1623,164 +1620,72 @@ class _CoreHud extends StatelessWidget {
                   blueTowers.toString(),
                   style: const TextStyle(
                     color: Color(0xFF9ED4F4),
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Expanded(child: _CoreBar(value: blueHealth, blue: true)),
-                const SizedBox(width: 8),
-                Expanded(child: _CoreBar(value: redHealth, blue: false)),
                 const SizedBox(width: 6),
+                Expanded(child: _CoreBar(value: redHealth, blue: false)),
+                const SizedBox(width: 5),
                 Text(
                   redTowers.toString(),
                   style: const TextStyle(
                     color: Color(0xFFFFA4A4),
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 5),
-            const Text(
-              'TORRES  •  NÚCLEOS',
-              style: TextStyle(
-                color: Color(0xFFCAD9DF),
-                fontSize: 8,
-                letterSpacing: 1.45,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ObjectiveHud extends StatelessWidget {
-  const _ObjectiveHud({required this.objective});
-
-  final MobaObjectiveSnapshot objective;
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (objective.control.abs() / 100)
-        .clamp(0.0, 1.0)
-        .toDouble();
-    final blueControl = objective.control >= 0;
-    final owner = objective.owner;
-    final Color controlColor = owner == MobaTeam.blue
-        ? const Color(0xFF6BBDEB)
-        : owner == MobaTeam.red
-            ? const Color(0xFFED7A80)
-            : blueControl
-                ? const Color(0xFF6BBDEB)
-                : const Color(0xFFED7A80);
-    final String status = objective.contested
-        ? 'DISPUTADO'
-        : owner == MobaTeam.blue
-            ? 'AZUL  •  +12% DANO'
-            : owner == MobaTeam.red
-                ? 'VERMELHO  •  +12% DANO'
-                : progress <= 0.001
-                    ? 'NEUTRO'
-                    : blueControl
-                        ? 'CAPTURANDO AZUL'
-                        : 'CAPTURANDO VERMELHO';
-
-    return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      child: SizedBox(
-        width: 184,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
             Row(
               children: [
-                const Icon(
-                  Icons.radar_rounded,
-                  color: Color(0xFFD6E8EA),
-                  size: 11,
-                ),
-                const SizedBox(width: 5),
                 const Text(
-                  'REATOR CENTRAL',
+                  'SETORES',
                   style: TextStyle(
-                    color: Color(0xFFE4EFF0),
+                    color: Color(0xFFC6D3D6),
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.15,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '$blueDistricts : $redDistricts : $neutralDistricts',
+                  style: const TextStyle(
+                    color: Color(0xFFE7EEEE),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
                 const Spacer(),
+                const Text(
+                  'REATOR',
+                  style: TextStyle(
+                    color: Color(0xFFC6D3D6),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.55,
+                  ),
+                ),
+                const SizedBox(width: 4),
                 Text(
                   status,
                   style: TextStyle(
-                    color: objective.contested
-                        ? const Color(0xFFFFD68E)
-                        : controlColor,
+                    color: statusColor,
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
+                    letterSpacing: 0.35,
                   ),
                 ),
               ],
             ),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: SizedBox(
-                height: 4,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const ColoredBox(color: Color(0xFF26333D)),
-                    Align(
-                      alignment: blueControl
-                          ? Alignment.centerLeft
-                          : Alignment.centerRight,
-                      child: FractionallySizedBox(
-                        widthFactor: progress,
-                        child: ColoredBox(color: controlColor),
-                      ),
-                    ),
-                    if (objective.contested)
-                      const Center(
-                        child: SizedBox(
-                          width: 28,
-                          child: ColoredBox(color: Color(0xFFFFD68E)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
-            ),
           ],
         ),
       ),
-    );
-  }
-}
-
-class _DistrictHud extends StatelessWidget {
-  const _DistrictHud({required this.districts});
-  final List<MobaDistrictSnapshot> districts;
-
-  @override
-  Widget build(BuildContext context) {
-    final blue = districts.where((item) => item.owner == MobaTeam.blue).length;
-    final red = districts.where((item) => item.owner == MobaTeam.red).length;
-    final neutral = districts.length - blue - red;
-    return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      child: Row(mainAxisSize: MainAxisSize.min, children: [
-        const Icon(Icons.flag_outlined, size: 10, color: Color(0xFFD6E8EA)),
-        const SizedBox(width: 5),
-        Text('DISTRITOS  $blue AZUL  •  $red VERMELHO  •  $neutral LIVRE',
-          style: const TextStyle(color: Color(0xFFE4EFF0), fontSize: 8,
-            fontWeight: FontWeight.w900, letterSpacing: 0.55)),
-      ]),
     );
   }
 }
@@ -1835,71 +1740,62 @@ class _PlayerHud extends StatelessWidget {
     final hero = snapshot.heroId.name.toUpperCase();
 
     return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Text(
-                hero,
-                style: const TextStyle(
-                  color: Color(0xFFF1E4C9),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'NÍVEL ${snapshot.playerLevel}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Text(
-                '${snapshot.playerGold.floor()} G',
-                style: const TextStyle(
-                  color: Color(0xFFFFD68E),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          _Bar(value: health, color: const Color(0xFF69C98A), height: 7),
-          const SizedBox(height: 4),
-          _Bar(value: xp, color: const Color(0xFF62B8E8), height: 4),
-          if (snapshot.playerRespawnSeconds > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.close_rounded,
-                    color: Color(0xFFFF7777),
-                    size: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      child: SizedBox(
+        width: 164,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                Text(
+                  hero,
+                  style: const TextStyle(
+                    color: Color(0xFFF1E4C9),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ELIMINADO  •  RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
-                    style: const TextStyle(
-                      color: Color(0xFFFFA0A0),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.35,
-                    ),
+                ),
+                const Spacer(),
+                Text(
+                  'NV ${snapshot.playerLevel}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.45,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  '${snapshot.playerGold.floor()} G',
+                  style: const TextStyle(
+                    color: Color(0xFFFFD68E),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
-        ],
+            const SizedBox(height: 5),
+            _Bar(value: health, color: const Color(0xFF69C98A), height: 5),
+            const SizedBox(height: 3),
+            _Bar(value: xp, color: const Color(0xFF62B8E8), height: 2),
+            if (snapshot.playerRespawnSeconds > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
+                  style: const TextStyle(
+                    color: Color(0xFFFFA0A0),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -2230,8 +2126,8 @@ class _MiniMap extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (details) {
-          const mapWidth = 120.0;
-          const mapHeight = 76.0;
+          const mapWidth = 104.0;
+          const mapHeight = 64.0;
           final x = (details.localPosition.dx / mapWidth) *
                   (ArenaWorldCatalog.halfWidth * 2) -
               ArenaWorldCatalog.halfWidth;
@@ -2241,8 +2137,8 @@ class _MiniMap extends StatelessWidget {
           onPing(MobaPoint(x, z));
         },
         child: SizedBox(
-          width: 120,
-          height: 76,
+          width: 104,
+          height: 64,
           child: CustomPaint(painter: _MiniMapPainter(snapshot)),
         ),
       ),
