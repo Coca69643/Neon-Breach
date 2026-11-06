@@ -71,7 +71,7 @@ def main() -> None:
 
     legacy_workflow_path = REPOSITORY_ROOT / ".github" / "workflows" / "android.yml"
     legacy_workflow = legacy_workflow_path.read_text(encoding="utf-8")
-    legacy_job = legacy_workflow.split("jobs:\\n  build:", 1)
+    legacy_job = legacy_workflow.split("jobs:\n  build:", 1)
     require(len(legacy_job) == 2, "legacy Android job definition is missing.")
     legacy_job_header = legacy_job[1].split("steps:", 1)[0]
     require(
