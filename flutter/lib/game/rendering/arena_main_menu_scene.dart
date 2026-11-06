@@ -61,9 +61,9 @@ class ArenaMainMenuScene extends StatelessWidget {
               ),
             ),
             children: [
-              const SceneModel(
+              SceneModel(
                 'assets/world/arena_menu_hub.glb',
-                key: ValueKey('arena-grounded-command-tower'),
+                key: const ValueKey('arena-grounded-command-tower'),
                 name: 'project_arena_civic_command_tower',
               ),
               SceneModel(
