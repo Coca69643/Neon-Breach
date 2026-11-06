@@ -206,6 +206,40 @@ void main() {
       }
     });
 
+    test('surface profiles distinguish lanes, plazas, grass and interiors', () {
+      expect(
+        ArenaWorldCatalog.surfaceAt(-36, -60),
+        ArenaSurfaceType.asphalt,
+      );
+      expect(
+        ArenaWorldCatalog.surfaceAt(-50, -36),
+        ArenaSurfaceType.concrete,
+      );
+      expect(
+        ArenaWorldCatalog.surfaceAt(-86, 14),
+        ArenaSurfaceType.grass,
+      );
+      expect(
+        ArenaWorldCatalog.surfaceAt(-63, -38),
+        ArenaSurfaceType.interior,
+      );
+      expect(
+        ArenaWorldCatalog.movementSpeedMultiplierAt(-36, -60),
+        greaterThan(ArenaWorldCatalog.movementSpeedMultiplierAt(-86, 14)),
+      );
+    });
+
+    test('visible interior furniture has matching navigation blockers', () {
+      expect(ArenaWorldCatalog.interiorFurnitureFootprints, isNotEmpty);
+      for (final item in ArenaWorldCatalog.interiorFurnitureFootprints) {
+        expect(
+          ArenaWorldCatalog.isWalkable(item.$3, item.$4),
+          isFalse,
+          reason: '${item.$1} must not be traversable through',
+        );
+      }
+    });
+
     test('urban terrain height remains finite across the playable field', () {
       for (var x = -108.0; x <= 108.0; x += 4.0) {
         for (var z = -90.0; z <= 90.0; z += 4.0) {
