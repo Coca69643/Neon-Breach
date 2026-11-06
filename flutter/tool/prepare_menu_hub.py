@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Bake the original Project Arena floating-tower hub as one offline GLB."""
+"""Bake the original grounded Project Arena civic tower as one offline GLB."""
 from __future__ import annotations
 
 import json
