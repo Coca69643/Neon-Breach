@@ -68,6 +68,35 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     outerRadius: 3.55,
     segments: 40,
   );
+  static final RingGeometry _districtProgressGeometry = RingGeometry(
+    innerRadius: 2.42,
+    outerRadius: 2.68,
+    segments: 32,
+  );
+  static final RingGeometry _skillFeedbackGeometry = RingGeometry(
+    innerRadius: 0.82,
+    outerRadius: 1.08,
+    segments: 32,
+  );
+  static final RingGeometry _towerIdentityGeometry = RingGeometry(
+    innerRadius: 2.35,
+    outerRadius: 2.62,
+    segments: 28,
+  );
+  static final UnlitMaterial _lyraSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.28, 0.94, 0.78, 0.96);
+  static final UnlitMaterial _bastionSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.34, 0.72, 1.0, 0.98);
+  static final UnlitMaterial _kairoSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.86, 0.52, 1.0, 0.96);
+  static final UnlitMaterial _shieldMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.32, 0.78, 1.0, 0.86);
+  static final UnlitMaterial _attackFeedbackMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(1.0, 0.78, 0.35, 0.96);
+  static final UnlitMaterial _blueTowerMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.18, 0.62, 0.98, 0.94);
+  static final UnlitMaterial _redTowerMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.98, 0.25, 0.27, 0.94);
   static final UnlitMaterial _relayNeutralMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.82, 0.66, 0.36, 0.92);
   static final UnlitMaterial _relayBlueMaterial = UnlitMaterial()
@@ -179,6 +208,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   late final List<Widget> _staticSceneChildren = _buildStaticSceneChildren();
   double _moveX = 0;
   double _moveZ = 0;
+  double _locomotionRatio = 0;
   bool _basicAttackHeld = false;
   bool _skillHeld = false;
   bool _worldReady = false;
@@ -309,12 +339,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       castSkill: _skillHeld,
       externalPlayerMovement: physics != null,
     );
+    final dashRequest = widget.simulation.consumePhysicsDashRequest();
+    if (physics != null && dashRequest != null) {
+      physics.triggerDash(dashRequest.x, dashRequest.z);
+    }
     if (physics != null) {
       widget.simulation.setPhysicsMovementState(
         moving: physics.grounded && physics.horizontalSpeed > 0.15,
       );
     }
     final next = widget.simulation.snapshot;
+    _locomotionRatio = physics?.movementSpeedRatio ??
+        (next.playerMoving ? 1.0 : 0.0);
     if (physics != null) {
       // The only legal teleport is the explicit defeated -> respawn transition.
       if (previous.playerRespawnSeconds > 0 &&
@@ -563,29 +599,51 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ),
       ),
       for (final district in snapshot.districts)
+        ..._buildDistrictVisuals(district, snapshot.elapsedSeconds),
+      for (final tower in snapshot.towers)
+        if (tower.health > 0)
+          SceneMesh(
+            name: 'tower_identity_${tower.team.name}_${tower.lane.name}_${tower.tier}',
+            geometry: _towerIdentityGeometry,
+            material: tower.team == MobaTeam.blue
+                ? _blueTowerMaterial
+                : _redTowerMaterial,
+            position: _worldPosition(tower.position, heightOffset: 0.08),
+            scale: vm.Vector3.all(
+              0.72 + 0.28 * (tower.health / tower.maxHealth),
+            ),
+          ),
+      if (snapshot.playerSkillPulseSeconds > 0)
         SceneMesh(
-          name: 'district_control_${district.id}',
-          geometry: _relayRingGeometry,
-          material: district.contested
-              ? _relayContestedMaterial
-              : district.owner == MobaTeam.blue
-                  ? _relayBlueMaterial
-                  : district.owner == MobaTeam.red
-                      ? _relayRedMaterial
-                      : _relayNeutralMaterial,
-          position: vm.Vector3(
-            district.position.x,
-            _groundHeight(district.position) + 0.07,
-            district.position.z,
+          name: 'player_skill_feedback_${snapshot.heroId.name}',
+          geometry: _skillFeedbackGeometry,
+          material: switch (snapshot.heroId) {
+            MobaHeroId.lyra => _lyraSkillMaterial,
+            MobaHeroId.bastion => _bastionSkillMaterial,
+            MobaHeroId.kairo => _kairoSkillMaterial,
+          },
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.09),
+          scale: vm.Vector3.all(
+            0.72 + (1.0 - snapshot.playerSkillPulseSeconds / 0.82) * 1.05,
           ),
         ),
-      for (final district in snapshot.districts)
-        SceneModel(
-          'assets/world/city/interior_computer_screen.glb',
-          key: ValueKey('district-console-${district.id}'),
-          name: 'district-console-${district.id}',
-          position: _worldPosition(district.position, heightOffset: 0.08),
-          scale: vm.Vector3.all(1.25),
+      if (snapshot.playerSpawnShieldSeconds > 0)
+        SceneMesh(
+          name: 'player_shield_feedback',
+          geometry: _skillFeedbackGeometry,
+          material: _shieldMaterial,
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.12),
+          scale: vm.Vector3.all(1.55),
+        ),
+      if (snapshot.playerHitConfirmSeconds > 0)
+        SceneMesh(
+          name: 'player_hit_confirm_feedback',
+          geometry: _skillFeedbackGeometry,
+          material: _attackFeedbackMaterial,
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.16),
+          scale: vm.Vector3.all(
+            0.78 + (1.0 - snapshot.playerHitConfirmSeconds / 0.22) * 0.55,
+          ),
         ),
       for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
@@ -627,10 +685,67 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               loop: snapshot.playerAttackSeconds <= 0,
               speed: snapshot.playerAttackSeconds > 0
                   ? 1.2
-                  : (snapshot.playerMoving ? 1.08 : 0.78),
+                  : (snapshot.playerMoving
+                      ? 0.82 + _locomotionRatio * 0.48
+                      : 0.78),
             ),
           ],
         ),
+    ];
+  }
+
+  List<Widget> _buildDistrictVisuals(
+    MobaDistrictSnapshot district,
+    double elapsedSeconds,
+  ) {
+    final progress = (district.control.abs() / 100.0)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final pulse = district.contested
+        ? 0.07 * math.sin(elapsedSeconds * 7.5)
+        : 0.0;
+    final material = district.contested
+        ? _relayContestedMaterial
+        : district.owner == MobaTeam.blue
+            ? _relayBlueMaterial
+            : district.owner == MobaTeam.red
+                ? _relayRedMaterial
+                : (district.control > 0
+                    ? _relayBlueMaterial
+                    : (district.control < 0
+                        ? _relayRedMaterial
+                        : _relayNeutralMaterial));
+    final position = vm.Vector3(
+      district.position.x,
+      _groundHeight(district.position) + 0.07,
+      district.position.z,
+    );
+    return [
+      SceneMesh(
+        name: 'district_control_${district.id}',
+        geometry: _relayRingGeometry,
+        material: material,
+        position: position,
+        scale: vm.Vector3.all(0.86 + progress * 0.22 + pulse),
+      ),
+      SceneMesh(
+        name: 'district_capture_progress_${district.id}',
+        geometry: _districtProgressGeometry,
+        material: material,
+        position: vm.Vector3(
+          district.position.x,
+          _groundHeight(district.position) + 0.085,
+          district.position.z,
+        ),
+        scale: vm.Vector3.all(0.76 + progress * 0.32 + pulse),
+      ),
+      SceneModel(
+        'assets/world/city/interior_computer_screen.glb',
+        key: ValueKey('district-console-${district.id}'),
+        name: 'district-console-${district.id}',
+        position: _worldPosition(district.position, heightOffset: 0.08),
+        scale: vm.Vector3.all(1.25),
+      ),
     ];
   }
 
@@ -1117,9 +1232,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               cameraBuilder: (elapsed) {
                 // Smoothed trailing perspective with a restrained motion
                 // response. The battlefield overview remains in the minimap.
+                final gait = _locomotionRatio.clamp(0.0, 1.25).toDouble();
                 final cameraBob = math.sin(
-                  elapsed.inMicroseconds / 1000000.0 * 1.35,
-                ) * 0.035 * _worldScale;
+                  elapsed.inMicroseconds / 1000000.0 * (2.6 + gait * 3.2),
+                ) * 0.028 * gait * _worldScale;
                 return PerspectiveCamera(
                   fovRadiansY: 49 * math.pi / 180,
                   position: vm.Vector3(
