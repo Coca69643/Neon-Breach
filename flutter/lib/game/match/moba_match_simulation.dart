@@ -547,6 +547,26 @@ class MobaMatchSimulation {
     return request;
   }
 
+  /// Applies Kairo's dash contact only at the final Rapier-resolved position.
+  void resolvePhysicsDashAt(MobaPoint resolvedPosition) {
+    if (heroId != MobaHeroId.kairo ||
+        !resolvedPosition.x.isFinite ||
+        !resolvedPosition.z.isFinite ||
+        !resolvedPosition.elevation.isFinite ||
+        _winner != null ||
+        _playerHealth <= 0 ||
+        _playerRespawn > 0) {
+      return;
+    }
+    _playerPosition = resolvedPosition;
+    final target = _nearestBot(
+      resolvedPosition,
+      MobaTeam.red,
+      maxRange: 3.0,
+    );
+    if (target != null) _damageBot(target, MobaTeam.blue, 72);
+  }
+
   int get activeMinionCount => _minions.where((unit) => unit.alive).length;
   int get activeBotCount => _bots.where((bot) => bot.alive).length;
   int get totalTowerCount => _towers.length;
@@ -1149,12 +1169,8 @@ class MobaMatchSimulation {
             _playerPosition.z + dashZ,
             elevation: _playerPosition.elevation,
           );
-          final target = _nearestBot(
-            endpoint,
-            MobaTeam.red,
-            maxRange: 3.0,
-          );
-          if (target != null) _damageBot(target, MobaTeam.blue, 72);
+          // Hit resolution is deferred until Rapier reports the actual
+          // collision-resolved dash endpoint.
         } else {
           _tryMovePlayer(dashX, dashZ, allowAxisSlide: false);
           final target = _nearestBot(
