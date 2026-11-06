@@ -279,10 +279,12 @@ class ArenaStateMachine extends ChangeNotifier {
       );
     }
 
-    if (event is AppSuspended && current.phase == ArenaPhase.inMatch) {
+    if (event is AppSuspended &&
+        (current.phase == ArenaPhase.inMatch ||
+            current.phase == ArenaPhase.matchLoading)) {
       return current.copyWith(
         phase: ArenaPhase.paused,
-        resumePhase: ArenaPhase.inMatch,
+        resumePhase: current.phase,
         pauseOrigin: PauseOrigin.lifecycle,
       );
     }
