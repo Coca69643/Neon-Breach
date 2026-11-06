@@ -305,7 +305,7 @@ void main() {
       expect(
         after.position.distanceTo(target),
         lessThan(beforeDistance - 1.0),
-        reason: 'the selected roamer must move toward the player's map command',
+        reason: 'the selected roamer must move toward the tactical map command',
       );
       expect(
         simulation.snapshot.teamPingTarget,
