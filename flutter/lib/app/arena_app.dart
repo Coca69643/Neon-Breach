@@ -517,11 +517,14 @@ class _ArenaScreen extends StatelessWidget {
   }
 
   Widget _paused() {
+    final loading = snapshot.resumePhase == ArenaPhase.matchLoading;
     return _StatusView(
-      eyebrow: 'PAUSA',
-      title: 'Partida pausada',
-      description: 'O estado da partida foi preservado.',
-      actionLabel: 'RETOMAR',
+      eyebrow: loading ? 'CARREGAMENTO PAUSADO' : 'PAUSA',
+      title: loading ? 'Preparação interrompida' : 'Partida pausada',
+      description: loading
+          ? 'O carregamento do campo será retomado quando você continuar.'
+          : 'O estado da partida foi preservado enquanto o aplicativo estava ativo.',
+      actionLabel: loading ? 'CONTINUAR' : 'RETOMAR',
       onAction: () => onEvent(const ResumeMatch()),
       secondaryLabel: 'MENU PRINCIPAL',
       onSecondary: () => onEvent(const ReturnToMenu()),
