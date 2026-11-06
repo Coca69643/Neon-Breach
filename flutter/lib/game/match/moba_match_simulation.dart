@@ -788,12 +788,16 @@ class MobaMatchSimulation {
     return null;
   }
 
+  /// Advances gameplay systems. Set [externalPlayerMovement] when a physics
+  /// runtime owns the hero transform; the simulation then consumes that
+  /// position but never applies a second movement model.
   void step(
     double frameDelta, {
     double moveX = 0,
     double moveZ = 0,
     bool basicAttack = false,
     bool castSkill = false,
+    bool externalPlayerMovement = false,
   }) {
     if (_winner != null || !frameDelta.isFinite || frameDelta <= 0) return;
     final safeDelta = frameDelta.clamp(0.0, 0.25).toDouble();
@@ -820,6 +824,7 @@ class MobaMatchSimulation {
         moveZ: normalizedZ,
         basicAttack: basicAttack,
         castSkill: castSkill,
+        externalPlayerMovement: externalPlayerMovement,
       );
       _accumulator -= _fixedStep;
       steps++;
@@ -833,6 +838,7 @@ class MobaMatchSimulation {
     required double moveZ,
     required bool basicAttack,
     required bool castSkill,
+    required bool externalPlayerMovement,
   }) {
     if (_teamPingSeconds > 0) {
       _teamPingSeconds = math.max(0, _teamPingSeconds - dt);
@@ -868,7 +874,17 @@ class MobaMatchSimulation {
 
     if (_playerRespawn <= 0) {
       _playerMoving = moveX.abs() >= 0.06 || moveZ.abs() >= 0.06;
-      _movePlayer(moveX, moveZ, dt);
+      if (externalPlayerMovement) {
+        if (_playerMoving) {
+          final length = math.sqrt(moveX * moveX + moveZ * moveZ);
+          if (length > 1e-6) {
+            _lastMoveX = moveX / length;
+            _lastMoveZ = moveZ / length;
+          }
+        }
+      } else {
+        _movePlayer(moveX, moveZ, dt);
+      }
       if (basicAttack && _playerAttackCooldown <= 0) _playerAttack();
       if (castSkill && _playerSkillCooldown <= 0) _castHeroSkill();
     }
@@ -879,6 +895,24 @@ class MobaMatchSimulation {
     _updateCentralObjective(dt);
     _updateTowers(dt);
     _checkWinner();
+  }
+
+  /// Receives the Rapier capsule's grounded/falling world position.
+  /// Falling out of the playable world is a real defeat, not an arbitrary
+  /// coordinate reset; the normal respawn timer then handles the return.
+  void applyPhysicsPlayerPosition(MobaPoint position) {
+    if (_winner != null || _playerRespawn > 0 || _playerHealth <= 0) return;
+    if (!position.x.isFinite ||
+        !position.z.isFinite ||
+        !position.elevation.isFinite) {
+      return;
+    }
+    _playerPosition = position;
+    if (!ArenaWorldCatalog.contains(position.x, position.z) ||
+        position.elevation < -2.2) {
+      _damagePlayer(_playerHealth);
+      _playerMoving = false;
+    }
   }
 
   void _movePlayer(double x, double z, double dt) {
