@@ -1064,6 +1064,7 @@ class MobaMatchSimulation {
     final selectedTarget = _selectedTargetSnapshot();
     if (selectedTarget != null &&
         _playerPosition.distanceTo(selectedTarget.position) <= heroId.basicRange) {
+      _facePlayerToward(selectedTarget.position);
       if (selectedTarget.kind == 'HERO') {
         for (final bot in _bots) {
           if ('bot:${bot.id}' != selectedTarget.id) continue;
@@ -1089,6 +1090,7 @@ class MobaMatchSimulation {
       maxRange: heroId.basicRange,
     );
     if (enemyBot != null) {
+      _facePlayerToward(enemyBot.position);
       _damageBot(enemyBot, MobaTeam.blue, damage);
       _confirmPlayerHit();
       return;
@@ -1096,6 +1098,7 @@ class MobaMatchSimulation {
 
     final cover = _nearestCover(_playerPosition, heroId.basicRange);
     if (cover != null) {
+      _facePlayerToward(cover.position);
       cover.health = math.max(0, cover.health - damage);
       if (!cover.alive) _playerGold += 28;
       _confirmPlayerHit();
@@ -1109,6 +1112,7 @@ class MobaMatchSimulation {
       maxRange: heroId.basicRange,
     );
     if (minion != null) {
+      _facePlayerToward(minion.position);
       _damageMinion(minion, MobaTeam.blue, damage);
       _confirmPlayerHit();
       return;
@@ -1118,6 +1122,7 @@ class MobaMatchSimulation {
     if (tower != null &&
         _playerPosition.distanceTo(tower.position) <= heroId.basicRange &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
+      _facePlayerToward(tower.position);
       _damageTower(tower, MobaTeam.blue, damage);
       _confirmPlayerHit();
       return;
@@ -1125,9 +1130,19 @@ class MobaMatchSimulation {
 
     if (_laneOpen(MobaTeam.red, lane) &&
         _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= heroId.basicRange + 0.8) {
+      _facePlayerToward(_corePosition(MobaTeam.red));
       _damageCore(MobaTeam.red, damage, lane);
       _confirmPlayerHit();
     }
+  }
+
+  void _facePlayerToward(MobaPoint target) {
+    final dx = target.x - _playerPosition.x;
+    final dz = target.z - _playerPosition.z;
+    final length = math.sqrt(dx * dx + dz * dz);
+    if (length <= 1e-4) return;
+    _lastMoveX = dx / length;
+    _lastMoveZ = dz / length;
   }
 
   void _confirmPlayerHit() {
@@ -1152,7 +1167,10 @@ class MobaMatchSimulation {
           MobaTeam.red,
           maxRange: 3.4,
         );
-        if (target != null) _damageBot(target, MobaTeam.blue, 68);
+        if (target != null) {
+          _facePlayerToward(target.position);
+          _damageBot(target, MobaTeam.blue, 68);
+        }
       case MobaHeroId.kairo:
         final length = math.sqrt(_lastMoveX * _lastMoveX + _lastMoveZ * _lastMoveZ);
         final dx = length > 0 ? _lastMoveX / length : 0;
