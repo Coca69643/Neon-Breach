@@ -211,7 +211,7 @@ void main() {
     test('Bastion shield strike exposes the heavy punch animation window', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
-      simulation.step(1 / 60, castSkill: true);
+      simulation.step(1 / 30, castSkill: true);
 
       expect(simulation.snapshot.playerSkillPulseSeconds, greaterThan(0.8));
       expect(simulation.snapshot.playerAttackSeconds, greaterThan(0.4));
@@ -225,7 +225,7 @@ void main() {
       simulation.cyclePlayerTarget();
 
       simulation.step(
-        1 / 60,
+        1 / 30,
         moveX: 0,
         moveZ: -1,
         basicAttack: true,
@@ -237,7 +237,7 @@ void main() {
 
       for (var frame = 0; frame < 10; frame++) {
         simulation.step(
-          1 / 60,
+          1 / 30,
           moveX: 0,
           moveZ: -1,
           externalPlayerMovement: true,
