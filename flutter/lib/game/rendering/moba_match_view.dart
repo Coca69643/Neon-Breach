@@ -517,14 +517,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ),
       );
 
-  static const _bridges = <(String, double, double)>[
-    ('west_outer', -72.0, -2.8),
-    ('west', -36.0, 0.8),
-    ('central', 0.0, 0.5),
-    ('east', 36.0, -0.84),
-    ('east_outer', 72.0, 2.28),
-  ];
-
   List<Widget> _buildStaticSceneChildren() {
     return <Widget>[
       SceneModel(
@@ -547,36 +539,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ..._buildVerticalAccess(access),
       for (final block in ArenaWorldCatalog.commercialBlocks)
         _buildCommercialBlock(block),
-      // The three tactical avenues remain the combat backbone.
-      for (final laneX in const [-36.0, 0.0, 36.0])
-        for (final roadZ in const [-60.0, -40.0, -20.0, 20.0, 40.0, 60.0])
-          SceneModel(
-            'assets/world/city/road_straight.glb',
-            key: ValueKey('street-$laneX-$roadZ'),
-            name: 'urban_avenue_${laneX}_$roadZ',
-            position: _worldPosition(MobaPoint(laneX, roadZ)),
-            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi / 2),
-            scale: vm.Vector3(12.0, 1.0, 20.0),
-          ),
-      // Cross-streets join side districts to the main avenues.
-      for (final roadZ in const [-52.0, -28.0, 28.0, 52.0])
-        for (final roadX in const [-88.0, -58.0, -28.0, 28.0, 58.0, 88.0])
-          SceneModel(
-            'assets/world/city/road_straight.glb',
-            key: ValueKey('district-street-$roadX-$roadZ'),
-            name: 'district_connector_${roadX}_$roadZ',
-            position: _worldPosition(MobaPoint(roadX, roadZ)),
-            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), 0),
-            scale: vm.Vector3(12.0, 1.0, 20.0),
-          ),
-      for (final bridge in _bridges)
-        SceneModel(
-          'assets/world/city/road_crossroad.glb',
-          key: ValueKey('crossroad-${bridge.$1}'),
-          name: 'canal_crossing_${bridge.$1}',
-          position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
-          scale: vm.Vector3(9.0, 1.0, 10.0),
-        ),
+      // Continuous streets, sidewalks and bridges live in arena_terrain.glb.
+      // Independent scaled road tiles used to create overlapping slabs/seams.
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
       SceneModel(
@@ -597,18 +561,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ),
         scale: vm.Vector3.all(2.1),
       ),
-      for (final bridge in _bridges)
-        SceneModel(
-          'assets/world/city/road_bridge.glb',
-          key: ValueKey('match-bridge-${bridge.$1}'),
-          name: 'district_bridge_${bridge.$1}',
-          position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
-          rotation: vm.Quaternion.axisAngle(
-            vm.Vector3(0, 1, 0),
-            math.pi / 2,
-          ),
-          scale: vm.Vector3(2.2, 1.0, 1.8),
-        ),
     ];
   }
 
