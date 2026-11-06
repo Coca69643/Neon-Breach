@@ -77,11 +77,12 @@ abstract final class ArenaWorldCatalog {
     ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
+  // Four distinct silhouettes establish recognizable blocks at each corner.
   static const commercialBlocks = <(String, double, double, double)>[
-    ('commercial_building_a.glb', -77.0, -52.0, 6.5),
+    ('commercial_building_b.glb', -77.0, -52.0, 6.5),
     ('commercial_building_c.glb', 77.0, -52.0, 6.5),
-    ('commercial_building_e.glb', -77.0, 52.0, 6.5),
-    ('commercial_building_a.glb', 77.0, 52.0, 6.5),
+    ('commercial_building_f.glb', -77.0, 52.0, 6.5),
+    ('commercial_building_h.glb', 77.0, 52.0, 6.5),
   ];
 
   static const sideApproachAnchors = <(double, double)>[
@@ -125,6 +126,11 @@ abstract final class ArenaWorldCatalog {
   static const _treeBlockers = <(double, double)>[
     (-82, -16), (-82, 16), (82, -16), (82, 16),
     (-72, -58), (72, -58), (-72, 58), (72, 58),
+    (-84, -38), (84, -38), (-84, 38), (84, 38),
+  ];
+
+  static const _largeTreePoints = <(double, double)>[
+    (-84, -38), (84, -38), (-84, 38), (84, 38),
   ];
 
   static double _edgeWobble(double angle) =>
@@ -385,6 +391,113 @@ abstract final class ArenaWorldCatalog {
     );
   }
 
+  static List<ArenaWorldPlacement> _makeLargeTrees() {
+    return List<ArenaWorldPlacement>.unmodifiable(
+      _largeTreePoints.indexed.map((entry) {
+        final index = entry.$1;
+        final point = entry.$2;
+        return ArenaWorldPlacement(
+          asset: 'assets/world/city/tree_large.glb',
+          x: point.$1,
+          z: point.$2,
+          y: heightAt(point.$1, point.$2),
+          scale: 4.7 + (index % 2) * 0.35,
+          yaw: (index * 1.93) % (2 * math.pi),
+        );
+      }),
+    );
+  }
+
+  static List<ArenaWorldPlacement> _makeCityProps() {
+    final props = <ArenaWorldPlacement>[];
+
+    void add(
+      String file,
+      double x,
+      double z, {
+      double scale = 1,
+      double yaw = 0,
+      double y = 0,
+    }) {
+      props.add(ArenaWorldPlacement(
+        asset: 'assets/world/city/$file',
+        x: x,
+        z: z,
+        y: heightAt(x, z) + y,
+        scale: scale,
+        yaw: yaw,
+      ));
+    }
+
+    // Canal promenade: warm lamps are spaced away from minion lanes.
+    for (final point in const [
+      (-50.0, -52.0), (-22.0, -52.0), (22.0, -52.0), (50.0, -52.0),
+      (-50.0, 52.0), (-22.0, 52.0), (22.0, 52.0), (50.0, 52.0),
+    ]) {
+      add('street_light_square.glb', point.$1, point.$2, scale: 5.7);
+    }
+
+    // Signalized bridge approaches make the crossings legible from the lane.
+    for (final point in const [
+      (-44.0, -5.0), (-28.0, 5.0),
+      (-8.0, -5.0), (8.0, 5.0),
+      (28.0, -5.0), (44.0, 5.0),
+    ]) {
+      add('traffic_light.glb', point.$1, point.$2, scale: 5.8);
+    }
+
+    // Street signs sit on the outer sidewalks, not in the travel corridor.
+    for (final point in const [
+      (-71.0, -16.0), (71.0, -16.0),
+      (-71.0, 16.0), (71.0, 16.0),
+    ]) {
+      add('road_sign_street.glb', point.$1, point.$2, scale: 4.6);
+    }
+
+    // A warning marker identifies the service alley without blocking it.
+    add('road_sign_warning.glb', -55.0, -26.0, scale: 4.5, yaw: math.pi / 2);
+    add('road_sign_warning.glb', 55.0, 26.0, scale: 4.5, yaw: -math.pi / 2);
+
+    // Crosswalk strips emphasize each bridge threshold.
+    for (final laneX in const [-36.0, 0.0, 36.0]) {
+      for (final side in const [-1.0, 1.0]) {
+        add('road_crossing.glb', laneX, side * 4.0,
+            scale: 1, y: 0.035);
+      }
+    }
+
+    // Every service entrance receives its own canopy and a small street-level prop.
+    for (final building in cityInteriors) {
+      final x = building.$2;
+      final z = building.$3;
+      add('detail_awning_wide.glb', x, z - 4.55,
+          scale: 6.8, yaw: math.pi, y: 1.25);
+      add('interior_trashcan.glb', x + (x < 0 ? 5.0 : -5.0), z - 3.1,
+          scale: 2.1);
+    }
+
+    // Side plazas use parasols and planters as visual anchors.
+    for (final point in const [
+      (-54.0, -14.0), (54.0, -14.0),
+      (-54.0, 14.0), (54.0, 14.0),
+    ]) {
+      add('detail_parasol_a.glb', point.$1, point.$2, scale: 6.1);
+      add('city_planter.glb', point.$1 + (point.$1 < 0 ? 2.6 : -2.6),
+          point.$2 + 1.6, scale: 5.0);
+    }
+
+    // Planted edges soften the hard canal geometry without filling the lanes.
+    for (final point in const [
+      (-15.0, -5.4), (15.0, -5.4), (-15.0, 5.4), (15.0, 5.4),
+    ]) {
+      add('interior_plant.glb', point.$1, point.$2, scale: 4.6);
+    }
+
+    return List<ArenaWorldPlacement>.unmodifiable(props);
+  }
+
   static final trees = _makeTrees();
+  static final largeTrees = _makeLargeTrees();
   static final bushes = _makeBushes();
+  static final cityProps = _makeCityProps();
 }
