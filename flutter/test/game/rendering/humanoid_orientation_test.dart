@@ -5,19 +5,22 @@ import 'package:project_arena_flutter/game/rendering/humanoid_orientation.dart';
 
 void main() {
   group('HumanoidOrientation', () {
-    test('local +Z rig faces the same direction as world movement', () {
-      expect(HumanoidOrientation.yawForDirection(0, 1), closeTo(0, 1e-9));
+    test('local -Z rig faces the same direction as world movement', () {
       expect(
-        HumanoidOrientation.yawForDirection(1, 0),
-        closeTo(math.pi / 2, 1e-9),
-      );
-      expect(
-        HumanoidOrientation.yawForDirection(0, -1).abs(),
+        HumanoidOrientation.yawForDirection(0, 1).abs(),
         closeTo(math.pi, 1e-9),
       );
       expect(
+        HumanoidOrientation.yawForDirection(1, 0),
+        closeTo(3 * math.pi / 2, 1e-9),
+      );
+      expect(
+        HumanoidOrientation.yawForDirection(0, -1),
+        closeTo(0, 1e-9),
+      );
+      expect(
         HumanoidOrientation.yawForDirection(-1, 0),
-        closeTo(-math.pi / 2, 1e-9),
+        closeTo(math.pi / 2, 1e-9),
       );
     });
 
