@@ -23,7 +23,10 @@ void main() {
     });
 
     test('state machine accepts ids from the roster catalog', () {
-      expect(ArenaStateMachine.supportedHeroIds, ArenaHeroCatalog.playableIds);
+      expect(
+        ArenaStateMachine.supportedHeroIds,
+        unorderedEquals(ArenaHeroCatalog.playableIds),
+      );
     });
 
     test('species filters are derived from the playable roster', () {
