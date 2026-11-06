@@ -18,7 +18,7 @@ Projeto Arena é um MOBA 5v5 mobile de controle territorial. As rotas mantêm pr
 - Arena urbana de 224 × 188 com seis distritos: Distrito Cívico, Reserva Verde, Mercado Central, Pátio Industrial, Estação Intermodal e Orla do Canal.
 - Cinco pontes sobre o canal e ruas secundárias pavimentadas conectam os distritos sem obrigar o jogador a usar três corredores fixos.
 - Quatro consoles neutros de captura; cada distrito controlado concede bônus territorial.
-- Quatro interiores ampliados para 24 × 18 unidades, com portas de 6,4 unidades, mobiliário e colisões; dois têm mezaninos.
+- Seis interiores ampliados para 24 × 18 unidades, com portas de 6,4 unidades, mobiliário e colisões; dois têm mezaninos.
 - Três linhas de tropas continuam como pressão de siege, enquanto heróis e bots fazem rotação territorial.
 - Núcleo de cada equipe; orçamento ativo limitado a 48 minions.
 
@@ -62,7 +62,7 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 - Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
 - Câmera de combate usa perspectiva 3/4, acompanhando o jogador por trás e um pouco acima; não usar enquadramento de mapa inteiro durante a luta.
 - Configuração atual: follow distance 9.4, look-ahead 3.0, pitch inicial 0.34 rad e FOV vertical 49°; validar enquadramento no Realme C53.
-- Escalas de renderização: herói 1.0, bots 0.86 e minions 0.54–0.58; validar proporção relativa às estruturas no aparelho.
+- Escalas de renderização: herói 1.0, bots 0.98 e minions 0.94–1.02; confirmar a proporção final no aparelho.
 
 ## Estado desta implementação
 
@@ -114,7 +114,7 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 
 - Quatro distritos internos têm funções visuais distintas: operações, oficina, informação do parque e convivência.
 - Os quarteirões usam fachadas CC0 variadas; ruas recebem semáforos, placas, iluminação, faixas, marquises, floreiras e pontos de praça.
-- Quatro NPCs de serviço seguem patrulhas determinísticas curtas, com caminhada, pausas e animação de interação.
+- Seis NPCs de serviço seguem patrulhas determinísticas curtas, com caminhada, pausas e animação de interação.
 - Um toque no minimapa em terreno acessível envia o aliado de flanco mais próximo a um ponto por oito segundos.
 - A ordem tática é temporária e não cancela combate contra heróis; água, estruturas, paredes e pontos fora do mundo são rejeitados.
 - O reator central mostra visualmente o controle azul/vermelho e o estado contestado por meio de um anel no cenário.
