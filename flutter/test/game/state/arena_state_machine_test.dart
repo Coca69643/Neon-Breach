@@ -128,6 +128,20 @@ void main() {
     expect(machine.snapshot.phase, ArenaPhase.inMatch);
   });
 
+  test('lifecycle interruption during match loading pauses and resumes the loading phase', () {
+    reachMatchLoading();
+
+    expect(machine.dispatch(const AppSuspended()).accepted, isTrue);
+    expect(machine.snapshot.phase, ArenaPhase.paused);
+    expect(machine.snapshot.resumePhase, ArenaPhase.matchLoading);
+    expect(machine.snapshot.pauseOrigin, PauseOrigin.lifecycle);
+
+    expect(machine.dispatch(const AppResumed()).accepted, isTrue);
+    expect(machine.snapshot.phase, ArenaPhase.matchLoading);
+    expect(machine.snapshot.resumePhase, isNull);
+    expect(machine.snapshot.pauseOrigin, isNull);
+  });
+
   test('pausa manual não é removida automaticamente pelo lifecycle', () {
     reachMatchLoading();
     machine.dispatch(const MatchRuntimeCompleted(success: true));
