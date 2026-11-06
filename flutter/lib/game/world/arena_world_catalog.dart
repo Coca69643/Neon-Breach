@@ -163,13 +163,13 @@ abstract final class ArenaWorldCatalog {
   static const treeBlockerPoints = <(double, double)>[
     (-104, -4), (-100, 20), (-98, 60), (-72, 74),
     (-91, -34), (-78, -54), (-64, 68), (-46, 72),
-    (104, -4), (100, 20), (98, 60), (72, 74),
+    (104, -4), (100, 20), (82, 60), (72, 74),
     (91, -34), (78, -54), (64, 68), (46, 72),
   ];
 
   static const largeTreePoints = <(double, double)>[
     (-96, -52), (-96, 52), (-58, 76), (-28, 76),
-    (96, -52), (96, 52), (58, 76), (28, 76),
+    (96, -52), (90, 52), (58, 76), (28, 76),
   ];
 
   /// Irregular polygonal footprint shared with the offline terrain baker.
@@ -506,7 +506,7 @@ abstract final class ArenaWorldCatalog {
     // Lamps mark the outer streets without dominating the character scale.
     for (final point in const [
       (-92.0, -60.0), (-60.0, -62.0), (-20.0, -62.0),
-      (20.0, 62.0), (60.0, 62.0), (92.0, 60.0),
+      (20.0, 62.0), (60.0, 62.0), (92.0, 0.0),
       (-92.0, 20.0), (92.0, -20.0),
     ]) {
       add('street_light_square.glb', point.$1, point.$2, scale: 1.2);
@@ -525,12 +525,12 @@ abstract final class ArenaWorldCatalog {
       (-71.0, -16.0), (71.0, -16.0),
       (-71.0, 16.0), (71.0, 16.0),
     ]) {
-      add('road_sign_street.glb', point.$1, point.$2, scale: 4.6);
+      add('road_sign_street.glb', point.$1, point.$2, scale: 1.2);
     }
 
     // A warning marker identifies the service alley without blocking it.
-    add('road_sign_warning.glb', -55.0, -26.0, scale: 4.5, yaw: math.pi / 2);
-    add('road_sign_warning.glb', 55.0, 26.0, scale: 4.5, yaw: -math.pi / 2);
+    add('road_sign_warning.glb', -55.0, -26.0, scale: 1.2, yaw: math.pi / 2);
+    add('road_sign_warning.glb', 55.0, 26.0, scale: 1.2, yaw: -math.pi / 2);
 
     // Crosswalk strips emphasize all five canal crossing thresholds.
     for (final bridgeX in bridgePositions) {
