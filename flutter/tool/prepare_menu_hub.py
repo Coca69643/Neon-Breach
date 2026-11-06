@@ -169,148 +169,99 @@ class HubMesh:
                      height * 0.12, depth * 1.12, material, yaw=-(mid - math.pi/2))
 
 def make_hub(mesh: HubMesh):
-    # Wide luminous sea and a broken floating island: the hub's foreground.
-    mesh.box(0, -2.45, -1, 96, 0.25, 72, "water")
-    mesh.ellipsoid(0, -1.35, 0, 14.0, 2.0, 10.9, "rock", rings=9, segments=32,
-                   irregularity=0.045)
-    mesh.ellipsoid(0, -0.32, 0, 13.0, 0.26, 10.0, "grass", rings=5, segments=32,
-                   irregularity=0.025)
-    # Pale stone shore plates break the island silhouette.
-    for i in range(16):
-        a = 2 * math.pi * i / 16
-        x, z = 12.1 * math.cos(a), 9.2 * math.sin(a)
-        mesh.ellipsoid(x, -0.27, z, 1.1, 0.22, 0.75, "stone_light",
-                       rings=4, segments=8, phase=a)
+    # Grounded civic command tower in a paved urban plaza.
+    # The tower is an original architectural landmark, not a floating hub.
+    mesh.box(0, -0.28, 0, 72, 0.56, 56, "stone_dark")
+    mesh.box(0, 0.02, 0, 68, 0.12, 52, "stone")
+    mesh.box(0, 0.105, 9.5, 34, 0.08, 21, "stone_light")
+    mesh.box(0, 0.11, -11.0, 42, 0.08, 17, "stone_warm")
 
-    # Main tower: a stepped vertical landmark, broad at the base, narrow at top.
-    mesh.cylinder(0, 0, -0.45, 1.25, 8.6, 7.7, "stone_dark", 16, math.pi/16)
-    mesh.ring_band(0, 0, 1.10, 1.65, 7.35, 8.2, "gold", 32)
-    mesh.cylinder(0, 0, 1.55, 3.35, 7.4, 6.35, "stone_light", 16, math.pi/16)
-    mesh.ring_band(0, 0, 3.1, 3.65, 6.0, 7.25, "stone_warm", 32)
-    mesh.ring_band(0, 0, 3.28, 3.48, 6.05, 7.1, "gold", 32)
+    # A broad stepped foundation makes the tower visibly meet the ground.
+    mesh.box(0, 0.42, 0, 25, 0.52, 21, "stone_dark")
+    mesh.box(0, 0.78, 0, 22.8, 0.22, 18.8, "stone_light")
+    mesh.box(0, 1.05, 0, 19.6, 0.36, 16.0, "stone_warm")
 
-    # First tower body, tapering slightly between carved balconies.
-    mesh.cylinder(0, 0, 3.45, 10.2, 6.0, 5.25, "stone", 16, math.pi/16)
-    mesh.ring_band(0, 0, 9.75, 10.55, 5.05, 6.0, "stone_light", 32)
-    mesh.ring_band(0, 0, 10.12, 10.34, 5.08, 5.9, "gold", 32)
-
-    # Buttresses and recessed light slits around the lower shaft.
-    for i in range(12):
-        angle = 2 * math.pi * i / 12 + math.pi/12
-        radius = 5.42
-        x, z = radius * math.cos(angle), radius * math.sin(angle)
-        mesh.box(x, 6.8, z, 0.74, 6.3, 0.92, "stone_light", yaw=-angle)
-        mesh.box(x, 6.4, z + 0.02, 0.28, 3.0, 0.98, "glow_cyan", yaw=-angle)
-        mesh.box(x, 10.1, z, 0.98, 0.36, 1.1, "gold", yaw=-angle)
-
-    # Second body, ringed balcony and a row of vertical windows.
-    mesh.cylinder(0, 0, 10.45, 17.2, 4.95, 4.02, "stone_dark", 16, math.pi/16)
-    mesh.ring_band(0, 0, 16.75, 17.5, 3.9, 5.0, "stone_light", 32)
-    mesh.ring_band(0, 0, 17.05, 17.28, 3.95, 4.9, "gold", 32)
-    for i in range(10):
-        angle = 2 * math.pi * i / 10
-        x, z = 4.18 * math.cos(angle), 4.18 * math.sin(angle)
-        mesh.box(x, 13.75, z, 0.52, 2.2, 0.30, "stone_warm", yaw=-angle)
-        mesh.box(x, 13.78, z + 0.035, 0.22, 1.58, 0.32, "glow_pink", yaw=-angle)
-        mesh.box(x, 15.05, z + 0.04, 0.56, 0.18, 0.38, "gold", yaw=-angle)
-
-    # Third body and its open colonnade.
-    mesh.cylinder(0, 0, 17.4, 23.65, 3.82, 2.92, "stone", 16, math.pi/16)
-    mesh.ring_band(0, 0, 23.1, 24.0, 2.82, 4.15, "stone_light", 32)
-    mesh.ring_band(0, 0, 23.48, 23.76, 2.87, 4.05, "teal", 32)
-    for i in range(10):
-        angle = 2 * math.pi * i / 10
-        radius = 3.28
-        x, z = radius * math.cos(angle), radius * math.sin(angle)
-        mesh.cylinder(x, z, 18.0, 22.95, 0.22, 0.16, "stone_warm", 8, angle)
-        mesh.cylinder(x, z, 22.7, 23.12, 0.32, 0.24, "gold", 8, angle)
-        mesh.ellipsoid(x, 20.5, z, 0.23, 0.18, 0.23, "glow_cyan", 5, 8)
-
-    # Crown spire and a floating segmented halo.
-    mesh.cylinder(0, 0, 23.85, 27.0, 3.25, 2.3, "stone_dark", 12, math.pi/12)
-    mesh.ring_band(0, 0, 26.55, 27.12, 2.0, 3.9, "gold", 40)
-    mesh.ring_band(0, 0, 26.68, 26.98, 2.1, 3.75, "teal", 40)
-
-    # Floating broken outer ring; gaps are intentional.
-    ring_arcs = [
-        (0.05, 1.35), (1.58, 2.72), (2.92, 4.10), (4.30, 5.40), (5.58, 6.15)
-    ]
-    for start, end in ring_arcs:
-        mesh.ring_band(0, 0, 29.1, 29.65, 4.5, 5.15, "stone_light", 40,
-                       start=start, end=end)
-        mesh.ring_band(0, 0, 29.17, 29.43, 4.55, 5.18, "gold", 40,
-                       start=start, end=end)
-
-    # Portal crown, built from a lit ring of carved stone keystones.
-    portal_cy, portal_z = 31.2, -0.2
-    for i in range(16):
-        angle = 2 * math.pi * i / 16
-        x = 2.35 * math.cos(angle)
-        y = portal_cy + 3.0 * math.sin(angle)
-        yaw = angle
-        mesh.box(x, y, portal_z, 0.98, 0.72, 0.7, "stone_warm", yaw=yaw)
-        if i % 2 == 0:
-            mesh.box(x * 1.04, y, portal_z + 0.36, 0.20, 0.36, 0.16,
-                     "glow_pink", yaw=yaw)
-    mesh.ellipsoid(0, portal_cy, portal_z - 0.38, 1.92, 2.55, 0.12,
-                   "glow_cyan", rings=8, segments=20)
-
-    # The open portal is backed by a deep dark recess and luminous inner arch.
-    mesh.ellipsoid(0, 30.9, -0.48, 1.67, 2.30, 0.16, "stone_dark",
-                   rings=8, segments=20)
-    mesh.ellipsoid(0, 30.9, -0.69, 1.35, 1.98, 0.12, "glow_pink",
-                   rings=8, segments=20)
-
-    # A strong ground-level entrance, framed by an original arch.
-    mesh.box(0, 1.7, 6.1, 2.0, 3.8, 0.40, "stone_dark")
-    mesh.box(0, 1.7, 6.34, 1.25, 2.9, 0.12, "glow_cyan")
-    mesh.arch_frame(0, -0.15, 6.36, 3.25, 4.1, 0.74, "stone_light", 9)
-    mesh.arch_frame(0, -0.1, 6.52, 2.62, 3.55, 0.22, "gold", 9)
-
-    # Small flags and finials give the skyline a more organic silhouette.
+    # Low service wings extend the plaza horizontally.
     for side in (-1, 1):
-        x = side * 4.2
-        z = 1.2
-        mesh.cylinder(x, z, 17.2, 20.5, 0.07, 0.05, "gold", 8)
-        mesh.box(x - side * 0.62, 19.55, z, 1.15, 1.35, 0.10,
-                 "banner", yaw=-side * 0.12)
-        mesh.ellipsoid(x, 20.55, z, 0.16, 0.20, 0.16, "gold", 5, 8)
+        x = side * 14.0
+        mesh.box(x, 2.1, -1.0, 8.5, 3.4, 12.0, "stone")
+        mesh.box(x, 3.92, -1.0, 9.0, 0.26, 12.5, "stone_light")
+        for offset in (-3.0, 0.0, 3.0):
+            mesh.box(x + offset, 2.5, 5.08, 1.05, 1.55, 0.12, "stone_dark")
+            mesh.box(x + offset, 2.5, 5.18, 0.18, 1.82, 0.10, "teal")
+            mesh.box(x + offset - 0.78, 2.5, 5.12, 0.10, 1.82, 0.15, "gold")
 
-    # Floating stone fragments around the upper halo.
-    fragments = [
-        (-7.0, 25.5, -1.5, 1.2, 0.8, 0.7),
-        (7.5, 27.4, -2.0, 1.0, 0.7, 0.8),
-        (-5.9, 31.0, -1.0, 0.8, 1.0, 0.7),
-        (6.2, 32.2, -0.8, 1.0, 0.8, 0.9),
-        (-8.2, 22.0, 0.0, 0.7, 0.55, 0.6),
-        (8.4, 23.2, 0.2, 0.8, 0.6, 0.7),
-        (0.0, 34.4, -1.0, 1.15, 0.55, 0.75),
-    ]
-    for x, y, z, rx, ry, rz in fragments:
-        mesh.ellipsoid(x, y, z, rx, ry, rz, "rock", 5, 7,
-                       phase=x * 0.23, irregularity=0.24)
+    # Main podium: wide lower block, recessed windows and a clear front entry.
+    mesh.box(0, 3.25, 0, 17.8, 4.2, 14.4, "stone_light")
+    mesh.box(0, 5.42, 0, 18.8, 0.28, 15.2, "stone_dark")
+    mesh.box(0, 5.62, 0, 18.1, 0.16, 14.7, "stone_warm")
+    for x in (-7.0, -4.2, -1.4, 1.4, 4.2, 7.0):
+        mesh.box(x, 3.45, 7.27, 1.45, 2.1, 0.10, "stone_dark")
+        mesh.box(x, 3.48, 7.34, 1.08, 1.72, 0.08, "teal")
+        mesh.box(x - 0.78, 3.45, 7.30, 0.12, 2.25, 0.16, "gold")
+        mesh.box(x + 0.78, 3.45, 7.30, 0.12, 2.25, 0.16, "gold")
 
-    # Distant floating cloud banks: a softer silhouette behind the tower.
-    cloud_banks = [
-        (-17, 15, -15, 6.5, 1.2, 2.6),
-        (-12, 18, -18, 4.2, 1.1, 2.2),
-        (16, 16, -17, 6.0, 1.4, 2.8),
-        (11, 19, -20, 4.1, 1.0, 2.1),
-        (-22, 20, -12, 3.6, 1.0, 1.8),
-        (23, 21, -13, 3.7, 1.0, 2.0),
-    ]
-    for index, (x, y, z, rx, ry, rz) in enumerate(cloud_banks):
-        mesh.ellipsoid(x, y - 0.36, z, rx * 0.96, ry * 0.84, rz * 0.96,
-                       "cloud_shadow", 5, 9, phase=index * 0.4)
-        mesh.ellipsoid(x, y, z, rx, ry, rz, "cloud", 6, 10,
-                       phase=index * 0.31)
+    # Deep entrance recess with an authored stone frame and restrained signage.
+    mesh.box(0, 2.85, 7.30, 3.9, 3.5, 0.16, "stone_dark")
+    mesh.box(0, 2.8, 7.42, 2.65, 2.95, 0.10, "teal")
+    mesh.arch_frame(0, 1.0, 7.48, 4.8, 4.2, 0.7, "stone_warm", 10)
+    mesh.box(0, 5.45, 7.42, 5.2, 0.22, 0.22, "gold")
+    mesh.box(0, 4.95, 7.48, 2.15, 0.10, 0.12, "glow_cyan")
 
-    # Short, curved water glints at the foot of the island.
-    for i in range(9):
-        x = -13 + i * 3.25
-        z = 11.5 + math.sin(i * 0.72) * 1.2
-        mesh.box(x, -2.26, z, 1.35, 0.035, 0.12, "water_light",
-                 yaw=math.sin(i * 0.6) * 0.18)
+    # Vertical command shaft: staggered masses, fins and dark glazing.
+    mesh.box(0, 10.5, -0.4, 13.5, 8.8, 11.4, "stone")
+    mesh.box(0, 15.05, -0.4, 14.8, 0.32, 12.2, "stone_light")
+    mesh.box(0, 15.32, -0.4, 13.9, 0.16, 11.7, "gold")
+    for side in (-1, 1):
+        x = side * 6.2
+        mesh.box(x, 10.6, 5.35, 0.78, 8.2, 0.46, "stone_warm")
+        mesh.box(x - side * 0.12, 10.6, 5.62, 0.16, 6.8, 0.12, "glow_cyan")
+    for y in (8.2, 10.3, 12.4):
+        for x in (-3.9, -1.3, 1.3, 3.9):
+            mesh.box(x, y, 5.36, 1.58, 1.45, 0.12, "stone_dark")
+            mesh.box(x, y, 5.44, 1.18, 1.08, 0.08, "teal")
+
+    # Upper observation level is offset and slimmer, with a clear roof edge.
+    mesh.box(0.7, 19.0, -0.8, 9.8, 7.1, 8.8, "stone_dark")
+    mesh.box(0.7, 22.65, -0.8, 10.7, 0.34, 9.6, "stone_light")
+    mesh.box(0.7, 22.92, -0.8, 10.0, 0.16, 9.0, "gold")
+    for x in (-3.0, -0.5, 2.0, 4.5):
+        mesh.box(x, 19.15, 3.68, 1.15, 3.85, 0.12, "teal")
+        mesh.box(x - 0.68, 19.15, 3.62, 0.10, 4.1, 0.16, "stone_warm")
+        mesh.box(x + 0.68, 19.15, 3.62, 0.10, 4.1, 0.16, "stone_warm")
+
+    # Rooftop communications mast and compact service equipment.
+    mesh.box(0.7, 24.6, -0.8, 3.2, 3.0, 3.2, "stone")
+    mesh.cylinder(0.7, -0.8, 26.0, 31.2, 0.18, 0.10, "gold", 10)
+    mesh.box(0.7, 29.4, -0.8, 4.4, 0.16, 0.16, "stone_warm")
+    mesh.box(0.7, 30.3, -0.8, 2.6, 0.12, 0.12, "glow_cyan")
+    mesh.box(0.7, 31.0, -0.8, 0.12, 0.9, 0.12, "gold")
+    for side in (-1, 1):
+        mesh.box(0.7 + side * 2.5, 25.0, -0.8, 0.14, 2.0, 0.14, "stone_warm")
+
+    # Ground-level plaza details: benches, planters and lamps anchor the scale.
+    for side in (-1, 1):
+        for z in (-13.0, 13.0):
+            x = side * 23.0
+            mesh.box(x, 0.75, z, 5.0, 0.22, 1.35, "stone_warm")
+            mesh.box(x, 1.05, z, 4.6, 0.42, 0.9, "stone_dark")
+            mesh.box(x, 0.55, z + side * 4.0, 3.7, 0.9, 2.0, "stone")
+            for dx in (-1.0, 0.0, 1.0):
+                mesh.ellipsoid(x + dx, 1.2, z + side * 4.0,
+                               0.62, 0.82, 0.62, "grass", 5, 7,
+                               phase=dx * 0.5)
+        lamp_x = side * 29.0
+        for z in (-8.0, 8.0):
+            mesh.cylinder(lamp_x, z, 0.0, 5.4, 0.11, 0.08, "stone_dark", 8)
+            mesh.box(lamp_x, 5.35, z, 0.9, 0.22, 0.9, "glow_cyan")
+            mesh.box(lamp_x, 5.58, z, 1.2, 0.10, 1.2, "stone_warm")
+
+    # Short paving strips lead into the entrance; all geometry rests on the plaza.
+    for x in (-6.0, -3.0, 0.0, 3.0, 6.0):
+        mesh.box(x, 0.18, 13.2, 1.8, 0.06, 8.0, "stone_light")
+    mesh.box(0, 0.19, 18.2, 18.0, 0.08, 1.2, "stone_warm")
+
+
 
 def write_glb(mesh: HubMesh, output: Path):
     binary = bytearray()
