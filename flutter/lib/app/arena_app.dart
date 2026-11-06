@@ -3,11 +3,11 @@ import 'package:flutter/services.dart';
 
 import '../game/manifest/arena_manifest_validator.dart';
 import '../game/match/moba_match_simulation.dart';
-import '../game/rendering/arena_hero_preview.dart';
 import '../game/rendering/arena_main_menu_scene.dart';
 import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
+import 'arena_hero_selection_screen.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
@@ -365,118 +365,12 @@ class _ArenaScreen extends StatelessWidget {
   }
 
   Widget _heroSelection({required bool compact}) {
-    const heroes = [
-      ('lyra', 'LYRA'),
-      ('bastion', 'BASTION'),
-      ('kairo', 'KAIRO'),
-    ];
-    final selectedId = snapshot.selectedHeroId ?? 'lyra';
-
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: [
-        Expanded(
-          flex: 12,
-          child: ClipRRect(
-            borderRadius: BorderRadius.circular(10),
-            child: ArenaHeroPreview(heroId: selectedId),
-          ),
-        ),
-        SizedBox(width: compact ? 12 : 20),
-        Expanded(
-          flex: 8,
-          child: Padding(
-            padding: EdgeInsets.symmetric(
-              vertical: compact ? 2 : 8,
-              horizontal: compact ? 2 : 8,
-            ),
-            child: LayoutBuilder(
-              builder: (context, panel) {
-                final itemHeight = (panel.maxHeight * 0.13)
-                    .clamp(48.0, compact ? 54.0 : 62.0)
-                    .toDouble();
-
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'HERÓIS',
-                      style: TextStyle(
-                        color: const Color(0xFF79D6BD),
-                        fontSize: compact ? 10 : 11,
-                        letterSpacing: 2.0,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                    SizedBox(height: compact ? 6 : 9),
-                    Text(
-                      'Escolha seu herói',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: compact ? 21 : 25,
-                        fontWeight: FontWeight.w800,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const Spacer(),
-                    for (final hero in heroes) ...[
-                      _HeroChoiceTile(
-                        label: hero.$2,
-                        selected: selectedId == hero.$1,
-                        height: itemHeight,
-                        onTap: () => onEvent(SelectHero(hero.$1)),
-                      ),
-                      const SizedBox(height: 8),
-                    ],
-                    const Spacer(),
-                    Row(
-                      children: [
-                        TextButton(
-                          onPressed: () => onEvent(const ReturnToMenu()),
-                          style: TextButton.styleFrom(
-                            foregroundColor: const Color(0xFFB7C2CA),
-                            minimumSize: const Size(82, 44),
-                            padding: const EdgeInsets.symmetric(horizontal: 12),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'VOLTAR',
-                            style: TextStyle(fontSize: 12, letterSpacing: 0.8),
-                          ),
-                        ),
-                        const Spacer(),
-                        FilledButton(
-                          onPressed: snapshot.selectedHeroId == null
-                              ? null
-                              : () => onEvent(const ConfirmHeroSelection()),
-                          style: FilledButton.styleFrom(
-                            minimumSize: const Size(132, 44),
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                          ),
-                          child: const Text(
-                            'CONFIRMAR',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w700,
-                              letterSpacing: 0.7,
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
-      ],
+    return ArenaHeroSelectionScreen(
+      selectedHeroId: snapshot.selectedHeroId ?? 'lyra',
+      compact: compact,
+      onSelect: (heroId) => onEvent(SelectHero(heroId)),
+      onBack: () => onEvent(const ReturnToMenu()),
+      onConfirm: () => onEvent(const ConfirmHeroSelection()),
     );
   }
 
@@ -560,77 +454,6 @@ class _ArenaScreen extends StatelessWidget {
       onSecondary: canReturnToMenu
           ? () => onEvent(const ReturnToMenu())
           : null,
-    );
-  }
-}
-
-class _HeroChoiceTile extends StatelessWidget {
-  const _HeroChoiceTile({
-    required this.label,
-    required this.selected,
-    required this.height,
-    required this.onTap,
-  });
-
-  final String label;
-  final bool selected;
-  final double height;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    final accent = selected
-        ? const Color(0xFF79D6BD)
-        : const Color(0xFF46545E);
-    final shape = BeveledRectangleBorder(
-      borderRadius: BorderRadius.circular(7),
-      side: BorderSide(
-        color: accent.withValues(alpha: selected ? 0.95 : 0.58),
-        width: selected ? 1.6 : 1,
-      ),
-    );
-
-    return Material(
-      color: selected
-          ? const Color(0x263C8D7C)
-          : const Color(0x141E2A31),
-      shape: shape,
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: onTap,
-        customBorder: shape,
-        child: SizedBox(
-          width: double.infinity,
-          height: height,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    label,
-                    style: TextStyle(
-                      color: selected
-                          ? const Color(0xFF9BE4D1)
-                          : const Color(0xFFE0E6E8),
-                      fontSize: 15,
-                      fontWeight: FontWeight.w800,
-                      letterSpacing: 1.2,
-                    ),
-                  ),
-                ),
-                Icon(
-                  selected ? Icons.check_circle : Icons.circle_outlined,
-                  size: 18,
-                  color: selected
-                      ? const Color(0xFF79D6BD)
-                      : const Color(0xFF71808B),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
     );
   }
 }
