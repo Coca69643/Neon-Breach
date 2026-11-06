@@ -587,8 +587,7 @@ class ArenaPhysicsRuntime {
   }
 
   void _buildMezzanines() {
-    const steps = 24;
-    const treadHalfHeight = 0.09;
+    const steps = 20;
 
     for (final access in ArenaWorldCatalog.verticalAccesses) {
       final z0 = access.corridorMinZ;
@@ -596,6 +595,8 @@ class ArenaPhysicsRuntime {
       final centerZ = (z0 + z1) * 0.5;
       final halfDepth = (z1 - z0) * 0.5;
       final stepRun = ArenaVerticalAccess.rampRun / steps;
+      final stepRise = ArenaVerticalAccess.upperHeight / steps;
+      final treadHalfHeight = stepRise * 0.5;
 
       for (var index = 0; index < steps; index++) {
         final centerX = access.rampStartX + (index + 0.5) * stepRun;
@@ -603,19 +604,18 @@ class ArenaPhysicsRuntime {
           centerX,
           centerZ,
         );
-        final topY = groundY +
-            ArenaVerticalAccess.upperHeight * (index + 1) / steps;
+        final bottomY = groundY + stepRise * index;
         _addStaticShape(
           BoxShape(
             halfExtents: vm.Vector3(
-              stepRun * 0.57,
+              stepRun * 0.5 + 0.01,
               treadHalfHeight,
               halfDepth,
             ),
           ),
           vm.Vector3(
             centerX,
-            topY - treadHalfHeight,
+            bottomY + treadHalfHeight,
             centerZ,
           ),
           label: 'mezzanine_ramp_${access.id}_step_$index',
