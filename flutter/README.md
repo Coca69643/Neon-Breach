@@ -25,7 +25,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Navegação com colisão de paredes/mobiliário, portas, três travessias do canal e duas escadas que conectam mezaninos com elevação real.
 - Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
 - Implementado nesta revisão: seleção touch de alvo, HUD contextual e confirmação visual apenas em acerto. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
-- Escalas de leitura: herói 1.0, bots 0.86, minions 0.54–0.58.
+- Escalas de leitura em revisão 1.8.0: herói 1.0, bots 0.98, minions 0.94–1.02; armas anexadas reduzidas para 0.020–0.027.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
 ## Identidade e assinatura Android
@@ -48,7 +48,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Mapa urbano expandido: 180 × 140 unidades, três avenidas, canal central, três travessias, becos e quatro interiores acessíveis.
+- Mapa urbano atual: 180 × 140 unidades, três avenidas, canal central, três travessias, becos e quatro interiores acessíveis; revisão 1.8.0 alinha fachadas CC0 aos volumes internos e cataloga os quatro distritos.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
