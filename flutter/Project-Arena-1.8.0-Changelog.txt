@@ -11,10 +11,14 @@ ADICIONADO
 
 ALTERADO
 - Bots roamers priorizam distritos neutros ou controlados pelo adversário.
+- Orientação dos rigs corrigida para o eixo frontal local +Z, eliminando o moonwalk.
 - Direção dos rigs alinhada ao vetor de deslocamento.
 - Escala dos bots ajustada para 0.98 e dos minions para 0.94–1.02.
 - Escalas de armas reduzidas por rig.
 - Terreno, interiores, navegação e física usam o mesmo catálogo espacial.
+- Movimento com aceleração, frenagem, tração por superfície e colisão contínua via Rapier em passo fixo.
+- Locomoção troca entre caminhada e corrida conforme a velocidade física real.
+- Herói gira para o alvo ao atacar, evitando animação de golpe desalinhada.
 - Assets CC0 preparados offline e incluídos no pacote Android.
 
 REMOVIDO
