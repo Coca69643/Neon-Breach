@@ -46,6 +46,7 @@ class ArenaPhysicsRuntime {
   double _velocityX = 0;
   double _velocityZ = 0;
   double _verticalVelocity = 0;
+  double _actualHorizontalSpeed = 0;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -54,8 +55,7 @@ class ArenaPhysicsRuntime {
   bool get grounded => _grounded;
   bool get slidingDownSlope => _slidingDownSlope;
   double get verticalVelocity => _verticalVelocity;
-  double get horizontalSpeed =>
-      math.sqrt(_velocityX * _velocityX + _velocityZ * _velocityZ);
+  double get horizontalSpeed => _actualHorizontalSpeed;
 
   MobaPoint get playerPosition {
     final x = _playerPose.translation.x;
@@ -147,6 +147,7 @@ class ArenaPhysicsRuntime {
       _velocityX = 0;
       _velocityZ = 0;
       _verticalVelocity = 0;
+      _actualHorizontalSpeed = 0;
     }
   }
 
@@ -200,6 +201,11 @@ class ArenaPhysicsRuntime {
     );
 
     _playerPose.translation.add(movement.translation);
+    _actualHorizontalSpeed = math.sqrt(
+          movement.translation.x * movement.translation.x +
+              movement.translation.z * movement.translation.z,
+        ) /
+        dt;
     _grounded = movement.grounded;
     _slidingDownSlope = movement.slidingDownSlope;
     if (_grounded && _verticalVelocity < 0) _verticalVelocity = 0;
@@ -238,6 +244,7 @@ class ArenaPhysicsRuntime {
     _velocityX = 0;
     _velocityZ = 0;
     _verticalVelocity = 0;
+    _actualHorizontalSpeed = 0;
     _grounded = false;
     _world.step(fixedStep);
   }
