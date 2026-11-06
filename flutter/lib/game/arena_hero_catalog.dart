@@ -38,6 +38,8 @@ class ArenaHeroDefinition {
     required this.modelAsset,
     required this.idleAnimation,
     this.previewScale = 0.52,
+    this.previewOffsetX = -0.9,
+    this.matchScale = 0.76,
     this.previewCameraHeight = 1.15,
     this.previewCameraDistance = 5.0,
     this.previewTargetHeight = 1.08,
@@ -54,6 +56,8 @@ class ArenaHeroDefinition {
   final String idleAnimation;
 
   final double previewScale;
+  final double previewOffsetX;
+  final double matchScale;
   final double previewCameraHeight;
   final double previewCameraDistance;
   final double previewTargetHeight;
@@ -74,6 +78,8 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/lyra.glb',
       idleAnimation: 'HumanArmature|Female_Idle',
       previewYawRadians: 0,
+      previewOffsetX: -0.9,
+      matchScale: 0.76,
     ),
     ArenaHeroDefinition(
       id: 'bastion',
@@ -84,6 +90,8 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/bastion.glb',
       idleAnimation: 'HumanArmature|Man_Idle',
       previewYawRadians: 0,
+      previewOffsetX: -0.9,
+      matchScale: 0.76,
     ),
     ArenaHeroDefinition(
       id: 'kairo',
@@ -94,6 +102,8 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/kairo.glb',
       idleAnimation: 'HumanArmature|Man_Idle',
       previewYawRadians: 0,
+      previewOffsetX: -0.9,
+      matchScale: 0.76,
     ),
   ];
 
