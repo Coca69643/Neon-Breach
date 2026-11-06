@@ -1028,7 +1028,7 @@ class MobaMatchSimulation {
             (slot + team.index * 2) % MobaNpcVisualId.values.length
           ],
           position: MobaPoint(
-            _laneX(lane, z) + (slot - 1.5) * 0.52,
+            _laneX(lane, z) + (slot - 1.5) * 0.75,
             z - team.forward * stagger,
           ),
         ),
