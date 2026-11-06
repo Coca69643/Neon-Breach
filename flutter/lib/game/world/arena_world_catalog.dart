@@ -126,7 +126,6 @@ abstract final class ArenaWorldCatalog {
   static const _treeBlockers = <(double, double)>[
     (-82, -16), (-82, 16), (82, -16), (82, 16),
     (-72, -58), (72, -58), (-72, 58), (72, 58),
-    (-84, -38), (84, -38), (-84, 38), (84, 38),
   ];
 
   static const _largeTreePoints = <(double, double)>[
@@ -317,6 +316,10 @@ abstract final class ArenaWorldCatalog {
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
       for (final tree in _treeBlockers) {
+        final dx = x - tree.$1, dz = z - tree.$2;
+        if (dx * dx + dz * dz < radiusSquared) return false;
+      }
+      for (final tree in _largeTreePoints) {
         final dx = x - tree.$1, dz = z - tree.$2;
         if (dx * dx + dz * dz < radiusSquared) return false;
       }
