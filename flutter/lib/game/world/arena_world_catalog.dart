@@ -426,6 +426,14 @@ abstract final class ArenaWorldCatalog {
   /// Surface classification is shared by movement tuning and world tests.
   /// Paved siege lanes are fastest, while grass and interiors have distinct
   /// traction so the same input does not feel identical on every floor.
+  // These thresholds mirror prepare_world_assets.py. Roads and sidewalks
+  // are baked into one continuous terrain mesh rather than rendered as
+  // independent oversized road tiles.
+  static const double asphaltHalfWidth = 4.8;
+  static const double asphaltAccessHalfWidth = 3.0;
+  static const double sidewalkHalfWidth = 7.4;
+  static const double sidewalkAccessHalfWidth = 4.4;
+
   static ArenaSurfaceType surfaceAt(double x, double z) {
     for (final building in cityInteriors) {
       final dx = (x - building.$2).abs();
@@ -435,12 +443,19 @@ abstract final class ArenaWorldCatalog {
         return ArenaSurfaceType.interior;
       }
     }
-    if (isBridgeAt(x, z) || laneDistance(x, z) <= 3.4) {
+
+    final laneGap = laneDistance(x, z);
+    final accessGap = flankPathDistance(x, z);
+    if (isBridgeAt(x, z) ||
+        laneGap <= asphaltHalfWidth ||
+        accessGap <= asphaltAccessHalfWidth) {
       return ArenaSurfaceType.asphalt;
     }
-    if (flankPathDistance(x, z) <= 2.8 ||
+    if (laneGap <= sidewalkHalfWidth ||
+        accessGap <= sidewalkAccessHalfWidth ||
         sideApproachAnchors.any((point) =>
-            math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <= 3.2 * 3.2)) {
+            math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
+            3.2 * 3.2)) {
       return ArenaSurfaceType.concrete;
     }
     return ArenaSurfaceType.grass;
@@ -599,25 +614,6 @@ abstract final class ArenaWorldCatalog {
     // A warning marker identifies the service alley without blocking it.
     add('road_sign_warning.glb', -55.0, -26.0, scale: 1.2, yaw: math.pi / 2);
     add('road_sign_warning.glb', 55.0, 26.0, scale: 1.2, yaw: -math.pi / 2);
-
-    // Crosswalk strips emphasize all five canal crossing thresholds.
-    for (final bridgeX in bridgePositions) {
-      for (final side in const [-1.0, 1.0]) {
-        add('road_crossing.glb', bridgeX,
-            _riverCenterZ(bridgeX) + side * 4.0,
-            scale: 1, y: 0.035);
-      }
-    }
-
-    // CC0 road pieces make the side districts feel connected, not tiled.
-    add('road_roundabout.glb', -58.0, 18.0, scale: 1.1);
-    add('road_roundabout.glb', 58.0, -18.0, scale: 1.1);
-    add('road_curve.glb', -96.0, -8.0, scale: 1.0, yaw: math.pi / 2);
-    add('road_curve.glb', 96.0, 8.0, scale: 1.0, yaw: -math.pi / 2);
-    add('road_intersection_path.glb', -58.0, -48.0, scale: 1.0);
-    add('road_intersection_path.glb', 58.0, 48.0, scale: 1.8);
-    add('road_side_entry.glb', -92.0, 2.0, scale: 1.0);
-    add('road_side_entry.glb', 92.0, -2.0, scale: 1.6);
 
     // Every service entrance receives its own canopy and a small street-level prop.
     for (final building in cityInteriors) {
