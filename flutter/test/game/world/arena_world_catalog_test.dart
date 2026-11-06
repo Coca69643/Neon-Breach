@@ -24,19 +24,19 @@ void main() {
       }
     });
 
-    test('has four enterable ground-floor interiors with real doorway gaps', () {
+    test('has four enlarged enterable interiors with 5.6-unit doorways', () {
       expect(ArenaWorldCatalog.cityInteriors, hasLength(4));
       for (final building in ArenaWorldCatalog.cityInteriors) {
         final x = building.$2, z = building.$3;
-        expect(ArenaWorldCatalog.isWalkable(x, z - 8.0), isTrue,
-            reason: '4.8 m entrance must be traversable for ${building.$1}');
+        expect(ArenaWorldCatalog.isWalkable(x, z - 9.0), isTrue,
+            reason: '5.6 m entrance must be traversable for ${building.$1}');
         expect(ArenaWorldCatalog.isWalkable(x, z - 2.0), isTrue,
             reason: 'enlarged interior floor must be traversable for ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x - 10.0, z), isFalse,
+        expect(ArenaWorldCatalog.isWalkable(x - 12.0, z), isFalse,
             reason: 'side wall must block ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x, z + 8.0), isFalse,
+        expect(ArenaWorldCatalog.isWalkable(x, z + 9.0), isFalse,
             reason: 'rear wall must block ${building.$1}');
-        expect(ArenaWorldCatalog.isWalkable(x + 4.5, z - 8.0), isFalse,
+        expect(ArenaWorldCatalog.isWalkable(x + 5.0, z - 9.0), isFalse,
             reason: 'front wall segment must block outside the doorway');
       }
     });
@@ -57,7 +57,7 @@ void main() {
     });
 
     test('canal blocks traversal except at the three avenue crossings', () {
-      for (final x in const [-36.0, 0.0, 36.0]) {
+      for (final x in const [-72.0, -36.0, 0.0, 36.0, 72.0]) {
         expect(ArenaWorldCatalog.isWalkable(x, 0), isTrue);
       }
       expect(ArenaWorldCatalog.isWalkable(18, 0), isFalse);
@@ -72,7 +72,7 @@ void main() {
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(4));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(8));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
         expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
             reason: 'commercial block must have a collision footprint');
@@ -97,6 +97,11 @@ void main() {
           .toSet();
       expect(buildingNames, hasLength(4));
       expect(ArenaWorldCatalog.largeTrees, hasLength(4));
+      expect(ArenaWorldCatalog.districtSites, hasLength(4));
+      for (final site in ArenaWorldCatalog.districtSites) {
+        expect(ArenaWorldCatalog.isWalkable(site.$3, site.$4), isTrue,
+            reason: '${site.$2} capture site must be accessible');
+      }
       expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(40));
 
       for (final prop in ArenaWorldCatalog.cityProps) {

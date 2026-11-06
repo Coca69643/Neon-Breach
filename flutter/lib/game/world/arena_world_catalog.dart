@@ -61,9 +61,9 @@ abstract final class ArenaWorldCatalog {
   static const double halfWidth = 90.0;
   static const double halfDepth = 70.0;
   static const double cornerRadius = 10.0;
-  static const double roomHalfWidth = 10.0;
-  static const double roomHalfDepth = 8.0;
-  static const double roomDoorHalfWidth = 2.4;
+  static const double roomHalfWidth = 12.0;
+  static const double roomHalfDepth = 9.0;
+  static const double roomDoorHalfWidth = 2.8;
   static const double roomWallHalfThickness = 0.42;
   static const double roomWallHalfHeight = 1.5;
   static const double riverBankMargin = 0.55;
@@ -76,6 +76,14 @@ abstract final class ArenaWorldCatalog {
     ('east_north', 63.0, 38.0),
   ];
 
+  /// Four neutral capture sites give each district a persistent macro objective.
+  static const districtSites = <(String, String, double, double)>[
+    ('foundry', 'Fundição', -52.0, -30.0),
+    ('market', 'Mercado', 52.0, -30.0),
+    ('gardens', 'Jardins', -52.0, 30.0),
+    ('archive', 'Arquivo', 52.0, 30.0),
+  ];
+
   /// Two opposing mezzanine routes create a real height layer without
   /// introducing a second navigation grid or increasing entity budgets.
   static const verticalAccesses = <ArenaVerticalAccess>[
@@ -83,12 +91,16 @@ abstract final class ArenaWorldCatalog {
     ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
-  // Four distinct silhouettes establish recognizable blocks at each corner.
+  // Eight CC0 facades create a recognizable built edge around the districts.
   static const commercialBlocks = <(String, double, double, double)>[
     ('commercial_building_b.glb', -82.0, -60.0, 6.5),
     ('commercial_building_c.glb', 82.0, -60.0, 6.5),
     ('commercial_building_f.glb', -82.0, 60.0, 6.5),
     ('commercial_building_h.glb', 82.0, 60.0, 6.5),
+    ('commercial_building_a.glb', -82.0, -16.0, 5.8),
+    ('commercial_building_e.glb', 82.0, -16.0, 5.8),
+    ('commercial_building_b.glb', -82.0, 16.0, 5.8),
+    ('commercial_building_h.glb', 82.0, 16.0, 5.8),
   ];
 
   static const sideApproachAnchors = <(double, double)>[
@@ -123,15 +135,25 @@ abstract final class ArenaWorldCatalog {
     [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
     [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
     [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
+    [(-70, -52), (-70, -36), (-70, -18), (-62, -16), (-48, -16),
+      (-24, -16), (0, -16), (24, -16), (48, -16), (62, -16), (70, -18),
+      (70, -36), (70, -52)],
+    [(-70, 52), (-70, 36), (-70, 18), (-62, 16), (-48, 16),
+      (-24, 16), (0, 16), (24, 16), (48, 16), (62, 16), (70, 18),
+      (70, 36), (70, 52)],
+    [(-64, -36), (-52, -30), (-40, -22), (-36, -16)],
+    [(64, -36), (52, -30), (40, -22), (36, -16)],
+    [(-64, 36), (-52, 30), (-40, 22), (-36, 16)],
+    [(64, 36), (52, 30), (40, 22), (36, 16)],
   ];
 
-  static const _bridges = <double>[-36.0, 0.0, 36.0];
+  static const _bridges = <double>[-72.0, -36.0, 0.0, 36.0, 72.0];
   static const _towerLanes = <double>[-36.0, 0.0, 36.0];
   static const _towerRows = <double>[-52.0, -36.0, -20.0, 20.0, 36.0, 52.0];
 
   static const treeBlockerPoints = <(double, double)>[
-    (-82, -16), (-82, 16), (82, -16), (82, 16),
-    (-72, -58), (72, -58), (-72, 58), (72, 58),
+    (-48, -54), (48, -54), (-48, 54), (48, 54),
+    (-78, -24), (78, -24), (-78, 24), (78, 24),
   ];
 
   static const largeTreePoints = <(double, double)>[
@@ -277,7 +299,7 @@ abstract final class ArenaWorldCatalog {
     final riverZ = _riverCenterZ(x);
     final channelHalfWidth = _riverHalfWidth(x) + riverBankMargin;
     return _bridges.any((bridgeX) =>
-        (x - bridgeX).abs() <= 4.2 &&
+        (x - bridgeX).abs() <= 5.2 &&
         (z - riverZ).abs() <= channelHalfWidth + 2.0);
   }
 
@@ -464,11 +486,11 @@ abstract final class ArenaWorldCatalog {
       add('street_light_square.glb', point.$1, point.$2, scale: 5.7);
     }
 
-    // Signalized bridge approaches make the crossings legible from the lane.
+    // Signalized bridge approaches make all five crossings legible.
     for (final point in const [
-      (-44.0, -5.0), (-28.0, 5.0),
-      (-8.0, -5.0), (8.0, 5.0),
-      (28.0, -5.0), (44.0, 5.0),
+      (-80.0, -5.0), (-64.0, 5.0), (-44.0, -5.0), (-28.0, 5.0),
+      (-8.0, -5.0), (8.0, 5.0), (28.0, -5.0), (44.0, 5.0),
+      (64.0, -5.0), (80.0, 5.0),
     ]) {
       add('traffic_light.glb', point.$1, point.$2, scale: 5.8);
     }
@@ -486,7 +508,7 @@ abstract final class ArenaWorldCatalog {
     add('road_sign_warning.glb', 55.0, 26.0, scale: 4.5, yaw: -math.pi / 2);
 
     // Crosswalk strips emphasize each bridge threshold.
-    for (final laneX in const [-36.0, 0.0, 36.0]) {
+    for (final laneX in const [-72.0, -36.0, 0.0, 36.0, 72.0]) {
       for (final side in const [-1.0, 1.0]) {
         add('road_crossing.glb', laneX, side * 4.0,
             scale: 1, y: 0.035);

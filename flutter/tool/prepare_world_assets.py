@@ -56,6 +56,16 @@ ACCESS_PATHS = [
     [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
     [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
     [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
+    [(-70, -52), (-70, -36), (-70, -18), (-62, -16), (-48, -16),
+     (-24, -16), (0, -16), (24, -16), (48, -16), (62, -16), (70, -18),
+     (70, -36), (70, -52)],
+    [(-70, 52), (-70, 36), (-70, 18), (-62, 16), (-48, 16),
+     (-24, 16), (0, 16), (24, 16), (48, 16), (62, 16), (70, 18),
+     (70, 36), (70, 52)],
+    [(-64, -36), (-52, -30), (-40, -22), (-36, -16)],
+    [(64, -36), (52, -30), (40, -22), (36, -16)],
+    [(-64, 36), (-52, 30), (-40, 22), (-36, 16)],
+    [(64, 36), (52, 30), (40, 22), (36, 16)],
 ]
 
 
@@ -483,8 +493,21 @@ def build_terrain_glb(output: Path) -> None:
                 add_up_triangle(group_name, prev[3], cur[3], cur[2])
             previous[group_name] = tuple(current_indices)
 
-    # Three wide, walkable crossings connect each route across the river.
-    for lane_x in (-36.0, 0.0, 36.0):
+    # Bake secondary district roads as static stone segments in the terrain GLB.
+    for path in ACCESS_PATHS:
+        for index in range(len(path) - 1):
+            ax, az = path[index]
+            bx, bz = path[index + 1]
+            dx, dz = bx - ax, bz - az
+            length = math.hypot(dx, dz)
+            if length < 0.5:
+                continue
+            mx, mz = (ax + bx) * 0.5, (az + bz) * 0.5
+            add_box("stone", mx, height(mx, mz) + 0.075, mz,
+                    5.0, 0.13, length + 0.35, math.atan2(dx, dz))
+
+    # Five wide crossings connect the north and south district grids.
+    for lane_x in (-72.0, -36.0, 0.0, 36.0, 72.0):
         river_z = river_center_z(lane_x)
         river_width = river_half_width(lane_x)
         bank_a = height(lane_x, river_z - river_width - 1.25)
@@ -678,13 +701,13 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "180x140 urban MOBA arena with three avenues, an east-west canal, four districts and enterable interiors",
+            "layout": "180x140 District Control arena with five canal crossings, paved connectors, four capture districts and enterable interiors",
             "mapShape": "large-urban-superrectangle",
             "laneCount": 3,
-            "bridgeCount": 3,
+            "bridgeCount": 5,
             "districtCount": 4,
             "enterableGroundFloorCount": 4,
-            "sideApproachCount": 8,
+            "sideApproachCount": 14,
             "walkableSideCourtyards": True,
             "baseCount": 2,
             "dynamicShadows": False,

@@ -405,9 +405,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // The bundled Quaternius and Kenney humanoid rigs face local +Z.
-    // Do not add a half-turn: +Z movement must make the character face +Z.
-    final yaw = math.atan2(facingX, facingZ);
+    // Imported humanoid clips travel along local -Z. Correct their asset basis
+    // so player, bots and minions face their actual travel direction.
+    final yaw = math.atan2(facingX, facingZ) + math.pi;
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -415,9 +415,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _entityFacing(snapshot.playerFacingX, snapshot.playerFacingZ);
 
   static const _bridges = <(String, double, double)>[
+    ('outer_west', -72.0, 0.0),
     ('west', -36.0, 0.0),
     ('central', 0.0, 0.1),
     ('east', 36.0, -0.1),
+    ('outer_east', 72.0, 0.0),
   ];
 
   List<Widget> _buildStaticSceneChildren() {
@@ -459,6 +461,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           name: 'canal_crossing_$laneX',
           position: _worldPosition(MobaPoint(laneX, 0)),
           scale: vm.Vector3(12.0, 1.0, 12.0),
+        ),
+      for (final site in ArenaWorldCatalog.districtSites)
+        SceneModel(
+          'assets/world/city/interior_computer_screen.glb',
+          key: ValueKey('district-console-${site.$1}'),
+          name: 'district_console_${site.$1}',
+          position: _worldPosition(MobaPoint(site.$3, site.$4), heightOffset: 0.95),
+          scale: vm.Vector3.all(1.8),
         ),
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
@@ -518,6 +528,23 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           0,
         ),
       ),
+      for (final district in snapshot.districts)
+        SceneMesh(
+          name: 'district_control_${district.id}',
+          geometry: _relayRingGeometry,
+          material: district.contested
+              ? _relayContestedMaterial
+              : district.owner == MobaTeam.blue
+                  ? _relayBlueMaterial
+                  : district.owner == MobaTeam.red
+                      ? _relayRedMaterial
+                      : _relayNeutralMaterial,
+          position: vm.Vector3(
+            district.position.x,
+            _groundHeight(district.position) + 0.07,
+            district.position.z,
+          ),
+        ),
       for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
         if (tower.health > 0)
@@ -607,27 +634,27 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     return [
       SceneModel('assets/world/city/interior_floor.glb',
         key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
-        position: p(x - 10, 0.02, z + 8), scale: vm.Vector3(20, 1, 16)),
+        position: p(x - 12, 0.02, z + 9), scale: vm.Vector3(24, 1, 18)),
       SceneModel('assets/world/city/interior_wall_window.glb',
         key: ValueKey('interior-back-$id'), name: 'interior_back_wall_$id',
-        position: p(x - 10, 0, z + 8), scale: vm.Vector3(20, 2.5, 1)),
+        position: p(x - 12, 0, z + 9), scale: vm.Vector3(24, 2.8, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
-        position: p(x - 10, 0, z), rotation: yaw(math.pi / 2),
-        scale: vm.Vector3(16, 2.5, 1)),
+        position: p(x - 12, 0, z), rotation: yaw(math.pi / 2),
+        scale: vm.Vector3(18, 2.8, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
-        position: p(x + 10, 0, z), rotation: yaw(-math.pi / 2),
-        scale: vm.Vector3(16, 2.5, 1)),
+        position: p(x + 12, 0, z), rotation: yaw(-math.pi / 2),
+        scale: vm.Vector3(18, 2.8, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-front-left-$id'), name: 'interior_front_left_$id',
-        position: p(x - 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
+        position: p(x - 7.4, 0, z - 9), scale: vm.Vector3(9.2, 2.8, 1)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-front-right-$id'), name: 'interior_front_right_$id',
-        position: p(x + 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
+        position: p(x + 7.4, 0, z - 9), scale: vm.Vector3(9.2, 2.8, 1)),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x, 0, z - 8), scale: vm.Vector3(4.8, 2.5, 1)),
+        position: p(x, 0, z - 9), scale: vm.Vector3(5.6, 2.8, 1)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
         position: p(hasVerticalAccess ? x - 5.2 : x - 4.5, 0, deskZ),
@@ -815,7 +842,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(0.84),
+      scale: vm.Vector3.all(0.94),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -832,7 +859,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final scale = minion.ranged ? 0.68 : 0.74;
+    final scale = minion.ranged ? 0.94 : 1.02;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
@@ -1173,6 +1200,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       child: _ObjectiveHud(
                         objective: snapshot.centralObjective,
                       ),
+                    ),
+                  ),
+                  Positioned(
+                    top: 108,
+                    left: 0,
+                    right: 0,
+                    child: Center(
+                      child: _DistrictHud(districts: snapshot.districts),
                     ),
                   ),
                   if (nearbyNpc != null)
@@ -1523,6 +1558,28 @@ class _ObjectiveHud extends StatelessWidget {
           ],
         ),
       ),
+    );
+  }
+}
+
+class _DistrictHud extends StatelessWidget {
+  const _DistrictHud({required this.districts});
+  final List<MobaDistrictSnapshot> districts;
+
+  @override
+  Widget build(BuildContext context) {
+    final blue = districts.where((item) => item.owner == MobaTeam.blue).length;
+    final red = districts.where((item) => item.owner == MobaTeam.red).length;
+    final neutral = districts.length - blue - red;
+    return _HudPlate(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.flag_outlined, size: 10, color: Color(0xFFD6E8EA)),
+        const SizedBox(width: 5),
+        Text('DISTRITOS  $blue AZUL  •  $red VERMELHO  •  $neutral LIVRE',
+          style: const TextStyle(color: Color(0xFFE4EFF0), fontSize: 8,
+            fontWeight: FontWeight.w900, letterSpacing: 0.55)),
+      ]),
     );
   }
 }

@@ -48,7 +48,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
 - Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Mapa urbano expandido: 180 × 140 unidades, três avenidas, canal central, três travessias, becos e quatro interiores acessíveis.
+- Mapa District Control: 180 × 140, quatro distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e quatro interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.

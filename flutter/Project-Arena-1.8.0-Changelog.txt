@@ -1,0 +1,24 @@
+Project Arena
+Versão 1.8.0
+
+ADICIONADO
+- Quatro distritos capturáveis: Fundição, Mercado, Jardins e Arquivo.
+- Captura territorial, recompensas de ouro e experiência.
+- Bônus de equipe de 3,5% de dano por distrito controlado.
+- Consoles e marcadores visuais de controle nos quatro distritos.
+- Cinco pontes sobre o canal.
+- Rede ampliada de ruas secundárias e desvios pavimentados.
+- Quatro fachadas comerciais adicionais com modelos CC0 já licenciados no projeto.
+
+ALTERADO
+- Orientação de heróis, bots, minions e NPCs ajustada para acompanhar a direção do deslocamento.
+- Escala visual de bots e minions aumentada.
+- Interiores ampliados para 24 × 18 unidades, com portas de 5,6 unidades.
+- Colisões das paredes e aberturas alinhadas às novas dimensões dos interiores.
+- Bots de rotação passam a procurar distritos neutros ou adversários.
+- Ruas secundárias incorporadas ao terreno no build offline.
+- Rotas alternativas conectam os distritos ao campo principal.
+
+REMOVIDO
+- Dependência exclusiva das três avenidas como conexões entre os distritos.
+- Rede anterior de apenas oito conectores laterais isolados.
