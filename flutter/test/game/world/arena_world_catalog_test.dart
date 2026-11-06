@@ -212,8 +212,14 @@ void main() {
         ArenaSurfaceType.asphalt,
       );
       expect(
-        ArenaWorldCatalog.surfaceAt(-50, -36),
+        ArenaWorldCatalog.surfaceAt(-30, -60),
         ArenaSurfaceType.concrete,
+        reason: 'the sidewalk band should sit outside the asphalt lane',
+      );
+      expect(
+        ArenaWorldCatalog.surfaceAt(-50, -36),
+        ArenaSurfaceType.asphalt,
+        reason: 'the side access road should share the continuous asphalt mesh',
       );
       expect(
         ArenaWorldCatalog.surfaceAt(-86, 14),
