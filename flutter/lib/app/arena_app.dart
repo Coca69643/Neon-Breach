@@ -499,6 +499,11 @@ class _ArenaScreen extends StatelessWidget {
             onEvent(const MatchRuntimeCompleted(success: true));
           }
         },
+        onRuntimeFailed: (reason) {
+          if (snapshot.phase == ArenaPhase.matchLoading) {
+            onEvent(MatchRuntimeCompleted(success: false, reason: reason));
+          }
+        },
         onPause: () => onEvent(const PauseMatch()),
         onFinished: (winner) => onEvent(
           MatchFinished(
