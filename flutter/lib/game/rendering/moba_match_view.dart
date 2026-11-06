@@ -6,6 +6,7 @@ import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../match/moba_match_simulation.dart';
+import '../physics/arena_physics_runtime.dart';
 import '../world/arena_world_catalog.dart';
 import 'hero_weapon_socket.dart';
 
@@ -150,6 +151,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   bool _readySent = false;
   bool _runtimeFailureSent = false;
   Timer? _worldLoadTimeout;
+  ArenaPhysicsRuntime? _physicsRuntime;
   bool _finishSent = false;
   String? _activeNpcId;
   late double _cameraX;
@@ -168,6 +170,31 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       const Duration(seconds: 35),
       _handleWorldLoadTimeout,
     );
+    unawaited(_initialisePhysicsRuntime());
+  }
+
+  Future<void> _initialisePhysicsRuntime() async {
+    try {
+      final initial = widget.simulation.snapshot;
+      final runtime = await ArenaPhysicsRuntime.create(
+        spawn: initial.playerPosition,
+        towers: initial.towers,
+        covers: initial.covers,
+      );
+      if (!mounted) {
+        runtime.dispose();
+        return;
+      }
+      _physicsRuntime = runtime;
+      _markWorldAssetReady('physics');
+    } catch (error) {
+      if (!mounted || _runtimeFailureSent) return;
+      _runtimeFailureSent = true;
+      _worldLoadTimeout?.cancel();
+      widget.onRuntimeFailed(
+        'Não foi possível inicializar a física 3D da arena: $error',
+      );
+    }
   }
 
   void _initialiseCameraRig(MobaMatchSnapshot snapshot) {
@@ -175,14 +202,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final z = snapshot.playerPosition.z * _worldScale;
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
-    final horizontalDistance = 9.4 * math.cos(_cameraPitch);
-    final ground = _groundHeight(snapshot.playerPosition);
+    final horizontalDistance =
+        9.4 * math.cos(_cameraPitch) * _worldScale;
+    final ground = _groundHeight(snapshot.playerPosition) * _worldScale;
 
     _cameraX = x - forwardX * horizontalDistance;
-    _cameraY = ground + 1.25 + 9.4 * math.sin(_cameraPitch);
+    _cameraY = ground + (1.25 + 9.4 * math.sin(_cameraPitch)) * _worldScale;
     _cameraZ = z - forwardZ * horizontalDistance;
-    _lookX = x + forwardX * 3.0;
-    _lookY = ground + 1.2;
+    _lookX = x + forwardX * 3.0 * _worldScale;
+    _lookY = ground + 1.2 * _worldScale;
     _lookZ = z + forwardZ * 3.0;
   }
 
@@ -191,15 +219,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final z = snapshot.playerPosition.z * _worldScale;
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
-    final horizontalDistance = 9.4 * math.cos(_cameraPitch);
-    final ground = _groundHeight(snapshot.playerPosition);
+    final horizontalDistance =
+        9.4 * math.cos(_cameraPitch) * _worldScale;
+    final ground = _groundHeight(snapshot.playerPosition) * _worldScale;
 
     // Camera yaw/pitch are controlled only by the right-side drag zone.
     final desiredX = x - forwardX * horizontalDistance;
-    final desiredY = ground + 1.25 + 9.4 * math.sin(_cameraPitch);
+    final desiredY = ground + (1.25 + 9.4 * math.sin(_cameraPitch)) * _worldScale;
     final desiredZ = z - forwardZ * horizontalDistance;
-    final desiredLookX = x + forwardX * 3.0;
-    final desiredLookY = ground + 1.2;
+    final desiredLookX = x + forwardX * 3.0 * _worldScale;
+    final desiredLookY = ground + 1.2 * _worldScale;
     final desiredLookZ = z + forwardZ * 3.0;
     final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
@@ -225,14 +254,41 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final rightZ = -math.sin(_cameraYaw);
     final worldMoveX = _moveX * rightX + _moveZ * forwardX;
     final worldMoveZ = _moveX * rightZ + _moveZ * forwardZ;
+    final previous = _snapshot;
+    final physics = _physicsRuntime;
+    if (physics != null) {
+      final alive = previous.playerHealth > 0 &&
+          previous.playerRespawnSeconds <= 0;
+      physics.setActive(alive);
+      physics.setInput(worldMoveX, worldMoveZ);
+      physics.update(deltaSeconds);
+      if (alive) {
+        widget.simulation.applyPhysicsPlayerPosition(physics.playerPosition);
+      }
+    }
+
     widget.simulation.step(
       deltaSeconds,
       moveX: worldMoveX,
       moveZ: worldMoveZ,
       basicAttack: _basicAttackHeld,
       castSkill: _skillHeld,
+      externalPlayerMovement: physics != null,
     );
     final next = widget.simulation.snapshot;
+    if (physics != null) {
+      // The only legal teleport is the explicit defeated -> respawn transition.
+      if (previous.playerRespawnSeconds > 0 &&
+          next.playerRespawnSeconds <= 0 &&
+          next.playerHealth > 0) {
+        physics.teleport(next.playerPosition);
+      }
+      physics.setActive(
+        next.playerHealth > 0 && next.playerRespawnSeconds <= 0,
+      );
+      physics.syncTowers(next.towers);
+      physics.syncCovers(next.covers);
+    }
     _advanceCameraRig(next, deltaSeconds);
     setState(() => _snapshot = next);
 
@@ -257,7 +313,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   void _markWorldAssetReady(String assetKey) {
     if (!mounted || _runtimeFailureSent || _worldReady) return;
     if (!_criticalSceneAssetsLoaded.add(assetKey)) return;
-    const requiredAssets = {'terrain', 'player'};
+    const requiredAssets = {'terrain', 'player', 'physics'};
     if (!_criticalSceneAssetsLoaded.containsAll(requiredAssets)) return;
 
     _worldLoadTimeout?.cancel();
@@ -275,8 +331,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _runtimeFailureSent = true;
     _worldLoadTimeout = null;
     widget.onRuntimeFailed(
-      'O terreno ou o modelo do herói não terminou de carregar em 35 segundos. '
-      'A partida foi interrompida para evitar iniciar com conteúdo incompleto.',
+      'O terreno, o modelo do herói ou a física 3D não terminaram de carregar '
+      'em 35 segundos. A partida foi interrompida para evitar iniciar com '
+      'conteúdo incompleto.',
     );
   }
 
@@ -285,6 +342,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   @override
   void dispose() {
     _worldLoadTimeout?.cancel();
+    _physicsRuntime?.dispose();
+    _physicsRuntime = null;
     super.dispose();
   }
 
@@ -326,9 +385,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 
   vm.Vector3 _worldPosition(MobaPoint point, {double heightOffset = 0}) =>
       vm.Vector3(
-        point.x * _worldScale,
+        point.x,
         _groundHeight(point) + heightOffset,
-        point.z * _worldScale,
+        point.z,
       );
 
   vm.Quaternion _facing(MobaTeam team) => vm.Quaternion.axisAngle(
@@ -528,7 +587,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     );
     final ground = _groundHeight(MobaPoint(x, z));
     vm.Vector3 p(double px, double py, double pz) =>
-        vm.Vector3(px * _worldScale, ground + py, pz * _worldScale);
+        vm.Vector3(px, ground + py, pz);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
     final deskZ = hasVerticalAccess ? z - 1.8 : z + 1.7;
@@ -964,7 +1023,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 // response. The battlefield overview remains in the minimap.
                 final cameraBob = math.sin(
                   elapsed.inMicroseconds / 1000000.0 * 1.35,
-                ) * 0.035;
+                ) * 0.035 * _worldScale;
                 return PerspectiveCamera(
                   fovRadiansY: 49 * math.pi / 180,
                   position: vm.Vector3(
@@ -988,7 +1047,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   ),
                 ),
               ),
-              children: _buildSceneChildren(snapshot),
+              children: [
+                SceneNode(
+                  name: 'scaled_battlefield_root',
+                  scale: vm.Vector3.all(_worldScale),
+                  children: _buildSceneChildren(snapshot),
+                ),
+              ],
             ),
             Positioned(
               left: viewport.maxWidth * 0.42,
