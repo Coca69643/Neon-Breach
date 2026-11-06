@@ -174,6 +174,45 @@ void main() {
       );
     });
 
+    test('falling outside the island enters the normal defeated and respawn lifecycle', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      final home = simulation.snapshot.playerPosition;
+
+      simulation.applyPhysicsPlayerPosition(const MobaPoint(110, 0));
+
+      expect(simulation.snapshot.playerHealth, 0);
+      expect(simulation.snapshot.playerRespawnSeconds, greaterThan(4.9));
+      expect(
+        simulation.snapshot.playerPosition.x,
+        110,
+        reason: 'death must preserve the elimination location during the countdown',
+      );
+
+      advanceFor(simulation, 5.2);
+
+      expect(simulation.snapshot.playerHealth, simulation.snapshot.playerMaxHealth);
+      expect(simulation.snapshot.playerRespawnSeconds, 0);
+      expect(simulation.snapshot.playerPosition.x, closeTo(home.x, 0.001));
+      expect(simulation.snapshot.playerPosition.z, closeTo(home.z, 0.001));
+      expect(simulation.snapshot.playerSpawnShieldSeconds, greaterThan(0));
+    });
+
+    test('external physics position disables duplicate logical movement', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+      final start = simulation.snapshot.playerPosition;
+
+      advanceFor(simulation, 1.0, moveX: 1, externalPlayerMovement: true);
+
+      expect(simulation.snapshot.playerPosition.x, closeTo(start.x, 0.001));
+      expect(simulation.snapshot.playerPosition.z, closeTo(start.z, 0.001));
+
+      simulation.applyPhysicsPlayerPosition(
+        MobaPoint(start.x + 2.0, start.z),
+      );
+
+      expect(simulation.snapshot.playerPosition.x, closeTo(start.x + 2.0, 0.001));
+    });
+
     test('minion waves recycle defeated entities after reaching the mobile cap', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
       var observedRecycledId = false;
