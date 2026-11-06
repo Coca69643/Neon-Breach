@@ -434,11 +434,10 @@ class ArenaPhysicsRuntime {
         if (corners.any((p) => !ArenaWorldCatalog.contains(p.$1, p.$2))) {
           continue;
         }
-        if (corners.any((p) =>
-            ArenaWorldCatalog.isCanalAt(p.$1, p.$2) &&
-            !ArenaWorldCatalog.isBridgeAt(p.$1, p.$2))) {
-          continue;
-        }
+        // Keep the last bank cells intact. Dropping an entire 2.5 m cell
+        // because one corner touches the river leaves the capsule without
+        // ground support before it reaches the bank barrier. Cells whose
+        // centres are in the channel are still omitted below.
         if (ArenaWorldCatalog.isCanalAt(centerX, centerZ) &&
             !ArenaWorldCatalog.isBridgeAt(centerX, centerZ)) {
           continue;
