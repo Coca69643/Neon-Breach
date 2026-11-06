@@ -14,12 +14,14 @@ class MobaMatchView extends StatefulWidget {
     super.key,
     required this.simulation,
     required this.onRuntimeReady,
+    required this.onRuntimeFailed,
     required this.onPause,
     required this.onFinished,
   });
 
   final MobaMatchSimulation simulation;
   final VoidCallback onRuntimeReady;
+  final ValueChanged<String> onRuntimeFailed;
   final VoidCallback onPause;
   final ValueChanged<MobaTeam> onFinished;
 
@@ -105,6 +107,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   bool _skillHeld = false;
   bool _worldReady = false;
   bool _readySent = false;
+  bool _runtimeFailureSent = false;
+  Timer? _worldLoadTimeout;
   bool _finishSent = false;
   String? _activeNpcId;
   late double _cameraX;
@@ -119,6 +123,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     super.initState();
     _snapshot = widget.simulation.snapshot;
     _initialiseCameraRig(_snapshot);
+    _worldLoadTimeout = Timer(
+      const Duration(seconds: 35),
+      _handleWorldLoadTimeout,
+    );
   }
 
   void _initialiseCameraRig(MobaMatchSnapshot snapshot) {
@@ -163,7 +171,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   void _onSceneTick(Duration elapsed, double deltaSeconds) {
-    if (!mounted) return;
+    // Do not advance the match clock while the terrain/player model is still
+    // loading. This prevents a delayed GPU import from starting a live match
+    // with elapsed time or movement already consumed.
+    if (!mounted || !_worldReady || !_readySent) return;
     // Movement is camera-relative but never feeds back into camera yaw.
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
@@ -182,12 +193,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _advanceCameraRig(next, deltaSeconds);
     setState(() => _snapshot = next);
 
-    if (_worldReady && !_readySent) {
-      _readySent = true;
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) widget.onRuntimeReady();
-      });
-    }
     if (next.winner != null && !_finishSent) {
       _finishSent = true;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -206,9 +211,38 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     });
   }
 
-  void _markWorldReady() {
+  void _markWorldAssetReady(String assetKey) {
     if (!mounted || _worldReady) return;
+    if (!_criticalSceneAssetsLoaded.add(assetKey)) return;
+    const requiredAssets = {'terrain', 'player'};
+    if (!_criticalSceneAssetsLoaded.containsAll(requiredAssets)) return;
+
+    _worldLoadTimeout?.cancel();
+    _worldLoadTimeout = null;
     setState(() => _worldReady = true);
+    if (_readySent) return;
+    _readySent = true;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) widget.onRuntimeReady();
+    });
+  }
+
+  void _handleWorldLoadTimeout() {
+    if (!mounted || _readySent || _runtimeFailureSent) return;
+    _runtimeFailureSent = true;
+    _worldLoadTimeout = null;
+    widget.onRuntimeFailed(
+      'O terreno ou o modelo do herói não terminou de carregar em 35 segundos. '
+      'A partida foi interrompida para evitar iniciar com conteúdo incompleto.',
+    );
+  }
+
+  final Set<String> _criticalSceneAssetsLoaded = <String>{};
+
+  @override
+  void dispose() {
+    _worldLoadTimeout?.cancel();
+    super.dispose();
   }
 
   String _heroAsset(MobaHeroId hero) => switch (hero) {
@@ -281,7 +315,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         _terrainAsset,
         key: const ValueKey('match-terrain'),
         name: 'vale_das_coroas_match_terrain',
-        onLoaded: (_) => _markWorldReady(),
+        onLoaded: (_) => _markWorldAssetReady('terrain'),
       ),
       for (var i = 0; i < ArenaWorldCatalog.trees.length; i++)
         _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
@@ -372,6 +406,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         key: const ValueKey('match-player-hero'),
         name: 'player_${snapshot.heroId.id}',
         onLoaded: (modelRoot) {
+          _markWorldAssetReady('player');
           unawaited(HeroWeaponSocket.attach(modelRoot, snapshot.heroId));
         },
         position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
