@@ -545,11 +545,11 @@ class ArenaPhysicsRuntime {
       final access = ArenaWorldCatalog.verticalAccesses.any(
         (entry) => entry.id == building.$1,
       );
-      final counterX = access ? x - 5.2 : x;
-      final counterZ = access ? z - 2.0 : z + 2.2;
+      final counterX = access ? x - 6.0 : x;
+      final counterZ = access ? z - 2.4 : z + 2.5;
       final counterHalf = access
-          ? vm.Vector3(1.5, 0.7, 0.7)
-          : vm.Vector3(2.6, 0.7, 0.7);
+          ? vm.Vector3(2.0, 0.8, 0.8)
+          : vm.Vector3(3.0, 0.8, 0.8);
       _addStaticShape(
         BoxShape(halfExtents: counterHalf),
         vm.Vector3(counterX, baseY + counterHalf.y, counterZ),
@@ -557,8 +557,8 @@ class ArenaPhysicsRuntime {
       );
       if (!access) {
         _addStaticShape(
-          BoxShape(halfExtents: vm.Vector3(0.55, 0.8, 1.8)),
-          vm.Vector3(x - 7.0, baseY + 0.8, z + 3.2),
+          BoxShape(halfExtents: vm.Vector3(0.6, 0.8, 1.8)),
+          vm.Vector3(x - 8.5, baseY + 0.8, z + 4.0),
           label: '${building.$1}_shelf',
         );
       }
