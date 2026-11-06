@@ -23,10 +23,11 @@ on:
       - '.github/workflows/android.yml'
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build:
+    if: false # Archived native pipeline; the Flutter migration is the active Android build.
     name: Verify and compile Android APK
     runs-on: ubuntu-24.04
     timeout-minutes: 45
@@ -47,29 +48,6 @@ jobs:
         with:
           packages: 'platform-tools'
           log-accepted-android-sdk-licenses: true
-      - name: Prepare persistent APK signing key
-        if: github.event_name != 'pull_request'
-        env:
-          NEON_BREACH_KEYSTORE_BASE64: ${{ secrets.NEON_BREACH_KEYSTORE_BASE64 }}
-          NEON_BREACH_KEYSTORE_PASSWORD: ${{ secrets.NEON_BREACH_KEYSTORE_PASSWORD }}
-          NEON_BREACH_KEY_ALIAS: ${{ secrets.NEON_BREACH_KEY_ALIAS }}
-          NEON_BREACH_KEY_PASSWORD: ${{ secrets.NEON_BREACH_KEY_PASSWORD }}
-        run: |
-          set -euo pipefail
-          test -n "${NEON_BREACH_KEYSTORE_BASE64:-}" || { echo "::error::Persistent signing secret is missing; refusing to publish an update APK."; exit 1; }
-          test -n "${NEON_BREACH_KEYSTORE_PASSWORD:-}"
-          test -n "${NEON_BREACH_KEY_ALIAS:-}"
-          test -n "${NEON_BREACH_KEY_PASSWORD:-}"
-          KEYSTORE_PATH="$RUNNER_TEMP/project-arena-signing.jks"
-          printf '%s' "$NEON_BREACH_KEYSTORE_BASE64" | base64 --decode > "$KEYSTORE_PATH"
-          test -s "$KEYSTORE_PATH"
-          {
-            echo "NEON_BREACH_KEYSTORE_PATH=$KEYSTORE_PATH"
-            echo "NEON_BREACH_KEYSTORE_PASSWORD=$NEON_BREACH_KEYSTORE_PASSWORD"
-            echo "NEON_BREACH_KEY_ALIAS=$NEON_BREACH_KEY_ALIAS"
-            echo "NEON_BREACH_KEY_PASSWORD=$NEON_BREACH_KEY_PASSWORD"
-          } >> "$GITHUB_ENV"
-          echo "Persistent signing key loaded."
       - name: Install Android SDK, NDK and CMake
         run: |
           sdkmanager --install "platforms;android-37.0" "build-tools;37.0.0" "ndk;29.0.14206865" "cmake;3.22.1"
