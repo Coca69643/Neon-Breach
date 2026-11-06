@@ -405,9 +405,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // The bundled Quaternius and Kenney humanoid rigs face local +Z.
-    // Do not add a half-turn: +Z movement must make the character face +Z.
-    final yaw = math.atan2(facingX, facingZ);
+    // Imported humanoid GLBs use local -Z as their visual forward axis.
+    // Simulation vectors use world +Z as forward, so apply one rig-space
+    // correction here for heroes, bots and minions instead of patching each rig.
+    final yaw = math.atan2(facingX, facingZ) + math.pi;
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -815,7 +816,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(0.84),
+      scale: vm.Vector3.all(0.98),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -832,7 +833,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final scale = minion.ranged ? 0.68 : 0.74;
+    final scale = minion.ranged ? 0.94 : 1.02;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
