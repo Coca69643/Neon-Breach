@@ -425,27 +425,26 @@ void main() {
       }
     });
 
-    test('construction cover blocks a doorway until destroyed', () {
+    test('side barricade remains destructible without sealing the interior entrance', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
-        spawnPosition: const MobaPoint(-63, -38.7),
+        spawnPosition: const MobaPoint(-74, -42.1),
       );
       final cover = simulation.snapshot.covers.firstWhere(
         (item) => item.id == 'west_south_door_barrier',
       );
+      final initialHealth = cover.health;
 
-      for (var frame = 0; frame < 60; frame++) {
-        simulation.step(1 / 60, moveZ: -1);
-      }
-      expect(
-        simulation.snapshot.playerPosition.z,
-        greaterThan(cover.position.z - 1.45),
-        reason: 'the live barricade must block the doorway',
+      simulation.step(1 / 30, basicAttack: true);
+      final damaged = simulation.snapshot.covers.firstWhere(
+        (item) => item.id == cover.id,
       );
+      expect(damaged.health, lessThan(initialHealth));
+      expect(damaged.isDestroyed, isFalse);
 
-      for (var hit = 0; hit < 4; hit++) {
+      for (var hit = 0; hit < 3; hit++) {
+        advanceFor(simulation, 0.82);
         simulation.step(1 / 30, basicAttack: true);
-        if (hit < 3) advanceFor(simulation, 0.82);
       }
       final destroyed = simulation.snapshot.covers.firstWhere(
         (item) => item.id == cover.id,
@@ -453,13 +452,16 @@ void main() {
       expect(destroyed.health, 0);
       expect(destroyed.isDestroyed, isTrue);
 
-      for (var frame = 0; frame < 60; frame++) {
-        simulation.step(1 / 60, moveZ: -1);
-      }
+      final southDoor = ArenaWorldCatalog.cityInteriors.firstWhere(
+        (building) => building.$1 == 'west_south',
+      );
       expect(
-        simulation.snapshot.playerPosition.z,
-        lessThan(cover.position.z - 1.8),
-        reason: 'destroying the cover must open the entrance',
+        ArenaWorldCatalog.isWalkable(
+          southDoor.$2,
+          southDoor.$3 - 4.3,
+        ),
+        isTrue,
+        reason: 'the entrance stays physically accessible before and after the side cover is destroyed',
       );
     });
 
