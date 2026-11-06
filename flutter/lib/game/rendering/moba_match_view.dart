@@ -979,6 +979,27 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaNpcVisualId.femaleC => 'assets/npcs/npc_female_c.glb',
       };
 
+  Widget _unitHealthBar(double health, double maxHealth, {double height = 2.05}) {
+    final ratio = (health / maxHealth).clamp(0.0, 1.0).toDouble();
+    return SceneNode(
+      name: 'unit_health_bar',
+      position: vm.Vector3(0, height, 0),
+      children: [
+        SceneMesh(
+          geometry: _unitHealthBackGeometry,
+          material: _unitHealthBackMaterial,
+        ),
+        if (ratio > 0)
+          SceneMesh(
+            geometry: _unitHealthFillGeometry,
+            material: _unitHealthFillMaterial,
+            scale: vm.Vector3(ratio, 1, 1),
+            position: vm.Vector3(-0.5 * (1 - ratio), 0, 0.035),
+          ),
+      ],
+    );
+  }
+
   Widget _buildBot(MobaBotSnapshot bot) {
     return SceneModel(
       _npcAsset(bot.visualId),
@@ -986,7 +1007,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(0.84),
+      scale: vm.Vector3.all(0.90),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -998,12 +1019,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               : (bot.moving ? 0.98 : 0.82),
         ),
       ],
-      children: [_teamRing(bot.team)],
+      children: [
+        _teamRing(bot.team),
+        _unitHealthBar(bot.health, bot.maxHealth),
+      ],
     );
   }
 
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final scale = minion.ranged ? 0.68 : 0.74;
+    final scale = minion.ranged ? 0.72 : 0.78;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
@@ -1023,7 +1047,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               : (minion.moving ? (minion.ranged ? 0.92 : 1.0) : 0.82),
         ),
       ],
-      children: [_teamRing(minion.team)],
+      children: [
+        _teamRing(minion.team),
+        _unitHealthBar(minion.health, minion.maxHealth, height: 1.72),
+      ],
     );
   }
 
