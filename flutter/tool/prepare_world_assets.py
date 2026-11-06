@@ -26,7 +26,7 @@ HALF_X = 90.0
 HALF_Z = 70.0
 GRID_X = 180
 GRID_Z = 140
-FOOTPRINT_EXPONENT = 8.5
+CORNER_RADIUS = 10.0
 
 # A narrow east-west city canal separates districts; all three main avenues
 # cross it at raised pedestrian/vehicle crossings.
@@ -116,21 +116,14 @@ def normal_at(x: float, z: float) -> tuple[float, float, float]:
     return nx / length, ny / length, nz / length
 
 
-def edge_wobble(angle: float) -> float:
-    return (
-        1.0 + 0.022 * math.sin(angle * 5.0)
-        + 0.014 * math.sin(angle * 9.0 + 1.4)
-        + 0.010 * math.cos(angle * 13.0)
-        + 0.006 * math.sin(angle * 17.0 + 0.8)
-    )
-
-
 def inside_island(x: float, z: float) -> bool:
-    exponent = FOOTPRINT_EXPONENT
-    angle = math.atan2(z / HALF_Z, x / HALF_X)
-    edge = edge_wobble(angle)
-    extent = (abs(x) / HALF_X) ** exponent + (abs(z) / HALF_Z) ** exponent
-    return extent <= edge ** exponent
+    # Flat-sided rounded rectangle; gameplay, Rapier terrain and rendered
+    # terrain now share the same district footprint instead of an oval edge.
+    if abs(x) > HALF_X or abs(z) > HALF_Z:
+        return False
+    corner_x = max(0.0, abs(x) - (HALF_X - CORNER_RADIUS))
+    corner_z = max(0.0, abs(z) - (HALF_Z - CORNER_RADIUS))
+    return corner_x * corner_x + corner_z * corner_z <= CORNER_RADIUS ** 2 + 1e-6
 
 
 def point_segment_distance(px: float, pz: float, a: tuple[float, float],
