@@ -24,3 +24,11 @@ ALTERADO
 
 REMOVIDO
 - Dependência exclusiva das três avenidas como rotas de rotação.
+
+
+SELEÇÃO DE PERSONAGENS
+- Tela reorganizada em palco 3D e catálogo de combatentes.
+- Catálogo orientado a dados com espécie, função, descrição e modelo por personagem.
+- Filtros de espécie gerados automaticamente a partir do elenco disponível.
+- Prévia 3D com escala, enquadramento e orientação configuráveis por modelo.
+- Lista preparada para crescer sem alterar a estrutura da tela.
