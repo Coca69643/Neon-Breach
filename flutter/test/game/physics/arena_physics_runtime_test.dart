@@ -100,7 +100,7 @@ void main() {
       final access = ArenaWorldCatalog.verticalAccesses.first;
       final z = (access.corridorMinZ + access.corridorMaxZ) * 0.5;
       physics.teleport(MobaPoint(access.rampStartX + 0.2, z));
-      await advance(frames: 90, moveX: 1);
+      await advance(frames: 90, moveZ: 1);
 
       expect(
         physics.playerPosition.x,
@@ -121,7 +121,7 @@ void main() {
       expect(pavedSpeed, greaterThan(4.6));
 
       physics.teleport(const MobaPoint(-86, 14));
-      await advance(frames: 90, moveX: 1);
+      await advance(frames: 100, moveX: 1);
       final grassSpeed = physics.horizontalSpeed;
       expect(grassSpeed, lessThan(pavedSpeed * 0.9));
 
