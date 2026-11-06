@@ -595,7 +595,7 @@ class ArenaPhysicsRuntime {
       final z1 = access.corridorMaxZ;
       final centerZ = (z0 + z1) * 0.5;
       final halfDepth = (z1 - z0) * 0.5;
-      final stepRun = access.rampRun / steps;
+      final stepRun = ArenaVerticalAccess.rampRun / steps;
 
       for (var index = 0; index < steps; index++) {
         final centerX = access.rampStartX + (index + 0.5) * stepRun;
