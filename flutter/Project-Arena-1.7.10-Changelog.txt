@@ -1,0 +1,26 @@
+Projeto Arena
+Versão 1.7.10
+
+ADICIONADO
+- Movimento físico do herói com gravidade, aceleração, desaceleração e colisão por cápsula.
+- Rampa contínua e mezanino elevado nos interiores oeste-sul e leste-norte.
+- Colisões físicas para terreno, margens do canal, edifícios, árvores, estruturas e plataformas.
+- Travessia física do canal limitada aos três corredores de ponte.
+- Ciclo de eliminação com permanência no local e retorno temporizado à base.
+
+ALTERADO
+- Campo ampliado e remodelado para uma planta retangular com cantos arredondados.
+- Escala do cenário e proporção entre ruas, interiores e rotas ajustadas.
+- Interiores ampliados para 20 × 16 unidades, com entradas frontais de 4,8 unidades.
+- Movimento do jogador sincronizado à posição física real, sem deslocamento lógico duplicado.
+- Animação de locomoção sincronizada ao deslocamento efetivo.
+- Colisões e navegação dos mezaninos alinhadas à inclinação contínua da rampa.
+- NPCs de serviço, botões táticos e rotas de patrulha ajustados para o novo espaço.
+- Reaparecimento limitado à conclusão do temporizador, com reinício da velocidade física.
+
+REMOVIDO
+- Silhueta oval antiga do campo.
+- Colisor de piso concorrente sob a rampa e o mezanino.
+- Movimento duplicado entre o controlador físico e a simulação da partida.
+- Teleporte automático durante o movimento normal; teleporte fica restrito ao respawn explícito.
+- Bloqueios físicos nas áreas reservadas às três pontes.

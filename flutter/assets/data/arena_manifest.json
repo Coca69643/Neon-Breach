@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "gameId": "project_arena",
+  "displayName": "Projeto Arena",
+  "orientation": "landscape",
+  "offline": true,
+  "runtime": {
+    "kind": "flutter_scene",
+    "status": "scene_integration",
+    "graphicsRuntime": "Flutter GPU / Impeller"
+  }
+}
