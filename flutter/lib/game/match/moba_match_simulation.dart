@@ -915,6 +915,11 @@ class MobaMatchSimulation {
     }
   }
 
+  void setPhysicsMovementState({required bool moving}) {
+    _playerMoving =
+        moving && _playerHealth > 0 && _playerRespawn <= 0 && _winner == null;
+  }
+
   void _movePlayer(double x, double z, double dt) {
     if (x.abs() < 0.06 && z.abs() < 0.06) return;
     final length = math.sqrt(x * x + z * z);
