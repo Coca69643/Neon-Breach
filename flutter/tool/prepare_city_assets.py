@@ -33,6 +33,62 @@ ASSETS = {
         "packs/city-kit-commercial/building-e.glb",
         "4443371e51be1d82100a6984211a0f7bc8daae74",
     ),
+    "commercial_building_b.glb": (
+        "packs/city-kit-commercial/building-b.glb",
+        "a71ea2a4ccdca22181b6506a194094cac60f35e2",
+    ),
+    "commercial_building_f.glb": (
+        "packs/city-kit-commercial/building-f.glb",
+        "9953090f076e84e41894bcfe0badde5be3a66e16",
+    ),
+    "commercial_building_h.glb": (
+        "packs/city-kit-commercial/building-h.glb",
+        "ba87000b72e5b18262438a4c028c1fbf22bb951c",
+    ),
+    "street_light_square.glb": (
+        "packs/city-kit-roads/light-square.glb",
+        "6ab94fd35afa21760581242a15be5252c59d0c66",
+    ),
+    "traffic_light.glb": (
+        "packs/city-kit-roads/traffic-light.glb",
+        "39d39733a048bf5c83b9dda85203c926ae5bc258",
+    ),
+    "road_sign_street.glb": (
+        "packs/city-kit-roads/road-sign-street.glb",
+        "9a396210dd01ea14cb34525109cbd88aba84da6b",
+    ),
+    "road_sign_warning.glb": (
+        "packs/city-kit-roads/road-sign-warning.glb",
+        "596cbf05cd1cf7b5c556ea417dd14f0ac5d4dd29",
+    ),
+    "road_crossing.glb": (
+        "packs/city-kit-roads/road-crossing.glb",
+        "240ac05f10d5912cb5a8fb9fbc4dcb58ce82b82e",
+    ),
+    "detail_awning_wide.glb": (
+        "packs/city-kit-commercial/detail-awning-wide.glb",
+        "9af27263aacc873c8cafe25b258d1f56beda9d9d",
+    ),
+    "detail_parasol_a.glb": (
+        "packs/city-kit-commercial/detail-parasol-a.glb",
+        "e3da3ba15d5363df700734cddd89ffb6bab07043",
+    ),
+    "city_planter.glb": (
+        "packs/city-kit-suburban/planter.glb",
+        "f6ed826fcc9eddb524a6483b2df28eb66d229f90",
+    ),
+    "tree_large.glb": (
+        "packs/city-kit-suburban/tree-large.glb",
+        "a22d9deb8057735da24a4f88b24291dae3545e36",
+    ),
+    "interior_trashcan.glb": (
+        "packs/furniture-kit/trashcan.glb",
+        "7c7d381cd693c9ffcc37a520750f5eb6de56f462",
+    ),
+    "interior_plant.glb": (
+        "packs/furniture-kit/plantsmall1.glb",
+        "6c64ddaef49e831446cf673d9d8c6c37e446928b",
+    ),
     "commercial_low_a.glb": (
         "packs/city-kit-commercial/low-detail-building-a.glb",
         "06f67ee309fa75379b87bf3ad4f1c8a5fc02c827",
@@ -186,8 +242,9 @@ def main() -> None:
         "sourceCommit": SOURCE_COMMIT,
         "assets": [],
         "layoutPolicy": (
-            "Three-lane urban MOBA; enterable ground-floor interiors; "
-            "no survival, crafting or gathering loop."
+            "Three-lane urban MOBA with distinct commercial silhouettes, "
+            "hand-authored street dressing, canal promenade, readable crossings "
+            "and four enterable service interiors; no survival, crafting or gathering loop."
         ),
     }
     total_bytes = 0
