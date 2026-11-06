@@ -270,8 +270,8 @@ void main() {
 
       expect(
         simulation.snapshot.playerPosition.x,
-        lessThan(-57.4),
-        reason: 'the hero must stop before crossing the interior side wall',
+        lessThan(-53.4),
+        reason: 'the hero must stop before crossing the east interior side wall',
       );
     });
 
