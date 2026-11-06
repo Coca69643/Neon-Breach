@@ -545,12 +545,18 @@ class _ArenaScreen extends StatelessWidget {
   }
 
   Widget _error() {
+    final canReturnToMenu =
+        snapshot.recoveryPhase == ArenaPhase.matchLoading;
     return _StatusView(
       eyebrow: 'RECUPERAÇÃO',
       title: 'Não foi possível continuar',
       description: snapshot.errorMessage ?? 'Erro não identificado.',
       actionLabel: 'TENTAR NOVAMENTE',
       onAction: onRetry,
+      secondaryLabel: canReturnToMenu ? 'VOLTAR AO HUB' : null,
+      onSecondary: canReturnToMenu
+          ? () => onEvent(const ReturnToMenu())
+          : null,
     );
   }
 }
