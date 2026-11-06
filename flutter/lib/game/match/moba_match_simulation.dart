@@ -1160,17 +1160,9 @@ class MobaMatchSimulation {
         final dashX = dx * 5.0;
         final dashZ = dz * 5.0;
         if (externalPlayerMovement) {
-          // Rapier resolves the same burst against the live collision world.
-          // Target selection uses the expected dash endpoint without moving the
-          // simulation's player copy ahead of the physical capsule.
+          // Rapier resolves the burst against the live collision world.
+          // Hit resolution waits for the actual collision-resolved endpoint.
           _pendingPhysicsDash = MobaPoint(dashX, dashZ);
-          final endpoint = MobaPoint(
-            _playerPosition.x + dashX,
-            _playerPosition.z + dashZ,
-            elevation: _playerPosition.elevation,
-          );
-          // Hit resolution is deferred until Rapier reports the actual
-          // collision-resolved dash endpoint.
         } else {
           _tryMovePlayer(dashX, dashZ, allowAxisSlide: false);
           final target = _nearestBot(
