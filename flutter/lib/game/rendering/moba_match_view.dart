@@ -572,6 +572,54 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       SceneModel('assets/world/city/interior_bench.glb',
         key: ValueKey('interior-bench-$id'), name: 'interior_cover_bench_$id',
         position: p(x + 2.7, 0, benchZ), scale: vm.Vector3(4, 2, 2)),
+      if (id == 'west_south')
+        SceneModel(
+          'assets/world/city/interior_computer_screen.glb',
+          key: const ValueKey('interior-ops-wall-terminal'),
+          name: 'operations_wall_terminal',
+          position: p(x + 4.0, 1.0, z + 2.7),
+          scale: vm.Vector3.all(1.8),
+        ),
+      if (id == 'east_south')
+        SceneModel(
+          'assets/world/city/interior_trashcan.glb',
+          key: const ValueKey('interior-workshop-bin'),
+          name: 'workshop_service_bin',
+          position: p(x + 4.4, 0, z + 2.7),
+          scale: vm.Vector3.all(1.8),
+        ),
+      if (id == 'west_north') ...[
+        SceneModel(
+          'assets/world/city/city_planter.glb',
+          key: const ValueKey('interior-park-planter'),
+          name: 'park_information_planter',
+          position: p(x - 4.4, 0, z + 2.7),
+          scale: vm.Vector3.all(3.8),
+        ),
+        SceneModel(
+          'assets/world/city/interior_plant.glb',
+          key: const ValueKey('interior-park-plant'),
+          name: 'park_information_plant',
+          position: p(x + 4.1, 0, z + 2.8),
+          scale: vm.Vector3.all(4.4),
+        ),
+      ],
+      if (id == 'east_north') ...[
+        SceneModel(
+          'assets/world/city/interior_plant.glb',
+          key: const ValueKey('interior-community-plant'),
+          name: 'community_room_plant',
+          position: p(x - 4.2, 0, z + 2.8),
+          scale: vm.Vector3.all(4.5),
+        ),
+        SceneModel(
+          'assets/world/city/interior_bench.glb',
+          key: const ValueKey('interior-community-seat'),
+          name: 'community_room_seat',
+          position: p(x + 3.3, 0, z + 2.8),
+          scale: vm.Vector3(3.2, 1.6, 1.8),
+        ),
+      ],
     ];
   }
 
