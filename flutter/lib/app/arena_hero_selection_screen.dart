@@ -249,7 +249,7 @@ class _StageCounter extends StatelessWidget {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
         child: Text(
-          '\${index.toString().padLeft(2, '0')}  /  \${total.toString().padLeft(2, '0')}',
+          '${index.toString().padLeft(2, '0')}  /  ${total.toString().padLeft(2, '0')}',
           style: const TextStyle(
             color: Color(0xFFE3F3EF),
             fontSize: 10,
@@ -368,7 +368,7 @@ class _HeroRosterPanel extends StatelessWidget {
             ),
             const Spacer(),
             Text(
-              '\${heroes.length.toString().padLeft(2, '0')} DISPONÍVEIS',
+              '${heroes.length.toString().padLeft(2, '0')} DISPONÍVEIS',
               style: const TextStyle(
                 color: Color(0xFF91A3AA),
                 fontSize: 8,
