@@ -57,3 +57,21 @@ For mobile performance, run a sustained session on the physical Realme C53 and r
 Attach unedited screenshots from the physical device and a short gameplay recording. Report device model, Android version, session duration and any observed hitching/overheating. Automated build success is only a prerequisite.
 
 Only after M1 visual and device acceptance may work proceed to M2 (connecting the remaining districts). No release, merge or APK publication is authorized by this QA pipeline.
+
+
+## CI failure diagnosis — run #848
+
+The QA Profile APK itself built successfully (53.8 MiB), and the 100 unit tests passed. The verifier then rejected the APK because it contained three native ABIs: \`arm64-v8a\`, \`armeabi-v7a\` and \`x86_64\`. No artifact was uploaded.
+
+Root cause: Flutter 3.35+ applies default Android ABI filters during the build. Supplying \`--target-platform android-arm64\` alone did not produce the required single-ABI APK in this build.
+
+Correction on the PR branch:
+
+- The shared Android host generator now clears Flutter's automatic Gradle ABI filters and explicitly adds only \`arm64-v8a\`.
+- This applies to QA Profile and future release builds, not only the QA package.
+- The QA identity generator verifies the shared ABI rule instead of adding a second Gradle filter.
+- The APK verifier remains strict: it still rejects any APK containing an ABI other than \`arm64-v8a\`.
+
+Reference: [Flutter — default ABI filters on Android](https://docs.flutter.dev/release/breaking-changes/default-abi-filters-android), [Android — ABI filters in Gradle](https://developer.android.com/studio/projects/gradle-external-native-builds).
+
+The fix is not accepted until a fresh PR CI run builds the APK, reports exactly \`arm64-v8a\`, verifies the signature and uploads the APK plus SHA-256.
