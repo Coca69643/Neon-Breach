@@ -48,8 +48,8 @@ void main() {
           vector.$1,
           vector.$2,
         );
-        final facingX = math.sin(yaw + math.pi);
-        final facingZ = -math.cos(yaw + math.pi);
+        final facingX = -math.sin(yaw);
+        final facingZ = -math.cos(yaw);
         expect(facingX, closeTo(vector.$1, 1e-8));
         expect(facingZ, closeTo(vector.$2, 1e-8));
       }
