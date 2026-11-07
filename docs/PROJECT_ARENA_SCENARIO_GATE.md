@@ -58,7 +58,9 @@ A base técnica está pronta para receber composição visual. O problema restan
 - As footprints dos dois edifícios entram em `commercialBlocks`; o mesmo catálogo alimenta o renderizador, `isWalkable` e os colliders estáticos do Rapier.
 - Os modelos já estão na lista de assets Kenney fixados e validados pelo script `prepare_city_assets.py`; não foi introduzida dependência de download em runtime.
 
-**Validação ainda pendente:** análise/testes do CI, inspeção visual da escala pela câmera real de gameplay e teste no dispositivo. A inclusão no catálogo não significa aceite visual.
+**Validação automatizada mais recente:** CI run 42383763525 passou em `flutter analyze` e 89 testes. As dez fachadas comerciais agora possuem footprints retangulares derivados dos bounds locais dos GLBs; o bake offline valida largura, profundidade, altura e origem centralizada dos modelos, e o Rapier usa essas mesmas dimensões.
+
+**Validação visual ainda pendente:** screenshots da câmera real de gameplay precisam confirmar escala, afastamento das vias, ausência de clipping e acessos. A validação física no Realme C53 continua pendente. A inclusão no catálogo e o CI não equivalem a aceite visual.
 
 Critérios de aceite do S1:
 1. Fachadas distintas e proporção coerente com os personagens.
@@ -109,4 +111,4 @@ Todo novo modelo deve ter licença verificada, origem fixa, hash registrado, val
 
 ## Estado
 
-**S1 em implementação; aceite visual pendente.** A arquitetura 2D no menu / 3D na gameplay está confirmada. O próximo passo é analisar o resultado do CI e validar a composição no aparelho antes de propagar o padrão aos demais distritos.
+**S1 em implementação; aceite visual pendente.** A arquitetura 2D no menu / 3D na gameplay está confirmada. O CI passou para a etapa de footprints e colisões; o próximo passo é validar a composição do Mercado Central com screenshots e no aparelho antes de propagar o padrão aos demais distritos.
