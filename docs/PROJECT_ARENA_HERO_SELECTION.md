@@ -49,5 +49,5 @@ and other character types without adding empty or redundant controls.
 ## Scene integration
 
 The selection stage is full-bleed: the 3D preview is the screen background,
-while the roster is a single side overlay. The main menu now previews the same
-urban battlefield terrain, building kit and street details used in a match.
+while the roster is a single side overlay. The main menu uses a separate, lightweight 2D illustrated background and
+does not instantiate the 3D match world.
