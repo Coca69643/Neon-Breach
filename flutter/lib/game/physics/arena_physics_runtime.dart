@@ -17,6 +17,10 @@ class ArenaTraversalProfile {
     required this.dashDuration,
     required this.regenerationPerSecond,
     required this.regenerationDelay,
+    required this.airControlRatio,
+    required this.slideDuration,
+    required this.slideFrictionMultiplier,
+    required this.slideSteeringRadiansPerSecond,
   });
 
   final double maxCharges;
@@ -24,6 +28,10 @@ class ArenaTraversalProfile {
   final double dashDuration;
   final double regenerationPerSecond;
   final double regenerationDelay;
+  final double airControlRatio;
+  final double slideDuration;
+  final double slideFrictionMultiplier;
+  final double slideSteeringRadiansPerSecond;
 
   static ArenaTraversalProfile forHero(MobaHeroId heroId) => switch (heroId) {
         MobaHeroId.lyra => const ArenaTraversalProfile(
@@ -32,6 +40,10 @@ class ArenaTraversalProfile {
             dashDuration: 0.23,
             regenerationPerSecond: 0.62,
             regenerationDelay: 0.55,
+            airControlRatio: 0.48,
+            slideDuration: 0.64,
+            slideFrictionMultiplier: 0.30,
+            slideSteeringRadiansPerSecond: 2.0,
           ),
         MobaHeroId.bastion => const ArenaTraversalProfile(
             maxCharges: 2,
@@ -39,6 +51,10 @@ class ArenaTraversalProfile {
             dashDuration: 0.24,
             regenerationPerSecond: 0.74,
             regenerationDelay: 0.62,
+            airControlRatio: 0.30,
+            slideDuration: 0.50,
+            slideFrictionMultiplier: 0.42,
+            slideSteeringRadiansPerSecond: 1.45,
           ),
         MobaHeroId.kairo => const ArenaTraversalProfile(
             maxCharges: 4,
@@ -46,6 +62,10 @@ class ArenaTraversalProfile {
             dashDuration: 0.22,
             regenerationPerSecond: 0.56,
             regenerationDelay: 0.68,
+            airControlRatio: 0.58,
+            slideDuration: 0.70,
+            slideFrictionMultiplier: 0.26,
+            slideSteeringRadiansPerSecond: 2.4,
           ),
       };
 }
@@ -77,6 +97,8 @@ class ArenaPhysicsRuntime {
   // Separate traversal budget: the existing hero-skill dash remains unchanged.
   static const double defaultTraversalStaminaMax = 3.0;
   static const double traversalDashCost = 1.0;
+  static const double slideStartSpeed = 3.2;
+  static const double slideStopSpeed = 0.7;
 
   static const double capsuleRadius = 0.38;
   static const double capsuleHalfHeight = 0.50;
@@ -107,6 +129,9 @@ class ArenaPhysicsRuntime {
   double _traversalStaminaRegenDelayRemaining = 0;
   bool _traversalDashActive = false;
   bool _traversalDashCompletionPending = false;
+  double _slideRemaining = 0;
+  bool _slideActive = false;
+  bool _slideCompletionPending = false;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -119,6 +144,14 @@ class ArenaPhysicsRuntime {
   double get movementSpeedRatio =>
       (_actualHorizontalSpeed / moveSpeed).clamp(0.0, 1.35).toDouble();
   bool get dashing => _dashRemaining > 0;
+  bool get sliding => _slideActive;
+  bool get canTriggerSlide =>
+      !_disposed &&
+      _active &&
+      _grounded &&
+      !_slideActive &&
+      _dashRemaining <= 0 &&
+      _actualHorizontalSpeed + 1e-6 >= slideStartSpeed;
   double get traversalStamina => _traversalStamina;
   double get traversalStaminaMax => _traversalProfile.maxCharges;
   double get traversalStaminaRatio =>
@@ -127,12 +160,20 @@ class ArenaPhysicsRuntime {
       !_disposed &&
       _active &&
       _dashRemaining <= 0 &&
+      !_slideActive &&
       _traversalStamina + 1e-6 >= traversalDashCost;
 
   /// True once the swept dash has ended, including a wall/canal interruption.
   bool consumeDashCompletion() {
     final completed = _dashCompletionPending;
     _dashCompletionPending = false;
+    return completed;
+  }
+
+  /// Consumes the one-shot completion event for a momentum slide.
+  bool consumeSlideCompletion() {
+    final completed = _slideCompletionPending;
+    _slideCompletionPending = false;
     return completed;
   }
 
@@ -241,6 +282,9 @@ class ArenaPhysicsRuntime {
       _dashCompletionPending = false;
       _traversalDashActive = false;
       _traversalDashCompletionPending = false;
+      _slideRemaining = 0;
+      _slideActive = false;
+      _slideCompletionPending = false;
       _actualHorizontalSpeed = 0;
     }
   }
@@ -256,6 +300,7 @@ class ArenaPhysicsRuntime {
     if (_disposed ||
         !_active ||
         _traversalDashActive ||
+        _slideActive ||
         !directionX.isFinite ||
         !directionZ.isFinite ||
         !distance.isFinite ||
@@ -300,6 +345,18 @@ class ArenaPhysicsRuntime {
     return true;
   }
 
+  /// Starts a short ground slide without adding speed or consuming dash charge.
+  /// Existing velocity is preserved and only gently steered during the slide.
+  bool triggerTraversalSlide() {
+    if (!canTriggerSlide) return false;
+    final speed = math.sqrt(_velocityX * _velocityX + _velocityZ * _velocityZ);
+    if (!speed.isFinite || speed < slideStartSpeed) return false;
+    _slideRemaining = _traversalProfile.slideDuration;
+    _slideActive = true;
+    _slideCompletionPending = false;
+    return true;
+  }
+
   /// Advances on Rapier's fixed clock, independently of render frame rate.
   void update(double frameDelta) {
     if (_disposed || !frameDelta.isFinite || frameDelta <= 0) return;
@@ -318,9 +375,14 @@ class ArenaPhysicsRuntime {
 
   void _fixedUpdate(double dt) {
     final dashStep = _active ? math.min(dt, _dashRemaining) : 0.0;
+    final slideStep = _active && _slideActive
+        ? math.min(dt, _slideRemaining)
+        : 0.0;
     if (dashStep > 0) {
       _velocityX = _dashVelocityX;
       _velocityZ = _dashVelocityZ;
+    } else if (slideStep > 0) {
+      _updateSlideVelocity(dt);
     } else {
       _updateMotorVelocity(dt);
     }
@@ -388,6 +450,13 @@ class ArenaPhysicsRuntime {
         } else {
           _dashCompletionPending = true;
         }
+      }
+    } else if (slideStep > 0 && _slideActive) {
+      _slideRemaining = math.max(0.0, _slideRemaining - slideStep);
+      if (_slideRemaining <= 0 || _actualHorizontalSpeed < slideStopSpeed) {
+        _slideRemaining = 0;
+        _slideActive = false;
+        _slideCompletionPending = true;
       }
     }
     _grounded = movement.grounded;
@@ -485,6 +554,42 @@ class ArenaPhysicsRuntime {
     }
   }
 
+  /// Keeps momentum while allowing only a bounded change in heading.
+  /// The slide never adds speed and uses Rapier's normal swept collision path.
+  void _updateSlideVelocity(double dt) {
+    final speed = math.sqrt(_velocityX * _velocityX + _velocityZ * _velocityZ);
+    if (!speed.isFinite || speed < slideStopSpeed) {
+      _velocityX = 0;
+      _velocityZ = 0;
+      _slideRemaining = 0;
+      _slideActive = false;
+      _slideCompletionPending = true;
+      return;
+    }
+
+    final inputLength = math.sqrt(_moveX * _moveX + _moveZ * _moveZ);
+    if (inputLength > 0.10) {
+      final currentAngle = math.atan2(_velocityZ, _velocityX);
+      final targetAngle = math.atan2(_moveZ, _moveX);
+      final delta = (targetAngle - currentAngle + math.pi) % (math.pi * 2) - math.pi;
+      final maxTurn = _traversalProfile.slideSteeringRadiansPerSecond * dt;
+      final nextAngle = currentAngle + delta.clamp(-maxTurn, maxTurn);
+      _velocityX = math.cos(nextAngle) * speed;
+      _velocityZ = math.sin(nextAngle) * speed;
+    }
+
+    final friction = _grounded
+        ? ArenaWorldCatalog.groundFrictionAt(
+              _playerPose.translation.x,
+              _playerPose.translation.z,
+            ) *
+            _traversalProfile.slideFrictionMultiplier
+        : airFriction * 0.65;
+    final damping = math.exp(-math.max(0.6, friction) * dt);
+    _velocityX *= damping;
+    _velocityZ *= damping;
+  }
+
   /// Accelerates along a normalized target vector and applies surface-specific
   /// damping when input is released. The vector clamp avoids faster diagonals
   /// and keeps turn response consistent at every heading.
@@ -505,7 +610,8 @@ class ArenaPhysicsRuntime {
       final deltaLength = math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
       final facingDot = _velocityX * targetX + _velocityZ * targetZ;
       final reversalBoost = facingDot < -0.05 ? 1.35 : 1.0;
-      final groundedRatio = _grounded ? 1.0 : airAccelerationRatio;
+      final groundedRatio =
+          _grounded ? 1.0 : _traversalProfile.airControlRatio;
       final maximumChange =
           acceleration * reversalBoost * groundedRatio * dt;
       final blend = deltaLength <= maximumChange || deltaLength <= 1e-6
@@ -563,6 +669,9 @@ class ArenaPhysicsRuntime {
     _dashCompletionPending = false;
     _traversalDashActive = false;
     _traversalDashCompletionPending = false;
+    _slideRemaining = 0;
+    _slideActive = false;
+    _slideCompletionPending = false;
     _traversalStamina = traversalStaminaMax;
     _traversalStaminaRegenDelayRemaining = 0;
     _actualHorizontalSpeed = 0;
