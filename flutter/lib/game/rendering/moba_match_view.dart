@@ -42,6 +42,7 @@ class _AmbientNpc {
     required this.patrol,
     required this.phaseOffset,
     required this.dialogue,
+    this.isShopkeeper = false,
   });
 
   final String id;
@@ -52,6 +53,7 @@ class _AmbientNpc {
   final List<MobaPoint> patrol;
   final double phaseOffset;
   final String dialogue;
+  final bool isShopkeeper;
 }
 
 class _MobaMatchViewState extends State<MobaMatchView> {
@@ -66,6 +68,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ..baseColorFactor = vm.Vector4(0.16, 0.62, 0.98, 1);
   static final UnlitMaterial _redTeamRingMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.98, 0.28, 0.30, 1);
+  static final RingGeometry _npcMarkerGeometry = RingGeometry(
+    innerRadius: 0.30,
+    outerRadius: 0.39,
+    segments: 20,
+  );
+  static final UnlitMaterial _npcMarkerMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(1.0, 0.77, 0.34, 0.98);
   static final RingGeometry _relayRingGeometry = RingGeometry(
     innerRadius: 3.2,
     outerRadius: 3.55,
@@ -173,18 +182,19 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ),
     _AmbientNpc(
       id: 'quartermaster',
-      label: 'Coordenador de Suprimentos',
+      label: 'Mercador do Mercado Central',
       asset: 'assets/npcs/npc_male_a.glb',
-      x: -96.0,
-      z: -22.0,
+      x: ArenaWorldCatalog.shopkeeperX,
+      z: ArenaWorldCatalog.shopkeeperZ,
       patrol: [
-        MobaPoint(-96.0, -22.0),
-        MobaPoint(-90.0, -22.0),
-        MobaPoint(-90.0, -18.0),
-        MobaPoint(-96.0, -18.0),
+        MobaPoint(-9.0, -45.0),
+        MobaPoint(-7.0, -45.0),
+        MobaPoint(-7.0, -43.0),
+        MobaPoint(-9.0, -43.0),
       ],
       phaseOffset: 4.6,
-      dialogue: 'O Mercado Central abastece a equipe que mantém suas rotas protegidas.',
+      dialogue: 'Equipamentos calibrados para melhorar ataque ou resistência da equipe.',
+      isShopkeeper: true,
     ),
     _AmbientNpc(
       id: 'base-guide-top',
@@ -1262,6 +1272,22 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           speed: interacting ? 1.0 : (pose.moving ? 0.92 : 0.84),
         ),
       ],
+      children: [
+        SceneMesh(
+          name: 'ambient_npc_ground_marker',
+          geometry: _npcMarkerGeometry,
+          material: _npcMarkerMaterial,
+          position: const vm.Vector3(0, 0.035, 0),
+          scale: vm.Vector3.all(1.65),
+        ),
+        SceneMesh(
+          name: 'ambient_npc_overhead_marker',
+          geometry: _npcMarkerGeometry,
+          material: _npcMarkerMaterial,
+          position: const vm.Vector3(0, 2.2, 0),
+          scale: vm.Vector3.all(0.82),
+        ),
+      ],
     );
   }
 
@@ -1481,6 +1507,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       top: 108,
                       child: _NpcPrompt(
                         label: nearbyNpc.label,
+                        action: nearbyNpc.isShopkeeper ? 'ABRIR LOJA' : 'CONVERSAR',
                         onTap: () => setState(() => _activeNpcId = nearbyNpc.id),
                       ),
                     ),
@@ -1489,10 +1516,26 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       left: viewport.maxWidth * 0.28,
                       right: viewport.maxWidth * 0.28,
                       bottom: compact ? 94 : 108,
-                      child: _NpcDialogue(
-                        npc: nearbyNpc,
-                        onClose: () => setState(() => _activeNpcId = null),
-                      ),
+                      child: nearbyNpc!.isShopkeeper
+                          ? _NpcShop(
+                              gold: snapshot.playerGold,
+                              purchasedItems: snapshot.playerItems,
+                              onPurchase: (item) {
+                                if (!widget.simulation.purchaseShopItem(item)) {
+                                  return;
+                                }
+                                final updated = widget.simulation.snapshot;
+                                setState(() {
+                                  _snapshot = updated;
+                                  _sceneSnapshotNotifier.value = updated;
+                                });
+                              },
+                              onClose: () => setState(() => _activeNpcId = null),
+                            )
+                          : _NpcDialogue(
+                              npc: nearbyNpc,
+                              onClose: () => setState(() => _activeNpcId = null),
+                            ),
                     ),
                   Positioned(
                     top: 8,
@@ -1501,6 +1544,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       children: [
                         _MiniMap(
                           snapshot: snapshot,
+                          npcPositions: [
+                            for (final npc in _ambientNpcs)
+                              _ambientNpcPose(npc, snapshot.elapsedSeconds).position,
+                          ],
                           onPing: (point) {
                             if (!widget.simulation.issueTeamPing(point)) return;
                             setState(() {
@@ -2438,9 +2485,14 @@ class _HudPlate extends StatelessWidget {
 
 
 class _NpcPrompt extends StatelessWidget {
-  const _NpcPrompt({required this.label, required this.onTap});
+  const _NpcPrompt({
+    required this.label,
+    required this.action,
+    required this.onTap,
+  });
 
   final String label;
+  final String action;
   final VoidCallback onTap;
 
   @override
@@ -2460,12 +2512,171 @@ class _NpcPrompt extends StatelessWidget {
                   color: Color(0xFF8BDCC7)),
               const SizedBox(width: 7),
               Text(
-                'CONVERSAR  ·  $label',
+                '$action  ·  $label',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NpcShop extends StatelessWidget {
+  const _NpcShop({
+    required this.gold,
+    required this.purchasedItems,
+    required this.onPurchase,
+    required this.onClose,
+  });
+
+  final double gold;
+  final List<MobaShopItem> purchasedItems;
+  final ValueChanged<MobaShopItem> onPurchase;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 11, 12, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xF0182A32),
+        border: Border.all(color: const Color(0xFFE0B36A), width: 1.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.storefront_outlined,
+                  color: Color(0xFFEBC47A), size: 20),
+              const SizedBox(width: 9),
+              const Expanded(
+                child: Text(
+                  'MERCADO DE CAMPO',
+                  style: TextStyle(
+                    color: Color(0xFFF2D49B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              Text(
+                '${gold.floor()} G',
+                style: const TextStyle(
+                  color: Color(0xFF8DE0C7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              IconButton(
+                onPressed: onClose,
+                icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Fechar loja',
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          for (final item in MobaShopItem.values)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: _NpcShopOffer(
+                item: item,
+                gold: gold,
+                purchased: purchasedItems.contains(item),
+                onPurchase: onPurchase,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NpcShopOffer extends StatelessWidget {
+  const _NpcShopOffer({
+    required this.item,
+    required this.gold,
+    required this.purchased,
+    required this.onPurchase,
+  });
+
+  final MobaShopItem item;
+  final double gold;
+  final bool purchased;
+  final ValueChanged<MobaShopItem> onPurchase;
+
+  @override
+  Widget build(BuildContext context) {
+    final affordable = gold >= item.price;
+    final enabled = !purchased && affordable;
+    final status = purchased
+        ? 'ADQUIRIDO'
+        : affordable
+            ? 'COMPRAR · ${item.price} G'
+            : 'OURO INSUFICIENTE';
+    return Material(
+      color: const Color(0xCC223942),
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        onTap: enabled ? () => onPurchase(item) : null,
+        borderRadius: BorderRadius.circular(7),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                item == MobaShopItem.impactCell
+                    ? Icons.bolt_rounded
+                    : Icons.shield_outlined,
+                color: const Color(0xFFEBC47A),
+                size: 20,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.description,
+                      style: const TextStyle(
+                        color: Color(0xFFB7C8C9),
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                status,
+                style: TextStyle(
+                  color: purchased
+                      ? const Color(0xFF8DE0C7)
+                      : affordable
+                          ? const Color(0xFFF2D49B)
+                          : const Color(0xFF92A0A2),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],
