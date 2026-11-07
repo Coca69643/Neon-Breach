@@ -1296,7 +1296,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     double elapsedSeconds,
   ) {
     _AmbientNpc? nearest;
-    var nearestDistance = 8.0;
+    var nearestDistance = ArenaWorldCatalog.shopkeeperInteractionRadius;
     for (final npc in _ambientNpcs) {
       final position = _ambientNpcPose(npc, elapsedSeconds).position;
       final distance = player.distanceTo(position);
@@ -2295,10 +2295,12 @@ class _PauseButton extends StatelessWidget {
 class _MiniMap extends StatelessWidget {
   const _MiniMap({
     required this.snapshot,
+    required this.npcPositions,
     required this.onPing,
   });
 
   final MobaMatchSnapshot snapshot;
+  final List<MobaPoint> npcPositions;
   final ValueChanged<MobaPoint> onPing;
 
   @override
@@ -2321,7 +2323,9 @@ class _MiniMap extends StatelessWidget {
         child: SizedBox(
           width: 104,
           height: 64,
-          child: CustomPaint(painter: _MiniMapPainter(snapshot)),
+          child: CustomPaint(
+            painter: _MiniMapPainter(snapshot, npcPositions),
+          ),
         ),
       ),
     );
@@ -2329,9 +2333,10 @@ class _MiniMap extends StatelessWidget {
 }
 
 class _MiniMapPainter extends CustomPainter {
-  const _MiniMapPainter(this.snapshot);
+  const _MiniMapPainter(this.snapshot, this.npcPositions);
 
   final MobaMatchSnapshot snapshot;
+  final List<MobaPoint> npcPositions;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2402,6 +2407,26 @@ class _MiniMapPainter extends CustomPainter {
         marker,
         1.25,
         Paint()..color = const Color(0xFF17342F),
+      );
+    }
+
+    // Gold rings identify every discoverable city NPC, including the
+    // quartermaster. Patrol positions are projected from the same live clock
+    // used by their 3D models, so the tactical map never shows stale anchors.
+    for (final npc in npcPositions) {
+      final center = project(npc);
+      canvas.drawCircle(
+        center,
+        3.0,
+        Paint()
+          ..color = const Color(0xFFFFD58A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1,
+      );
+      canvas.drawCircle(
+        center,
+        1.55,
+        Paint()..color = const Color(0xFFFFD58A),
       );
     }
 
