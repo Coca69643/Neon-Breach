@@ -75,3 +75,30 @@ Correction on the PR branch:
 Reference: [Flutter — default ABI filters on Android](https://docs.flutter.dev/release/breaking-changes/default-abi-filters-android), [Android — ABI filters in Gradle](https://developer.android.com/studio/projects/gradle-external-native-builds).
 
 The fix is not accepted until a fresh PR CI run builds the APK, reports exactly \`arm64-v8a\`, verifies the signature and uploads the APK plus SHA-256.
+
+
+## Deadlock-inspired traversal mobility
+
+The first mobility slice is implemented on the existing Flutter Scene + Rapier runtime. It does not replace the existing hero-skill dash path.
+
+- A dedicated traversal dash is camera-relative and defaults to camera-forward when the joystick is neutral.
+- Traversal has a three-charge stamina budget; one charge is spent only after a valid dash starts.
+- Stamina regeneration begins after a short recovery delay and advances on the existing 60 Hz physics clock.
+- Rapier still resolves the swept displacement against the authored world, so the dash stops at collision geometry rather than teleporting through it.
+- Traversal completion uses its own event and cannot call the hero-skill dash completion resolver.
+- The touch HUD exposes a dedicated DASH control and three fractional charge indicators.
+
+### Traversal acceptance
+
+- [ ] The dash follows the same camera-relative direction basis as the joystick.
+- [ ] Neutral joystick input sends the character camera-forward.
+- [ ] A valid dash consumes exactly one charge; invalid input does not consume stamina.
+- [ ] A second traversal dash cannot interrupt an active traversal dash.
+- [ ] Walls, interiors, terrain and canal restrictions continue to stop the swept movement.
+- [ ] Regeneration waits for the configured recovery delay and pauses while the player runtime is inactive.
+- [ ] Respawn restores the traversal budget.
+- [ ] Traversal completion does not emit the hero-skill dash completion event.
+- [ ] The DASH button and charge indicators remain legible on the Realme C53 landscape viewport.
+- [ ] Physical acceptance records actual frame pacing, memory, temperature and battery impact.
+
+The three-charge values and recovery timing are Arena tuning parameters inspired by Deadlock's movement-resource design, not copied game constants. The next mobility slice should add momentum-preserving slide/air control only after this one passes physics and device acceptance.
