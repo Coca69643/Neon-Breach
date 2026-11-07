@@ -166,7 +166,7 @@ abstract final class ArenaWorldCatalog {
   static const neutralCampSites = <(String, String, double, double)>[
     ('verdant', 'NÚCLEO DA RESERVA', -78.0, 14.0),
     ('industrial', 'GUARDA DO PÁTIO', 78.0, 14.0),
-    ('riverside', 'SENTINELA DA ORLA', 0.0, 34.0),
+    ('riverside', 'SENTINELA DA ORLA', 20.0, 30.0),
   ];
 
   /// Two opposing mezzanine routes create a real height layer without

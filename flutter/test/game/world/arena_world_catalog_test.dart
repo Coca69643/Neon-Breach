@@ -9,6 +9,16 @@ void main() {
         expect(ArenaWorldCatalog.isWalkable(site.$3, site.$4), isTrue,
             reason: '${site.$1} camp anchor must be reachable');
         expect(ArenaWorldCatalog.isCanalAt(site.$3, site.$4), isFalse);
+        expect(
+          ArenaWorldCatalog.isWalkable(site.$3 - 1.15, site.$4),
+          isTrue,
+          reason: '${site.$1} guardian spawn must be walkable',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(site.$3 + 1.15, site.$4 + 0.65),
+          isTrue,
+          reason: '${site.$1} protector spawn must be walkable',
+        );
       }
     });
     test('uses the same irregular 224 × 188 boundary as the terrain baker', () {
