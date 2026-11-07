@@ -15,6 +15,48 @@ APP_LABEL = "Projeto Arena"
 MIN_SDK = 24
 
 
+def add_arm64_abi_filter(content: str, gradle_path: Path) -> str:
+    """Package only the 64-bit ARM runtime used by supported Android devices."""
+    default_configs = list(
+        re.finditer(r"(?m)^([ \t]*)defaultConfig\s*\{", content)
+    )
+    if len(default_configs) != 1:
+        raise SystemExit(
+            "Expected exactly one generated Android defaultConfig block."
+        )
+
+    if "abiFilters.clear()" in content:
+        expected = (
+            'abiFilters.addAll(listOf("arm64-v8a"))'
+            if gradle_path.suffix == ".kts"
+            else 'abiFilters "arm64-v8a"'
+        )
+        if expected not in content:
+            raise SystemExit("Existing ABI filter does not match ARM64-only policy.")
+        return content
+
+    default_config = default_configs[0]
+    indent = default_config.group(1) + "    "
+    if gradle_path.suffix == ".kts":
+        block = (
+            f"\n{indent}ndk {{\n"
+            f"{indent}    abiFilters.clear()\n"
+            f'{indent}    abiFilters.addAll(listOf("arm64-v8a"))\n'
+            f"{indent}}}\n"
+        )
+    else:
+        block = (
+            f"\n{indent}ndk {{\n"
+            f"{indent}    abiFilters.clear()\n"
+            f'{indent}    abiFilters "arm64-v8a"\n'
+            f"{indent}}}\n"
+        )
+    updated = content[:default_config.end()] + block + content[default_config.end():]
+    if "abiFilters.clear()" not in updated:
+        raise SystemExit("Could not apply ARM64-only Gradle ABI filter.")
+    return updated
+
+
 def add_persistent_signing(content: str, gradle_path: Path) -> str:
     """Use the same keystore as the legacy APK when CI provides it."""
     keys = (
@@ -184,9 +226,10 @@ if min_sdk_replacements != 1:
         f"Could not enforce the Flutter-supported minSdk {MIN_SDK} in the generated Android host."
     )
 
+content = add_arm64_abi_filter(content, gradle)
 content = add_persistent_signing(content, gradle)
 gradle.write_text(content, encoding="utf-8")
 print(
     f"Android host prepared: applicationId={APP_ID}, label={APP_LABEL}, "
-    f"minSdk={MIN_SDK}, Flutter GPU enabled, landscape, Project Arena icon."
+    f"minSdk={MIN_SDK}, ABI=arm64-v8a, Flutter GPU enabled, landscape, Project Arena icon."
 )
