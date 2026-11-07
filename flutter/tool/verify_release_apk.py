@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Fail the CI build if the APK identity, platform metadata, or scene assets drift."""
+"""Verify APK identity, Android platform metadata, gameplay assets, and the 2D menu contract."""
 from __future__ import annotations
 
 import hashlib
@@ -200,7 +200,6 @@ def main() -> None:
         "assets/flutter_assets/assets/npcs/npc-assets-manifest.json",
         "assets/flutter_assets/assets/npcs/CC0-KENNEY-MINI-CHARACTERS-LICENSE.txt",
         "assets/flutter_assets/assets/world/arena_terrain.glb",
-        "assets/flutter_assets/assets/world/arena_menu_hub.glb",
         "assets/flutter_assets/assets/match/quaternius_minion.glb",
         "assets/flutter_assets/assets/match/tower_blue.glb",
         "assets/flutter_assets/assets/match/tower_red.glb",
@@ -224,6 +223,17 @@ def main() -> None:
     )
     for asset in expected_raw_assets:
         require(asset in names, f"required runtime asset is missing: {asset}")
+
+    # The main menu is a 2D CustomPainter. It must not ship the retired 3D hub
+    # model or a preprocessed Flutter Scene for that hub.
+    legacy_hub_asset = "assets/flutter_assets/assets/world/arena_menu_hub.glb"
+    legacy_hub_scene_prefix = (
+        "assets/flutter_assets/flutter_scene_generated/scene.arena_menu_hub."
+    )
+    require(legacy_hub_asset not in names,
+            "2D main menu must not bundle the obsolete 3D hub GLB.")
+    require(not any(name.startswith(legacy_hub_scene_prefix) for name in names),
+            "2D main menu must not bundle a preprocessed 3D hub scene.")
 
     # NPC actors must be real, textured GLBs with the locomotion clips used by
     # the match renderer. This catches missing raw assets before release.
@@ -337,7 +347,7 @@ def main() -> None:
         "npc_female_a", "npc_female_b", "npc_female_c",
         "lyra_sword", "bastion_sword", "kairo_sword",
         "tree_oak", "tree_pine", "tree_broadleaf", "bush_common",
-        "arena_menu_hub", "quaternius_minion", "tower_blue", "tower_red",
+        "quaternius_minion", "tower_blue", "tower_red",
         "castle_blue", "castle_red", "home_blue", "home_red", "bridge_a",
         "commercial_building_a", "commercial_building_b",
         "commercial_building_c", "commercial_building_e",

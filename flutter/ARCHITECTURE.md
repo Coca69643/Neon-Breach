@@ -39,15 +39,21 @@ Regras: a interface envia eventos; transições inválidas são rejeitadas; sele
 
 A IA dos bots e minions será implementada em Dart com FSMs determinísticas, desacopladas do scene graph. A lógica de decisão não deve depender de animações ou widgets.
 
-## Integração Flutter Scene
+## Integração Flutter Scene e divisão 2D/3D
 
-O menu principal usa SceneView.declarative em tela cheia, com o terreno contínuo, vegetação CC0 e um herói animado em primeiro plano; a interface Flutter fica restrita a marca, herói atual e uma ação primária na borda inferior. A câmera faz um deslocamento lateral lento, com pixel ratio 0.85 e teto de 30 FPS. A cena reutiliza os GLBs e o catálogo de posicionamento existentes, sem adicionar dependências ou sombras dinâmicas.
+A arquitetura visual está separada por contexto:
 
-**Hub principal:** `tool/prepare_menu_hub.py` gera `assets/world/arena_menu_hub.glb` no build. O modelo contém a Torre do Firmamento como marco central, ilha suspensa, mar magenta, portal luminoso, anéis quebrados, fragmentos e nuvens. É uma composição original do Projeto Arena; não reutiliza a ilustração de loading nem o cenário de seleção de heróis. A cena é montada por `SceneView.declarative`, com pixel ratio 0.85, câmera de deriva lenta e limite de 30 FPS. Os controles Flutter ficam nas bordas: Heróis abre a sub-tela existente, Ascender entra na prévia atual, e Baús/Desafios/Mercador permanecem bloqueados até a implementação dos respectivos sistemas. Esses limites são metas de configuração, não medições no Realme C53.
+- **Menu principal:** fundo estático em 2D, desenhado por `ArenaMainMenuScene` com `CustomPaint` e isolado por `RepaintBoundary`. Não instancia `SceneView`, não carrega GLBs e não cria o mapa de batalha.
+- **Gameplay:** campo urbano, personagens, entidades, estruturas e câmera permanecem em 3D usando Flutter Scene.
+- **Seleção de heróis:** mantém uma prévia 3D independente; ela não transforma o menu principal em uma cena 3D.
+
+O fundo do menu desenha a silhueta da torre de comando, skyline, atmosfera e primeiro plano diretamente no canvas. Não existe dependência de `arena_menu_hub.glb` no caminho de inicialização do menu. Isso mantém o menu leve e evita carregar recursos da partida antes de iniciar o gameplay.
+
+O CI de release valida explicitamente que o APK não contenha o antigo GLB do hub nem a cena Flutter Scene pré-processada correspondente. A presença de modelos 3D no APK é reservada à gameplay.
 
 A primeira integração de conteúdo usa SceneModel para apresentar os três heróis CC0 já existentes, com os clips Idle originais: Female_Idle para Lyra e Man_Idle para Bastion/Kairo. A inicialização estática acontece no bootstrap antes da validação do manifesto e de qualquer SceneView; falhas entram na recuperação e podem ser tentadas novamente. A seleção troca o GLB sem reconstruir a aplicação. Isso ainda precisa de validação em dispositivo.
 
-A revisão 1.7.5 substitui a ilha medieval por um distrito urbano de 180 × 140 unidades. O terreno usa concreto e asfalto; as três avenidas ficam em x ≈ -36/0/+36; o canal central tem três travessias; quatro edifícios de piso térreo são montados com pisos, paredes, vãos de porta e mobiliário CC0. Ruas, cruzamentos e blocos comerciais usam o pacote Kenney CC0 fixado em `prepare_city_assets.py`. A navegação usa o mesmo catálogo do terreno e inclui colisões de paredes, balcões, estantes, torres e limites do mapa. A geometria e os modelos estão integrados no renderer, mas os interiores ainda precisam de acabamento artístico e teste visual no aparelho.
+A base urbana atual (1.8.0) usa um campo lógico irregular de 224 × 188 unidades com seis distritos, três avenidas, cinco travessias do canal, seis interiores e duas rotas elevadas. O terreno mantém uma malha contínua com superfícies elevadas de asfalto e calçada. Os assets de cenário Kenney CC0 são preparados offline e o catálogo de mundo é compartilhado entre renderer, navegação e colisão Rapier. A composição artística dos seis distritos continua em evolução por gates; a primeira vertical slice visual é o Mercado Central.
 
 A câmera usa pointer tracking independente na zona central/direita. O joystick esquerdo altera apenas o vetor de movimento; o ponteiro direito altera yaw e pitch. Follow distance 9.4, look-ahead 3.0, pitch inicial 0.34 rad e FOV vertical 49°. Estes são parâmetros de configuração, não medições de enquadramento ou desempenho.
 
@@ -70,7 +76,7 @@ As duas entradas dos mezaninos têm coberturas destrutíveis com HP, dano por at
 
 ## Identidade Android
 
-Preservar applicationId com.duckdream.projectarena e usar versionCode 69 para a próxima APK instalável. Esta fundação usa 1.7.7+69 e minSdk 24, mínimo Android do Flutter atual. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de CI devem carregar o mesmo keystore persistente do pipeline Android anterior; a release usa esse keystore em vez de uma chave efêmera do runner. O artefato de teste é ARM64, direcionado ao Realme C53 e aos aparelhos ARM64.
+Preservar o applicationId `com.duckdream.projectarena`. A release 1.8.0 usa `versionName` 1.8.0 e `versionCode` 73, com `minSdk` 24 e ABI ARM64. O nome instalado e o ícone vetorial são reutilizados da identidade existente do Projeto Arena. Builds de release confiáveis na branch `main` carregam o mesmo keystore persistente do pipeline Android anterior; branches de desenvolvimento e PRs não recebem essa chave. O APK deve atualizar a instalação existente, sem exigir desinstalação. A validação visual e o teste prolongado de desempenho continuam sendo feitos no Realme C53.
 
 ## Critérios de aceite
 
