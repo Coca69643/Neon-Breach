@@ -21,21 +21,25 @@ O mapa precisa mudar como espaço jogável, não apenas como composição de pro
 
 Esses pontos são uma fundação técnica; não equivalem ao aceite visual de um mapa urbano completo.
 
-## Biblioteca CC0 candidata principal
+## Biblioteca CC0 selecionada para reconstrução
 
-**Quaternius — Downtown City MegaKit**
+A base visual passa a ser a família de kits urbanos **Kenney**, cuja página oficial de cada pacote declara CC0. A seleção cobre arquitetura, malha viária, natureza, indústria e interiores:
 
-- Página oficial: https://quaternius.com/packs/downtowncitymegakit.html
-- Distribuição do criador: https://quaternius.itch.io/downtown-city-megakit
-- A página oficial indica 315 modelos e mais de 300 peças de ambiente.
-- O kit é modular e foi anunciado para compor quarteirões urbanos completos, com peças de edifícios e ruas e sete edifícios de exemplo.
-- glTF é um dos formatos listados.
-- A página indica CC0 e informa que 60–70% do conteúdo está disponível gratuitamente.
-- A distribuição padrão gratuita lista o arquivo `Downtown City MegaKit[Standard].zip` com 223 MB.
+| Pacote oficial | Conteúdo declarado | Uso previsto |
+|---|---:|---|
+| [City Kit (Roads)](https://kenney.nl/assets/city-kit-roads) | 90 peças, atualização 2.2 | Malha de ruas, cruzamentos, curvas, calçadas e sinalização |
+| [City Kit (Commercial)](https://kenney.nl/assets/city-kit-commercial) | 50 arquivos | Volumes comerciais e silhuetas de maior altura |
+| [City Kit (Suburban)](https://kenney.nl/assets/city-kit-suburban) | 40 arquivos | Edifícios residenciais, pátios e fachadas de apoio |
+| [City Kit (Industrial)](https://kenney.nl/assets/city-kit-industrial) | 40 arquivos | Galpões, fábricas e estruturas de serviço |
+| [Nature Kit](https://kenney.nl/assets/nature-kit) | 330 arquivos | Árvores, rochas e vegetação dos espaços abertos |
+| [Furniture Kit](https://kenney.nl/assets/furniture-kit) | 140 arquivos | Mobiliário dos interiores realmente acessíveis |
+| [Factory Kit](https://kenney.nl/assets/factory-kit) | 140 arquivos | Equipamentos e composição interna do distrito industrial |
 
-**Limitação importante:** o criador menciona janelas com interior falso. Isso não atende à exigência de interiores navegáveis. O kit será apenas a base de arquitetura externa/modular; o jogo deverá ter pisos, paredes internas, portas, escadas e espaços reais criados e testados como geometria de gameplay.
+**Regra de composição:** esses pacotes são fontes de peças 3D, não um mapa pronto. O resultado precisa ser montado em escala de gameplay, com quarteirões conectados e volumes arquitetônicos coerentes. Uma coleção de edifícios isolados, miniaturas, fachadas sem volume ou tiles de rua espalhados não atende ao objetivo.
 
-A informação da página é pesquisa inicial, não uma licença/arquivo já arquivado no repositório. Antes de importar qualquer modelo, registrar a data de aquisição, URL de origem, nome do arquivo, SHA-256 do ZIP, licença incluída, inventário da versão Standard e SHA-256 dos GLBs selecionados.
+**Interiores:** os kits externos não comprovam que um edifício seja transitável. Cada edifício selecionado terá geometria interna própria — piso, paredes, vãos, portas e mobiliário — ligada ao volume externo e aos mesmos bounds usados por navegação e Rapier.
+
+**Proveniência pendente:** as páginas oficiais confirmam a licença CC0 e o conteúdo declarado, mas os ZIPs originais ainda não estão arquivados neste repositório. A aquisição continua bloqueada até registrar, por pacote, URL oficial, versão, data, arquivo original, SHA-256 do ZIP, licença incluída, inventário e hashes SHA-256 dos GLBs selecionados. Os GLBs individuais atualmente preparados por `prepare_city_assets.py` são uma base técnica existente; não representam aquisição integral nem reconstrução do mapa.
 
 ## Alvo de reconstrução
 
