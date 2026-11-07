@@ -1380,6 +1380,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     }
   }
 
+  void _triggerTraversalSlide() {
+    final physics = _physicsRuntime;
+    if (!mounted || physics == null || !physics.canTriggerSlide) return;
+    if (physics.triggerTraversalSlide()) {
+      setState(() {});
+    }
+  }
+
   String _clock(double seconds) {
     final total = seconds.floor();
     final minutes = (total ~/ 60).toString().padLeft(2, '0');
@@ -1657,6 +1665,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                             widget.simulation.cyclePlayerTarget();
                             setState(() => _snapshot = widget.simulation.snapshot);
                           },
+                        ),
+                        const SizedBox(width: 7),
+                        _MovementSlideButton(
+                          size: compact ? 44 : 48,
+                          enabled:
+                              _physicsRuntime?.canTriggerSlide ?? false,
+                          sliding: _physicsRuntime?.sliding ?? false,
+                          onTap: _triggerTraversalSlide,
                         ),
                         const SizedBox(width: 7),
                         _MovementDashButton(
@@ -2248,6 +2264,78 @@ class _TargetLockButton extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MovementSlideButton extends StatelessWidget {
+  const _MovementSlideButton({
+    required this.size,
+    required this.enabled,
+    required this.sliding,
+    required this.onTap,
+  });
+
+  final double size;
+  final bool enabled;
+  final bool sliding;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = sliding
+        ? const Color(0xFF9CE0C8)
+        : enabled
+            ? const Color(0xFF9BC2CF)
+            : const Color(0xFF64777F);
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(color: accent, width: 1.1),
+    );
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: sliding ? 'Deslizando' : 'Iniciar deslize',
+      child: Material(
+        color: sliding
+            ? const Color(0xD046716B)
+            : const Color(0xD02B414B),
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: shape,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.speed_rounded,
+                  size: size * 0.31,
+                  color: sliding || enabled
+                      ? const Color(0xFFF0F6F0)
+                      : const Color(0xFFA4B1B2),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sliding ? 'DRIFT' : 'SLIDE',
+                  style: TextStyle(
+                    color: sliding || enabled
+                        ? Colors.white
+                        : const Color(0xFFA4B1B2),
+                    fontSize: 7,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.35,
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
       ),
