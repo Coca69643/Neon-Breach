@@ -69,6 +69,67 @@ void main() {
       }
     });
 
+    test('interior GLB wall origins align rendered openings with collision', () {
+      expect(
+        ArenaWorldCatalog.interiorFrontWallSegmentLength,
+        closeTo(8.8, 1e-9),
+      );
+      for (final building in ArenaWorldCatalog.cityInteriors) {
+        final id = building.$1;
+        final x = building.$2;
+        final z = building.$3;
+        final leftStart = ArenaWorldCatalog.interiorFrontWallStartX(
+          x,
+          rightSegment: false,
+        );
+        final rightStart = ArenaWorldCatalog.interiorFrontWallStartX(
+          x,
+          rightSegment: true,
+        );
+        final doorStart = ArenaWorldCatalog.interiorDoorwayStartX(x);
+
+        // The source wall GLB uses local X bounds [0, 1], so these are
+        // segment starts, not centers. Both ends must meet the doorway frame.
+        expect(leftStart, closeTo(x - ArenaWorldCatalog.roomHalfWidth, 1e-9));
+        expect(
+          leftStart + ArenaWorldCatalog.interiorFrontWallSegmentLength,
+          closeTo(x - ArenaWorldCatalog.roomDoorHalfWidth, 1e-9),
+        );
+        expect(
+          rightStart,
+          closeTo(x + ArenaWorldCatalog.roomDoorHalfWidth, 1e-9),
+        );
+        expect(
+          rightStart + ArenaWorldCatalog.interiorFrontWallSegmentLength,
+          closeTo(x + ArenaWorldCatalog.roomHalfWidth, 1e-9),
+        );
+        expect(doorStart, closeTo(x - ArenaWorldCatalog.roomDoorHalfWidth, 1e-9));
+        expect(
+          doorStart + 2 * ArenaWorldCatalog.roomDoorHalfWidth,
+          closeTo(x + ArenaWorldCatalog.roomDoorHalfWidth, 1e-9),
+        );
+
+        // Side walls start at opposite ends because the mesh is rotated.
+        expect(
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: false),
+          closeTo(z + ArenaWorldCatalog.roomHalfDepth, 1e-9),
+        );
+        expect(
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: true),
+          closeTo(z - ArenaWorldCatalog.roomHalfDepth, 1e-9),
+        );
+
+        // Match the visible wall spans: the central doorway stays open,
+        // while both front segments and both side walls remain blocked.
+        expect(ArenaWorldCatalog.isWalkable(x, z - ArenaWorldCatalog.roomHalfDepth), isTrue);
+        expect(ArenaWorldCatalog.isWalkable(x - 7.6, z - ArenaWorldCatalog.roomHalfDepth), isFalse);
+        expect(ArenaWorldCatalog.isWalkable(x + 7.6, z - ArenaWorldCatalog.roomHalfDepth), isFalse);
+        expect(ArenaWorldCatalog.isWalkable(x - ArenaWorldCatalog.roomHalfWidth, z), isFalse);
+        expect(ArenaWorldCatalog.isWalkable(x + ArenaWorldCatalog.roomHalfWidth, z), isFalse,
+            reason: '$id side walls must remain solid');
+      }
+    });
+
     test('tower footprints can be ignored by lane units without weakening player collision', () {
       expect(
         ArenaWorldCatalog.isWalkable(-36, -52),
