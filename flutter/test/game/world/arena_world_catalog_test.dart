@@ -169,9 +169,22 @@ void main() {
     test('commercial blocks and park dressing are deterministic', () {
       expect(ArenaWorldCatalog.commercialBlocks, hasLength(10));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
+        final footprint = ArenaWorldCatalog.commercialFootprint(block);
+        expect(footprint.$1, greaterThan(0));
+        expect(footprint.$2, greaterThan(0));
+        expect(footprint.$3, greaterThan(0));
         expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
-            reason: 'commercial block must have a collision footprint');
+            reason: 'commercial block must have a GLB-sized collision footprint');
       }
+
+      final wideMarketBuilding = ArenaWorldCatalog.commercialBlocks.firstWhere(
+        (block) => block.$1 == 'commercial_building_j.glb',
+      );
+      final wideFootprint =
+          ArenaWorldCatalog.commercialFootprint(wideMarketBuilding);
+      expect(wideFootprint.$1, greaterThan(wideFootprint.$2 * 1.4),
+          reason: 'the long facade must not be approximated by a square collider');
+      expect(ArenaWorldCatalog.commercialLocalBounds, hasLength(10));
       final marketBuildings = ArenaWorldCatalog.commercialBlocks.where(
         (block) => block.$1 == 'commercial_building_i.glb' ||
             block.$1 == 'commercial_building_j.glb',
@@ -180,19 +193,21 @@ void main() {
       expect(ArenaWorldCatalog.isWalkable(12.0, -54.0), isTrue,
           reason: 'Market Central capture plaza must remain open');
       for (final building in marketBuildings) {
+        final halfWidth =
+            ArenaWorldCatalog.commercialFootprint(building).$1;
         expect(
           ArenaWorldCatalog.isWalkable(
-            building.$2 - building.$4 - 0.75, building.$3,
+            building.$2 - halfWidth - 0.75, building.$3,
           ),
           isTrue,
-          reason: 'west-side walk-around must remain open',
+          reason: 'west-side walk-around must remain open at the actual facade edge',
         );
         expect(
           ArenaWorldCatalog.isWalkable(
-            building.$2 + building.$4 + 0.75, building.$3,
+            building.$2 + halfWidth + 0.75, building.$3,
           ),
           isTrue,
-          reason: 'east-side walk-around must remain open',
+          reason: 'east-side walk-around must remain open at the actual facade edge',
         );
       }
       expect(ArenaWorldCatalog.trees, hasLength(16));
