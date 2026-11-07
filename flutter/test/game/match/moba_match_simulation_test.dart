@@ -79,6 +79,36 @@ void main() {
       expect(simulation.snapshot.selectedTarget!.health, lessThan(before.health));
     });
 
+    test('clearing a neutral camp pays once and the camp respawns', () {
+      final site = ArenaWorldCatalog.neutralCampSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      for (var frame = 0; frame < 900; frame++) {
+        if (simulation.snapshot.selectedTarget == null) {
+          simulation.cyclePlayerTarget();
+        }
+        simulation.step(1 / 30, basicAttack: true);
+        if (simulation.snapshot.neutralCamps.first.state ==
+            MobaNeutralCampState.defeated) {
+          break;
+        }
+      }
+      final cleared = simulation.snapshot.neutralCamps.first;
+      expect(cleared.state, MobaNeutralCampState.defeated);
+      expect(cleared.respawnSeconds, greaterThan(0));
+      expect(simulation.snapshot.playerGold, 629,
+          reason: 'two unit rewards and the clear bonus must be paid exactly once');
+
+      simulation.applyPhysicsPlayerPosition(const MobaPoint(0, -63));
+      advanceFor(simulation, 61);
+      final respawned = simulation.snapshot.neutralCamps.first;
+      expect(respawned.state, MobaNeutralCampState.dormant);
+      expect(respawned.units, hasLength(2));
+      expect(respawned.units.every((unit) => unit.health == unit.maxHealth), isTrue);
+    });
+
     test('quartermaster shop is proximity-gated and sells each upgrade once', () {
       final away = MobaMatchSimulation(heroId: MobaHeroId.lyra);
       expect(

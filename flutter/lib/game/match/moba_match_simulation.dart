@@ -1953,7 +1953,14 @@ class MobaMatchSimulation {
       case 'bot':
         for (final bot in _bots) {
           if (bot.id == target.id && bot.alive) {
-            _damageBot(bot, MobaTeam.blue, damage);
+            // Neutral damage never awards a team kill or gold to either side.
+            bot.health = math.max(0, bot.health - damage);
+            if (bot.health <= 0) {
+              bot
+                ..respawnSeconds = 6
+                ..attackSeconds = 0
+                ..moving = false;
+            }
             break;
           }
         }
@@ -1961,7 +1968,8 @@ class MobaMatchSimulation {
         final id = int.tryParse(target.id.substring(7));
         for (final minion in _minions) {
           if (minion.id == id && minion.alive) {
-            _damageMinion(minion, MobaTeam.red, damage);
+            // Neutral damage must not be attributed to the opposing team.
+            minion.health = math.max(0, minion.health - damage);
             break;
           }
         }
@@ -1992,6 +2000,10 @@ class MobaMatchSimulation {
       }
       final threat = _nearestNeutralThreat(camp);
       if (camp.state == MobaNeutralCampState.dormant && threat != null) {
+        camp.state = MobaNeutralCampState.aggro;
+      }
+      if (camp.state == MobaNeutralCampState.returning && threat != null &&
+          camp.position.distanceTo(threat.position) <= 14.0) {
         camp.state = MobaNeutralCampState.aggro;
       }
       if (camp.state == MobaNeutralCampState.aggro &&
