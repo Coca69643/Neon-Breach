@@ -187,6 +187,51 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       dialogue: 'O Mercado Central abastece a equipe que mantém suas rotas protegidas.',
     ),
     _AmbientNpc(
+      id: 'base-guide-top',
+      label: 'Orientador da Rota Norte',
+      asset: 'assets/npcs/npc_male_a.glb',
+      x: -33.0,
+      z: -55.0,
+      patrol: [
+        MobaPoint(-33.0, -55.0),
+        MobaPoint(-31.5, -55.0),
+        MobaPoint(-31.5, -52.5),
+        MobaPoint(-33.0, -52.5),
+      ],
+      phaseOffset: 0.55,
+      dialogue: 'Aliados avançam pelas rotas. Aproxime-se do grupo para acompanhar a primeira rotação.',
+    ),
+    _AmbientNpc(
+      id: 'base-guide-middle',
+      label: 'Orientadora da Rota Central',
+      asset: 'assets/npcs/npc_female_a.glb',
+      x: 3.0,
+      z: -55.0,
+      patrol: [
+        MobaPoint(3.0, -55.0),
+        MobaPoint(4.5, -55.0),
+        MobaPoint(4.5, -52.5),
+        MobaPoint(3.0, -52.5),
+      ],
+      phaseOffset: 1.15,
+      dialogue: 'A rota central leva ao reator. Use o minimapa para orientar seus aliados.',
+    ),
+    _AmbientNpc(
+      id: 'base-guide-south',
+      label: 'Orientador da Rota Sul',
+      asset: 'assets/npcs/npc_male_b.glb',
+      x: 39.0,
+      z: -55.0,
+      patrol: [
+        MobaPoint(39.0, -55.0),
+        MobaPoint(40.5, -55.0),
+        MobaPoint(40.5, -52.5),
+        MobaPoint(39.0, -52.5),
+      ],
+      phaseOffset: 1.75,
+      dialogue: 'As laterais permitem contornar bloqueios e entrar nos edifícios de serviço.',
+    ),
+    _AmbientNpc(
       id: 'station-agent',
       label: 'Agente Intermodal',
       asset: 'assets/npcs/npc_female_a.glb',
@@ -548,7 +593,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         key: const ValueKey('central-objective-pedestal'),
         name: 'central_relay_pedestal',
         position: _worldPosition(const MobaPoint(0, 0)),
-        scale: vm.Vector3.all(2.7),
+        scale: vm.Vector3.all(1.35),
       ),
       SceneModel(
         'assets/world/city/interior_computer_screen.glb',
@@ -556,10 +601,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         name: 'central_relay_terminal',
         position: vm.Vector3(
           0,
-          _groundHeight(const MobaPoint(0, 0)) + 1.15,
+          _groundHeight(const MobaPoint(0, 0)) + 0.92,
           0,
         ),
-        scale: vm.Vector3.all(2.1),
+        scale: vm.Vector3.all(0.92),
       ),
     ];
   }
@@ -1004,7 +1049,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(0.98),
+      scale: vm.Vector3.all(1.12),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -1021,7 +1066,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final scale = minion.ranged ? 0.94 : 1.02;
+    // Kenney mini-character meshes need a larger presentation scale beside
+    // the full-height playable Quaternius heroes. Keep ranged and melee
+    // silhouettes distinct without changing gameplay collision sizes.
+    final scale = minion.ranged ? 1.35 : 1.45;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
@@ -1123,7 +1171,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: 'ambient_npc_${npc.id}',
       position: _worldPosition(pose.position, heightOffset: 0.015),
       rotation: _entityFacing(pose.facingX, pose.facingZ),
-      scale: vm.Vector3.all(0.96),
+      scale: vm.Vector3.all(1.08),
       animations: [
         SceneAnimationSpec(
           interacting
@@ -1141,7 +1189,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     double elapsedSeconds,
   ) {
     _AmbientNpc? nearest;
-    var nearestDistance = 4.8;
+    var nearestDistance = 8.0;
     for (final npc in _ambientNpcs) {
       final position = _ambientNpcPose(npc, elapsedSeconds).position;
       final distance = player.distanceTo(position);
