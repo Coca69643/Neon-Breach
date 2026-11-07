@@ -2395,7 +2395,7 @@ class _MiniMapPainter extends CustomPainter {
     }
     canvas.drawPath(river, riverPaint);
 
-    // Mint markers identify the four accessible indoor service points.
+    // Mint markers identify all six enterable service interiors.
     for (final building in ArenaWorldCatalog.cityInteriors) {
       final marker = project(MobaPoint(building.$2, building.$3));
       canvas.drawCircle(
@@ -2533,8 +2533,13 @@ class _NpcPrompt extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.chat_bubble_outline, size: 16,
-                  color: Color(0xFF8BDCC7)),
+              Icon(
+                action == 'ABRIR LOJA'
+                    ? Icons.storefront_outlined
+                    : Icons.chat_bubble_outline,
+                size: 16,
+                color: const Color(0xFF8BDCC7),
+              ),
               const SizedBox(width: 7),
               Text(
                 '$action  ·  $label',
