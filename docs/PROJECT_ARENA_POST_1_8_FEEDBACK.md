@@ -89,9 +89,9 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 
 - [x] Branch separada criada: `fix/1.8.1-feedback-recovery`.
 - [x] Auditoria inicial de call paths, pipeline CC0, documentos de arquitetura e testes.
-- [x] Orientação de rigs: NPCs, bots e minions agora usam a base local -Z, alinhada ao deslocamento; aguarda CI e inspeção visual.
-- [x] Escala de bots, minions e pedestres aumentada de forma controlada; aguarda inspeção visual para confirmar proporção.
-- [x] Mapa — interiores: origem dos GLBs de parede/porta auditada; âncoras laterais/frontais/porta alinhadas ao footprint e testes geométricos adicionados; aguarda CI e screenshot de jogo.
+- [x] Orientação de rigs: NPCs, bots e minions agora usam a base local -Z, alinhada ao deslocamento; `flutter analyze` e 86 testes passaram (run 42380337841); inspeção visual ainda pendente.
+- [x] Escala de bots, minions e pedestres aumentada de forma controlada; compilação/análise/testes passaram; inspeção visual ainda pendente para confirmar proporção.
+- [x] Mapa — interiores: origem dos GLBs de parede/porta auditada; âncoras laterais/frontais/porta alinhadas ao footprint; testes geométricos passaram no run 42380337841; screenshot de jogo ainda pendente.
 - [ ] Mapa — conjunto urbano: posicionamento de edifícios comerciais, vias, fachadas completas e colisões externas ainda pendente; não declarar o mapa corrigido.
 - [ ] NPCs neutros de gameplay: não implementados.
 - [ ] Equipamentos por rig: calibração visual pendente.
