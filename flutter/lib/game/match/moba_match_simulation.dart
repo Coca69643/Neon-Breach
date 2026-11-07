@@ -1916,7 +1916,9 @@ class MobaMatchSimulation {
       final z = from.z + (to.z - from.z) * t;
       final y = from.elevation + (to.elevation - from.elevation) * t;
       if (!ArenaWorldCatalog.isWalkable(x, z, elevation: y) ||
-          _isBlockedByCover(x, z, y)) return false;
+          _isBlockedByCover(x, z, y)) {
+        return false;
+      }
     }
     return true;
   }
