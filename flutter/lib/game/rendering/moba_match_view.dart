@@ -1744,13 +1744,19 @@ class _PlayerHud extends StatelessWidget {
         .clamp(0.0, 1.0)
         .toDouble();
     final hero = snapshot.heroId.name.toUpperCase();
+    final healthColor = health > 0.55
+        ? const Color(0xFF70D18B)
+        : health > 0.25
+            ? const Color(0xFFFFC66D)
+            : const Color(0xFFFF747E);
 
     return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
       child: SizedBox(
-        width: 164,
+        width: 186,
         child: Column(
           mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Row(
               children: [
@@ -1784,15 +1790,54 @@ class _PlayerHud extends StatelessWidget {
                 ),
               ],
             ),
-            const SizedBox(height: 5),
-            _Bar(value: health, color: const Color(0xFF69C98A), height: 5),
-            const SizedBox(height: 3),
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text(
+                  'HP',
+                  style: TextStyle(
+                    color: Color(0xFFC9D7DA),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.55,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${snapshot.playerHealth.floor()} / ${snapshot.playerMaxHealth.floor()}',
+                  style: TextStyle(
+                    color: healthColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            _Bar(value: health, color: healthColor, height: 7),
+            const SizedBox(height: 4),
             _Bar(value: xp, color: const Color(0xFF62B8E8), height: 2),
+            if (snapshot.playerDamageFeedbackSeconds > 0 &&
+                snapshot.playerLastDamageSource != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: Text(
+                  '-${snapshot.playerLastDamageAmount.ceil()} HP  ·  ${snapshot.playerLastDamageSource}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFFFA0A0),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
             if (snapshot.playerRespawnSeconds > 0)
               Padding(
                 padding: const EdgeInsets.only(top: 4),
                 child: Text(
-                  'RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
+                  'ELIMINADO  ·  RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
                   style: const TextStyle(
                     color: Color(0xFFFFA0A0),
                     fontSize: 8,
