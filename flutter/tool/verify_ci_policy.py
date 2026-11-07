@@ -42,6 +42,19 @@ def main() -> None:
         "PR profile QA build must target ARM64 profile mode.",
     )
 
+    qa_identity = workflow.split("Isolate PR profile application identity", 1)
+    require(len(qa_identity) == 2, "isolated PR profile identity step is missing.")
+    qa_identity_header = qa_identity[1].split("run:", 1)[0]
+    require(
+        "if: github.event_name == 'pull_request'" in qa_identity_header
+        and "tool/prepare_profile_qa_identity.py" in qa_identity[1],
+        "isolated QA application identity must be prepared only for pull requests.",
+    )
+    require(
+        "verify_release_apk.py build/app/outputs/flutter-apk/app-profile.apk --qa-profile" in profile_build[1],
+        "profile APK verifier must enforce the isolated QA application identity.",
+    )
+
     profile_artifact = workflow.split("Upload profile QA artifact", 1)
     require(len(profile_artifact) == 2, "PR profile QA artifact upload step is missing.")
     profile_artifact_header = profile_artifact[1].split("uses:", 1)[0]
