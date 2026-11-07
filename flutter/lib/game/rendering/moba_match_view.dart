@@ -578,9 +578,12 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // The bundled Quaternius and Kenney humanoid rigs face local +Z.
-    // Do not add a half-turn: +Z movement must make the character face +Z.
-    final yaw = HumanoidOrientation.yawForDirection(facingX, facingZ);
+    // The bundled animated Kenney Mini Character clips travel along local -Z.
+    // Apply the same movement-basis correction used by playable hero rigs.
+    final yaw = HumanoidOrientation.yawForNegativeZDirection(
+      facingX,
+      facingZ,
+    );
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -1108,7 +1111,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(1.12),
+      scale: vm.Vector3.all(1.25),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -1128,7 +1131,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     // Kenney mini-character meshes need a larger presentation scale beside
     // the full-height playable Quaternius heroes. Keep ranged and melee
     // silhouettes distinct without changing gameplay collision sizes.
-    final scale = minion.ranged ? 1.35 : 1.45;
+    final scale = minion.ranged ? 1.68 : 1.78;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
@@ -1230,7 +1233,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: 'ambient_npc_${npc.id}',
       position: _worldPosition(pose.position, heightOffset: 0.015),
       rotation: _entityFacing(pose.facingX, pose.facingZ),
-      scale: vm.Vector3.all(1.08),
+      scale: vm.Vector3.all(1.15),
       animations: [
         SceneAnimationSpec(
           interacting
