@@ -31,8 +31,10 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 
 ### P1 — Menu e identidade do jogador
 - A inspiração em Project R.I.S.E. deve ser de composição e hierarquia visual, sem copiar sua interface ou usar atalhos fictícios.
-- Remover atalhos bloqueados sem função real (BAÚS, DESAFIOS, MERCADOR) até os sistemas existirem.
-- O cabeçalho deve mostrar nome do jogador e foto de perfil real, com fluxo explícito de criação/edição e persistência local; não deixar o título do jogo no lugar da identidade do jogador.
+- [x] Remover atalhos bloqueados sem função real (BAÚS, DESAFIOS, MERCADOR); só HERÓIS e ASCENDER permanecem como ações ativas.
+- [x] O cabeçalho agora mostra nome do jogador e avatar selecionável da galeria, com editor local e persistência em SharedPreferences + diretório interno do app.
+- [x] O fluxo de avatar usa imagem limitada a 512×512/qualidade 84, copia o arquivo para Application Support e recupera seleção interrompida pelo ciclo de vida do Android.
+- [ ] Validar no Android físico que nome e foto sobrevivem a encerramento/reabertura e atualização por cima da instalação existente.
 
 ### P1 — Novo herói e seleção
 - O elenco permanece com Lyra, Bastion e Kairo; o novo herói solicitado não está implementado nem selecionável.
@@ -98,7 +100,8 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [x] Quartermaster funcional: loja em mundo com célula de impacto (+12% poder) e placa reforçada (+100 vida), custos em ouro, bloqueio por proximidade e compras únicas por partida; testes cobrem preço, alcance e efeitos.
 - [ ] NPCs neutros de combate/camps (equivalente a jungle camps) ainda não implementados; não confundir o mercador e pedestres com esse sistema.
 - [ ] Equipamentos por rig: calibração visual pendente.
-- [ ] Perfil real do jogador: não implementado.
+- [x] Perfil local do jogador: editor de nome e foto integrado ao menu; validação automática pendente.
+
 - [ ] Novo herói sintético metamórfico: não implementado.
 - [ ] HUD e seleção: revisão de UX pendente.
 - [ ] Realme C53: sem validação física nesta etapa.
