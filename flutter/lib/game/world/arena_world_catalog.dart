@@ -68,6 +68,12 @@ abstract final class ArenaWorldCatalog {
   static const double roomWallHalfThickness = 0.42;
   static const double roomWallHalfHeight = 1.8;
 
+  // The quartermaster remains near the central market so every lane can reach
+  // the first in-world shop rotation without crossing the whole map.
+  static const double shopkeeperX = -8.0;
+  static const double shopkeeperZ = -44.0;
+  static const double shopkeeperInteractionRadius = 9.0;
+
   // The pinned Kenney furniture wall meshes have local X bounds [0, 1].
   // These starts keep the rendered segments aligned with the logical wall
   // lines and the doorway opening used by navigation/collision.
