@@ -247,6 +247,68 @@ ASSETS = {
     ),
 }
 
+# Local GLB bounds used by the match's shared render/navigation/Rapier
+# facade footprints: (half width X, half depth Z, full height Y).
+# The source models are centered on X/Z and stand on Y=0.
+COMMERCIAL_LOCAL_BOUNDS = {
+    "commercial_building_b.glb": (0.48500001, 0.47000000, 1.29300000),
+    "commercial_building_c.glb": (0.44179396, 0.54500005, 0.89300001),
+    "commercial_building_f.glb": (0.42000002, 0.51500010, 1.69300008),
+    "commercial_building_h.glb": (0.44179392, 0.50394556, 1.29299998),
+    "commercial_building_d.glb": (0.42000002, 0.45000000, 1.29299998),
+    "commercial_building_g.glb": (0.48500001, 0.46100010, 1.69300008),
+    "suburban_building_a.glb": (0.64999998, 0.51406890, 0.83354098),
+    "suburban_building_c.glb": (0.64319015, 0.51406890, 1.03354096),
+    "commercial_building_i.glb": (0.62000003, 0.65100002, 1.68000007),
+    "commercial_building_j.glb": (1.04179400, 0.67000002, 1.69300008),
+}
+
+
+def position_bounds(document: dict, filename: str) -> tuple[float, float, float]:
+    """Return (half X, half Z, full Y) from the GLB POSITION accessors."""
+    position_accessors = []
+    for mesh in document.get("meshes", []):
+        for primitive in mesh.get("primitives", []):
+            accessor_index = primitive.get("attributes", {}).get("POSITION")
+            if accessor_index is None:
+                continue
+            accessor = document.get("accessors", [])[accessor_index]
+            if "min" not in accessor or "max" not in accessor:
+                raise RuntimeError(
+                    f"POSITION accessor has no bounds for collision asset: {filename}"
+                )
+            position_accessors.append(accessor)
+
+    if not position_accessors:
+        raise RuntimeError(f"No POSITION accessor found for collision asset: {filename}")
+
+    minimum = [
+        min(accessor["min"][axis] for accessor in position_accessors)
+        for axis in range(3)
+    ]
+    maximum = [
+        max(accessor["max"][axis] for accessor in position_accessors)
+        for axis in range(3)
+    ]
+    values = (
+        (maximum[0] - minimum[0]) * 0.5,
+        (maximum[2] - minimum[2]) * 0.5,
+        maximum[1] - minimum[1],
+    )
+    expected = COMMERCIAL_LOCAL_BOUNDS[filename]
+    for axis, (actual, pinned) in enumerate(zip(values, expected)):
+        if abs(actual - pinned) > 0.002:
+            raise RuntimeError(
+                f"Commercial GLB bounds changed for {filename} axis {axis}: "
+                f"expected {pinned:.6f}, got {actual:.6f}"
+            )
+    if any(abs(minimum[axis]) > 0.002 for axis in (0, 2)) or abs(minimum[1]) > 0.002:
+        raise RuntimeError(
+            f"Commercial GLB origin is no longer centered/on-ground: {filename}"
+        )
+    return values
+
+
 LICENSE_TEXT = """\
 All models in this bundle were created by Kenney (www.kenney.nl) and are
 released under Creative Commons Zero (CC0 1.0 Universal):
@@ -335,17 +397,29 @@ def main() -> None:
                 f"expected {expected_git_sha}, got {actual_git_sha}"
             )
         document = validate_glb(payload, filename)
+        local_bounds = (
+            position_bounds(document, filename)
+            if filename in COMMERCIAL_LOCAL_BOUNDS
+            else None
+        )
         destination.write_bytes(payload)
         digest = hashlib.sha256(payload).hexdigest()
         total_bytes += len(payload)
-        manifest["assets"].append({
+        asset_entry = {
             "file": filename,
             "source": source_path,
             "gitBlobSha1": actual_git_sha,
             "sha256": digest,
             "bytes": len(payload),
             "meshCount": len(document["meshes"]),
-        })
+        }
+        if local_bounds is not None:
+            asset_entry["collisionLocalBounds"] = {
+                "halfWidthX": local_bounds[0],
+                "halfDepthZ": local_bounds[1],
+                "heightY": local_bounds[2],
+            }
+        manifest["assets"].append(asset_entry)
 
     (OUTPUT / "CC0-KENNEY-LICENSE.txt").write_text(
         LICENSE_TEXT, encoding="utf-8"
