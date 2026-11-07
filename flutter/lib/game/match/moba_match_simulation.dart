@@ -60,6 +60,25 @@ class MobaObjectiveControl {
   }
 }
 
+enum MobaShopItem { impactCell, reinforcedPlate }
+
+extension MobaShopItemRules on MobaShopItem {
+  int get price => switch (this) {
+        MobaShopItem.impactCell => 280,
+        MobaShopItem.reinforcedPlate => 320,
+      };
+
+  String get title => switch (this) {
+        MobaShopItem.impactCell => 'CÉLULA DE IMPACTO',
+        MobaShopItem.reinforcedPlate => 'PLACA REFORÇADA',
+      };
+
+  String get description => switch (this) {
+        MobaShopItem.impactCell => '+12% de poder de ataque.',
+        MobaShopItem.reinforcedPlate => '+100 de vida máxima e recuperação imediata.',
+      };
+}
+
 enum MobaLane { top, middle, bottom }
 
 enum MobaHeroId { lyra, bastion, kairo }
@@ -288,6 +307,8 @@ class MobaMatchSnapshot {
     required this.playerXp,
     required this.xpForNextLevel,
     required this.playerGold,
+    required this.playerPower,
+    required this.playerItems,
     required this.playerSkillCooldown,
     required this.playerRespawnSeconds,
     required this.playerSpawnShieldSeconds,
@@ -331,6 +352,8 @@ class MobaMatchSnapshot {
   final double playerXp;
   final double xpForNextLevel;
   final double playerGold;
+  final double playerPower;
+  final List<MobaShopItem> playerItems;
   final double playerSkillCooldown;
   final double playerRespawnSeconds;
   final double playerSpawnShieldSeconds;
@@ -492,6 +515,7 @@ class MobaMatchSimulation {
   final List<_Bot> _bots = [];
   final List<_Tower> _towers = [];
   final List<_Cover> _covers = [];
+  final Set<MobaShopItem> _playerItems = <MobaShopItem>{};
   String? _selectedTargetKey;
   static const double _targetCycleRange = 24.0;
   static const MobaPoint _objectivePosition = MobaPoint(0, 0);
@@ -549,6 +573,36 @@ class MobaMatchSimulation {
   String? _teamPingBotId;
 
   MobaMatchSnapshot get snapshot => _makeSnapshot();
+
+  /// Purchases one persistent match upgrade from the in-world quartermaster.
+  /// The shop is only usable while the player is near its authored map position.
+  bool purchaseShopItem(MobaShopItem item) {
+    if (_winner != null ||
+        _playerHealth <= 0 ||
+        _playerRespawn > 0 ||
+        _playerItems.contains(item) ||
+        _playerGold < item.price ||
+        _playerPosition.distanceTo(
+              const MobaPoint(
+                ArenaWorldCatalog.shopkeeperX,
+                ArenaWorldCatalog.shopkeeperZ,
+              ),
+            ) >
+            ArenaWorldCatalog.shopkeeperInteractionRadius) {
+      return false;
+    }
+
+    _playerGold -= item.price;
+    _playerItems.add(item);
+    switch (item) {
+      case MobaShopItem.impactCell:
+        _playerPower += 0.12;
+      case MobaShopItem.reinforcedPlate:
+        _playerMaxHealth += 100;
+        _playerHealth = math.min(_playerMaxHealth, _playerHealth + 100);
+    }
+    return true;
+  }
 
   /// Transfers a requested dash to the authoritative Rapier body exactly once.
   MobaPoint? consumePhysicsDashRequest() {
@@ -692,6 +746,7 @@ class MobaMatchSimulation {
     _playerXp = 0;
     _playerGold = 500;
     _playerPower = 1;
+    _playerItems.clear();
     _playerLevel = 1;
     _nextMinionId = 0;
     _playerPosition = _spawnPosition ??
@@ -2096,6 +2151,8 @@ class MobaMatchSimulation {
       playerXp: _playerXp,
       xpForNextLevel: currentThreshold,
       playerGold: _playerGold,
+      playerPower: _playerPower,
+      playerItems: List.unmodifiable(_playerItems),
       playerSkillCooldown: _playerSkillCooldown,
       playerRespawnSeconds: _playerRespawn,
       playerSpawnShieldSeconds: _playerShieldTime,
