@@ -281,6 +281,9 @@ class MobaMatchSnapshot {
     required this.playerPosition,
     required this.playerHealth,
     required this.playerMaxHealth,
+    required this.playerLastDamageSource,
+    required this.playerLastDamageAmount,
+    required this.playerDamageFeedbackSeconds,
     required this.playerLevel,
     required this.playerXp,
     required this.xpForNextLevel,
@@ -321,6 +324,9 @@ class MobaMatchSnapshot {
   final MobaPoint playerPosition;
   final double playerHealth;
   final double playerMaxHealth;
+  final String? playerLastDamageSource;
+  final double playerLastDamageAmount;
+  final double playerDamageFeedbackSeconds;
   final int playerLevel;
   final double playerXp;
   final double xpForNextLevel;
@@ -516,6 +522,9 @@ class MobaMatchSimulation {
   double _elapsed = 0;
   double _playerHealth = playerMaxHealthBase;
   double _playerMaxHealth = playerMaxHealthBase;
+  String? _playerLastDamageSource;
+  double _playerLastDamageAmount = 0;
+  double _playerDamageFeedbackSeconds = 0;
   double _playerRespawn = 0;
   double _playerAttackCooldown = 0;
   double _playerAttackPulseSeconds = 0;
@@ -670,6 +679,9 @@ class MobaMatchSimulation {
     _accumulator = 0;
     _playerHealth = playerMaxHealthBase;
     _playerMaxHealth = playerMaxHealthBase;
+    _playerLastDamageSource = null;
+    _playerLastDamageAmount = 0;
+    _playerDamageFeedbackSeconds = 0;
     _playerRespawn = 0;
     _playerAttackCooldown = 0;
     _playerAttackPulseSeconds = 0;
@@ -933,6 +945,8 @@ class MobaMatchSimulation {
         math.max(0, _playerFacingLockSeconds - dt);
     _playerHitConfirmSeconds =
         math.max(0, _playerHitConfirmSeconds - dt);
+    _playerDamageFeedbackSeconds =
+        math.max(0, _playerDamageFeedbackSeconds - dt);
     _playerSkillPulseSeconds =
         math.max(0, _playerSkillPulseSeconds - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
@@ -996,7 +1010,7 @@ class MobaMatchSimulation {
     _playerPosition = position;
     if (!ArenaWorldCatalog.contains(position.x, position.z) ||
         position.elevation < -2.2) {
-      _damagePlayer(_playerHealth);
+      _damagePlayer(_playerHealth, source: 'Queda fora do mapa');
       _playerMoving = false;
     }
   }
@@ -1318,7 +1332,7 @@ class MobaMatchSimulation {
           _moveMinion(minion, _playerPosition, 2.35, dt);
         } else if (minion.attackCooldown <= 0) {
           _markMinionAttack(minion, _playerPosition);
-          _damagePlayer(minion.ranged ? 7 : 10);
+          _damagePlayer(minion.ranged ? 7 : 10, source: 'Tropa inimiga');
           minion.attackCooldown = 1.0;
         }
         continue;
@@ -1551,7 +1565,7 @@ class MobaMatchSimulation {
           _moveBot(bot, _playerPosition, 3.15, dt);
         } else if (bot.attackCooldown <= 0) {
           _markBotAttack(bot, _playerPosition);
-          _damagePlayer(10);
+          _damagePlayer(10, source: 'Herói inimigo');
           bot.attackCooldown = 1.05;
         }
         continue;
@@ -1698,7 +1712,7 @@ class MobaMatchSimulation {
       if (tower.team == MobaTeam.red &&
           _playerRespawn <= 0 &&
           _playerPosition.distanceTo(tower.position) <= 7.8) {
-        _damagePlayer(12);
+        _damagePlayer(12, source: 'Torre inimiga');
         tower.attackCooldown = 1.0;
       }
     }
@@ -1938,9 +1952,10 @@ class MobaMatchSimulation {
 
   double _xpThreshold(int level) => 220 + (level - 1) * 85.0;
 
-  void _damagePlayer(double damage) {
+  void _damagePlayer(double damage, {required String source}) {
     // Ignore additional hits during the death/respawn window.
     if (_playerRespawn > 0 || _playerHealth <= 0) return;
+    final healthBeforeHit = _playerHealth;
     final mitigation = _playerShieldTime > 0 ? 0.58 : 1.0;
     final objectiveMultiplier =
         _objectiveDamageMultiplier(MobaTeam.red);
@@ -1948,6 +1963,9 @@ class MobaMatchSimulation {
       0,
       _playerHealth - damage * mitigation * objectiveMultiplier,
     );
+    _playerLastDamageAmount = healthBeforeHit - _playerHealth;
+    _playerLastDamageSource = source;
+    _playerDamageFeedbackSeconds = 2.6;
     if (_playerHealth <= 0) {
       _playerHealth = 0;
       _playerRespawn = 5;
@@ -2071,6 +2089,9 @@ class MobaMatchSimulation {
       playerPosition: _playerPosition,
       playerHealth: _playerHealth,
       playerMaxHealth: _playerMaxHealth,
+      playerLastDamageSource: _playerLastDamageSource,
+      playerLastDamageAmount: _playerLastDamageAmount,
+      playerDamageFeedbackSeconds: _playerDamageFeedbackSeconds,
       playerLevel: _playerLevel,
       playerXp: _playerXp,
       xpForNextLevel: currentThreshold,
