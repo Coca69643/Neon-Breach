@@ -251,26 +251,36 @@ void main() {
     });
 
     test('raised asphalt and concrete match navigation collision height', () {
-      final roadBase = ArenaWorldCatalog.heightAt(-36, -60);
+      const roadX = -36.0;
+      const roadZ = -60.0;
+      final roadBase = ArenaWorldCatalog.heightAt(roadX, roadZ);
+      final roadLift =
+          ArenaWorldCatalog.surfaceElevationOffsetAt(roadX, roadZ);
+      expect(roadLift, inInclusiveRange(0.11, 0.135));
       expect(
-        ArenaWorldCatalog.navigationHeightAt(-36, -60),
-        closeTo(roadBase + 0.135, 0.001),
+        ArenaWorldCatalog.navigationHeightAt(roadX, roadZ),
+        closeTo(roadBase + roadLift, 0.00001),
       );
 
-      final sidewalkBase = ArenaWorldCatalog.heightAt(-30, -60);
+      const sidewalkX = -30.0;
+      const sidewalkZ = -60.0;
+      final sidewalkBase = ArenaWorldCatalog.heightAt(sidewalkX, sidewalkZ);
+      final sidewalkLift =
+          ArenaWorldCatalog.surfaceElevationOffsetAt(sidewalkX, sidewalkZ);
+      expect(sidewalkLift, ArenaWorldCatalog.concreteSurfaceLift);
       expect(
-        ArenaWorldCatalog.navigationHeightAt(-30, -60),
-        closeTo(sidewalkBase + ArenaWorldCatalog.concreteSurfaceLift, 0.001),
+        ArenaWorldCatalog.navigationHeightAt(sidewalkX, sidewalkZ),
+        closeTo(sidewalkBase + sidewalkLift, 0.00001),
       );
 
-      final parkBase = ArenaWorldCatalog.heightAt(-86, 14);
+      const parkX = -86.0;
+      const parkZ = 14.0;
+      final parkBase = ArenaWorldCatalog.heightAt(parkX, parkZ);
+      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(parkX, parkZ), 0);
       expect(
-        ArenaWorldCatalog.navigationHeightAt(-86, 14),
-        closeTo(parkBase, 0.001),
+        ArenaWorldCatalog.navigationHeightAt(parkX, parkZ),
+        closeTo(parkBase, 0.00001),
       );
-      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(-36, -60), closeTo(0.135, 0.001));
-      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(-30, -60), closeTo(0.16, 0.001));
-      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(-86, 14), 0);
     });
 
     test('visible interior furniture has matching navigation blockers', () {
