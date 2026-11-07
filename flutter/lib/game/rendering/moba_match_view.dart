@@ -882,8 +882,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         vm.Vector3(px, ground + py, pz);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
-    final segmentHalf = (halfWidth - doorHalfWidth) * 0.5;
-    final segmentOffset = doorHalfWidth + segmentHalf;
     final deskZ = hasVerticalAccess ? z - 2.4 : z + 2.5;
     final chairZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
     final screenZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
@@ -900,21 +898,42 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         scale: vm.Vector3(halfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
-        position: p(x - halfWidth, 0, z), rotation: yaw(math.pi / 2),
+        // Local X starts at 0; +90° rotates that axis toward -Z.
+        position: p(x - halfWidth, 0,
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: false)),
+        rotation: yaw(math.pi / 2),
         scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
-        position: p(x + halfWidth, 0, z), rotation: yaw(-math.pi / 2),
+        // Local X starts at 0; -90° rotates that axis toward +Z.
+        position: p(x + halfWidth, 0,
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: true)),
+        rotation: yaw(-math.pi / 2),
         scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
-      for (final sign in const [-1.0, 1.0])
+      for (final rightSegment in const [false, true])
         SceneModel('assets/world/city/interior_wall.glb',
-          key: ValueKey('interior-front-$id-$sign'),
-          name: 'interior_front_wall_$id-$sign',
-          position: p(x + sign * segmentOffset, 0, z - halfDepth),
-          scale: vm.Vector3(segmentHalf * 2, wallHeightScale, wallThicknessScale)),
+          key: ValueKey('interior-front-$id-$rightSegment'),
+          name: 'interior_front_wall_$id-$rightSegment',
+          position: p(
+            ArenaWorldCatalog.interiorFrontWallStartX(
+              x,
+              rightSegment: rightSegment,
+            ),
+            0,
+            z - halfDepth,
+          ),
+          scale: vm.Vector3(
+            ArenaWorldCatalog.interiorFrontWallSegmentLength,
+            wallHeightScale,
+            wallThicknessScale,
+          )),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x, 0, z - halfDepth),
+        position: p(
+          ArenaWorldCatalog.interiorDoorwayStartX(x),
+          0,
+          z - halfDepth,
+        ),
         scale: vm.Vector3(doorHalfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
