@@ -65,6 +65,32 @@ void main() {
       }
     });
 
+    test('one allied bot starts inside the player camera area for every hero', () {
+      for (final hero in MobaHeroId.values) {
+        final simulation = MobaMatchSimulation(heroId: hero);
+        final state = simulation.snapshot;
+        final player = state.playerPosition;
+        final alliedBots = state.bots.where((bot) => bot.team == MobaTeam.blue);
+        final nearest = alliedBots
+            .map((bot) => bot.position.distanceTo(player))
+            .reduce((a, b) => a < b ? a : b);
+
+        expect(nearest, lessThan(9.0),
+            reason: '${hero.name} must see at least one ally near the opening position');
+        final visibleAlly = alliedBots.firstWhere(
+          (bot) => bot.position.distanceTo(player) == nearest,
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            visibleAlly.position.x,
+            visibleAlly.position.z,
+            elevation: visibleAlly.position.elevation,
+          ),
+          isTrue,
+        );
+      }
+    });
+
     test('all bots spawn on walkable ground outside tower collision footprints', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
