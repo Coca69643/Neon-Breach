@@ -7,8 +7,6 @@ import android.opengl.Matrix;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
-import java.util.ArrayList;
-import java.util.List;
 
 /**
  * Minimal city-scene renderer built directly on Android OpenGL ES 2.0.
@@ -19,6 +17,8 @@ import java.util.List;
 final class CitySceneRenderer implements GLSurfaceView.Renderer {
     private static final int FLOATS_PER_VERTEX = 9;
     private static final int STRIDE_BYTES = FLOATS_PER_VERTEX * 4;
+    private static final float[] WARM_WINDOW = {0.76f, 0.66f, 0.46f};
+    private static final float[] COOL_WINDOW = {0.24f, 0.48f, 0.49f};
 
     private static final String VERTEX_SHADER =
             "uniform mat4 uMvp;\n" +
@@ -55,6 +55,30 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
     private int colorLocation;
     private volatile float yawDegrees = 24f;
     private volatile float pitchDegrees = 27f;
+
+    private static final class FloatBuilder {
+        private float[] values;
+        private int size;
+
+        FloatBuilder(int initialCapacity) {
+            values = new float[Math.max(128, initialCapacity)];
+        }
+
+        void add(float value) {
+            if (size == values.length) {
+                float[] expanded = new float[values.length + (values.length >> 1)];
+                System.arraycopy(values, 0, expanded, 0, size);
+                values = expanded;
+            }
+            values[size++] = value;
+        }
+
+        float[] toArray() {
+            float[] result = new float[size];
+            System.arraycopy(values, 0, result, 0, size);
+            return result;
+        }
+    }
 
     void orbit(float deltaX, float deltaY) {
         yawDegrees = (yawDegrees + deltaX * 0.28f) % 360f;
@@ -159,7 +183,7 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
     }
 
     private static float[] buildCity() {
-        List<Float> data = new ArrayList<>(180000);
+        FloatBuilder data = new FloatBuilder(180000);
 
         float[] ground = color(0.19f, 0.25f, 0.27f);
         float[] road = color(0.075f, 0.10f, 0.12f);
@@ -209,7 +233,7 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
         return toArray(data);
     }
 
-    private static void addBuilding(List<Float> out, float x, float z,
+    private static void addBuilding(FloatBuilder out, float x, float z,
                                     float halfWidth, float halfDepth, float height,
                                     float[] baseColor) {
         addBox(out, x, height * 0.5f, z,
@@ -230,15 +254,15 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
             for (int column = 0; column < columns; column++) {
                 float wx = x - halfWidth + spacing * (column + 0.5f);
                 float[] glass = ((row + column) % 4 == 0)
-                        ? color(0.76f, 0.66f, 0.46f)
-                        : color(0.24f, 0.48f, 0.49f);
+                        ? WARM_WINDOW
+                        : COOL_WINDOW;
                 addBox(out, wx, y, z + halfDepth + 0.055f,
                         Math.min(0.28f, spacing * 0.22f), 0.34f, 0.035f, glass);
             }
         }
     }
 
-    private static void addStreetFurniture(List<Float> out, float x, float z) {
+    private static void addStreetFurniture(FloatBuilder out, float x, float z) {
         addBox(out, x, 2.45f, z, 0.065f, 2.45f, 0.065f,
                 color(0.29f, 0.35f, 0.35f));
         addBox(out, x, 4.95f, z, 0.30f, 0.13f, 0.30f,
@@ -247,7 +271,7 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
                 color(0.48f, 0.61f, 0.56f));
     }
 
-    private static void addBox(List<Float> out, float cx, float cy, float cz,
+    private static void addBox(FloatBuilder out, float cx, float cy, float cz,
                                float hx, float hy, float hz, float[] base) {
         float x0 = cx - hx, x1 = cx + hx;
         float y0 = cy - hy, y1 = cy + hy;
@@ -267,7 +291,7 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
                 x0,y0,z1, x1,y0,z1, x1,y0,z0, x0,y0,z0);
     }
 
-    private static void face(List<Float> out, float nx, float ny, float nz,
+    private static void face(FloatBuilder out, float nx, float ny, float nz,
                              float[] base, float shade,
                              float ax, float ay, float az,
                              float bx, float by, float bz,
@@ -281,7 +305,7 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
         vertex(out, dx,dy,dz,nx,ny,nz,base,shade);
     }
 
-    private static void vertex(List<Float> out, float x, float y, float z,
+    private static void vertex(FloatBuilder out, float x, float y, float z,
                                float nx, float ny, float nz,
                                float[] base, float shade) {
         out.add(x); out.add(y); out.add(z);
@@ -295,10 +319,8 @@ final class CitySceneRenderer implements GLSurfaceView.Renderer {
         return new float[] {r, g, b};
     }
 
-    private static float[] toArray(List<Float> values) {
-        float[] result = new float[values.size()];
-        for (int i = 0; i < values.size(); i++) result[i] = values.get(i);
-        return result;
+    private static float[] toArray(FloatBuilder values) {
+        return values.toArray();
     }
 
     private static float clamp(float value, float min, float max) {
