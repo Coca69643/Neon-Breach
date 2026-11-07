@@ -218,6 +218,9 @@ void main() {
       simulation.applyPhysicsPlayerPosition(const MobaPoint(110, 0));
 
       expect(simulation.snapshot.playerHealth, 0);
+      expect(simulation.snapshot.playerLastDamageSource, 'Queda fora do mapa');
+      expect(simulation.snapshot.playerLastDamageAmount, greaterThan(0));
+      expect(simulation.snapshot.playerDamageFeedbackSeconds, greaterThan(0));
       expect(simulation.snapshot.playerRespawnSeconds, greaterThan(4.9));
       expect(
         simulation.snapshot.playerPosition.x,
