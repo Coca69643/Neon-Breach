@@ -65,6 +65,8 @@ class ArenaPhysicsRuntime {
   bool _dashCompletionPending = false;
   double _traversalStamina = traversalStaminaMax;
   double _traversalStaminaRegenDelayRemaining = 0;
+  bool _traversalDashActive = false;
+  bool _traversalDashCompletionPending = false;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -90,6 +92,13 @@ class ArenaPhysicsRuntime {
   bool consumeDashCompletion() {
     final completed = _dashCompletionPending;
     _dashCompletionPending = false;
+    return completed;
+  }
+
+  /// Traversal completion is separate from hero-skill dash resolution.
+  bool consumeTraversalDashCompletion() {
+    final completed = _traversalDashCompletionPending;
+    _traversalDashCompletionPending = false;
     return completed;
   }
 
@@ -187,6 +196,8 @@ class ArenaPhysicsRuntime {
       _dashVelocityZ = 0;
       _dashRemaining = 0;
       _dashCompletionPending = false;
+      _traversalDashActive = false;
+      _traversalDashCompletionPending = false;
       _actualHorizontalSpeed = 0;
     }
   }
@@ -201,6 +212,7 @@ class ArenaPhysicsRuntime {
   }) {
     if (_disposed ||
         !_active ||
+        _traversalDashActive ||
         !directionX.isFinite ||
         !directionZ.isFinite ||
         !distance.isFinite ||
@@ -240,6 +252,8 @@ class ArenaPhysicsRuntime {
       _traversalStamina - traversalDashCost,
     );
     _traversalStaminaRegenDelayRemaining = traversalStaminaRegenDelay;
+    _traversalDashActive = true;
+    _traversalDashCompletionPending = false;
     return true;
   }
 
@@ -325,7 +339,12 @@ class ArenaPhysicsRuntime {
       if (_dashRemaining <= 0) {
         _dashVelocityX = 0;
         _dashVelocityZ = 0;
-        _dashCompletionPending = true;
+        if (_traversalDashActive) {
+          _traversalDashActive = false;
+          _traversalDashCompletionPending = true;
+        } else {
+          _dashCompletionPending = true;
+        }
       }
     }
     _grounded = movement.grounded;
@@ -499,6 +518,8 @@ class ArenaPhysicsRuntime {
     _dashVelocityZ = 0;
     _dashRemaining = 0;
     _dashCompletionPending = false;
+    _traversalDashActive = false;
+    _traversalDashCompletionPending = false;
     _traversalStamina = traversalStaminaMax;
     _traversalStaminaRegenDelayRemaining = 0;
     _actualHorizontalSpeed = 0;
