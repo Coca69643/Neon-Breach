@@ -58,6 +58,21 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     }
   }
 
+  Future<ArenaPlayerProfile?> _pickPlayerAvatar() async {
+    try {
+      return await _profileStore.pickAndSaveAvatar();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível abrir ou salvar a foto.'),
+          ),
+        );
+      }
+      return null;
+    }
+  }
+
   Future<void> _editPlayerProfile() async {
     final nameController = TextEditingController(
       text: _playerProfile.displayName,
@@ -85,7 +100,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
                 InkWell(
                   borderRadius: BorderRadius.circular(40),
                   onTap: () async {
-                    final updated = await _profileStore.pickAndSaveAvatar();
+                    final updated = await _pickPlayerAvatar();
                     if (updated == null || !mounted) return;
                     setState(() => _playerProfile = updated);
                     if (dialogContext.mounted) {
@@ -122,8 +137,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
                       const SizedBox(height: 4),
                       TextButton.icon(
                         onPressed: () async {
-                          final updated =
-                              await _profileStore.pickAndSaveAvatar();
+                          final updated = await _pickPlayerAvatar();
                           if (updated == null || !mounted) return;
                           setState(() => _playerProfile = updated);
                           if (dialogContext.mounted) {
@@ -146,13 +160,23 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
             ),
             FilledButton(
               onPressed: () async {
-                final updated = await _profileStore.saveDisplayName(
-                  nameController.text,
-                );
-                if (!mounted) return;
-                setState(() => _playerProfile = updated);
-                if (dialogContext.mounted) {
-                  Navigator.of(dialogContext).pop();
+                try {
+                  final updated = await _profileStore.saveDisplayName(
+                    nameController.text,
+                  );
+                  if (!mounted) return;
+                  setState(() => _playerProfile = updated);
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                } catch (_) {
+                  if (mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Não foi possível salvar o perfil.'),
+                      ),
+                    );
+                  }
                 }
               },
               child: const Text('SALVAR'),
