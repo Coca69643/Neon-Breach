@@ -2,9 +2,10 @@ import 'dart:math' as math;
 
 /// Converts movement vectors to the yaw expected by each bundled rig family.
 ///
-/// Kenney Mini Characters and the lane-unit rigs face local +Z. The separate
-/// Quaternius animated hero GLBs face local -Z, so the playable hero renderer
-/// must use the explicit negative-Z variant instead of rotating every NPC.
+/// The playable Quaternius hero rigs and the animated Kenney Mini Character
+/// clips bundled for bots, minions and pedestrians use local -Z as forward.
+/// The positive-Z helper remains available for assets whose authored forward
+/// axis is explicitly +Z; callers must choose the basis for the actual asset.
 abstract final class HumanoidOrientation {
   static double yawForDirection(double x, double z) {
     if (!x.isFinite || !z.isFinite || x * x + z * z < 1e-12) {
