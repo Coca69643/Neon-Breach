@@ -28,6 +28,13 @@ ETAPA 1 — TERRENO URBANO E MENU
 - Assets CC0 de cidade e natureza permanecem reservados à cena 3D da gameplay.
 - Assets 3D de cidade e natureza permanecem empacotados offline.
 
+RECONSTRUÇÃO DO CENÁRIO — GATE S1
+- Primeiro recorte visual do Mercado Central com duas fachadas comerciais distintas CC0.
+- Marquises, pontos de convivência com guarda-sóis, floreiras e iluminação de rua contextual.
+- Praça do distrito e ponto de captura permanecem abertos; passagens laterais cobertas por testes.
+- Footprints dos edifícios partilhadas entre renderer, navegação lógica e colisores estáticos Rapier.
+- Assets preparados offline a partir do catálogo Kenney fixado por hash.
+
 PENDÊNCIAS DAS PRÓXIMAS ETAPAS
 - Reequilibrar visibilidade e escala dos minions e bots.
 - Tornar NPCs e interiores mais evidentes e interativos.

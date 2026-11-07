@@ -42,12 +42,12 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Validação do manifesto offline: implementada.
 - Dependência Flutter Scene: fixada em 0.24.3.
 - Build hook e pré-processamento de modelos/materiais: implementados.
-- Menu principal em hub 3D de tela cheia: Torre do Firmamento central, ilha suspensa, mar magenta, portal e nuvens; ações distribuídas nas bordas.
+- Menu principal com fundo ilustrado 2D em `CustomPainter`; leve, estático e sem instanciar a cena 3D de gameplay.
 - `HERÓIS` abre o seletor independente; `ASCENDER` abre a prévia atual; Baús, Desafios e Mercador aparecem bloqueados até seus sistemas existirem.
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
-- Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
+- A ilustração 2D do menu mantém a identidade da torre; modelos 3D urbanos são carregados exclusivamente na gameplay.
 - Mapa District Control: 224 × 188, seis distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e seis interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
@@ -69,7 +69,6 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 cd flutter
 python3 -m pip install -r tool/requirements-world.txt
 python3 tool/prepare_world_assets.py
-python3 tool/prepare_menu_hub.py
 python3 tool/prepare_hero_assets.py
 python3 tool/prepare_city_assets.py
 python3 tool/prepare_npc_assets.py
