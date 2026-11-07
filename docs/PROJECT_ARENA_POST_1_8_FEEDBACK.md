@@ -148,3 +148,14 @@ Pesquisa inicial não equivale à validação do arquivo baixado. A implementaç
 - [ ] Modelos 3D reais das criaturas e animações: pendentes; os marcadores não contam como arte final.
 - [ ] CI completo no HEAD final, screenshots de gameplay e validação no Realme C53: pendentes.
 - Commit de simulação: `df2831561ed52935c34275834b385c3e79947c9b`; correção de anchor: `74e0b22ec1dfffbf50057b3033cccc9cd4041b26`.
+
+
+## Próxima prioridade de ambiente — reconstrução integral CC0 (07/11/2026)
+
+- [x] Diretriz explícita registrada: miniaturas isoladas, fachadas decorativas e tiles de rua soltos não contam como mapa novo.
+- [x] Pesquisa oficial do Quaternius Downtown City MegaKit: 315 modelos, peças modulares de edifícios/ruas, sete edifícios exemplo, glTF e licença CC0; versão Standard gratuita listada com 223 MB.
+- [x] Gate técnico criado em `docs/PROJECT_ARENA_MAP_REBUILD.md`, com aquisição, quarteirão vertical slice, malha de ruas, interiores reais, seis distritos e aceite mobile.
+- [ ] Baixar e inspecionar a versão Standard exata; registrar ZIP, licença e SHA-256.
+- [ ] Montar e validar o primeiro quarteirão em escala real; não substituir o mapa inteiro antes do aceite do slice.
+- [ ] Reconstruir a malha urbana e integrar geometria render/navegação/Rapier.
+- [ ] Capturas de gameplay e validação no Realme C53.

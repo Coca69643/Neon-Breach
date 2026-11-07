@@ -48,6 +48,16 @@ A base técnica está pronta para receber composição visual. O problema restan
 | Estação Intermodal | Terminal reconhecível, cobertura de plataforma, sinalização e elementos de transporte. |
 | Orla do Canal | Passeio marginal, contenções, guarda-corpos, bancos, iluminação e cinco pontes distintas. |
 
+## Nova diretriz — reconstrução integral CC0
+
+A composição atual de dez fachadas isoladas e interiores separados não pode ser apresentada como mapa urbano concluído. A reconstrução integral deve seguir `docs/PROJECT_ARENA_MAP_REBUILD.md`.
+
+O kit candidato é o Quaternius Downtown City MegaKit: mais de 300 módulos para quarteirões completos, sete edifícios exemplo, glTF e CC0; o pacote padrão gratuito tem 223 MB. A aquisição e inspeção do ZIP ainda não ocorreram.
+
+**Não aceito como mudança de mapa:** colocar miniaturas de edifícios, alinhar tiles de rua sem continuidade ou ampliar modelos pequenos e declarar o mapa reconstruído. Primeiro será aprovado um quarteirão jogável em escala humana, com edifícios conectados, ruas contínuas, interiores realmente transitáveis e colisões alinhadas. Depois, os seis distritos serão expandidos.
+
+A página do kit menciona janelas com interior falso. Esse efeito não satisfaz a navegação interna; interiores reais continuam sendo responsabilidade da geometria de gameplay.
+
 ## Gate S1 — Vertical slice do Mercado Central
 
 **Primeira implementação submetida no catálogo de mundo:**

@@ -86,3 +86,14 @@ Partial implementation is present on `fix/1.8.1-feedback-recovery` (code commit 
 **Important incomplete work:** the current scene shows camp/unit markers, not the actual creature meshes. No Quaternius monster archive has been downloaded, hashed, inventoried or imported. The model/animation pipeline, visible monster actors, complete HUD treatment, screenshot review, full CI result for the latest commit and Realme C53 validation remain pending. Do not describe the camps as visually complete or release-ready.
 
 The exact archive and license gate remains mandatory before adding creature assets. Keep work on `fix/1.8.1-feedback-recovery`; do not merge or publish an APK without explicit approval.
+
+
+## Atualização de aquisição — 07/11/2026
+
+A pesquisa foi aprofundada na página oficial e no compartilhamento público ligado ao post do criador. O índice público da pasta mostra três subpastas de modelos (`Big`, `Blob`, `Flying`) e arquivos de licença/guia/preview. Isso **não** prova que os modelos estejam disponíveis no runtime; o arquivo ainda não foi obtido nem inspecionado no ambiente de trabalho.
+
+- Página oficial e licença CC0 confirmadas.
+- Formato glTF listado pelo criador.
+- Arquivo de origem, ZIP, hash, inventário de modelos, clips e bounds ainda não foram auditados.
+- Não foram adicionados paths nem modelos provisórios ao renderer.
+- A integração de criaturas 3D permanece bloqueada até adquirir e validar os arquivos reais.
