@@ -47,6 +47,62 @@ void main() {
       );
     });
 
+    test('air steering and slide tuning are distinct for each hero', () {
+      final lyra = ArenaTraversalProfile.forHero(MobaHeroId.lyra);
+      final bastion = ArenaTraversalProfile.forHero(MobaHeroId.bastion);
+      final kairo = ArenaTraversalProfile.forHero(MobaHeroId.kairo);
+
+      expect(bastion.airControlRatio, lessThan(lyra.airControlRatio));
+      expect(kairo.airControlRatio, greaterThan(lyra.airControlRatio));
+      expect(bastion.slideDuration, lessThan(lyra.slideDuration));
+      expect(kairo.slideDuration, greaterThan(lyra.slideDuration));
+      expect(
+        bastion.slideFrictionMultiplier,
+        greaterThan(kairo.slideFrictionMultiplier),
+      );
+    });
+
+    test('momentum slide requires ground speed and does not spend dash charge',
+        () async {
+      expect(physics.canTriggerSlide, isFalse);
+      expect(physics.triggerTraversalSlide(), isFalse,
+          reason: 'a stationary character cannot start a slide');
+
+      await advance(frames: 60, moveX: 1);
+      final runSpeed = physics.horizontalSpeed;
+      final slideStartX = physics.playerPosition.x;
+      final staminaBeforeSlide = physics.traversalStamina;
+
+      expect(runSpeed, greaterThan(4.6));
+      expect(physics.canTriggerSlide, isTrue);
+      expect(physics.triggerTraversalSlide(), isTrue);
+      expect(physics.sliding, isTrue);
+      expect(physics.triggerTraversalDash(1, 0), isFalse,
+          reason: 'dash and slide cannot interrupt each other');
+      expect(
+        physics.traversalStamina,
+        closeTo(staminaBeforeSlide, 1e-6),
+        reason: 'a movement slide does not consume dash charges',
+      );
+
+      await advance(frames: 6, moveX: -1);
+      expect(
+        physics.playerPosition.x,
+        greaterThan(slideStartX),
+        reason: 'reverse input steers gradually instead of snapping momentum',
+      );
+      expect(
+        physics.horizontalSpeed,
+        greaterThan(runSpeed * 0.55),
+        reason: 'the slide preserves most of the starting momentum',
+      );
+
+      await advance(frames: 35);
+      expect(physics.sliding, isFalse);
+      expect(physics.consumeSlideCompletion(), isTrue);
+      expect(physics.consumeSlideCompletion(), isFalse);
+    });
+
     test('gravity settles the capsule on the terrain', () async {
       await advance(frames: 60);
 
