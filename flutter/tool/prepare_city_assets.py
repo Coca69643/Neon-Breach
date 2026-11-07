@@ -302,7 +302,11 @@ def position_bounds(document: dict, filename: str) -> tuple[float, float, float]
                 f"Commercial GLB bounds changed for {filename} axis {axis}: "
                 f"expected {pinned:.6f}, got {actual:.6f}"
             )
-    if any(abs(minimum[axis]) > 0.002 for axis in (0, 2)) or abs(minimum[1]) > 0.002:
+    if (
+        abs(minimum[0] + maximum[0]) > 0.002
+        or abs(minimum[2] + maximum[2]) > 0.002
+        or abs(minimum[1]) > 0.002
+    ):
         raise RuntimeError(
             f"Commercial GLB origin is no longer centered/on-ground: {filename}"
         )
