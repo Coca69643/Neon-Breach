@@ -24,7 +24,11 @@ void main() {
     test('uses the same irregular 224 × 188 boundary as the terrain baker', () {
       expect(ArenaWorldCatalog.halfWidth, 112);
       expect(ArenaWorldCatalog.halfDepth, 94);
-      expect(ArenaWorldCatalog.worldScale, 1.35);
+      expect(
+        ArenaWorldCatalog.worldScale,
+        1.0,
+        reason: 'render geometry must stay in Rapier logical world units',
+      );
       expect(ArenaWorldCatalog.contains(100, 0), isTrue);
       expect(ArenaWorldCatalog.contains(-100, 0), isTrue);
       expect(ArenaWorldCatalog.contains(0, 80), isTrue);

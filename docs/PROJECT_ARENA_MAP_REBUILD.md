@@ -1,6 +1,6 @@
 # Project Arena — reconstrução integral do mapa CC0
 
-Status: gate de preparação e aquisição. **Nenhuma substituição de mapa foi implementada nesta etapa.**
+Status: escala global de renderização/colisão reconciliada em código; reconstrução geométrica do mapa ainda pendente.
 
 ## Diretriz do usuário
 
@@ -17,6 +17,7 @@ O mapa precisa mudar como espaço jogável, não apenas como composição de pro
 - O catálogo contém dez blocos comerciais/residenciais, cada qual referenciando um GLB isolado e uma escala individual.
 - Existem seis interiores construídos separadamente com paredes, mobiliário e vãos de entrada.
 - Vias, canal, pontes, árvores, fachadas, navegação e colisores já têm uma fundação funcional, mas a composição de superfície ainda não comunica uma cidade completa com silhuetas densas, quarteirões conectados e identidade própria por distrito.
+- A auditoria encontrou um desvio de escala: a raiz 3D aplicava 1.35× aos modelos, enquanto Rapier e navegação usavam as dimensões lógicas sem essa conversão. `worldScale` agora é 1.0 para manter renderização, câmera e física no mesmo sistema de unidades; a validação em runtime ainda é obrigatória.
 - A auditoria visual final dos edifícios, acessos e proporções continua pendente.
 
 Esses pontos são uma fundação técnica; não equivalem ao aceite visual de um mapa urbano completo.
@@ -121,5 +122,6 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 - Pesquisa do kit oficial: concluída.
 - Aquisição/inspeção do ZIP: pendente.
 - Importação de módulos: não iniciada.
-- Reconstrução do mapa: não iniciada.
+- Escala renderização/física: reconciliada em código; runtime ainda pendente.
+- Reconstrução geométrica do mapa: não iniciada.
 - Screenshots e teste Realme C53: pendentes.

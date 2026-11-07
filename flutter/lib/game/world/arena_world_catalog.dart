@@ -56,10 +56,10 @@ class ArenaWorldPlacement {
 }
 
 /// Logical 224 × 188 battlefield assembled from six connected districts.
-/// Rendering applies one 1.35× transform; navigation and Rapier share the same
-/// logical coordinates so visual ground and collision remain aligned.
+/// Rendering and Rapier use the same logical world units; do not scale the scene
+/// root independently of physics or collision geometry.
 abstract final class ArenaWorldCatalog {
-  static const double worldScale = 1.35;
+  static const double worldScale = 1.0;
   static const double halfWidth = 112.0;
   static const double halfDepth = 94.0;
   static const double roomHalfWidth = 12.0;
