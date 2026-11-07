@@ -123,3 +123,15 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - `docs/PROJECT_ARENA_HERO_SELECTION.md`
 - `docs/PROJECT_ARENA_SCENARIO_GATE.md`
 - Capturas de gameplay recebidas em 07/11/2026.
+
+## Próxima etapa — pesquisa e gate dos camps neutros (07/11/2026)
+
+- [x] Auditoria confirmou que a simulação atual tem tropas, bots, pedestres ambientais e Quartermaster, mas nenhum camp neutro de combate.
+- [x] Pesquisa inicial em páginas oficiais Quaternius: Ultimate Monsters (50 modelos animados, glTF listado, página CC0), Cute Animated Monsters (21 modelos animados, glTF listado, página CC0) e Animated Monster (4 modelos animados, página CC0). FAQ oficial confirma uso comercial sem atribuição para os assets hospedados.
+- [x] Critérios e proposta de vertical slice registrados em docs/PROJECT_ARENA_NEUTRAL_CAMPS.md.
+- [ ] Baixar e inspecionar o arquivo exato do pack escolhido; registrar licença incluída, SHA-256, modelos, clips, bounds, triângulos, materiais e custo de textura. Não adicionar assets ainda.
+- [ ] Implementar estados determinísticos dos camps, aggro/leash, combate, recompensa única e respawn.
+- [ ] Integrar os monstros ao target cycle, HUD, minimapa e renderer usando snapshots.
+- [ ] Testes determinísticos e screenshots de gameplay; Realme C53 continua obrigatório para aceite visual/performance.
+
+Pesquisa inicial não equivale à validação do arquivo baixado. A implementação permanece não iniciada até o gate de asset ser concluído.
