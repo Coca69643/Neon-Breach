@@ -29,9 +29,9 @@ def main() -> None:
 
     source = gradle.read_text(encoding="utf-8")
     if gradle.suffix == ".kts":
-        pattern = r'(applicationId\\s*=\\s*["\\\'])' + re.escape(APP_ID) + r'(["\\\'])'
+        pattern = r"(applicationId\s*=\s*['\"])" + re.escape(APP_ID) + r"(['\"])"
     else:
-        pattern = r'(applicationId\\s+["\\\'])' + re.escape(APP_ID) + r'(["\\\'])'
+        pattern = r"(applicationId\s+['\"])" + re.escape(APP_ID) + r"(['\"])"
     updated, count = re.subn(pattern, lambda match: match.group(1) + QA_APP_ID + match.group(2), source)
     require(count == 1, f"expected one generated applicationId {APP_ID!r}, found {count}.")
     gradle.write_text(updated, encoding="utf-8")
