@@ -8,6 +8,48 @@ import 'package:vector_math/vector_math.dart' as vm;
 import '../match/moba_match_simulation.dart';
 import '../world/arena_world_catalog.dart';
 
+/// Hero-specific traversal tuning. These values define movement only; they
+/// do not change the match simulation's existing hero skills.
+class ArenaTraversalProfile {
+  const ArenaTraversalProfile({
+    required this.maxCharges,
+    required this.dashDistance,
+    required this.dashDuration,
+    required this.regenerationPerSecond,
+    required this.regenerationDelay,
+  });
+
+  final double maxCharges;
+  final double dashDistance;
+  final double dashDuration;
+  final double regenerationPerSecond;
+  final double regenerationDelay;
+
+  static ArenaTraversalProfile forHero(MobaHeroId heroId) => switch (heroId) {
+        MobaHeroId.lyra => const ArenaTraversalProfile(
+            maxCharges: 3,
+            dashDistance: 4.2,
+            dashDuration: 0.23,
+            regenerationPerSecond: 0.62,
+            regenerationDelay: 0.55,
+          ),
+        MobaHeroId.bastion => const ArenaTraversalProfile(
+            maxCharges: 2,
+            dashDistance: 3.7,
+            dashDuration: 0.24,
+            regenerationPerSecond: 0.74,
+            regenerationDelay: 0.62,
+          ),
+        MobaHeroId.kairo => const ArenaTraversalProfile(
+            maxCharges: 4,
+            dashDistance: 4.7,
+            dashDuration: 0.22,
+            regenerationPerSecond: 0.56,
+            regenerationDelay: 0.68,
+          ),
+      };
+}
+
 /// Rapier-backed character motion and collision geometry for the MOBA arena.
 ///
 /// The simulation stores logical X/Z coordinates. This runtime owns the
@@ -20,7 +62,8 @@ class ArenaPhysicsRuntime {
     this._playerPose,
     this._playerCollider,
     this._staticBody,
-  );
+    this._traversalProfile,
+  ) : _traversalStamina = _traversalProfile.maxCharges;
 
   static const double fixedStep = 1.0 / 60.0;
   static const double gravity = 24.0;
@@ -32,12 +75,8 @@ class ArenaPhysicsRuntime {
   static const double dashDuration = 0.24;
 
   // Separate traversal budget: the existing hero-skill dash remains unchanged.
-  static const double traversalStaminaMax = 3.0;
+  static const double defaultTraversalStaminaMax = 3.0;
   static const double traversalDashCost = 1.0;
-  static const double traversalDashDistance = 4.4;
-  static const double traversalDashDuration = 0.23;
-  static const double traversalStaminaRegenPerSecond = 0.62;
-  static const double traversalStaminaRegenDelay = 0.55;
 
   static const double capsuleRadius = 0.38;
   static const double capsuleHalfHeight = 0.50;
@@ -49,6 +88,7 @@ class ArenaPhysicsRuntime {
   final SimplePoseTarget _playerPose;
   final int _playerCollider;
   final int _staticBody;
+  final ArenaTraversalProfile _traversalProfile;
   final Map<String, int> _towerColliders = {};
   final Map<String, int> _coverColliders = {};
 
@@ -63,7 +103,7 @@ class ArenaPhysicsRuntime {
   double _dashVelocityZ = 0;
   double _dashRemaining = 0;
   bool _dashCompletionPending = false;
-  double _traversalStamina = traversalStaminaMax;
+  late double _traversalStamina;
   double _traversalStaminaRegenDelayRemaining = 0;
   bool _traversalDashActive = false;
   bool _traversalDashCompletionPending = false;
@@ -80,6 +120,7 @@ class ArenaPhysicsRuntime {
       (_actualHorizontalSpeed / moveSpeed).clamp(0.0, 1.35).toDouble();
   bool get dashing => _dashRemaining > 0;
   double get traversalStamina => _traversalStamina;
+  double get traversalStaminaMax => _traversalProfile.maxCharges;
   double get traversalStaminaRatio =>
       (_traversalStamina / traversalStaminaMax).clamp(0.0, 1.0).toDouble();
   bool get canTriggerTraversalDash =>
@@ -112,6 +153,7 @@ class ArenaPhysicsRuntime {
 
   static Future<ArenaPhysicsRuntime> create({
     required MobaPoint spawn,
+    MobaHeroId heroId = MobaHeroId.lyra,
     Iterable<MobaTowerSnapshot> towers = const [],
     Iterable<MobaCoverSnapshot> covers = const [],
   }) async {
@@ -152,6 +194,7 @@ class ArenaPhysicsRuntime {
         playerPose,
         playerColliders.first,
         staticBody,
+        ArenaTraversalProfile.forHero(heroId),
       );
 
       runtime._buildTerrain();
@@ -242,8 +285,8 @@ class ArenaPhysicsRuntime {
     final started = triggerDash(
       directionX,
       directionZ,
-      distance: traversalDashDistance,
-      duration: traversalDashDuration,
+      distance: _traversalProfile.dashDistance,
+      duration: _traversalProfile.dashDuration,
     );
     if (!started) return false;
 
@@ -251,7 +294,7 @@ class ArenaPhysicsRuntime {
       0.0,
       _traversalStamina - traversalDashCost,
     );
-    _traversalStaminaRegenDelayRemaining = traversalStaminaRegenDelay;
+    _traversalStaminaRegenDelayRemaining = _traversalProfile.regenerationDelay;
     _traversalDashActive = true;
     _traversalDashCompletionPending = false;
     return true;
@@ -375,7 +418,7 @@ class ArenaPhysicsRuntime {
     }
     _traversalStamina = math.min(
       traversalStaminaMax,
-      _traversalStamina + traversalStaminaRegenPerSecond * dt,
+      _traversalStamina + _traversalProfile.regenerationPerSecond * dt,
     );
   }
 
