@@ -717,11 +717,18 @@ class ArenaPhysicsRuntime {
     for (final block in ArenaWorldCatalog.commercialBlocks) {
       final x = block.$2;
       final z = block.$3;
-      final half = block.$4;
-      final y = ArenaWorldCatalog.navigationHeightAt(x, z) + 4.5;
+      final footprint = ArenaWorldCatalog.commercialFootprint(block);
+      final halfHeight = footprint.$3 * 0.5;
+      final baseY = ArenaWorldCatalog.navigationHeightAt(x, z);
       _addStaticShape(
-        BoxShape(halfExtents: vm.Vector3(half, 4.5, half)),
-        vm.Vector3(x, y, z),
+        BoxShape(
+          halfExtents: vm.Vector3(
+            footprint.$1,
+            halfHeight,
+            footprint.$2,
+          ),
+        ),
+        vm.Vector3(x, baseY + halfHeight, z),
         label: block.$1,
       );
     }
