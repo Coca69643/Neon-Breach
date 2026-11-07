@@ -171,6 +171,10 @@ void main() {
       );
 
       await advance(frames: 30);
+      expect(physics.consumeDashCompletion(), isFalse,
+          reason: 'traversal must not invoke the hero-skill dash completion path');
+      expect(physics.consumeTraversalDashCompletion(), isTrue);
+      expect(physics.consumeTraversalDashCompletion(), isFalse);
       expect(
         physics.traversalStamina,
         closeTo(ArenaPhysicsRuntime.traversalStaminaMax - 1, 0.02),
