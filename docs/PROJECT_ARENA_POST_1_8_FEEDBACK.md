@@ -87,8 +87,8 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 
 - [x] Branch separada criada: `fix/1.8.1-feedback-recovery`.
 - [x] Auditoria inicial de call paths, pipeline CC0, documentos de arquitetura e testes.
-- [ ] Orientação de rigs: correção proposta, aguarda CI e inspeção visual.
-- [ ] Escala dos minions: ajuste proposto, aguarda inspeção visual.
+- [x] Orientação de rigs: NPCs, bots e minions agora usam a base local -Z, alinhada ao deslocamento; aguarda CI e inspeção visual.
+- [x] Escala de bots, minions e pedestres aumentada de forma controlada; aguarda inspeção visual para confirmar proporção.
 - [ ] Mapa: auditoria de footprint/GLB pendente; não declarar corrigido.
 - [ ] NPCs neutros de gameplay: não implementados.
 - [ ] Equipamentos por rig: calibração visual pendente.
