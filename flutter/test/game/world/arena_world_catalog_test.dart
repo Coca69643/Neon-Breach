@@ -159,6 +159,19 @@ void main() {
       expect(ArenaWorldCatalog.isCanalAt(100, 0), isFalse);
     });
 
+    test('quartermaster market anchor is on accessible public ground', () {
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          ArenaWorldCatalog.shopkeeperX,
+          ArenaWorldCatalog.shopkeeperZ,
+        ),
+        isTrue,
+        reason: 'the in-world merchant must not spawn inside a road blocker or building',
+      );
+      expect(ArenaWorldCatalog.shopkeeperInteractionRadius, greaterThan(7));
+      expect(ArenaWorldCatalog.shopkeeperInteractionRadius, lessThanOrEqualTo(10));
+    });
+
     test('side alleys connect the avenues to the city blocks', () {
       expect(ArenaWorldCatalog.sideApproachAnchors, hasLength(16));
       for (final point in ArenaWorldCatalog.sideApproachAnchors) {
