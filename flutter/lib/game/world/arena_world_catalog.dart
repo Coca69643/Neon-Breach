@@ -163,6 +163,40 @@ abstract final class ArenaWorldCatalog {
     ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
+  // Half-width X, half-depth Z, and full height measured from the pinned
+  // CC0 GLB POSITION accessor bounds. prepare_city_assets.py validates these
+  // values against the actual files before they enter the offline bundle.
+  static const commercialLocalBounds =
+      <String, (double, double, double)>{
+    'commercial_building_b.glb': (0.48500001, 0.47000000, 1.29300000),
+    'commercial_building_c.glb': (0.44179396, 0.54500005, 0.89300001),
+    'commercial_building_f.glb': (0.42000002, 0.51500010, 1.69300008),
+    'commercial_building_h.glb': (0.44179392, 0.50394556, 1.29299998),
+    'commercial_building_d.glb': (0.42000002, 0.45000000, 1.29299998),
+    'commercial_building_g.glb': (0.48500001, 0.46100010, 1.69300008),
+    'suburban_building_a.glb': (0.64999998, 0.51406890, 0.83354098),
+    'suburban_building_c.glb': (0.64319015, 0.51406890, 1.03354096),
+    'commercial_building_i.glb': (0.62000003, 0.65100002, 1.68000007),
+    'commercial_building_j.glb': (1.04179400, 0.67000002, 1.69300008),
+  };
+
+  /// Returns exact logical half-extents for one rendered commercial facade.
+  /// All facades are centered on their GLB origin; collision must not use one
+  /// generic square radius for models with different proportions.
+  static (double, double, double) commercialFootprint(
+    (String, double, double, double) block,
+  ) {
+    final local = commercialLocalBounds[block.$1];
+    if (local == null) {
+      throw ArgumentError.value(block.$1, 'asset', 'No pinned GLB bounds.');
+    }
+    return (
+      local.$1 * block.$4,
+      local.$2 * block.$4,
+      local.$3 * block.$4,
+    );
+  }
+
   // Ten CC0 silhouettes: the original district edges plus the Market Central slice.
   static const commercialBlocks = <(String, double, double, double)>[
     ('commercial_building_b.glb', -82.0, -60.0, 5.8),
@@ -433,8 +467,10 @@ abstract final class ArenaWorldCatalog {
     for (final block in commercialBlocks) {
       final dx = (x - block.$2).abs();
       final dz = (z - block.$3).abs();
-      final half = block.$4;
-      if (dx < half + 0.3 && dz < half + 0.3) return false;
+      final footprint = commercialFootprint(block);
+      if (dx < footprint.$1 + 0.3 && dz < footprint.$2 + 0.3) {
+        return false;
+      }
     }
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
