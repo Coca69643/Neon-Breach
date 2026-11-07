@@ -42,6 +42,55 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('quartermaster shop is proximity-gated and sells each upgrade once', () {
+      final away = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      expect(
+        away.purchaseShopItem(MobaShopItem.impactCell),
+        isFalse,
+        reason: 'shop purchases require the player to be near the in-world merchant',
+      );
+
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.lyra,
+        spawnPosition: const MobaPoint(
+          ArenaWorldCatalog.shopkeeperX,
+          ArenaWorldCatalog.shopkeeperZ,
+        ),
+      );
+      expect(simulation.snapshot.playerGold, 500);
+      expect(simulation.purchaseShopItem(MobaShopItem.impactCell), isTrue);
+      expect(simulation.snapshot.playerGold, closeTo(220, 1e-9));
+      expect(simulation.snapshot.playerPower, closeTo(1.12, 1e-9));
+      expect(
+        simulation.snapshot.playerItems,
+        contains(MobaShopItem.impactCell),
+      );
+      expect(
+        simulation.purchaseShopItem(MobaShopItem.impactCell),
+        isFalse,
+        reason: 'a purchased upgrade cannot be bought repeatedly',
+      );
+    });
+
+    test('reinforced plate raises maximum health and heals the player', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: const MobaPoint(
+          ArenaWorldCatalog.shopkeeperX,
+          ArenaWorldCatalog.shopkeeperZ,
+        ),
+      );
+
+      expect(simulation.purchaseShopItem(MobaShopItem.reinforcedPlate), isTrue);
+      expect(simulation.snapshot.playerMaxHealth, 700);
+      expect(simulation.snapshot.playerHealth, 700);
+      expect(simulation.snapshot.playerGold, closeTo(180, 1e-9));
+      expect(
+        simulation.snapshot.playerItems,
+        contains(MobaShopItem.reinforcedPlate),
+      );
+    });
+
     test('AI heroes and minions use independent NPC appearance variants', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
       final state = simulation.snapshot;
