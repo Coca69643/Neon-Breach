@@ -518,7 +518,12 @@ def build_terrain_glb(output: Path) -> None:
                 fraction = (dash_index + 0.5) / dash_count
                 mark_x = ax + dx * fraction
                 mark_z = az + dz * fraction
-                if any(abs(mark_x - bridge_x) <= 4.0 for bridge_x in BRIDGES):
+                if any(
+                    abs(mark_x - bridge_x) <= 4.0
+                    and abs(mark_z - river_center_z(bridge_x))
+                    <= river_half_width(bridge_x) + 3.0
+                    for bridge_x in BRIDGES
+                ):
                     continue
                 add_box("markings", mark_x, height(mark_x, mark_z) + 0.145,
                         mark_z, 0.12, 0.012, dash_length, yaw)

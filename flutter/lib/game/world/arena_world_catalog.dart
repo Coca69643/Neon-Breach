@@ -426,9 +426,8 @@ abstract final class ArenaWorldCatalog {
   /// Surface classification is shared by movement tuning and world tests.
   /// Paved siege lanes are fastest, while grass and interiors have distinct
   /// traction so the same input does not feel identical on every floor.
-  // These thresholds mirror prepare_world_assets.py. Roads and sidewalks
-  // are baked into one continuous terrain mesh rather than rendered as
-  // independent oversized road tiles.
+  // These thresholds mirror prepare_world_assets.py. Asphalt and concrete
+  // are raised overlays above the continuous base-terrain mesh.
   static const double asphaltHalfWidth = 4.8;
   static const double asphaltAccessHalfWidth = 3.0;
   static const double sidewalkHalfWidth = 7.4;

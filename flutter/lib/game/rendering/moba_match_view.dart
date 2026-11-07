@@ -1362,7 +1362,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   children: _buildSceneChildren(sceneSnapshot),
                 ),
               ],
-            ),,
+            ),
             ),
             Positioned(
               left: viewport.maxWidth * 0.42,
