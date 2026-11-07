@@ -103,6 +103,36 @@ jobs:
         run: flutter analyze
       - name: Unit tests
         run: flutter test --reporter expanded
+      - name: Build ARM64 profile APK for PR runtime validation
+        if: github.event_name == 'pull_request'
+        run: flutter build apk --profile --target-platform android-arm64
+      - name: Inspect profile APK identity, runtime assets and ABI
+        if: github.event_name == 'pull_request'
+        run: python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-profile.apk
+      - name: Verify profile APK signature
+        if: github.event_name == 'pull_request'
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT" && test -d "$SDK_ROOT/build-tools"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-profile.apk
+      - name: Prepare profile QA artifact
+        if: github.event_name == 'pull_request'
+        run: |
+          cp build/app/outputs/flutter-apk/app-profile.apk Project-Arena-1.8.0-arm64-profile-qa.apk
+          sha256sum Project-Arena-1.8.0-arm64-profile-qa.apk > Project-Arena-1.8.0-arm64-profile-qa.apk.sha256
+      - name: Upload profile QA artifact
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-arena-1.8.0-arm64-profile-qa
+          path: |
+            flutter/Project-Arena-1.8.0-arm64-profile-qa.apk
+            flutter/Project-Arena-1.8.0-arm64-profile-qa.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
       - name: Build ARM64 Android release
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: flutter build apk --release --target-platform android-arm64
