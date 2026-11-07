@@ -170,8 +170,8 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
                     Navigator.of(dialogContext).pop();
                   }
                 } catch (_) {
-                  if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
                       const SnackBar(
                         content: Text('Não foi possível salvar o perfil.'),
                       ),
