@@ -725,9 +725,15 @@ class MobaMatchSimulation {
       MobaHeroId.lyra => 3,
     };
 
+    final visibleAllyRole = List<int>.generate(roleLanes.length, (index) => index)
+        .firstWhere((role) => role != occupiedRole);
+
     for (var role = 0; role < roleLanes.length; role++) {
       if (role == occupiedRole) continue;
       final lane = roleLanes[role];
+      final position = _spawnPosition == null && role == visibleAllyRole
+          ? MobaPoint(_playerPosition.x + 2.6, _playerPosition.z + 7.0)
+          : _botSpawnPosition(MobaTeam.blue, lane, role);
       _bots.add(
         _Bot(
           id: 'blue_bot_$role',
@@ -736,7 +742,7 @@ class MobaMatchSimulation {
           role: role,
           heroId: _heroForRole(role),
           visualId: _visualForBot(MobaTeam.blue, role),
-          position: _botSpawnPosition(MobaTeam.blue, lane, role),
+          position: position,
         ),
       );
     }
