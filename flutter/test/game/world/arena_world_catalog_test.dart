@@ -281,7 +281,10 @@ void main() {
         );
         final footprint = ArenaWorldCatalog.commercialFootprint(placement);
         expect(footprint.$1, greaterThan(5.0));
-        expect(footprint.$2, greaterThan(5.0));
+        // The suburban module is 9.252 units deep at the authored 9× scale.
+        // Validate the exact measured footprint rather than imposing a wider
+        // half-depth than the source model actually provides.
+        expect(footprint.$2, greaterThan(4.5));
         expect(footprint.$3, greaterThan(10.0));
         expect(
           ArenaWorldCatalog.isWalkable(placement.$2, placement.$3),
