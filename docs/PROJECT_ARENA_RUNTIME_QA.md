@@ -102,3 +102,30 @@ The first mobility slice is implemented on the existing Flutter Scene + Rapier r
 - [ ] Physical acceptance records actual frame pacing, memory, temperature and battery impact.
 
 Charge capacity, dash distance, duration and recovery timing are Arena tuning parameters inspired by Deadlock's movement-resource design, not copied game constants. The three hero profiles must be tuned and accepted independently. The next mobility slice should add momentum-preserving slide/air control only after this one passes physics and device acceptance.
+
+## Second mobility slice — momentum slide and aerial steering
+
+The second traversal pass builds on the existing fixed-step Rapier motor:
+
+- Air steering is now tuned per playable hero instead of using one global ratio. Initial values are Lyra 0.48, Bastion 0.30 and Kairo 0.58 of grounded acceleration.
+- A slide can start only with ground contact and at least 3.2 units/s of horizontal speed. It preserves the current velocity; it does not add a launch impulse or consume a dash charge.
+- Steering during the slide is angular and rate-limited per hero. Surface friction continues to affect the slide, and airborne continuation uses the existing air-friction path.
+- Slide and both dash paths are mutually exclusive while active. The move still goes through Rapier's normal swept character movement and world restrictions.
+- The landscape HUD exposes a separate SLIDE/DRIFT control. The control remains disabled until the runtime confirms the start conditions.
+
+These are initial tuning values, not a balance acceptance. The synthetic metamorphic hero remains a separate integration gate: its primary identity is the original humanoid robot and the quadrupedal fox is a temporary form, not a separate roster slot. No placeholder model or selectable gameplay identity is added before its dedicated GLB, rig, clips and full integration exist.
+
+### Slide and aerial-control acceptance
+
+- [ ] Stationary and airborne characters cannot start a ground slide.
+- [ ] Starting a slide adds no speed and spends no traversal dash charge.
+- [ ] Reverse input cannot instantly reverse slide momentum; steering remains rate-limited.
+- [ ] Slide ends on its configured timer or when momentum falls below the stop threshold.
+- [ ] Walls, interiors, terrain and canal boundaries continue to constrain the slide through Rapier.
+- [ ] Dash cannot interrupt a slide, and slide cannot interrupt an active dash.
+- [ ] Lyra, Bastion and Kairo retain distinct air-steering and slide tuning.
+- [ ] HUD readiness reflects the runtime's real grounded/speed conditions.
+- [ ] Automated tests pass and a physical Realme C53 session confirms touch usability, frame pacing, memory, temperature and battery impact.
+
+Implementation status: source changes and deterministic tests are present on the PR branch. The new tests have not yet been executed or confirmed by CI. The original first-slice device acceptance also remains pending; no visual or physical acceptance is inferred from source changes.
+
