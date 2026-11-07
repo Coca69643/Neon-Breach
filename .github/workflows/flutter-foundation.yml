@@ -62,8 +62,6 @@ jobs:
         run: python3 -m pip install --disable-pip-version-check --no-input -r tool/requirements-world.txt
       - name: Bake offline urban battlefield terrain and park dressing
         run: python3 tool/prepare_world_assets.py
-      - name: Bake original tower hub scene
-        run: python3 tool/prepare_menu_hub.py
       - name: Build Lyra, Bastion and distinct male Kairo CC0 GLBs
         run: python3 tool/prepare_hero_assets.py
       - name: Prepare offline CC0 city and interior assets
