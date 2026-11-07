@@ -97,6 +97,9 @@ jobs:
           echo "Persistent signing key loaded."
       - name: Generate Android host, identity and Flutter GPU setup
         run: python3 tool/prepare_android.py
+      - name: Isolate PR profile application identity
+        if: github.event_name == 'pull_request'
+        run: python3 tool/prepare_profile_qa_identity.py
       - name: Resolve dependencies
         run: flutter pub get
       - name: Static analysis
@@ -108,7 +111,7 @@ jobs:
         run: flutter build apk --profile --target-platform android-arm64
       - name: Inspect profile APK identity, runtime assets and ABI
         if: github.event_name == 'pull_request'
-        run: python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-profile.apk
+        run: python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-profile.apk --qa-profile
       - name: Verify profile APK signature
         if: github.event_name == 'pull_request'
         run: |
