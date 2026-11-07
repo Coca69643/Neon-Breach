@@ -151,6 +151,53 @@ void main() {
       expect(physics.grounded, isTrue);
     });
 
+    test('traversal dash spends stamina, regenerates after a delay and resets on respawn', () async {
+      physics.teleport(const MobaPoint(0, -60));
+      expect(
+        physics.traversalStamina,
+        closeTo(ArenaPhysicsRuntime.traversalStaminaMax, 1e-6),
+      );
+      expect(physics.canTriggerTraversalDash, isTrue);
+
+      expect(physics.triggerTraversalDash(1, 0), isTrue);
+      expect(
+        physics.traversalStamina,
+        closeTo(ArenaPhysicsRuntime.traversalStaminaMax - 1, 1e-6),
+      );
+      expect(
+        physics.triggerTraversalDash(0, 1),
+        isFalse,
+        reason: 'a second traversal dash cannot interrupt the active dash',
+      );
+
+      await advance(frames: 30);
+      expect(
+        physics.traversalStamina,
+        closeTo(ArenaPhysicsRuntime.traversalStaminaMax - 1, 0.02),
+        reason: 'stamina does not regenerate during the recovery delay',
+      );
+
+      await advance(frames: 90);
+      expect(physics.traversalStamina, greaterThan(2.8));
+      expect(physics.traversalStamina, lessThan(3.0));
+
+      final staminaBeforeSuspend = physics.traversalStamina;
+      physics.setActive(false);
+      await advance(frames: 60);
+      expect(
+        physics.traversalStamina,
+        closeTo(staminaBeforeSuspend, 1e-6),
+        reason: 'inactive actors do not regenerate traversal stamina',
+      );
+
+      physics.teleport(const MobaPoint(0, -60));
+      expect(
+        physics.traversalStamina,
+        closeTo(ArenaPhysicsRuntime.traversalStaminaMax, 1e-6),
+        reason: 'the explicit respawn transition restores the movement budget',
+      );
+    });
+
     test('diagonal input is normalized and never exceeds forward speed', () async {
       await advance(frames: 90, moveX: 1, moveZ: 1);
 
