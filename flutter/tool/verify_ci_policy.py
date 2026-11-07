@@ -55,6 +55,13 @@ def main() -> None:
         "profile APK verifier must enforce the isolated QA application identity.",
     )
 
+    qa_identity_script = (ROOT / "tool" / "prepare_profile_qa_identity.py").read_text(encoding="utf-8")
+    require(
+        'abiFilters += setOf("arm64-v8a")' in qa_identity_script
+        and 'abiFilters "arm64-v8a"' in qa_identity_script,
+        "PR profile preparation must filter all native libraries to ARM64.",
+    )
+
     profile_artifact = workflow.split("Upload profile QA artifact", 1)
     require(len(profile_artifact) == 2, "PR profile QA artifact upload step is missing.")
     profile_artifact_header = profile_artifact[1].split("uses:", 1)[0]
