@@ -1277,14 +1277,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           name: 'ambient_npc_ground_marker',
           geometry: _npcMarkerGeometry,
           material: _npcMarkerMaterial,
-          position: const vm.Vector3(0, 0.035, 0),
+          position: vm.Vector3(0, 0.035, 0),
           scale: vm.Vector3.all(1.65),
         ),
         SceneMesh(
           name: 'ambient_npc_overhead_marker',
           geometry: _npcMarkerGeometry,
           material: _npcMarkerMaterial,
-          position: const vm.Vector3(0, 2.2, 0),
+          position: vm.Vector3(0, 2.2, 0),
           scale: vm.Vector3.all(0.82),
         ),
       ],
@@ -1516,7 +1516,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       left: viewport.maxWidth * 0.28,
                       right: viewport.maxWidth * 0.28,
                       bottom: compact ? 94 : 108,
-                      child: nearbyNpc!.isShopkeeper
+                      child: nearbyNpc.isShopkeeper
                           ? _NpcShop(
                               gold: snapshot.playerGold,
                               purchasedItems: snapshot.playerItems,
