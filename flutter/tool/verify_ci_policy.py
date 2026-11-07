@@ -55,11 +55,14 @@ def main() -> None:
         "profile APK verifier must enforce the isolated QA application identity.",
     )
 
-    qa_identity_script = (ROOT / "tool" / "prepare_profile_qa_identity.py").read_text(encoding="utf-8")
+    android_generator = (ROOT / "tool" / "prepare_android.py").read_text(encoding="utf-8")
     require(
-        'abiFilters += setOf("arm64-v8a")' in qa_identity_script
-        and 'abiFilters "arm64-v8a"' in qa_identity_script,
-        "PR profile preparation must filter all native libraries to ARM64.",
+        "def add_arm64_abi_filter(" in android_generator
+        and "content = add_arm64_abi_filter(content, gradle)" in android_generator
+        and "abiFilters.clear()" in android_generator
+        and 'abiFilters.addAll(listOf("arm64-v8a"))' in android_generator
+        and 'abiFilters "arm64-v8a"' in android_generator,
+        "Android host generator must clear Flutter ABI defaults and enforce ARM64 only.",
     )
 
     profile_artifact = workflow.split("Upload profile QA artifact", 1)
