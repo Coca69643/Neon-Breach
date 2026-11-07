@@ -1,122 +1,112 @@
 # Project Arena — Gate de reconstrução do cenário
 
+## Decisão de arquitetura (confirmada)
+
+- **Menu principal:** fundo ilustrado em 2D, leve e independente.
+- **Gameplay:** campo de batalha em 3D, com cenário, entidades e colisão na cena de partida.
+- O menu não instancia o mapa de batalha nem carrega seus modelos 3D.
+- Não haverá migração do renderer da gameplay para 2D. A divisão 2D/3D está fechada para este gate.
+
 ## Objetivo
 
-Transformar o campo de batalha em uma cidade com leitura visual forte e seis distritos reconhecíveis, preservando o loop MOBA, as dimensões navegáveis, a física Rapier e o orçamento de renderização mobile.
+Reconstruir o campo de batalha como uma cidade estilizada com seis distritos visualmente reconhecíveis, preservando o loop MOBA, a navegação, a física Rapier e o orçamento de renderização mobile.
 
-Este gate sucede a fundação técnica 1.8.0. O herói metamórfico fica suspenso até que a identidade do cenário seja aprovada.
+O herói metamórfico permanece fora de escopo até a identidade visual do cenário ser aprovada.
 
-## Diagnóstico da fundação atual
+## Diagnóstico da fundação
 
 O branch já possui:
 
 - Arena lógica irregular de 224 × 188 unidades.
-- Seis distritos, três avenidas, cinco pontes e seis interiores.
-- Malha contínua do terreno com overlays elevados de asfalto e calçada.
-- 56 modelos urbanos Kenney CC0 preparados offline.
-- Culling de cenário por vizinhança e atualização da cena a 30 Hz, com HUD a 10 Hz.
-- Menu separado da cena de batalha.
+- Seis distritos, três avenidas, cinco pontes e seis interiores acessíveis.
+- Terreno contínuo com overlays elevados de asfalto e calçadas, meio-fio e marcações.
+- 56 modelos urbanos Kenney CC0 preparados offline e com origem/hash fixados no script de preparação.
+- Culling de props por vizinhança; cena atualizada a 30 Hz e HUD a 10 Hz.
+- Colisões de edifícios, vegetação, mobiliário interno e rotas verticais compartilhadas com a navegação.
 
-A composição visual ainda está incompleta: o catálogo coloca apenas oito blocos comerciais/suburbanos como marcos arquitetônicos principais. A cidade possui sinais, árvores, mobiliário e interiores, mas isso não garante silhuetas distintas, fachadas contínuas ou densidade suficiente para cada setor. O próximo passe deve corrigir composição, variedade e escala, não simplesmente espalhar mais objetos aleatórios.
+A base técnica está pronta para receber composição visual. O problema restante é densidade, hierarquia de silhuetas e identidade de cada setor — não a dimensão do mapa.
 
-## Direção visual proposta
+## Direção visual
 
 **Cidade urbana estilizada, com leitura semi-realista e low-poly refinado.**
 
-- Silhuetas arquitetônicas variadas; evitar repetir o mesmo prédio em quarteirões diferentes.
-- Materiais coerentes entre fachadas, calçadas, asfalto, vegetação e água.
-- Variação de altura entre edifícios baixos, médios e um ou dois marcos altos por setor.
-- Fachadas com portas, vitrines, marquises, sacadas e recuos legíveis na câmera de gameplay.
-- Praças e áreas abertas com composição intencional, não grandes retângulos vazios.
-- Vegetação em grupos irregulares e bordas naturais; não apenas árvores isoladas em coordenadas simétricas.
-- Iluminação estável, sem depender de sombras dinâmicas caras para comunicar volume.
+- Variar silhuetas e alturas; evitar fachadas dominantes repetidas.
+- Manter linguagem visual consistente entre edifícios, pavimento, mobiliário e vegetação.
+- Dar escala legível a portas, vitrines, marquises e elementos urbanos na câmera de gameplay.
+- Compor praças e clareiras com intenção, sem preencher todos os espaços.
+- Preservar passagens, rotas de combate e acesso aos seis interiores.
+- Usar iluminação estável; não depender de sombras dinâmicas caras para comunicar volume.
 
-## Identidade dos seis distritos
+## Identidade dos distritos
 
-| Distrito | Elementos de leitura obrigatória |
+| Distrito | Leitura visual obrigatória |
 |---|---|
-| Distrito Cívico | Edifício público de referência, praça pavimentada, mobiliário urbano e sinalização institucional. |
-| Reserva Verde | Caminhos orgânicos, árvores de silhuetas diferentes, rochas, arbustos e pequenas clareiras. |
-| Mercado Central | Fachadas comerciais variadas, marquises, vitrines, toldos, bancas e pontos de encontro. |
-| Pátio Industrial | Galpões, depósitos, estruturas técnicas, cercas, tubulações e pátios de serviço. |
-| Estação Intermodal | Terminal reconhecível, cobertura de plataforma, sinalização de embarque e elementos de transporte. |
-| Orla do Canal | Passeio marginal, contenções, guarda-corpos, bancos, iluminação e cinco pontes visualmente distintas. |
+| Distrito Cívico | Edifício público de referência, praça pavimentada, mobiliário e sinalização institucional. |
+| Reserva Verde | Caminhos orgânicos, árvores de silhuetas diferentes, rochas, arbustos e clareiras. |
+| Mercado Central | Fachadas comerciais variadas, marquises, vitrines, toldos, bancas e praça aberta. |
+| Pátio Industrial | Galpões, depósitos, estruturas técnicas, cercas e pátios de serviço. |
+| Estação Intermodal | Terminal reconhecível, cobertura de plataforma, sinalização e elementos de transporte. |
+| Orla do Canal | Passeio marginal, contenções, guarda-corpos, bancos, iluminação e cinco pontes distintas. |
 
-Os seis interiores permanecem acessíveis. A reconstrução das fachadas não pode fechar portas, reduzir passagens ou deslocar colisões sem atualizar navegação e testes.
+## Gate S1 — Vertical slice do Mercado Central
 
-## Biblioteca CC0 — ordem de preferência
+**Primeira implementação submetida no catálogo de mundo:**
 
-Usar Kenney como biblioteca-base de cenário, pois os kits compartilham linguagem visual e são declarados CC0:
+- Duas fachadas comerciais diferentes: `commercial_building_i.glb` e `commercial_building_j.glb`.
+- As duas fachadas enquadram o núcleo do distrito sem ocupar o ponto de captura.
+- Marquises, dois pontos de convivência com guarda-sol, quatro floreiras e dois postes de iluminação formam a primeira composição de rua.
+- As footprints dos dois edifícios entram em `commercialBlocks`; o mesmo catálogo alimenta o renderizador, `isWalkable` e os colliders estáticos do Rapier.
+- Os modelos já estão na lista de assets Kenney fixados e validados pelo script `prepare_city_assets.py`; não foi introduzida dependência de download em runtime.
 
-- City Kit (Roads): 90 arquivos; base para peças rodoviárias e sinalização.
-- City Kit (Commercial): 50 arquivos; fachadas, edifícios e marcos urbanos.
-- City Kit (Suburban): 40 arquivos; quarteirões baixos e transições residenciais.
-- City Kit (Industrial): 40 arquivos; galpões e edifícios de serviço.
-- Nature Kit: 330 arquivos; árvores, rochas e vegetação.
-- Train Kit: 100 arquivos; elementos de estação e transporte.
+**Validação ainda pendente:** análise/testes do CI, inspeção visual da escala pela câmera real de gameplay e teste no dispositivo. A inclusão no catálogo não significa aceite visual.
 
-Texturas de acabamento podem vir de Poly Haven ou ambientCG, ambos CC0. Manter apenas materiais que combinem com o estilo do cenário; não misturar texturas fotográficas pesadas com assets estilizados sem uma etapa de integração.
+Critérios de aceite do S1:
+1. Fachadas distintas e proporção coerente com os personagens.
+2. Praça e ponto de captura desobstruídos.
+3. Passagens laterais navegáveis e colisão alinhada às fachadas.
+4. Props apoiados no pavimento, sem clipping ou objetos flutuantes.
+5. Custo de renderização compatível com o perfil mobile.
 
-### Fontes oficiais
+## Gate S2 — Expansão dos seis distritos
 
-- https://kenney.nl/assets/city-kit-roads
-- https://kenney.nl/assets/city-kit-commercial
-- https://kenney.nl/assets/city-kit-suburban
-- https://kenney.nl/assets/city-kit-industrial
-- https://kenney.nl/assets/nature-kit
-- https://kenney.nl/assets/train-kit
-- https://polyhaven.com/license
-- https://docs.ambientcg.com/license/
+Depois do aceite visual do Mercado Central, aplicar a mesma disciplina aos outros cinco setores. Cada um deve usar um conjunto próprio de silhuetas e mobiliário; não basta trocar o rótulo do distrito.
 
-Todo asset novo deve ter licença verificada, origem fixa, hash registrado, validação GLB e inclusão offline. Não depender de download pela partida.
-
-## Separação entre menu e partida
-
-A cena da partida continua sendo uma cena de gameplay independente. O menu não deve carregar o mapa completo como plano de fundo: a apresentação do menu será dedicada à torre/complexo principal, em uma cena 3D separada e leve. Isso mantém o mapa de batalha fora da composição do menu e evita carregar centenas de objetos antes de iniciar a partida.
-
-## Sequência de implementação
-
-### Gate S1 — Vertical slice visual
-
-Reconstruir primeiro um distrito representativo, incluindo:
-- um marco arquitetônico;
-- um quarteirão com variação de fachadas;
-- um trecho de rua com meio-fio e passeio;
-- mobiliário e vegetação contextual;
-- um interior conectado a uma entrada real.
-
-Critério: validar escala na câmera de gameplay, legibilidade das rotas, aparência dos materiais, colisão e custo de cena antes de replicar o método.
-
-### Gate S2 — Seis distritos
-
-Aplicar a linguagem aprovada aos outros cinco setores, com identidade própria e sem duplicação óbvia de edifícios.
-
-### Gate S3 — Torre do menu
-
-Substituir a ilustração pintada por uma apresentação 3D isolada da torre/complexo, sem renderizar o mapa de batalha atrás dela.
-
-### Gate S4 — Otimização e validação física
+## Gate S3 — Otimização e validação mobile
 
 Verificar no perfil Release:
 - meta de 30 FPS sustentados;
-- memória e tamanho dos assets;
-- tempo de carregamento;
-- ausência de clipping, objetos flutuantes e fachadas atravessáveis indevidamente;
+- memória, draw calls e tamanho dos assets;
+- tempo de carregamento e atualizações de células de cenário;
+- ausência de clipping, objetos flutuantes e rotas bloqueadas;
 - leitura dos seis distritos na tela do aparelho intermediário.
 
-O CI confirma análise e testes automatizados, mas não substitui a inspeção visual e o teste prolongado no Realme C53.
+O CI automatizado não substitui inspeção visual e sessão prolongada no Realme C53.
 
-## Critérios de aceite do cenário
+## Biblioteca CC0 e preparação offline
 
-- Cada distrito é reconhecível pela arquitetura e pelo mobiliário, não apenas pelo nome no HUD.
-- Nenhuma avenida, ponte, entrada ou interior fica visualmente bloqueado.
-- Edifícios e props respeitam a escala dos personagens.
-- Geometria visível, navegação lógica e colisão Rapier permanecem alinhadas.
-- Não há repetição dominante de um único modelo.
-- Os novos modelos são CC0, fixados por hash e preparados offline.
-- O mapa de batalha não é instanciado no menu.
-- Nenhum APK é produzido a partir deste PR Draft.
+Kenney continua como biblioteca ambiental principal por manter uma linguagem visual coerente e declarar CC0 nos kits utilizados:
+
+- City Kit Roads: https://kenney.nl/assets/city-kit-roads
+- City Kit Commercial: https://kenney.nl/assets/city-kit-commercial
+- City Kit Suburban: https://kenney.nl/assets/city-kit-suburban
+- City Kit Industrial: https://kenney.nl/assets/city-kit-industrial
+- Nature Kit: https://kenney.nl/assets/nature-kit
+- Train Kit: https://kenney.nl/assets/train-kit
+
+Poly Haven e ambientCG ficam reservados a acabamentos que combinem com a direção estilizada:
+- https://polyhaven.com/license
+- https://docs.ambientcg.com/license/
+
+Todo novo modelo deve ter licença verificada, origem fixa, hash registrado, validação GLB e inclusão offline. A partida não baixa assets.
+
+## Fora de escopo deste gate
+
+- O menu permanece 2D; não será convertido para torre 3D.
+- Não carregar o mapa de batalha atrás do menu.
+- Não alterar o renderer 3D da gameplay.
+- Não implementar o herói metamórfico antes da aprovação da identidade do cenário.
+- Não gerar APK nem publicar release a partir deste PR Draft.
 
 ## Estado
 
-**Aberto — planejamento e seleção de assets concluídos parcialmente.** O primeiro distrito vertical slice é o próximo trabalho de implementação. A decisão final entre manter a cena de batalha 3D atual ou migrar para um mapa 2D/top-down precisa ser confirmada antes de alterar a arquitetura do renderer.
+**S1 em implementação; aceite visual pendente.** A arquitetura 2D no menu / 3D na gameplay está confirmada. O próximo passo é analisar o resultado do CI e validar a composição no aparelho antes de propagar o padrão aos demais distritos.

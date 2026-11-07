@@ -138,7 +138,7 @@ abstract final class ArenaWorldCatalog {
     ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
-  // Eight CC0 silhouettes make district boundaries readable at ground level.
+  // Ten CC0 silhouettes: the original district edges plus the Market Central slice.
   static const commercialBlocks = <(String, double, double, double)>[
     ('commercial_building_b.glb', -82.0, -60.0, 5.8),
     ('commercial_building_c.glb', 82.0, -60.0, 5.8),
@@ -148,6 +148,8 @@ abstract final class ArenaWorldCatalog {
     ('commercial_building_g.glb', 98.0, 42.0, 5.0),
     ('suburban_building_a.glb', -98.0, 42.0, 4.8),
     ('suburban_building_c.glb', 98.0, -42.0, 4.8),
+    ('commercial_building_i.glb', 20.5, -68.0, 5.0),
+    ('commercial_building_j.glb', 20.5, -40.0, 5.0),
   ];
 
   static const sideApproachAnchors = <(double, double)>[
@@ -615,6 +617,23 @@ abstract final class ArenaWorldCatalog {
       (-92.0, 20.0), (92.0, -20.0),
     ]) {
       add('street_light_square.glb', point.$1, point.$2, scale: 1.2);
+    }
+
+    // Market Central: two distinct commercial facades frame an open capture plaza.
+    // The square remains clear; every building footprint is shared with Rapier/nav.
+    add('street_light_square.glb', 7.0, -69.0, scale: 1.0);
+    add('street_light_square.glb', 7.0, -39.0, scale: 1.0);
+    add('detail_awning_wide.glb', 20.5, -74.0,
+        scale: 1.65, yaw: math.pi, y: 1.25);
+    add('detail_awning_wide.glb', 20.5, -34.0,
+        scale: 1.65, yaw: math.pi, y: 1.25);
+    add('detail_parasol_a.glb', 11.0, -47.0, scale: 1.15);
+    add('detail_parasol_a.glb', 11.0, -61.0, scale: 1.15);
+    for (final point in const [
+      (7.0, -47.0), (15.0, -47.0),
+      (7.0, -61.0), (15.0, -61.0),
+    ]) {
+      add('city_planter.glb', point.$1, point.$2, scale: 0.95);
     }
 
     // Each of the five crossings is signalled from both approaches.

@@ -106,10 +106,33 @@ void main() {
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(8));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(10));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
         expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
             reason: 'commercial block must have a collision footprint');
+      }
+      final marketBuildings = ArenaWorldCatalog.commercialBlocks.where(
+        (block) => block.$1 == 'commercial_building_i.glb' ||
+            block.$1 == 'commercial_building_j.glb',
+      ).toList();
+      expect(marketBuildings, hasLength(2));
+      expect(ArenaWorldCatalog.isWalkable(12.0, -54.0), isTrue,
+          reason: 'Market Central capture plaza must remain open');
+      for (final building in marketBuildings) {
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            building.$2 - building.$4 - 0.75, building.$3,
+          ),
+          isTrue,
+          reason: 'west-side walk-around must remain open',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            building.$2 + building.$4 + 0.75, building.$3,
+          ),
+          isTrue,
+          reason: 'east-side walk-around must remain open',
+        );
       }
       expect(ArenaWorldCatalog.trees, hasLength(16));
       expect(ArenaWorldCatalog.bushes, hasLength(4));
@@ -131,7 +154,16 @@ void main() {
           .toSet();
       expect(buildingNames, hasLength(8));
       expect(ArenaWorldCatalog.largeTrees, hasLength(8));
-      expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(40));
+      expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(50));
+      final marketProps = ArenaWorldCatalog.cityProps.where(
+        (prop) =>
+            prop.x >= 6.0 &&
+            prop.x <= 21.0 &&
+            prop.z >= -75.0 &&
+            prop.z <= -33.0,
+      ).toList();
+      expect(marketProps, hasLength(10),
+          reason: 'Market Central should have authored frontage and plaza dressing');
 
       for (final prop in ArenaWorldCatalog.cityProps) {
         expect(prop.x.isFinite && prop.y.isFinite && prop.z.isFinite, isTrue);
