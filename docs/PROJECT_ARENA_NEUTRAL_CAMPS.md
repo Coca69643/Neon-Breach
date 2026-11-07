@@ -1,6 +1,6 @@
 # Project Arena — neutral MOBA camps
 
-Research snapshot: 07 November 2026. Status: design gate only; no camp asset or gameplay implementation is approved by this document.
+Research snapshot: 07 November 2026. Status: simulation and match-UI vertical slice partially integrated; creature models/animations and device acceptance remain pending.
 
 ## Problem statement
 
@@ -73,4 +73,16 @@ Before adding any model to the repository or APK:
 
 ## Current implementation status
 
-Not implemented. This document records the research direction and acceptance gate only. The asset package must be downloaded, inspected and pinned before art-pipeline changes. Gameplay implementation must follow the repository's mandatory engineering protocol and remain on `fix/1.8.1-feedback-recovery`.
+Partial implementation is present on `fix/1.8.1-feedback-recovery` (code commit `df2831561ed52935c34275834b385c3e79947c9b`, placement correction `74e0b22ec1dfffbf50057b3033cccc9cd4041b26`):
+
+- Three camp anchors are defined in `ArenaWorldCatalog.neutralCampSites`; the third was moved away from the middle-lane tower footprint.
+- Each camp owns a guardian and protector with health, spawn positions and attack cooldowns.
+- Simulation includes dormant/aggro/returning/defeated states, short aggro radius, a bounded leash, walkability/cover checks, return-and-heal, one-time unit/clear rewards and a 60-second respawn.
+- Neutral units can be selected by the player and damaged through the regular basic-attack path.
+- Neutral damage can hit player, bots and minions without falsely attributing neutral kills or rewards to either team.
+- Immutable snapshots feed 3D ground markers and minimap camp indicators.
+- Deterministic tests cover camp presence, anchor/unit walkability, aggro, leash return, target selection, damage, clear rewards and respawn.
+
+**Important incomplete work:** the current scene shows camp/unit markers, not the actual creature meshes. No Quaternius monster archive has been downloaded, hashed, inventoried or imported. The model/animation pipeline, visible monster actors, complete HUD treatment, screenshot review, full CI result for the latest commit and Realme C53 validation remain pending. Do not describe the camps as visually complete or release-ready.
+
+The exact archive and license gate remains mandatory before adding creature assets. Keep work on `fix/1.8.1-feedback-recovery`; do not merge or publish an APK without explicit approval.

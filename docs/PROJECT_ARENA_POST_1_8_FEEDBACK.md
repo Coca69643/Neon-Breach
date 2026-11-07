@@ -135,3 +135,16 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [ ] Testes determinísticos e screenshots de gameplay; Realme C53 continua obrigatório para aceite visual/performance.
 
 Pesquisa inicial não equivale à validação do arquivo baixado. A implementação permanece não iniciada até o gate de asset ser concluído.
+
+
+## Implementação parcial — camps neutros (07/11/2026)
+
+- [x] Três anchors adicionados ao catálogo de mundo; teste de navegação verifica anchor e spawn de cada unidade.
+- [x] Dois guardiões simulados por camp com estados dormant/aggro/returning/defeated, leash de 14 unidades, validação de terreno/cobertura e retorno com restauração.
+- [x] Alvos neutros integrados ao target cycle e ao ataque básico do jogador.
+- [x] Dano neutro aplicado a jogador, bots e minions sem atribuir recompensa de kill a nenhuma equipe.
+- [x] Recompensa por unidade e bônus único de limpeza; respawn em 60 segundos.
+- [x] Snapshots integrados à cena (marcadores de chão) e ao minimapa.
+- [ ] Modelos 3D reais das criaturas e animações: pendentes; os marcadores não contam como arte final.
+- [ ] CI completo no HEAD final, screenshots de gameplay e validação no Realme C53: pendentes.
+- Commit de simulação: `df2831561ed52935c34275834b385c3e79947c9b`; correção de anchor: `74e0b22ec1dfffbf50057b3033cccc9cd4041b26`.
