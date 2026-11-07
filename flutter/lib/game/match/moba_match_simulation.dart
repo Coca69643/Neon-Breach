@@ -744,7 +744,7 @@ class MobaMatchSimulation {
       if (role == occupiedRole) continue;
       final lane = roleLanes[role];
       final position = _spawnPosition == null && role == visibleAllyRole
-          ? MobaPoint(_playerPosition.x + 2.6, _playerPosition.z + 7.0)
+          ? MobaPoint(_playerPosition.x + 3.2, _playerPosition.z + 8.0)
           : _botSpawnPosition(MobaTeam.blue, lane, role);
       _bots.add(
         _Bot(
