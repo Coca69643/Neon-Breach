@@ -22,6 +22,21 @@ void main() {
       }
     });
 
+    test('base service guides spawn on walkable terrain near each allied lane', () {
+      const guideAnchors = <(double, double)>[
+        (-33.0, -55.0),
+        (3.0, -55.0),
+        (39.0, -55.0),
+      ];
+      for (final point in guideAnchors) {
+        expect(
+          ArenaWorldCatalog.isWalkable(point.$1, point.$2),
+          isTrue,
+          reason: 'service guide anchor ${point.$1}, ${point.$2} must be walkable',
+        );
+      }
+    });
+
     test('keeps three lanes aligned with the generated urban terrain', () {
       for (var z = -68.0; z <= 68.0; z += 2.0) {
         expect(ArenaWorldCatalog.laneDistance(-36, z), lessThan(1.0));
