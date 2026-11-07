@@ -424,7 +424,7 @@ class _ArenaMenuBackdropPainter extends CustomPainter {
     for (var i = 0; i < 8; i++) {
       canvas.drawRRect(
         RRect.fromRectAndRadius(
-          Rect.fromLTWH(990 + i * 38, 780 - i * 1.5, 18, 12),
+          Rect.fromLTWH(990.0 + i * 38.0, 780.0 - i * 1.5, 18, 12),
           const Radius.circular(2),
         ),
         baseWindows,
