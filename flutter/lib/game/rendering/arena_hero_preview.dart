@@ -4,29 +4,16 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart';
 import 'package:vector_math/vector_math.dart' as vm;
 
+import '../arena_hero_catalog.dart';
+
 class ArenaHeroPreview extends StatelessWidget {
   const ArenaHeroPreview({super.key, required this.heroId});
 
   final String heroId;
 
-  static const _models = <String, ({String asset, String idle})>{
-    'lyra': (
-      asset: 'assets/heroes/lyra.glb',
-      idle: 'HumanArmature|Female_Idle',
-    ),
-    'bastion': (
-      asset: 'assets/heroes/bastion.glb',
-      idle: 'HumanArmature|Man_Idle',
-    ),
-    'kairo': (
-      asset: 'assets/heroes/kairo.glb',
-      idle: 'HumanArmature|Man_Idle',
-    ),
-  };
-
   @override
   Widget build(BuildContext context) {
-    final model = _models[heroId] ?? _models['lyra']!;
+    final hero = ArenaHeroCatalog.byId(heroId) ?? ArenaHeroCatalog.fallback;
 
     return DecoratedBox(
       decoration: const BoxDecoration(
@@ -40,9 +27,13 @@ class ArenaHeroPreview extends StatelessWidget {
         // Keep the preview crisp without rendering above the device pixel budget.
         pixelRatio: 1.0,
         cameraBuilder: (_) => PerspectiveCamera(
-          fovRadiansY: 38 * math.pi / 180,
-          position: vm.Vector3(0, 1.15, -5.0),
-          target: vm.Vector3(0, 1.08, 0),
+          fovRadiansY: hero.previewFovDegrees * math.pi / 180,
+          position: vm.Vector3(
+            0,
+            hero.previewCameraHeight,
+            -hero.previewCameraDistance,
+          ),
+          target: vm.Vector3(0, hero.previewTargetHeight, 0),
         ),
         loadingBuilder: (context, progress) => const Center(
           child: SizedBox(
@@ -56,17 +47,21 @@ class ArenaHeroPreview extends StatelessWidget {
         ),
         children: [
           SceneModel(
-            model.asset,
-            key: ValueKey(heroId),
-            name: 'playable_hero_$heroId',
-            position: vm.Vector3(0, 0, 0),
-            // glTF humanoid assets face +Z; the preview camera looks from -Z.
-            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi),
-            scale: vm.Vector3.all(0.52),
+            hero.modelAsset,
+            key: ValueKey(hero.id),
+            name: 'playable_hero_${hero.id}',
+            position: vm.Vector3(hero.previewOffsetX, 0, 0),
+            // The default calibration presents the model's front to the stage.
+            // Individual non-humanoid models can override this yaw in the catalog.
+            rotation: vm.Quaternion.axisAngle(
+              vm.Vector3(0, 1, 0),
+              hero.previewYawRadians,
+            ),
+            scale: vm.Vector3.all(hero.previewScale),
             animations: [
-              SceneAnimationSpec(model.idle, loop: true, speed: 1),
+              SceneAnimationSpec(hero.idleAnimation, loop: true, speed: 1),
             ],
-            onLoaded: (_) => debugPrint('Hero GLB loaded: $heroId'),
+            onLoaded: (_) => debugPrint('Hero GLB loaded: ${hero.id}'),
           ),
         ],
       ),

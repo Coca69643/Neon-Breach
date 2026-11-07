@@ -45,6 +45,82 @@ ASSETS = {
         "packs/city-kit-commercial/building-h.glb",
         "ba87000b72e5b18262438a4c028c1fbf22bb951c",
     ),
+    "commercial_building_d.glb": (
+        "packs/city-kit-commercial/building-d.glb",
+        "a2cc6e10c0b0037b08bb2bf95d849007d07df265",
+    ),
+    "commercial_building_g.glb": (
+        "packs/city-kit-commercial/building-g.glb",
+        "92c348b70ded73914249c6a77753efac23875f33",
+    ),
+    "commercial_building_i.glb": (
+        "packs/city-kit-commercial/building-i.glb",
+        "50b396aacabc301b1ebf4f3c1db5b9adb0c9affb",
+    ),
+    "commercial_building_j.glb": (
+        "packs/city-kit-commercial/building-j.glb",
+        "7bb1e67b24f7bd5d45658c287f891f6108bba538",
+    ),
+    "commercial_skyscraper_a.glb": (
+        "packs/city-kit-commercial/building-skyscraper-a.glb",
+        "fc0b37efa6588889e74bd2199633a536526b9bd6",
+    ),
+    "suburban_building_a.glb": (
+        "packs/city-kit-suburban/building-type-a.glb",
+        "4aa2f0d0014f1383fad54acebd53cdf73baa2837",
+    ),
+    "suburban_building_c.glb": (
+        "packs/city-kit-suburban/building-type-c.glb",
+        "defa674771e61714a07e13a55758f6125bd0a7a5",
+    ),
+    "suburban_building_e.glb": (
+        "packs/city-kit-suburban/building-type-e.glb",
+        "781540fa66867080ff6a136cfac4468f554f4eb4",
+    ),
+    "suburban_building_g.glb": (
+        "packs/city-kit-suburban/building-type-g.glb",
+        "5c55720d08b8121a4c9015fc3f8090907db9e06b",
+    ),
+    "road_roundabout.glb": (
+        "packs/city-kit-roads/road-roundabout.glb",
+        "80de836555b5a85287767291816e804515b44cb1",
+    ),
+    "road_curve.glb": (
+        "packs/city-kit-roads/road-curve.glb",
+        "7eb1e51f6d9a29d167d907f49d326b16c8a95b0c",
+    ),
+    "road_intersection_path.glb": (
+        "packs/city-kit-roads/road-intersection-path.glb",
+        "aad639451fe824fe872f72ac245ee43e705ebf0c",
+    ),
+    "road_side_entry.glb": (
+        "packs/city-kit-roads/road-side-entry.glb",
+        "82ca54fff3ea43acd29652455af0ee21df6b8bfa",
+    ),
+    "road_bridge.glb": (
+        "packs/city-kit-roads/road-bridge.glb",
+        "cfe174e7de28e9ebb79c7dde1ec90cb2016d7240",
+    ),
+    "park_tree_oak.glb": (
+        "packs/nature-kit/tree-oak.glb",
+        "b136723ada4b5574b71f727120ab21fa579bf2fb",
+    ),
+    "park_tree_palm.glb": (
+        "packs/nature-kit/tree-palm.glb",
+        "f9bcf4d90cfde7ef2863258442545e983740b2e4",
+    ),
+    "park_tree_default.glb": (
+        "packs/nature-kit/tree-default.glb",
+        "13247443438a210c252d3324c511aba3cb3b392a",
+    ),
+    "park_tree_small.glb": (
+        "packs/nature-kit/tree-small.glb",
+        "0b60a75ecd52fa91e44964c90c8f04a77caf813c",
+    ),
+    "park_tree_pine.glb": (
+        "packs/nature-kit/tree-pinedefaulta.glb",
+        "f1217a9ee5b1d8f2027d39fe6bd151d20be5ab84",
+    ),
     "street_light_square.glb": (
         "packs/city-kit-roads/light-square.glb",
         "6ab94fd35afa21760581242a15be5252c59d0c66",
@@ -242,9 +318,9 @@ def main() -> None:
         "sourceCommit": SOURCE_COMMIT,
         "assets": [],
         "layoutPolicy": (
-            "Three-lane urban MOBA with distinct commercial silhouettes, "
-            "hand-authored street dressing, canal promenade, readable crossings "
-            "and four enterable service interiors; no survival, crafting or gathering loop."
+            "District Control map foundation: irregular 220 x 172 urban footprint, five canal crossings, "
+            "curved connector roads, six enterable service interiors, commercial and residential "
+            "blocks, plus a readable park/greenbelt district; no survival or gathering loop."
         ),
     }
     total_bytes = 0

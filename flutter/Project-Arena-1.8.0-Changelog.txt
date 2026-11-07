@@ -1,0 +1,48 @@
+PROJECT ARENA
+Versão 1.8.0 — Changelog incremental
+
+BASE DE GAMEPLAY
+- Campo urbano de 224 × 188 unidades.
+- Seis distritos com captura territorial e recompensas de equipe.
+- Bônus territorial de dano, reator central e pressão das três rotas.
+- Cinco travessias do canal, rotas secundárias e dois mezaninos.
+- Seis interiores previstos no catálogo de navegação.
+- Física Rapier em passo fixo, aceleração, frenagem, tração por superfície e colisão contínua.
+- Movimento normalizado na diagonal e testes de estabilidade entre 30/60 FPS.
+
+ELENCO E APRESENTAÇÃO
+- Catálogo de heróis orientado a dados: espécie, função, descrição, modelo e calibração individual de prévia.
+- Seleção em tela cheia, com personagem em destaque e elenco lateral.
+- Filtros de espécie aparecem apenas quando o catálogo possui mais de uma espécie.
+- Prévia com orientação, escala e enquadramento configuráveis por personagem.
+- Menu principal com fundo 2D estático desenhado em CustomPainter; sem SceneView ou GLBs 3D no menu.
+- A ilustração 2D da torre mantém a identidade urbana; gameplay e mapa de batalha continuam 3D.
+
+ETAPA 1 — TERRENO URBANO E MENU
+- Ruas principais e acessos passam a integrar uma única malha contínua de terreno.
+- Asfalto e calçadas de concreto recebem materiais próprios, gerados offline.
+- Faixas de rua e calçadas seguem a altura da malha; a classificação de superfície da física usa os mesmos limites.
+- Removidas peças de estrada, cruzamentos e pontes em escala excessiva que eram desenhadas sobre o terreno e criavam placas e emendas.
+- Travessias do canal permanecem integradas ao terreno.
+- Fundo do menu migrado de cena 3D para composição 2D estática, reduzindo trabalho de renderização fora da partida.
+- Assets CC0 de cidade e natureza permanecem reservados à cena 3D da gameplay.
+- Assets 3D de cidade e natureza permanecem empacotados offline.
+
+RECONSTRUÇÃO DO CENÁRIO — GATE S1
+- Primeiro recorte visual do Mercado Central com duas fachadas comerciais distintas CC0.
+- Marquises, pontos de convivência com guarda-sóis, floreiras e iluminação de rua contextual.
+- Praça do distrito e ponto de captura permanecem abertos; passagens laterais cobertas por testes.
+- Footprints dos edifícios partilhadas entre renderer, navegação lógica e colisores estáticos Rapier.
+- Assets preparados offline a partir do catálogo Kenney fixado por hash.
+
+PENDÊNCIAS DAS PRÓXIMAS ETAPAS
+- Reequilibrar visibilidade e escala dos minions e bots.
+- Tornar NPCs e interiores mais evidentes e interativos.
+- Exibir vida, valores de dano e origem do dano de forma legível.
+- Novo herói planejado como robô sintético humanoide; a ultimate assume temporariamente uma forma quadrúpede de raposa. Formas animais adicionais ficam para uma expansão futura.
+- Projetar progressão e loja com preços transparentes e itens cosméticos, sem recompensas aleatórias.
+- Validar a apresentação e o desempenho prolongado no Realme C53.
+
+RELEASE
+- Esta etapa ainda não produz APK para instalação.
+- A versão final só será distribuída após validar a assinatura de atualização existente e confirmar que ela corresponde ao certificado da instalação atual.

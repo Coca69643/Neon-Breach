@@ -1,5 +1,7 @@
 import 'package:flutter/foundation.dart';
 
+import '../arena_hero_catalog.dart';
+
 enum ArenaPhase {
   boot,
   assetValidation,
@@ -171,11 +173,7 @@ class ArenaStateMachine extends ChangeNotifier {
   ArenaStateMachine()
       : _snapshot = const ArenaSnapshot(phase: ArenaPhase.boot);
 
-  static const Set<String> supportedHeroIds = {
-    'lyra',
-    'bastion',
-    'kairo',
-  };
+  static final Set<String> supportedHeroIds = ArenaHeroCatalog.playableIds;
 
   ArenaSnapshot _snapshot;
 

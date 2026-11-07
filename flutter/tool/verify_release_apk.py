@@ -161,11 +161,11 @@ def main() -> None:
 
     require(manifest.get("package") == "com.duckdream.projectarena",
             f"unexpected applicationId: {manifest.get('package')!r}")
-    require(manifest.get("versionName") == "1.7.10",
+    require(manifest.get("versionName") == "1.8.0",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
-    require(version_code == 72,
-            f"expected versionCode 72 for Projeto Arena 1.7.10, got {version_code!r}")
+    require(version_code == 73,
+            f"expected versionCode 73 for Projeto Arena 1.8.0, got {version_code!r}")
     require(application.get("label") == "Projeto Arena",
             f"unexpected launcher label: {application.get('label')!r}")
 
@@ -307,6 +307,25 @@ def main() -> None:
         "interior_wall_window.glb", "interior_stairs.glb", "interior_doorway_open.glb",
         "interior_desk.glb", "interior_bench.glb", "interior_chair.glb",
         "interior_computer_screen.glb",
+        "commercial_building_d.glb",
+        "commercial_building_g.glb",
+        "commercial_building_i.glb",
+        "commercial_building_j.glb",
+        "commercial_skyscraper_a.glb",
+        "suburban_building_a.glb",
+        "suburban_building_c.glb",
+        "suburban_building_e.glb",
+        "suburban_building_g.glb",
+        "road_roundabout.glb",
+        "road_curve.glb",
+        "road_intersection_path.glb",
+        "road_side_entry.glb",
+        "road_bridge.glb",
+        "park_tree_oak.glb",
+        "park_tree_palm.glb",
+        "park_tree_default.glb",
+        "park_tree_small.glb",
+        "park_tree_pine.glb",
     )
     for asset in city_assets:
         require(f"assets/flutter_assets/assets/world/city/{asset}" in names,
@@ -333,6 +352,25 @@ def main() -> None:
         "interior_floor", "interior_wall", "interior_doorway_wide", "interior_wall_window",
         "interior_stairs", "interior_doorway_open", "interior_desk", "interior_bench",
         "interior_chair", "interior_computer_screen",
+        "commercial_building_d",
+        "commercial_building_g",
+        "commercial_building_i",
+        "commercial_building_j",
+        "commercial_skyscraper_a",
+        "suburban_building_a",
+        "suburban_building_c",
+        "suburban_building_e",
+        "suburban_building_g",
+        "road_roundabout",
+        "road_curve",
+        "road_intersection_path",
+        "road_side_entry",
+        "road_bridge",
+        "park_tree_oak",
+        "park_tree_palm",
+        "park_tree_default",
+        "park_tree_small",
+        "park_tree_pine",
     )
     for scene in compiled_scenes:
         prefix = f"assets/flutter_assets/flutter_scene_generated/scene.{scene}."
@@ -351,7 +389,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=1.7.10+{version_code}, minSdk={min_sdk}, "
+        f"version=1.8.0+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )

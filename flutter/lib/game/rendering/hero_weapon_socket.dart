@@ -16,9 +16,9 @@ abstract final class HeroWeaponSocket {
       };
 
   static double _scaleFor(MobaHeroId hero) => switch (hero) {
-        MobaHeroId.lyra => 0.032,
-        MobaHeroId.bastion => 0.032,
-        MobaHeroId.kairo => 0.043,
+        MobaHeroId.lyra => 0.020,
+        MobaHeroId.bastion => 0.020,
+        MobaHeroId.kairo => 0.027,
       };
 
   static Future<void> attach(Node modelRoot, MobaHeroId hero) async {

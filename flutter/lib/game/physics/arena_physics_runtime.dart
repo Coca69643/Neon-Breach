@@ -25,8 +25,11 @@ class ArenaPhysicsRuntime {
   static const double fixedStep = 1.0 / 60.0;
   static const double gravity = 24.0;
   static const double moveSpeed = 5.6;
-  static const double acceleration = 24.0;
-  static const double deceleration = 32.0;
+  static const double acceleration = 21.0;
+  static const double airAccelerationRatio = 0.42;
+  static const double airFriction = 2.6;
+  static const double dashDistance = 4.8;
+  static const double dashDuration = 0.24;
   static const double capsuleRadius = 0.38;
   static const double capsuleHalfHeight = 0.50;
   static const double footOffset = capsuleRadius + capsuleHalfHeight;
@@ -47,6 +50,10 @@ class ArenaPhysicsRuntime {
   double _velocityZ = 0;
   double _verticalVelocity = 0;
   double _actualHorizontalSpeed = 0;
+  double _dashVelocityX = 0;
+  double _dashVelocityZ = 0;
+  double _dashRemaining = 0;
+  bool _dashCompletionPending = false;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -56,6 +63,16 @@ class ArenaPhysicsRuntime {
   bool get slidingDownSlope => _slidingDownSlope;
   double get verticalVelocity => _verticalVelocity;
   double get horizontalSpeed => _actualHorizontalSpeed;
+  double get movementSpeedRatio =>
+      (_actualHorizontalSpeed / moveSpeed).clamp(0.0, 1.35).toDouble();
+  bool get dashing => _dashRemaining > 0;
+
+  /// True once the swept dash has ended, including a wall/canal interruption.
+  bool consumeDashCompletion() {
+    final completed = _dashCompletionPending;
+    _dashCompletionPending = false;
+    return completed;
+  }
 
   MobaPoint get playerPosition {
     final x = _playerPose.translation.x;
@@ -147,8 +164,44 @@ class ArenaPhysicsRuntime {
       _velocityX = 0;
       _velocityZ = 0;
       _verticalVelocity = 0;
+      _dashVelocityX = 0;
+      _dashVelocityZ = 0;
+      _dashRemaining = 0;
+      _dashCompletionPending = false;
       _actualHorizontalSpeed = 0;
     }
+  }
+
+  /// Queues a short, collision-resolved burst. Unlike a transform teleport,
+  /// the dash is swept by Rapier and stops at walls, furniture and terrain.
+  bool triggerDash(
+    double directionX,
+    double directionZ, {
+    double distance = dashDistance,
+    double duration = dashDuration,
+  }) {
+    if (_disposed ||
+        !_active ||
+        !directionX.isFinite ||
+        !directionZ.isFinite ||
+        !distance.isFinite ||
+        !duration.isFinite ||
+        distance <= 0 ||
+        duration <= 0) {
+      return false;
+    }
+    final length = math.sqrt(
+      directionX * directionX + directionZ * directionZ,
+    );
+    if (length < 1e-4) return false;
+    final speed = distance / duration;
+    _dashVelocityX = directionX / length * speed;
+    _dashVelocityZ = directionZ / length * speed;
+    _dashRemaining = duration;
+    _dashCompletionPending = false;
+    _velocityX = 0;
+    _velocityZ = 0;
+    return true;
   }
 
   /// Advances on Rapier's fixed clock, independently of render frame rate.
@@ -168,12 +221,14 @@ class ArenaPhysicsRuntime {
   }
 
   void _fixedUpdate(double dt) {
-    final targetX = _active ? _moveX * moveSpeed : 0.0;
-    final targetZ = _active ? _moveZ * moveSpeed : 0.0;
-    final response = (_active ? acceleration : deceleration) * dt;
-    _velocityX = _approach(_velocityX, targetX, response);
-    _velocityZ = _approach(_velocityZ, targetZ, response);
-    _preventOffBridgeCanalEntry(dt);
+    final dashStep = _active ? math.min(dt, _dashRemaining) : 0.0;
+    if (dashStep > 0) {
+      _velocityX = _dashVelocityX;
+      _velocityZ = _dashVelocityZ;
+    } else {
+      _updateMotorVelocity(dt);
+    }
+    _preventOffBridgeCanalEntry(dt, duringDash: dashStep > 0);
 
     if (_active) {
       _verticalVelocity = math.max(-28.0, _verticalVelocity - gravity * dt);
@@ -181,10 +236,11 @@ class ArenaPhysicsRuntime {
       _verticalVelocity = 0;
     }
 
+    final horizontalStep = dashStep > 0 ? dashStep : dt;
     final desired = vm.Vector3(
-      _velocityX * dt,
+      _velocityX * horizontalStep,
       _verticalVelocity * dt,
-      _velocityZ * dt,
+      _velocityZ * horizontalStep,
     );
     final movement = _world.moveCharacter(
       _playerCollider,
@@ -207,6 +263,32 @@ class ArenaPhysicsRuntime {
               movement.translation.z * movement.translation.z,
         ) /
         dt;
+    if (dashStep > 0) {
+      final requestedDistance = math.sqrt(
+        desired.x * desired.x + desired.z * desired.z,
+      );
+      final dashLength = math.sqrt(
+        _dashVelocityX * _dashVelocityX +
+            _dashVelocityZ * _dashVelocityZ,
+      );
+      final movedAlongDash = dashLength > 1e-5
+          ? (movement.translation.x * _dashVelocityX +
+                  movement.translation.z * _dashVelocityZ) /
+              dashLength
+          : 0.0;
+      final blocked = requestedDistance > 1e-4 &&
+          movedAlongDash < requestedDistance * 0.22;
+      _dashRemaining = blocked
+          ? 0.0
+          : math.max(0.0, _dashRemaining - dashStep);
+      _velocityX = movement.translation.x / dt * 0.18;
+      _velocityZ = movement.translation.z / dt * 0.18;
+      if (_dashRemaining <= 0) {
+        _dashVelocityX = 0;
+        _dashVelocityZ = 0;
+        _dashCompletionPending = true;
+      }
+    }
     _grounded = movement.grounded;
     _slidingDownSlope = movement.slidingDownSlope;
     if (_grounded && _verticalVelocity < 0) _verticalVelocity = 0;
@@ -223,14 +305,23 @@ class ArenaPhysicsRuntime {
   /// may connect the two banks. The clearance includes the capsule radius and
   /// a small numerical margin, so the character stops before its leading edge
   /// enters the canal instead of relying on a thin bank collider to catch it.
-  void _preventOffBridgeCanalEntry(double dt) {
+  void _preventOffBridgeCanalEntry(
+    double dt, {
+    bool duringDash = false,
+  }) {
     if (!_active || dt <= 0) return;
 
+    final velocityX = duringDash ? _dashVelocityX : _velocityX;
+    final velocityZ = duringDash ? _dashVelocityZ : _velocityZ;
+    final movementTime = duringDash ? math.min(dt, _dashRemaining) : dt;
     final fromX = _playerPose.translation.x;
     final fromZ = _playerPose.translation.z;
-    final toX = fromX + _velocityX * dt;
-    final toZ = fromZ + _velocityZ * dt;
-    if (ArenaWorldCatalog.isBridgeAt(toX, toZ)) return;
+    final toX = fromX + velocityX * movementTime;
+    final toZ = fromZ + velocityZ * movementTime;
+    if (!ArenaWorldCatalog.isCanalAt(toX, toZ) ||
+        ArenaWorldCatalog.isBridgeAt(toX, toZ)) {
+      return;
+    }
 
     final fromSouth = ArenaWorldCatalog.canalBankZAt(
       fromX,
@@ -263,14 +354,60 @@ class ArenaPhysicsRuntime {
     if (entersOrMovesDeeper) {
       // The canal runs predominantly along X, so Z is its crossing axis.
       // Lateral steering along the bank remains available.
-      _velocityZ = 0;
+      if (duringDash) {
+        _dashVelocityZ = 0;
+        _velocityZ = 0;
+        _dashRemaining = 0;
+      } else {
+        _velocityZ = 0;
+      }
     }
   }
 
-  static double _approach(double value, double target, double amount) {
-    if (value < target) return math.min(target, value + amount);
-    if (value > target) return math.max(target, value - amount);
-    return value;
+  /// Accelerates along a normalized target vector and applies surface-specific
+  /// damping when input is released. The vector clamp avoids faster diagonals
+  /// and keeps turn response consistent at every heading.
+  void _updateMotorVelocity(double dt) {
+    final inputLength = math.sqrt(_moveX * _moveX + _moveZ * _moveZ);
+    if (_active && inputLength > 0.06) {
+      final surfaceSpeed =
+          ArenaWorldCatalog.movementSpeedMultiplierAt(
+        _playerPose.translation.x,
+        _playerPose.translation.z,
+      );
+      final targetSpeed = moveSpeed * surfaceSpeed *
+          math.min(1.0, inputLength);
+      final targetX = _moveX / inputLength * targetSpeed;
+      final targetZ = _moveZ / inputLength * targetSpeed;
+      final deltaX = targetX - _velocityX;
+      final deltaZ = targetZ - _velocityZ;
+      final deltaLength = math.sqrt(deltaX * deltaX + deltaZ * deltaZ);
+      final facingDot = _velocityX * targetX + _velocityZ * targetZ;
+      final reversalBoost = facingDot < -0.05 ? 1.35 : 1.0;
+      final groundedRatio = _grounded ? 1.0 : airAccelerationRatio;
+      final maximumChange =
+          acceleration * reversalBoost * groundedRatio * dt;
+      final blend = deltaLength <= maximumChange || deltaLength <= 1e-6
+          ? 1.0
+          : maximumChange / deltaLength;
+      _velocityX += deltaX * blend;
+      _velocityZ += deltaZ * blend;
+      return;
+    }
+
+    final friction = _active && _grounded
+        ? ArenaWorldCatalog.groundFrictionAt(
+            _playerPose.translation.x,
+            _playerPose.translation.z,
+          )
+        : airFriction;
+    final damping = math.exp(-friction * dt);
+    _velocityX *= damping;
+    _velocityZ *= damping;
+    if (_velocityX * _velocityX + _velocityZ * _velocityZ < 0.004) {
+      _velocityX = 0;
+      _velocityZ = 0;
+    }
   }
 
   /// Teleports only for the explicit respawn transition, never as a side
@@ -299,6 +436,10 @@ class ArenaPhysicsRuntime {
     _velocityX = 0;
     _velocityZ = 0;
     _verticalVelocity = 0;
+    _dashVelocityX = 0;
+    _dashVelocityZ = 0;
+    _dashRemaining = 0;
+    _dashCompletionPending = false;
     _actualHorizontalSpeed = 0;
     _grounded = false;
     _world.step(fixedStep);
@@ -469,26 +610,36 @@ class ArenaPhysicsRuntime {
   }
 
   void _buildCanalBanks() {
-    const spans = <(double, double)>[
-      (-90.0, -40.2), (-31.8, -4.2),
-      (4.2, 31.8), (40.2, 90.0),
-    ];
-    // A continuous high bank face gives the capsule controller a reliable
-    // vertical obstacle even where the baked river edge dips below the field.
-    // The X gaps remain centered on the three bridge corridors.
+    // Generate bank colliders from the same five bridge gaps as the terrain.
+    // Short segments follow the river's curve without sealing crossings.
+    final spans = <(double, double)>[];
+    var cursor = ArenaWorldCatalog.canalStartX;
+    for (final bridgeX in ArenaWorldCatalog.bridgePositions) {
+      final bankEnd = bridgeX - ArenaWorldCatalog.bridgeHalfWidth - 0.18;
+      if (bankEnd > cursor) spans.add((cursor, bankEnd));
+      cursor = bridgeX + ArenaWorldCatalog.bridgeHalfWidth + 0.18;
+    }
+    if (cursor < ArenaWorldCatalog.canalEndX) {
+      spans.add((cursor, ArenaWorldCatalog.canalEndX));
+    }
+
     for (final span in spans) {
-      final centerX = (span.$1 + span.$2) * 0.5;
-      final halfLength = (span.$2 - span.$1) * 0.5;
-      for (final north in [false, true]) {
-        final z = ArenaWorldCatalog.canalBankZAt(
-          centerX,
-          north: north,
-        );
-        _addStaticShape(
-          BoxShape(halfExtents: vm.Vector3(halfLength, 3.0, 0.75)),
-          vm.Vector3(centerX, 1.5, z),
-          label: 'canal_bank_${centerX}_${north ? 'north' : 'south'}',
-        );
+      final segmentCount = math.max(1, ((span.$2 - span.$1) / 8.0).ceil());
+      for (var index = 0; index < segmentCount; index++) {
+        final startX = span.$1 +
+            (span.$2 - span.$1) * index / segmentCount;
+        final endX = span.$1 +
+            (span.$2 - span.$1) * (index + 1) / segmentCount;
+        final centerX = (startX + endX) * 0.5;
+        final halfLength = (endX - startX) * 0.5 + 0.08;
+        for (final north in [false, true]) {
+          final z = ArenaWorldCatalog.canalBankZAt(centerX, north: north);
+          _addStaticShape(
+            BoxShape(halfExtents: vm.Vector3(halfLength, 3.0, 0.75)),
+            vm.Vector3(centerX, 1.5, z),
+            label: 'canal_bank_${centerX}_${north ? 'north' : 'south'}',
+          );
+        }
       }
     }
   }
@@ -529,26 +680,36 @@ class ArenaPhysicsRuntime {
         );
       }
 
-      final access = ArenaWorldCatalog.verticalAccesses.any(
-        (entry) => entry.id == building.$1,
+    }
+    for (final item in ArenaWorldCatalog.interiorFurnitureFootprints) {
+      final room = ArenaWorldCatalog.cityInteriors.firstWhere(
+        (building) => building.$1 == item.$2,
       );
-      final counterX = access ? x - 5.2 : x;
-      final counterZ = access ? z - 2.0 : z + 2.2;
-      final counterHalf = access
-          ? vm.Vector3(1.5, 0.7, 0.7)
-          : vm.Vector3(2.6, 0.7, 0.7);
+      final baseY = ArenaWorldCatalog.navigationHeightAt(
+        room.$2,
+        room.$3,
+      );
+      final halfHeight = switch (item.$1) {
+        'chair' => 0.48,
+        'bench' => 0.44,
+        'shelf' => 0.8,
+        _ => 0.68,
+      };
       _addStaticShape(
-        BoxShape(halfExtents: counterHalf),
-        vm.Vector3(counterX, baseY + counterHalf.y, counterZ),
-        label: '${building.$1}_counter',
+        BoxShape(
+          halfExtents: vm.Vector3(
+            item.$5,
+            halfHeight,
+            item.$6,
+          ),
+        ),
+        vm.Vector3(
+          item.$3,
+          baseY + halfHeight,
+          item.$4,
+        ),
+        label: 'interior_${item.$2}_${item.$1}',
       );
-      if (!access) {
-        _addStaticShape(
-          BoxShape(halfExtents: vm.Vector3(0.55, 0.8, 1.8)),
-          vm.Vector3(x - 7.0, baseY + 0.8, z + 3.2),
-          label: '${building.$1}_shelf',
-        );
-      }
     }
   }
 

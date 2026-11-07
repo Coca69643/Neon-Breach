@@ -2,25 +2,25 @@
 
 ## Direção obrigatória
 
-Projeto Arena é um MOBA 5v5 mobile, não um jogo de sobrevivência. O loop principal é disputa de rotas, combate entre heróis e tropas, controle de estruturas, progressão durante a partida e destruição do núcleo adversário.
+Projeto Arena é um MOBA 5v5 mobile de controle territorial. As rotas mantêm pressão de siege; os seis distritos e o reator central direcionam rotação, recompensas e vantagem estratégica.
 
-## Loop de partida
+## Loop de partida — District Control
 
-1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base da equipe.
-2. As três rotas recebem ondas periódicas de tropas aliadas e adversárias.
-3. Heróis, bots e tropas disputam espaço, experiência, ouro e estruturas.
-4. Torres protegem cada rota; uma torre só pode ser atacada com pressão de tropas aliadas.
-5. Destruir as três torres de uma rota abre o acesso ao núcleo daquela equipe.
-6. A equipe que destrói o núcleo inimigo vence.
+1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base; o próximo slot planejado é um robô sintético humanoide cuja ultimate assume temporariamente uma forma quadrúpede de raposa.
+2. A partida abre com tropas nas rotas e disputa simultânea dos seis distritos.
+3. Bots roamers procuram distritos neutros ou adversários; o bot central contesta o reator.
+4. Capturar um distrito concede ouro, experiência e bônus territorial de 3,5% de dano à equipe.
+5. O reator central mantém seu bônus separado; as tropas continuam necessárias para pressionar estruturas.
+6. Uma rota aberta permite avançar sobre o núcleo; vence a equipe que o destruir.
 
 ## Campo de batalha
 
-- Três rotas: superior, central e inferior, estendidas por um campo urbano de 180 × 140 unidades.
-- Formação sem jungler: distribuição 2–1–2, com flex para reforçar rota.
-- Três torres por rota e por equipe: externas, intermediárias e internas (18 no total).
-- Núcleo de cada equipe.
-- Canal central leste-oeste, três travessias, becos laterais e quatro edifícios de piso térreo com interiores percorríveis; sem acampamentos de selva.
-- Orçamento de tropas ativo limitado a 48 unidades.
+- Arena urbana de 224 × 188 com seis distritos: Distrito Cívico, Reserva Verde, Mercado Central, Pátio Industrial, Estação Intermodal e Orla do Canal.
+- Cinco pontes sobre o canal e ruas secundárias pavimentadas conectam os distritos sem obrigar o jogador a usar três corredores fixos.
+- Quatro consoles neutros de captura; cada distrito controlado concede bônus territorial.
+- Seis interiores ampliados para 24 × 18 unidades, com portas de 6,4 unidades, mobiliário e colisões; dois têm mezaninos.
+- Três linhas de tropas continuam como pressão de siege, enquanto heróis e bots fazem rotação territorial.
+- Núcleo de cada equipe; orçamento ativo limitado a 48 minions.
 
 ## Sistemas de gameplay
 
@@ -59,10 +59,11 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 - Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho. Unidades derrotadas são removidas antes de verificar o limite de 48 tropas, permitindo novas ondas ao longo da partida.
 - Renderização e simulação são separadas: um frame perdido não altera a velocidade lógica da partida.
 - A câmera de combate é traseira e baixa; o arrasto na zona central/direita altera yaw/pitch e o joystick esquerdo altera apenas movimento. A visão estratégica fica no minimapa.
+- O streaming visual carrega apenas props e unidades próximas; o mapa completo continua navegável e representado no minimapa.
 - Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
 - Câmera de combate usa perspectiva 3/4, acompanhando o jogador por trás e um pouco acima; não usar enquadramento de mapa inteiro durante a luta.
 - Configuração atual: follow distance 9.4, look-ahead 3.0, pitch inicial 0.34 rad e FOV vertical 49°; validar enquadramento no Realme C53.
-- Escalas de renderização: herói 1.0, bots 0.86 e minions 0.54–0.58; validar proporção relativa às estruturas no aparelho.
+- Escalas de renderização: herói 1.0, bots 0.98 e minions 0.94–1.02; confirmar a proporção final no aparelho.
 
 ## Estado desta implementação
 
@@ -91,7 +92,7 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 
 ## Arena, câmera, verticalidade e objetivo — revisão 1.7.10
 
-- Footprint 180 × 140, terreno urbano sem rodapé de penhasco.
+- Footprint 224 × 188, terreno urbano sem rodapé de penhasco.
 - Três avenidas em x ≈ -36 / 0 / +36 e z ≈ -70…+70.
 - Quatro interiores com portas, paredes e mobiliário; dois recebem mezaninos com escadas transitáveis. Sem camps ou mecânicas de coleta.
 - Coberturas de entrada são destrutíveis; reator central no cruzamento médio concede bônus de dano por controle territorial.
@@ -114,7 +115,7 @@ Não anunciar gameplay completo enquanto combate, equipamentos, progressão de i
 
 - Quatro distritos internos têm funções visuais distintas: operações, oficina, informação do parque e convivência.
 - Os quarteirões usam fachadas CC0 variadas; ruas recebem semáforos, placas, iluminação, faixas, marquises, floreiras e pontos de praça.
-- Quatro NPCs de serviço seguem patrulhas determinísticas curtas, com caminhada, pausas e animação de interação.
+- Seis NPCs de serviço seguem patrulhas determinísticas curtas, com caminhada, pausas e animação de interação.
 - Um toque no minimapa em terreno acessível envia o aliado de flanco mais próximo a um ponto por oito segundos.
 - A ordem tática é temporária e não cancela combate contra heróis; água, estruturas, paredes e pontos fora do mundo são rejeitados.
 - O reator central mostra visualmente o controle azul/vermelho e o estado contestado por meio de um anel no cenário.

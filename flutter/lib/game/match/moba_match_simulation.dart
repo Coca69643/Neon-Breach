@@ -244,6 +244,19 @@ class MobaTargetSnapshot {
   final double maxHealth;
 }
 
+class MobaDistrictSnapshot {
+  const MobaDistrictSnapshot({
+    required this.id, required this.name, required this.position,
+    required this.control, required this.owner, required this.contested,
+  });
+  final String id;
+  final String name;
+  final MobaPoint position;
+  final double control;
+  final MobaTeam? owner;
+  final bool contested;
+}
+
 class MobaObjectiveSnapshot {
   const MobaObjectiveSnapshot({
     required this.control,
@@ -268,6 +281,9 @@ class MobaMatchSnapshot {
     required this.playerPosition,
     required this.playerHealth,
     required this.playerMaxHealth,
+    required this.playerLastDamageSource,
+    required this.playerLastDamageAmount,
+    required this.playerDamageFeedbackSeconds,
     required this.playerLevel,
     required this.playerXp,
     required this.xpForNextLevel,
@@ -278,6 +294,7 @@ class MobaMatchSnapshot {
     required this.playerMoving,
     required this.playerAttackSeconds,
     required this.playerHitConfirmSeconds,
+    required this.playerSkillPulseSeconds,
     required this.playerFacingX,
     required this.playerFacingZ,
     required this.blueTeamKills,
@@ -294,6 +311,7 @@ class MobaMatchSnapshot {
     required this.minions,
     required this.towers,
     required this.covers,
+    required this.districts,
     required this.centralObjective,
     required this.selectedTarget,
     required this.teamPingTarget,
@@ -306,6 +324,9 @@ class MobaMatchSnapshot {
   final MobaPoint playerPosition;
   final double playerHealth;
   final double playerMaxHealth;
+  final String? playerLastDamageSource;
+  final double playerLastDamageAmount;
+  final double playerDamageFeedbackSeconds;
   final int playerLevel;
   final double playerXp;
   final double xpForNextLevel;
@@ -316,6 +337,7 @@ class MobaMatchSnapshot {
   final bool playerMoving;
   final double playerAttackSeconds;
   final double playerHitConfirmSeconds;
+  final double playerSkillPulseSeconds;
   final double playerFacingX;
   final double playerFacingZ;
   final int blueTeamKills;
@@ -332,6 +354,7 @@ class MobaMatchSnapshot {
   final List<MobaMinionSnapshot> minions;
   final List<MobaTowerSnapshot> towers;
   final List<MobaCoverSnapshot> covers;
+  final List<MobaDistrictSnapshot> districts;
   final MobaObjectiveSnapshot centralObjective;
   final MobaTargetSnapshot? selectedTarget;
   final MobaPoint? teamPingTarget;
@@ -433,6 +456,14 @@ class _Cover {
   bool get alive => health > 0;
 }
 
+class _DistrictControlPoint {
+  _DistrictControlPoint({required this.id, required this.name, required this.position});
+  final String id;
+  final String name;
+  final MobaPoint position;
+  final MobaObjectiveControl control = MobaObjectiveControl();
+}
+
 class MobaMatchSimulation {
   MobaMatchSimulation({
     required this.heroId,
@@ -465,12 +496,23 @@ class MobaMatchSimulation {
   static const double _targetCycleRange = 24.0;
   static const MobaPoint _objectivePosition = MobaPoint(0, 0);
   static const double objectiveRadius = 8.0;
+  static const double districtRadius = 7.5;
   final MobaObjectiveControl _objective = MobaObjectiveControl();
+  final List<_DistrictControlPoint> _districts = [
+    for (final site in ArenaWorldCatalog.districtSites)
+      _DistrictControlPoint(id: site.$1, name: site.$2,
+        position: MobaPoint(site.$3, site.$4)),
+  ];
 
   MobaTeam? get _objectiveOwner => _objective.owner;
 
+  double _districtDamageMultiplier(MobaTeam team) =>
+      1.0 + 0.035 * _districts
+          .where((district) => district.control.owner == team).length;
+
   double _objectiveDamageMultiplier(MobaTeam attackingTeam) =>
-      _objectiveOwner == attackingTeam ? 1.12 : 1.0;
+      (_objectiveOwner == attackingTeam ? 1.12 : 1.0) *
+      _districtDamageMultiplier(attackingTeam);
   final List<double> _coreHealth = [coreMaxHealth, coreMaxHealth];
   final List<double> _teamKills = [0, 0];
   final List<double> _teamGold = [500, 500];
@@ -480,11 +522,17 @@ class MobaMatchSimulation {
   double _elapsed = 0;
   double _playerHealth = playerMaxHealthBase;
   double _playerMaxHealth = playerMaxHealthBase;
+  String? _playerLastDamageSource;
+  double _playerLastDamageAmount = 0;
+  double _playerDamageFeedbackSeconds = 0;
   double _playerRespawn = 0;
   double _playerAttackCooldown = 0;
   double _playerAttackPulseSeconds = 0;
   double _playerHitConfirmSeconds = 0;
+  double _playerSkillPulseSeconds = 0;
   double _playerSkillCooldown = 0;
+  double _playerFacingLockSeconds = 0;
+  MobaPoint? _pendingPhysicsDash;
   double _playerShieldTime = 0;
   double _playerXp = 0;
   double _playerGold = 500;
@@ -501,6 +549,33 @@ class MobaMatchSimulation {
   String? _teamPingBotId;
 
   MobaMatchSnapshot get snapshot => _makeSnapshot();
+
+  /// Transfers a requested dash to the authoritative Rapier body exactly once.
+  MobaPoint? consumePhysicsDashRequest() {
+    final request = _pendingPhysicsDash;
+    _pendingPhysicsDash = null;
+    return request;
+  }
+
+  /// Applies Kairo's dash contact only at the final Rapier-resolved position.
+  void resolvePhysicsDashAt(MobaPoint resolvedPosition) {
+    if (heroId != MobaHeroId.kairo ||
+        !resolvedPosition.x.isFinite ||
+        !resolvedPosition.z.isFinite ||
+        !resolvedPosition.elevation.isFinite ||
+        _winner != null ||
+        _playerHealth <= 0 ||
+        _playerRespawn > 0) {
+      return;
+    }
+    _playerPosition = resolvedPosition;
+    final target = _nearestBot(
+      resolvedPosition,
+      MobaTeam.red,
+      maxRange: 3.0,
+    );
+    if (target != null) _damageBot(target, MobaTeam.blue, 72);
+  }
 
   int get activeMinionCount => _minions.where((unit) => unit.alive).length;
   int get activeBotCount => _bots.where((bot) => bot.alive).length;
@@ -582,6 +657,9 @@ class MobaMatchSimulation {
     _bots.clear();
     _towers.clear();
     _objective.reset();
+    for (final district in _districts) {
+      district.control.reset();
+    }
     _selectedTargetKey = null;
     _covers
       ..clear()
@@ -601,11 +679,15 @@ class MobaMatchSimulation {
     _accumulator = 0;
     _playerHealth = playerMaxHealthBase;
     _playerMaxHealth = playerMaxHealthBase;
+    _playerLastDamageSource = null;
+    _playerLastDamageAmount = 0;
+    _playerDamageFeedbackSeconds = 0;
     _playerRespawn = 0;
     _playerAttackCooldown = 0;
     _playerAttackPulseSeconds = 0;
     _playerHitConfirmSeconds = 0;
     _playerSkillCooldown = 0;
+    _playerFacingLockSeconds = 0;
     _playerShieldTime = 0;
     _playerXp = 0;
     _playerGold = 500;
@@ -655,9 +737,15 @@ class MobaMatchSimulation {
       MobaHeroId.lyra => 3,
     };
 
+    final visibleAllyRole = List<int>.generate(roleLanes.length, (index) => index)
+        .firstWhere((role) => role != occupiedRole);
+
     for (var role = 0; role < roleLanes.length; role++) {
       if (role == occupiedRole) continue;
       final lane = roleLanes[role];
+      final position = _spawnPosition == null && role == visibleAllyRole
+          ? MobaPoint(_playerPosition.x + 5.5, _playerPosition.z + 2.0)
+          : _botSpawnPosition(MobaTeam.blue, lane, role);
       _bots.add(
         _Bot(
           id: 'blue_bot_$role',
@@ -666,7 +754,7 @@ class MobaMatchSimulation {
           role: role,
           heroId: _heroForRole(role),
           visualId: _visualForBot(MobaTeam.blue, role),
-          position: _botSpawnPosition(MobaTeam.blue, lane, role),
+          position: position,
         ),
       );
     }
@@ -853,8 +941,14 @@ class MobaMatchSimulation {
     _playerAttackCooldown = math.max(0, _playerAttackCooldown - dt);
     _playerAttackPulseSeconds =
         math.max(0, _playerAttackPulseSeconds - dt);
+    _playerFacingLockSeconds =
+        math.max(0, _playerFacingLockSeconds - dt);
     _playerHitConfirmSeconds =
         math.max(0, _playerHitConfirmSeconds - dt);
+    _playerDamageFeedbackSeconds =
+        math.max(0, _playerDamageFeedbackSeconds - dt);
+    _playerSkillPulseSeconds =
+        math.max(0, _playerSkillPulseSeconds - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
     _playerShieldTime = math.max(0, _playerShieldTime - dt);
     final wasRespawning = _playerRespawn > 0;
@@ -871,13 +965,14 @@ class MobaMatchSimulation {
       _playerMoving = false;
       _lastMoveX = 0;
       _lastMoveZ = 1;
+      _playerFacingLockSeconds = 0;
       _playerShieldTime = 1.4;
     }
 
     if (_playerRespawn <= 0) {
       _playerMoving = moveX.abs() >= 0.06 || moveZ.abs() >= 0.06;
       if (externalPlayerMovement) {
-        if (_playerMoving) {
+        if (_playerMoving && _playerFacingLockSeconds <= 0) {
           final length = math.sqrt(moveX * moveX + moveZ * moveZ);
           if (length > 1e-6) {
             _lastMoveX = moveX / length;
@@ -888,13 +983,16 @@ class MobaMatchSimulation {
         _movePlayer(moveX, moveZ, dt);
       }
       if (basicAttack && _playerAttackCooldown <= 0) _playerAttack();
-      if (castSkill && _playerSkillCooldown <= 0) _castHeroSkill();
+      if (castSkill && _playerSkillCooldown <= 0) {
+        _castHeroSkill(externalPlayerMovement: externalPlayerMovement);
+      }
     }
 
     _updateWaves(dt);
     _updateMinions(dt);
     _updateBots(dt);
     _updateCentralObjective(dt);
+    _updateDistricts(dt);
     _updateTowers(dt);
     _checkWinner();
   }
@@ -912,7 +1010,7 @@ class MobaMatchSimulation {
     _playerPosition = position;
     if (!ArenaWorldCatalog.contains(position.x, position.z) ||
         position.elevation < -2.2) {
-      _damagePlayer(_playerHealth);
+      _damagePlayer(_playerHealth, source: 'Queda fora do mapa');
       _playerMoving = false;
     }
   }
@@ -927,8 +1025,10 @@ class MobaMatchSimulation {
     final length = math.sqrt(x * x + z * z);
     final nx = length > 1 ? x / length : x;
     final nz = length > 1 ? z / length : z;
-    _lastMoveX = nx;
-    _lastMoveZ = nz;
+    if (_playerFacingLockSeconds <= 0) {
+      _lastMoveX = nx;
+      _lastMoveZ = nz;
+    }
     _tryMovePlayer(nx * playerMoveSpeed * dt, nz * playerMoveSpeed * dt);
   }
 
@@ -991,6 +1091,7 @@ class MobaMatchSimulation {
     final selectedTarget = _selectedTargetSnapshot();
     if (selectedTarget != null &&
         _playerPosition.distanceTo(selectedTarget.position) <= heroId.basicRange) {
+      _facePlayerToward(selectedTarget.position);
       if (selectedTarget.kind == 'HERO') {
         for (final bot in _bots) {
           if ('bot:${bot.id}' != selectedTarget.id) continue;
@@ -1016,6 +1117,7 @@ class MobaMatchSimulation {
       maxRange: heroId.basicRange,
     );
     if (enemyBot != null) {
+      _facePlayerToward(enemyBot.position);
       _damageBot(enemyBot, MobaTeam.blue, damage);
       _confirmPlayerHit();
       return;
@@ -1023,6 +1125,7 @@ class MobaMatchSimulation {
 
     final cover = _nearestCover(_playerPosition, heroId.basicRange);
     if (cover != null) {
+      _facePlayerToward(cover.position);
       cover.health = math.max(0, cover.health - damage);
       if (!cover.alive) _playerGold += 28;
       _confirmPlayerHit();
@@ -1036,6 +1139,7 @@ class MobaMatchSimulation {
       maxRange: heroId.basicRange,
     );
     if (minion != null) {
+      _facePlayerToward(minion.position);
       _damageMinion(minion, MobaTeam.blue, damage);
       _confirmPlayerHit();
       return;
@@ -1045,6 +1149,7 @@ class MobaMatchSimulation {
     if (tower != null &&
         _playerPosition.distanceTo(tower.position) <= heroId.basicRange &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
+      _facePlayerToward(tower.position);
       _damageTower(tower, MobaTeam.blue, damage);
       _confirmPlayerHit();
       return;
@@ -1052,16 +1157,28 @@ class MobaMatchSimulation {
 
     if (_laneOpen(MobaTeam.red, lane) &&
         _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= heroId.basicRange + 0.8) {
+      _facePlayerToward(_corePosition(MobaTeam.red));
       _damageCore(MobaTeam.red, damage, lane);
       _confirmPlayerHit();
     }
+  }
+
+  void _facePlayerToward(MobaPoint target) {
+    final dx = target.x - _playerPosition.x;
+    final dz = target.z - _playerPosition.z;
+    final length = math.sqrt(dx * dx + dz * dz);
+    if (length <= 1e-4) return;
+    _lastMoveX = dx / length;
+    _lastMoveZ = dz / length;
+    _playerFacingLockSeconds = 0.46;
   }
 
   void _confirmPlayerHit() {
     _playerHitConfirmSeconds = 0.22;
   }
 
-  void _castHeroSkill() {
+  void _castHeroSkill({required bool externalPlayerMovement}) {
+    _playerSkillPulseSeconds = 0.82;
     switch (heroId) {
       case MobaHeroId.lyra:
         _playerHealth = math.min(_playerMaxHealth, _playerHealth + 76);
@@ -1073,23 +1190,35 @@ class MobaMatchSimulation {
         }
       case MobaHeroId.bastion:
         _playerShieldTime = 2.8;
+        _playerAttackPulseSeconds = math.max(_playerAttackPulseSeconds, 0.42);
         final target = _nearestBot(
           _playerPosition,
           MobaTeam.red,
           maxRange: 3.4,
         );
-        if (target != null) _damageBot(target, MobaTeam.blue, 68);
+        if (target != null) {
+          _facePlayerToward(target.position);
+          _damageBot(target, MobaTeam.blue, 68);
+        }
       case MobaHeroId.kairo:
         final length = math.sqrt(_lastMoveX * _lastMoveX + _lastMoveZ * _lastMoveZ);
         final dx = length > 0 ? _lastMoveX / length : 0;
         final dz = length > 0 ? _lastMoveZ / length : 1;
-        _tryMovePlayer(dx * 5, dz * 5, allowAxisSlide: false);
-        final target = _nearestBot(
-          _playerPosition,
-          MobaTeam.red,
-          maxRange: 3.0,
-        );
-        if (target != null) _damageBot(target, MobaTeam.blue, 72);
+        final dashX = dx * 5.0;
+        final dashZ = dz * 5.0;
+        if (externalPlayerMovement) {
+          // Rapier resolves the burst against the live collision world.
+          // Hit resolution waits for the actual collision-resolved endpoint.
+          _pendingPhysicsDash = MobaPoint(dashX, dashZ);
+        } else {
+          _tryMovePlayer(dashX, dashZ, allowAxisSlide: false);
+          final target = _nearestBot(
+            _playerPosition,
+            MobaTeam.red,
+            maxRange: 3.0,
+          );
+          if (target != null) _damageBot(target, MobaTeam.blue, 72);
+        }
     }
     _playerSkillCooldown = 9.0;
   }
@@ -1203,7 +1332,7 @@ class MobaMatchSimulation {
           _moveMinion(minion, _playerPosition, 2.35, dt);
         } else if (minion.attackCooldown <= 0) {
           _markMinionAttack(minion, _playerPosition);
-          _damagePlayer(minion.ranged ? 7 : 10);
+          _damagePlayer(minion.ranged ? 7 : 10, source: 'Tropa inimiga');
           minion.attackCooldown = 1.0;
         }
         continue;
@@ -1377,15 +1506,27 @@ class MobaMatchSimulation {
     return bot.position.distanceTo(waypoint) > 3.2 ? waypoint : null;
   }
 
+  MobaPoint? _botDistrictWaypoint(_Bot bot) {
+    if (bot.role != 4) return null;
+    _DistrictControlPoint? nearest;
+    var nearestDistance = double.infinity;
+    for (final district in _districts) {
+      if (district.control.owner == bot.team) continue;
+      final distance = bot.position.distanceTo(district.position);
+      if (distance < nearestDistance) {
+        nearest = district;
+        nearestDistance = distance;
+      }
+    }
+    return nearest?.position;
+  }
+
   MobaPoint _botRouteWaypoint(_Bot bot, MobaPoint laneGoal) {
-    // The middle role rotates through the central relay instead of remaining
-    // locked to one straight lane. Side roles take a flank waypoint first.
-    if (bot.role == 2 &&
-        _objectiveOwner != bot.team &&
+    if (bot.role == 2 && _objectiveOwner != bot.team &&
         bot.position.distanceTo(_objectivePosition) > objectiveRadius + 2.0) {
       return _objectivePosition;
     }
-    return _botFlankWaypoint(bot) ?? laneGoal;
+    return _botDistrictWaypoint(bot) ?? _botFlankWaypoint(bot) ?? laneGoal;
   }
 
   void _updateBots(double dt) {
@@ -1424,7 +1565,7 @@ class MobaMatchSimulation {
           _moveBot(bot, _playerPosition, 3.15, dt);
         } else if (bot.attackCooldown <= 0) {
           _markBotAttack(bot, _playerPosition);
-          _damagePlayer(10);
+          _damagePlayer(10, source: 'Herói inimigo');
           bot.attackCooldown = 1.05;
         }
         continue;
@@ -1470,6 +1611,16 @@ class MobaMatchSimulation {
       final flankWaypoint = _botFlankWaypoint(bot);
       if (flankWaypoint != null) {
         _moveBot(bot, flankWaypoint, 2.9, dt);
+        continue;
+      }
+
+      final districtWaypoint = _botDistrictWaypoint(bot);
+      if (districtWaypoint != null) {
+        if (bot.position.distanceTo(districtWaypoint) > districtRadius - 1.0) {
+          _moveBot(bot, districtWaypoint, 3.0, dt);
+        } else {
+          bot.moving = false;
+        }
         continue;
       }
 
@@ -1561,7 +1712,7 @@ class MobaMatchSimulation {
       if (tower.team == MobaTeam.red &&
           _playerRespawn <= 0 &&
           _playerPosition.distanceTo(tower.position) <= 7.8) {
-        _damagePlayer(12);
+        _damagePlayer(12, source: 'Torre inimiga');
         tower.attackCooldown = 1.0;
       }
     }
@@ -1621,6 +1772,28 @@ class MobaMatchSimulation {
     if (capturedTeam != null) {
       _awardGold(capturedTeam, 150);
       _awardXp(capturedTeam, 90);
+    }
+  }
+
+  void _updateDistricts(double dt) {
+    for (final district in _districts) {
+      var blue = 0.0;
+      var red = 0.0;
+      bool inside(MobaPoint point) => point.distanceTo(district.position) <= districtRadius;
+      if (_playerRespawn <= 0 && inside(_playerPosition)) blue += 2.0;
+      for (final bot in _bots.where((unit) => unit.alive)) {
+        if (!inside(bot.position)) continue;
+        if (bot.team == MobaTeam.blue) { blue += 1.5; } else { red += 1.5; }
+      }
+      for (final minion in _minions.where((unit) => unit.alive)) {
+        if (!inside(minion.position)) continue;
+        if (minion.team == MobaTeam.blue) { blue += 0.35; } else { red += 0.35; }
+      }
+      final capturedTeam = district.control.update(dt, blue: blue, red: red);
+      if (capturedTeam != null) {
+        _awardGold(capturedTeam, 95);
+        _awardXp(capturedTeam, 60);
+      }
     }
   }
 
@@ -1779,9 +1952,10 @@ class MobaMatchSimulation {
 
   double _xpThreshold(int level) => 220 + (level - 1) * 85.0;
 
-  void _damagePlayer(double damage) {
+  void _damagePlayer(double damage, {required String source}) {
     // Ignore additional hits during the death/respawn window.
     if (_playerRespawn > 0 || _playerHealth <= 0) return;
+    final healthBeforeHit = _playerHealth;
     final mitigation = _playerShieldTime > 0 ? 0.58 : 1.0;
     final objectiveMultiplier =
         _objectiveDamageMultiplier(MobaTeam.red);
@@ -1789,6 +1963,9 @@ class MobaMatchSimulation {
       0,
       _playerHealth - damage * mitigation * objectiveMultiplier,
     );
+    _playerLastDamageAmount = healthBeforeHit - _playerHealth;
+    _playerLastDamageSource = source;
+    _playerDamageFeedbackSeconds = 2.6;
     if (_playerHealth <= 0) {
       _playerHealth = 0;
       _playerRespawn = 5;
@@ -1912,6 +2089,9 @@ class MobaMatchSimulation {
       playerPosition: _playerPosition,
       playerHealth: _playerHealth,
       playerMaxHealth: _playerMaxHealth,
+      playerLastDamageSource: _playerLastDamageSource,
+      playerLastDamageAmount: _playerLastDamageAmount,
+      playerDamageFeedbackSeconds: _playerDamageFeedbackSeconds,
       playerLevel: _playerLevel,
       playerXp: _playerXp,
       xpForNextLevel: currentThreshold,
@@ -1922,6 +2102,7 @@ class MobaMatchSimulation {
       playerMoving: _playerMoving,
       playerAttackSeconds: _playerAttackPulseSeconds,
       playerHitConfirmSeconds: _playerHitConfirmSeconds,
+      playerSkillPulseSeconds: _playerSkillPulseSeconds,
       playerFacingX: _lastMoveX,
       playerFacingZ: _lastMoveZ,
       blueTeamKills: _teamKills[MobaTeam.blue.index].toInt(),
@@ -1942,6 +2123,14 @@ class MobaMatchSimulation {
       minions: List.unmodifiable(minions),
       towers: List.unmodifiable(towers),
       covers: List.unmodifiable(covers),
+      districts: List.unmodifiable([
+        for (final district in _districts)
+          MobaDistrictSnapshot(
+            id: district.id, name: district.name, position: district.position,
+            control: district.control.control, owner: district.control.owner,
+            contested: district.control.contested,
+          ),
+      ]),
       centralObjective: MobaObjectiveSnapshot(
         control: _objective.control,
         owner: _objective.owner,

@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.7.10 / 72
+- versionName/versionCode: 1.8.0 / 73
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -20,12 +20,12 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - PBR com iluminação de ambiente controlada e materiais bem trabalhados.
 - Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
 - Meta inicial: 30 FPS sustentados no Realme C53.
-- Arena urbana 180 × 140, com três avenidas, quatro edifícios de piso térreo acessíveis, interiores, ruas e cruzamentos.
+- Arena urbana 224 × 188, com seis distritos, três avenidas de siege, seis edifícios acessíveis, ruas secundárias e cinco travessias do canal.
 - Distritos com silhuetas comerciais distintas, sinalização/iluminação de rua, praças laterais, árvores grandes e mobiliário urbano CC0.
-- Navegação com colisão de paredes/mobiliário, portas, três travessias do canal e duas escadas que conectam mezaninos com elevação real.
+- Navegação com colisão de paredes/mobiliário, portas, cinco travessias do canal e duas escadas que conectam mezaninos com elevação real.
 - Câmera de ação aproximada com arrasto independente por pointer tracking na zona central/direita; joystick esquerdo reservado exclusivamente ao movimento.
-- Implementado nesta revisão: seleção touch de alvo, HUD contextual e confirmação visual apenas em acerto. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
-- Escalas de leitura: herói 1.0, bots 0.86, minions 0.54–0.58.
+- Implementado nesta revisão: seleção touch de alvo, HUD contextual, confirmação de acerto, locomoção walk/run vinculada à velocidade Rapier e rotação do herói para o alvo durante ataques. Próximas prioridades: loja/itens MOBA, efeitos de impacto por classe de ataque e validação física no aparelho.
+- Escalas de leitura: herói 1.0, bots 0.98, minions 0.94–1.02.
 - LOD, instancing, culling e limites de partículas/transparências fazem parte do orçamento mobile.
 
 ## Identidade e assinatura Android
@@ -42,13 +42,13 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Validação do manifesto offline: implementada.
 - Dependência Flutter Scene: fixada em 0.24.3.
 - Build hook e pré-processamento de modelos/materiais: implementados.
-- Menu principal em hub 3D de tela cheia: Torre do Firmamento central, ilha suspensa, mar magenta, portal e nuvens; ações distribuídas nas bordas.
+- Menu principal com fundo ilustrado 2D em `CustomPainter`; leve, estático e sem instanciar a cena 3D de gameplay.
 - `HERÓIS` abre o seletor independente; `ASCENDER` abre a prévia atual; Baús, Desafios e Mercador aparecem bloqueados até seus sistemas existirem.
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
-- Hub original `arena_menu_hub.glb` gerado offline por `tool/prepare_menu_hub.py`, com torre, portal, ilha, água, fragmentos flutuantes e nuvens.
-- Mapa urbano expandido: 180 × 140 unidades, três avenidas, canal central, três travessias, becos e quatro interiores acessíveis.
+- A ilustração 2D do menu mantém a identidade da torre; modelos 3D urbanos são carregados exclusivamente na gameplay.
+- Mapa District Control: 224 × 188, seis distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e seis interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
 - MATCH_LOADING cria uma partida MOBA com herói, bots, minions, torres, HUD touch e minimapa.
@@ -56,10 +56,12 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Coberturas CC0 nas entradas recebem dano; destruí-las remove a colisão e abre a passagem.
 - Reator central capturável/contestável; equipe controladora recebe +12% de dano e recompensa inicial.
 - Armas CC0 distintas de Lyra, Bastion e Kairo anexadas ao rig; bots, tropas e NPCs usam seis aparências CC0 independentes dos heróis selecionáveis.
-- Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado.
+- Joystick relativo à câmera; perspectiva baixa traseira com follow suavizado e balanço sutil proporcional à velocidade física.
+- Locomoção com aceleração, frenagem, tração por superfície, colisão de cápsula e passo fixo Rapier a 60 Hz. Bastion usa golpe pesado próprio; Lyra e Kairo mantêm cortes de espada distintos.
+- Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.7.10+72: cidade com fachadas e adereços CC0 variados, interiores diferenciados, patrulha de NPCs, comando tático por minimapa e anel de controle do reator. CI validou análise, testes, build ARM64, assets do pacote e assinatura; upload/release não são permitidos na branch de desenvolvimento. Teste físico e desempenho sustentado no Realme C53 continuam pendentes.
+- Build 1.8.0+73: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
@@ -67,7 +69,6 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 cd flutter
 python3 -m pip install -r tool/requirements-world.txt
 python3 tool/prepare_world_assets.py
-python3 tool/prepare_menu_hub.py
 python3 tool/prepare_hero_assets.py
 python3 tool/prepare_city_assets.py
 python3 tool/prepare_npc_assets.py

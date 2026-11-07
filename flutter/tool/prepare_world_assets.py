@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bake a broad urban MOBA district with roads, alleys and a central canal.
+"""Bake the irregular six-district Project Arena battlefield.
 
-The offline GLB has a 180 × 140 urban footprint, three avenues, a straight canal,
-three walkable crossings and eight alternate alley approaches.
+The offline GLB has a 224 × 188 navigable footprint, a curved canal with five
+crossings, three combat corridors, six enterable interiors and side routes.
 """
 from __future__ import annotations
 
@@ -21,20 +21,27 @@ FLUTTER_ASSETS = ROOT / "flutter" / "assets" / "world"
 NATURE_SOURCE = ROOT / "app/src/main/assets/world/nature"
 TERRAIN_SOURCE = ROOT / "app/src/main/assets/world/terrain"
 WORLD_SCALE = 1.0
-# A large urban combat district: 180 x 140 world units.
-HALF_X = 90.0
-HALF_Z = 70.0
-GRID_X = 180
-GRID_Z = 140
-CORNER_RADIUS = 10.0
+# Expanded six-district combat footprint; polygon is mirrored in Dart.
+HALF_X = 112.0
+HALF_Z = 94.0
+GRID_X = 224
+GRID_Z = 188
+WORLD_BOUNDARY = [
+    (-72.0, -86.0), (-40.0, -92.0), (8.0, -89.0), (48.0, -93.0),
+    (82.0, -84.0), (101.0, -69.0), (109.0, -44.0), (104.0, -17.0),
+    (111.0, 10.0), (104.0, 37.0), (91.0, 60.0), (71.0, 82.0),
+    (42.0, 87.0), (8.0, 82.0), (-24.0, 88.0), (-56.0, 82.0),
+    (-82.0, 70.0), (-101.0, 48.0), (-108.0, 22.0), (-103.0, -6.0),
+    (-109.0, -34.0), (-97.0, -62.0), (-84.0, -78.0),
+]
+BRIDGES = (-72.0, -36.0, 0.0, 36.0, 72.0)
 
-# A narrow east-west city canal separates districts; all three main avenues
-# cross it at raised pedestrian/vehicle crossings.
+# Meandering canal follows the edge between the six city districts.
 RIVER = [
-    (-90.0, 0.0, 1.55), (-60.0, 0.2, 1.85),
-    (-30.0, -0.15, 2.05), (0.0, 0.1, 2.15),
-    (30.0, -0.1, 2.05), (60.0, 0.15, 1.85),
-    (90.0, 0.0, 1.55),
+    (-90.0, -4.0, 1.55), (-60.0, -2.0, 1.85),
+    (-30.0, 1.5, 2.05), (0.0, 0.5, 2.15),
+    (30.0, -1.5, 2.05), (60.0, 1.8, 1.85),
+    (90.0, 3.0, 1.55),
 ]
 LANES = [
     [(-36.0, -70), (-36.5, -52), (-35.8, -35), (-36.2, -18),
@@ -45,8 +52,7 @@ LANES = [
      (35.8, 0), (36.2, 18), (35.8, 35), (36.5, 52), (36.0, 70)],
 ]
 
-# District connectors form real alternate routes between the avenues and
-# the four ground-floor interiors; they are navigation paths, not resource loops.
+# Curved connectors lead from the three main combat corridors to six buildings.
 ACCESS_PATHS = [
     [(-36, -36), (-46, -36), (-56, -36), (-64, -36)],
     [(36, -36), (46, -36), (56, -36), (64, -36)],
@@ -56,7 +62,27 @@ ACCESS_PATHS = [
     [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
     [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
     [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
+    [(-36, -18), (-52, -18), (-70, -18), (-88, -18)],
+    [(36, 18), (52, 18), (70, 18), (88, 18)],
+    [(-92, -40), (-92, -24), (-88, -18)],
+    [(92, 40), (92, 24), (88, 18)],
+    [(-88, -18), (-92, -4), (-92, 12), (-76, 24), (-64, 36)],
+    [(88, 18), (92, 4), (92, -12), (76, -24), (64, -36)],
 ]
+
+SIDE_APPROACH_ANCHORS = [
+    (-58.0, -38.0), (58.0, -38.0),
+    (-58.0, 38.0), (58.0, 38.0),
+    (-68.0, -12.0), (68.0, -12.0),
+    (-68.0, 12.0), (68.0, 12.0),
+    (-92.0, -30.0), (92.0, 30.0),
+    (-92.0, 30.0), (92.0, -30.0),
+    (-72.0, -72.0), (72.0, 72.0),
+    (-42.0, 76.0), (42.0, -76.0),
+]
+ASPHALT_SURFACE_LIFT = 0.11
+ASPHALT_CROWN_LIFT = 0.025
+CONCRETE_SURFACE_LIFT = 0.16
 
 
 def lerp(a: float, b: float, t: float) -> float:
@@ -87,7 +113,7 @@ def river_half_width(x: float) -> float:
 
 
 def height(x: float, z: float) -> float:
-    # Broad urban grade with shallow drainage to the canal; no island cliffs.
+    # Continuous base terrain; paved roads and sidewalks are separate raised overlays.
     rolling = (
         0.045 * math.sin(x * 0.085) * math.cos(z * 0.072)
         + 0.028 * math.sin((x + z) * 0.12)
@@ -101,10 +127,7 @@ def height(x: float, z: float) -> float:
     curb_bank = 0.12 * math.exp(
         -((river_distance - river_width - 0.75) ** 2) / 2.8
     )
-    road_drain = -0.035 * math.exp(
-        -(lane_distance(x, z) ** 2) / 9.0
-    )
-    return rolling + canal_bed + curb_bank + road_drain
+    return rolling + canal_bed + curb_bank
 
 
 def normal_at(x: float, z: float) -> tuple[float, float, float]:
@@ -117,13 +140,20 @@ def normal_at(x: float, z: float) -> tuple[float, float, float]:
 
 
 def inside_island(x: float, z: float) -> bool:
-    # Flat-sided rounded rectangle; gameplay, Rapier terrain and rendered
-    # terrain now share the same district footprint instead of an oval edge.
+    # Ray casting over the same irregular polygon as ArenaWorldCatalog.contains.
     if abs(x) > HALF_X or abs(z) > HALF_Z:
         return False
-    corner_x = max(0.0, abs(x) - (HALF_X - CORNER_RADIUS))
-    corner_z = max(0.0, abs(z) - (HALF_Z - CORNER_RADIUS))
-    return corner_x * corner_x + corner_z * corner_z <= CORNER_RADIUS ** 2 + 1e-6
+    inside = False
+    j = len(WORLD_BOUNDARY) - 1
+    for i, (xi, zi) in enumerate(WORLD_BOUNDARY):
+        xj, zj = WORLD_BOUNDARY[j]
+        crosses = ((zi > z) != (zj > z)) and (
+            x < (xj - xi) * (z - zi) / (zj - zi) + xi
+        )
+        if crosses:
+            inside = not inside
+        j = i
+    return inside
 
 
 def point_segment_distance(px: float, pz: float, a: tuple[float, float],
@@ -317,12 +347,12 @@ def build_terrain_glb(output: Path) -> None:
     normals: list[float] = []
     texcoords: list[float] = []
     groups: dict[str, list[int]] = {
-        "grass": [], "moss": [], "soil": [], "rock": [], "water": [],
-        "stone": [], "accent_blue": [], "accent_gold": [],
+        "grass": [], "moss": [], "asphalt": [], "concrete": [], "water": [],
+        "stone": [], "accent_blue": [], "accent_gold": [], "markings": [],
     }
     material_names = [
-        "grass", "moss", "soil", "rock", "water",
-        "stone", "accent_blue", "accent_gold",
+        "grass", "moss", "asphalt", "concrete", "water",
+        "stone", "accent_blue", "accent_gold", "markings",
     ]
     vertex_rows = GRID_X + 1
 
@@ -355,6 +385,35 @@ def build_terrain_glb(output: Path) -> None:
             groups[group_name].extend((base, base + 1, base + 2,
                                        base, base + 2, base + 3))
 
+    raised_vertex_cache: dict[tuple[int, int], int] = {}
+
+    def add_raised_surface_cell(
+        group_name: str,
+        base_indices: tuple[int, int, int, int],
+        lift: float,
+    ) -> None:
+        # Reuse vertices for equal millimeter-quantized lifts.
+        lift_mm = round(lift * 1000.0)
+        raised_indices = []
+        for source_index in base_indices:
+            cache_key = (source_index, lift_mm)
+            target_index = raised_vertex_cache.get(cache_key)
+            if target_index is None:
+                source_offset = source_index * 3
+                source_uv = source_index * 2
+                target_index = len(positions) // 3
+                raised_vertex_cache[cache_key] = target_index
+                positions.extend((
+                    positions[source_offset],
+                    positions[source_offset + 1] + lift,
+                    positions[source_offset + 2],
+                ))
+                normals.extend(normals[source_offset:source_offset + 3])
+                texcoords.extend(texcoords[source_uv:source_uv + 2])
+            raised_indices.append(target_index)
+        a, b, c, d = raised_indices
+        groups[group_name].extend((a, c, b, b, c, d))
+
     for zi in range(GRID_Z + 1):
         z = -HALF_Z + (2.0 * HALF_Z * zi / GRID_Z)
         for xi in range(GRID_X + 1):
@@ -377,7 +436,11 @@ def build_terrain_glb(output: Path) -> None:
 
             river_distance = abs(cz - river_center_z(cx))
             river_width = river_half_width(cx)
-            if river_distance < river_width + 1.0 and abs(cx) < 57.0:
+            on_bridge = (
+                river_distance < river_width + 3.0
+                and any(abs(cx - bridge_x) <= 2.2 for bridge_x in BRIDGES)
+            )
+            if river_distance < river_width + 1.0 and not on_bridge:
                 continue
 
             nx, _, nz = normal_at(cx, cz)
@@ -390,10 +453,23 @@ def build_terrain_glb(output: Path) -> None:
                 for i in range(len(path) - 1)
             )
 
-            if lane_dist < 4.8 or access_dist < 3.0:
-                material = "soil"
-            elif river_distance < river_width + 2.8:
-                material = "rock"
+            anchor_concrete = any(
+                (cx - anchor_x) ** 2 + (cz - anchor_z) ** 2 <= 3.2 ** 2
+                for anchor_x, anchor_z in SIDE_APPROACH_ANCHORS
+            )
+            if on_bridge:
+                material = "moss" if (
+                    math.sin(cx * 0.11 - cz * 0.17)
+                    + math.cos(cx * 0.19 + cz * 0.13) < -0.55
+                ) else "grass"
+            elif lane_dist <= 4.8 or access_dist <= 3.0:
+                material = "asphalt"
+            elif (
+                lane_dist <= 7.4 or access_dist <= 4.4
+                or anchor_concrete
+                or river_distance < river_width + 2.8
+            ):
+                material = "concrete"
             elif (
                 math.sin(cx * 0.11 - cz * 0.17) + math.cos(cx * 0.19 + cz * 0.13) < -0.55
             ):
@@ -405,7 +481,57 @@ def build_terrain_glb(output: Path) -> None:
             i10 = i00 + 1
             i01 = i00 + vertex_rows
             i11 = i01 + 1
+            base_indices = (i00, i01, i10, i11)
             groups[material].extend((i00, i01, i10, i10, i01, i11))
+
+            if material == "asphalt":
+                nearest_gap = min(lane_dist, access_dist)
+                nearest_width = 4.8 if lane_dist <= access_dist else 3.0
+                crown = max(0.0, min(1.0, 1.0 - nearest_gap / nearest_width))
+                add_raised_surface_cell(
+                    "asphalt", base_indices,
+                    ASPHALT_SURFACE_LIFT + ASPHALT_CROWN_LIFT * crown,
+                )
+            elif material == "concrete":
+                add_raised_surface_cell("concrete", base_indices, CONCRETE_SURFACE_LIFT)
+
+    def add_road_edges(points: list[tuple[float, float]], half_width: float) -> None:
+        for index in range(len(points) - 1):
+            ax, az = points[index]
+            bx, bz = points[index + 1]
+            dx, dz = bx - ax, bz - az
+            segment_length = math.hypot(dx, dz)
+            if segment_length < 1e-4:
+                continue
+            normal_x, normal_z = -dz / segment_length, dx / segment_length
+            yaw = math.atan2(dx, dz)
+            midpoint_x, midpoint_z = (ax + bx) * 0.5, (az + bz) * 0.5
+            for side in (-1.0, 1.0):
+                curb_x = midpoint_x + normal_x * (half_width + 0.12) * side
+                curb_z = midpoint_z + normal_z * (half_width + 0.12) * side
+                add_box("stone", curb_x, height(curb_x, curb_z) + 0.12,
+                        curb_z, 0.16, 0.22, segment_length + 0.08, yaw)
+
+            dash_count = max(1, round(segment_length / 8.0))
+            dash_length = min(1.55, segment_length / dash_count * 0.38)
+            for dash_index in range(dash_count):
+                fraction = (dash_index + 0.5) / dash_count
+                mark_x = ax + dx * fraction
+                mark_z = az + dz * fraction
+                if any(
+                    abs(mark_x - bridge_x) <= 4.0
+                    and abs(mark_z - river_center_z(bridge_x))
+                    <= river_half_width(bridge_x) + 3.0
+                    for bridge_x in BRIDGES
+                ):
+                    continue
+                add_box("markings", mark_x, height(mark_x, mark_z) + 0.145,
+                        mark_z, 0.12, 0.012, dash_length, yaw)
+
+    for lane in LANES:
+        add_road_edges(lane, 4.8)
+    for access_path in ACCESS_PATHS:
+        add_road_edges(access_path, 3.0)
 
     # No cliff skirt: the urban district meets its surrounding city plane.
 
@@ -450,10 +576,10 @@ def build_terrain_glb(output: Path) -> None:
             add_up_triangle("water", water_indices[0], water_indices[1], prev[1])
         previous["water"] = tuple(water_indices)
 
-        # Moss and soil each form two strips, one on either side of the channel.
+        # Moss and concrete each form two strips, one on either side of the channel.
         bands = (
             ("moss", half_width * 0.70, half_width * 0.92),
-            ("soil", half_width * 0.92, half_width + 0.82),
+            ("concrete", half_width * 0.92, half_width + 0.82),
         )
         for group_name, inner, outer in bands:
             current_indices = []
@@ -483,8 +609,8 @@ def build_terrain_glb(output: Path) -> None:
                 add_up_triangle(group_name, prev[3], cur[3], cur[2])
             previous[group_name] = tuple(current_indices)
 
-    # Three wide, walkable crossings connect each route across the river.
-    for lane_x in (-36.0, 0.0, 36.0):
+    # Five broad, walkable bridges connect the six districts across the canal.
+    for lane_x in BRIDGES:
         river_z = river_center_z(lane_x)
         river_width = river_half_width(lane_x)
         bank_a = height(lane_x, river_z - river_width - 1.25)
@@ -496,6 +622,13 @@ def build_terrain_glb(output: Path) -> None:
                 0.28, 0.55, deck_length)
         add_box("stone", lane_x + 2.02, deck_y + 0.34, river_z,
                 0.28, 0.55, deck_length)
+
+        for row_side in (-1.0, 1.0):
+            crossing_z = river_z + row_side * (river_width + 1.10)
+            for stripe_index in range(8):
+                stripe_x = lane_x - 1.48 + stripe_index * 0.42
+                add_box("markings", stripe_x, deck_y + 0.222, crossing_z,
+                        0.25, 0.014, 0.12)
 
     # Opposing base compounds sit farther apart at the expanded north/south ends.
     for base_z, accent_group in ((-63.0, "accent_blue"), (63.0, "accent_gold")):
@@ -559,8 +692,8 @@ def build_terrain_glb(output: Path) -> None:
     )
 
     primitive_materials = {
-        "grass": 0, "moss": 1, "soil": 2, "rock": 3, "water": 4,
-        "stone": 5, "accent_blue": 6, "accent_gold": 7,
+        "grass": 0, "moss": 1, "asphalt": 2, "concrete": 3, "water": 4,
+        "stone": 5, "accent_blue": 6, "accent_gold": 7, "markings": 8,
     }
     primitives = []
     for group_name in material_names:
@@ -586,7 +719,7 @@ def build_terrain_glb(output: Path) -> None:
     materials: list[dict] = []
     sampler = {"magFilter": 9729, "minFilter": 9987, "wrapS": 10497, "wrapT": 10497}
 
-    for material_name in ("grass", "moss", "soil", "rock"):
+    for material_name in ("grass", "moss", "asphalt", "concrete"):
         albedo_path = TERRAIN_SOURCE / f"{material_name}_albedo.png"
         normal_path = TERRAIN_SOURCE / f"{material_name}_normal.png"
         if not albedo_path.is_file() or not normal_path.is_file():
@@ -657,6 +790,15 @@ def build_terrain_glb(output: Path) -> None:
         "emissiveFactor": [0.55, 0.18, 0.025],
         "doubleSided": True,
     })
+    materials.append({
+        "name": "Road Markings",
+        "pbrMetallicRoughness": {
+            "baseColorFactor": [0.78, 0.79, 0.75, 1.0],
+            "metallicFactor": 0.0,
+            "roughnessFactor": 0.92,
+        },
+        "doubleSided": True,
+    })
 
     document = {
         "asset": {
@@ -678,13 +820,20 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "180x140 urban MOBA arena with three avenues, an east-west canal, four districts and enterable interiors",
-            "mapShape": "large-urban-superrectangle",
+            "layout": "224x188 irregular six-district city battlefield with one continuous height-following terrain mesh, baked asphalt corridors, concrete sidewalks, a meandering canal, five bridges, six enterable interiors and CC0 city/park dressing",
+            "roadSurface": "separate-raised-surface-mesh",
+            "roadGeometry": "raised asphalt and concrete overlays over continuous ground, with raised curbs, lane dashes and bridge crossings; no independent scaled road tile slabs",
+            "surfaceOffsets": {
+                "asphaltBase": ASPHALT_SURFACE_LIFT,
+                "asphaltCrown": ASPHALT_CROWN_LIFT,
+                "concrete": CONCRETE_SURFACE_LIFT,
+            },
+            "mapShape": "irregular-six-district-polygon",
             "laneCount": 3,
-            "bridgeCount": 3,
-            "districtCount": 4,
-            "enterableGroundFloorCount": 4,
-            "sideApproachCount": 8,
+            "bridgeCount": 5,
+            "districtCount": 6,
+            "enterableGroundFloorCount": 6,
+            "sideApproachCount": 14,
             "walkableSideCourtyards": True,
             "baseCount": 2,
             "dynamicShadows": False,
@@ -710,7 +859,7 @@ def build_terrain_glb(output: Path) -> None:
     magic, version, declared_length = struct.unpack_from("<4sII", glb, 0)
     if magic != b"glTF" or version != 2 or declared_length != len(glb):
         raise RuntimeError("Generated terrain GLB failed its container checks.")
-    if len(primitives) != 8 or len(images) != 8 or any(not groups[name] for name in material_names):
+    if len(primitives) != 9 or len(images) != 8 or any(not groups[name] for name in material_names):
         raise RuntimeError("Terrain GLB is missing a material group, route structure or embedded texture.")
 
 
@@ -753,8 +902,8 @@ def main() -> None:
         (output_nature / f"{name}.glb").stat().st_size for name in models
     )
     print(
-        "Prepared offline world: 1 organic terrain GLB, 4 CC0 nature GLBs, "
-        f"5 terrain material groups, {total_bytes:,} bytes."
+        "Prepared offline world: continuous ground, raised paved surfaces, "
+        f"curbs/markings, 4 CC0 nature GLBs and {total_bytes:,} bytes."
     )
 
 

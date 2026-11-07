@@ -5,10 +5,12 @@ import 'package:flutter/material.dart';
 import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
+import '../arena_hero_catalog.dart';
 import '../match/moba_match_simulation.dart';
 import '../physics/arena_physics_runtime.dart';
 import '../world/arena_world_catalog.dart';
 import 'hero_weapon_socket.dart';
+import 'humanoid_orientation.dart';
 
 class MobaMatchView extends StatefulWidget {
   const MobaMatchView({
@@ -54,6 +56,7 @@ class _AmbientNpc {
 
 class _MobaMatchViewState extends State<MobaMatchView> {
   static const double _worldScale = ArenaWorldCatalog.worldScale;
+  static const double _cameraFollowDistance = 10.8;
   static final RingGeometry _teamRingGeometry = RingGeometry(
     innerRadius: 0.82,
     outerRadius: 1.0,
@@ -68,6 +71,35 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     outerRadius: 3.55,
     segments: 40,
   );
+  static final RingGeometry _districtProgressGeometry = RingGeometry(
+    innerRadius: 2.42,
+    outerRadius: 2.68,
+    segments: 32,
+  );
+  static final RingGeometry _skillFeedbackGeometry = RingGeometry(
+    innerRadius: 0.82,
+    outerRadius: 1.08,
+    segments: 32,
+  );
+  static final RingGeometry _towerIdentityGeometry = RingGeometry(
+    innerRadius: 2.35,
+    outerRadius: 2.62,
+    segments: 28,
+  );
+  static final UnlitMaterial _lyraSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.28, 0.94, 0.78, 0.96);
+  static final UnlitMaterial _bastionSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.34, 0.72, 1.0, 0.98);
+  static final UnlitMaterial _kairoSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.86, 0.52, 1.0, 0.96);
+  static final UnlitMaterial _shieldMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.32, 0.78, 1.0, 0.86);
+  static final UnlitMaterial _attackFeedbackMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(1.0, 0.78, 0.35, 0.96);
+  static final UnlitMaterial _blueTowerMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.18, 0.62, 0.98, 0.94);
+  static final UnlitMaterial _redTowerMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.98, 0.25, 0.27, 0.94);
   static final UnlitMaterial _relayNeutralMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.82, 0.66, 0.36, 0.92);
   static final UnlitMaterial _relayBlueMaterial = UnlitMaterial()
@@ -86,10 +118,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       x: -61.0,
       z: -43.0,
       patrol: [
-        MobaPoint(-61.0, -43.0),
-        MobaPoint(-56.0, -43.0),
-        MobaPoint(-56.0, -34.0),
-        MobaPoint(-61.0, -34.0),
+        MobaPoint(-57.0, -44.0),
+        MobaPoint(-53.0, -44.0),
+        MobaPoint(-53.0, -35.0),
+        MobaPoint(-57.0, -35.0),
       ],
       phaseOffset: 0.0,
       dialogue: 'As três rotas estão ativas. Observe o minimapa antes de avançar.',
@@ -103,7 +135,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       patrol: [
         MobaPoint(66.0, -43.0),
         MobaPoint(71.0, -43.0),
-        MobaPoint(71.0, -34.0),
+        MobaPoint(69.0, -34.0),
         MobaPoint(66.0, -34.0),
       ],
       phaseOffset: 1.15,
@@ -122,7 +154,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaPoint(-67.0, 43.0),
       ],
       phaseOffset: 2.3,
-      dialogue: 'O canal só pode ser atravessado pelas três pontes sinalizadas.',
+      dialogue: 'O canal só pode ser atravessado pelas cinco pontes sinalizadas.',
     ),
     _AmbientNpc(
       id: 'resident',
@@ -139,16 +171,99 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       phaseOffset: 3.45,
       dialogue: 'O reator central muda o ritmo da disputa quando uma equipe o controla.',
     ),
+    _AmbientNpc(
+      id: 'quartermaster',
+      label: 'Coordenador de Suprimentos',
+      asset: 'assets/npcs/npc_male_a.glb',
+      x: -96.0,
+      z: -22.0,
+      patrol: [
+        MobaPoint(-96.0, -22.0),
+        MobaPoint(-90.0, -22.0),
+        MobaPoint(-90.0, -18.0),
+        MobaPoint(-96.0, -18.0),
+      ],
+      phaseOffset: 4.6,
+      dialogue: 'O Mercado Central abastece a equipe que mantém suas rotas protegidas.',
+    ),
+    _AmbientNpc(
+      id: 'base-guide-top',
+      label: 'Orientador da Rota Norte',
+      asset: 'assets/npcs/npc_male_a.glb',
+      x: -33.0,
+      z: -55.0,
+      patrol: [
+        MobaPoint(-33.0, -55.0),
+        MobaPoint(-31.5, -55.0),
+        MobaPoint(-31.5, -52.5),
+        MobaPoint(-33.0, -52.5),
+      ],
+      phaseOffset: 0.55,
+      dialogue: 'Aliados avançam pelas rotas. Aproxime-se do grupo para acompanhar a primeira rotação.',
+    ),
+    _AmbientNpc(
+      id: 'base-guide-middle',
+      label: 'Orientadora da Rota Central',
+      asset: 'assets/npcs/npc_female_a.glb',
+      x: 3.0,
+      z: -55.0,
+      patrol: [
+        MobaPoint(3.0, -55.0),
+        MobaPoint(4.5, -55.0),
+        MobaPoint(4.5, -52.5),
+        MobaPoint(3.0, -52.5),
+      ],
+      phaseOffset: 1.15,
+      dialogue: 'A rota central leva ao reator. Use o minimapa para orientar seus aliados.',
+    ),
+    _AmbientNpc(
+      id: 'base-guide-south',
+      label: 'Orientador da Rota Sul',
+      asset: 'assets/npcs/npc_male_b.glb',
+      x: 39.0,
+      z: -55.0,
+      patrol: [
+        MobaPoint(39.0, -55.0),
+        MobaPoint(40.5, -55.0),
+        MobaPoint(40.5, -52.5),
+        MobaPoint(39.0, -52.5),
+      ],
+      phaseOffset: 1.75,
+      dialogue: 'As laterais permitem contornar bloqueios e entrar nos edifícios de serviço.',
+    ),
+    _AmbientNpc(
+      id: 'station-agent',
+      label: 'Agente Intermodal',
+      asset: 'assets/npcs/npc_female_a.glb',
+      x: 80.0,
+      z: 12.0,
+      patrol: [
+        MobaPoint(80.0, 12.0),
+        MobaPoint(86.0, 12.0),
+        MobaPoint(86.0, 16.0),
+        MobaPoint(80.0, 16.0),
+      ],
+      phaseOffset: 5.75,
+      dialogue: 'Controlar a Estação Intermodal abre uma rotação mais rápida entre setores.',
+    ),
   ];
 
   late MobaMatchSnapshot _snapshot;
+  late final ValueNotifier<MobaMatchSnapshot> _sceneSnapshotNotifier;
+  late List<Widget> _staticSceneChildren;
+  static const double _staticSceneCellSize = 24.0;
+  static const double _staticPropViewRadius = 62.0;
+  static const double _dynamicEntityViewRadius = 60.0;
+  int _staticSceneCellX = 0;
+  int _staticSceneCellZ = 0;
+  int _hudTicksSinceLastBuild = 0;
   double _cameraYaw = 0;
   double _cameraPitch = 0.34;
   int? _cameraPointerId;
   Offset? _lastCameraPointer;
-  late final List<Widget> _staticSceneChildren = _buildStaticSceneChildren();
   double _moveX = 0;
   double _moveZ = 0;
+  double _locomotionRatio = 0;
   bool _basicAttackHeld = false;
   bool _skillHeld = false;
   bool _worldReady = false;
@@ -169,6 +284,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   void initState() {
     super.initState();
     _snapshot = widget.simulation.snapshot;
+    _sceneSnapshotNotifier = ValueNotifier<MobaMatchSnapshot>(_snapshot);
+    _staticSceneCellX = (_snapshot.playerPosition.x / _staticSceneCellSize).floor();
+    _staticSceneCellZ = (_snapshot.playerPosition.z / _staticSceneCellSize).floor();
+    _staticSceneChildren = _buildStaticSceneChildren(_snapshot.playerPosition);
     _initialiseCameraRig(_snapshot);
     _worldLoadTimeout = Timer(
       const Duration(seconds: 35),
@@ -207,15 +326,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
     final horizontalDistance =
-        9.4 * math.cos(_cameraPitch) * _worldScale;
+        _cameraFollowDistance * math.cos(_cameraPitch) * _worldScale;
     final ground = _groundHeight(snapshot.playerPosition) * _worldScale;
 
     _cameraX = x - forwardX * horizontalDistance;
-    _cameraY = ground + (1.25 + 9.4 * math.sin(_cameraPitch)) * _worldScale;
+    _cameraY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     _cameraZ = z - forwardZ * horizontalDistance;
-    _lookX = x + forwardX * 3.0 * _worldScale;
+    _lookX = x + forwardX * 3.6 * _worldScale;
     _lookY = ground + 1.2 * _worldScale;
-    _lookZ = z + forwardZ * 3.0;
+    _lookZ = z + forwardZ * 3.6 * _worldScale;
   }
 
   void _advanceCameraRig(MobaMatchSnapshot snapshot, double deltaSeconds) {
@@ -224,16 +343,16 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final forwardX = math.sin(_cameraYaw);
     final forwardZ = math.cos(_cameraYaw);
     final horizontalDistance =
-        9.4 * math.cos(_cameraPitch) * _worldScale;
+        _cameraFollowDistance * math.cos(_cameraPitch) * _worldScale;
     final ground = _groundHeight(snapshot.playerPosition) * _worldScale;
 
     // Camera yaw/pitch are controlled only by the right-side drag zone.
     final desiredX = x - forwardX * horizontalDistance;
-    final desiredY = ground + (1.25 + 9.4 * math.sin(_cameraPitch)) * _worldScale;
+    final desiredY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     final desiredZ = z - forwardZ * horizontalDistance;
-    final desiredLookX = x + forwardX * 3.0 * _worldScale;
+    final desiredLookX = x + forwardX * 3.6 * _worldScale;
     final desiredLookY = ground + 1.2 * _worldScale;
-    final desiredLookZ = z + forwardZ * 3.0;
+    final desiredLookZ = z + forwardZ * 3.6 * _worldScale;
     final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
     _cameraX += (desiredX - _cameraX) * blend;
@@ -269,6 +388,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       if (alive) {
         widget.simulation.applyPhysicsPlayerPosition(physics.playerPosition);
       }
+      if (physics.consumeDashCompletion()) {
+        widget.simulation.resolvePhysicsDashAt(physics.playerPosition);
+      }
     }
 
     widget.simulation.step(
@@ -279,12 +401,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       castSkill: _skillHeld,
       externalPlayerMovement: physics != null,
     );
+    final dashRequest = widget.simulation.consumePhysicsDashRequest();
+    if (physics != null && dashRequest != null) {
+      physics.triggerDash(dashRequest.x, dashRequest.z);
+    }
     if (physics != null) {
       widget.simulation.setPhysicsMovementState(
         moving: physics.grounded && physics.horizontalSpeed > 0.15,
       );
     }
     final next = widget.simulation.snapshot;
+    _locomotionRatio = physics?.movementSpeedRatio ??
+        (next.playerMoving ? 1.0 : 0.0);
     if (physics != null) {
       // The only legal teleport is the explicit defeated -> respawn transition.
       if (previous.playerRespawnSeconds > 0 &&
@@ -299,7 +427,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       physics.syncCovers(next.covers);
     }
     _advanceCameraRig(next, deltaSeconds);
-    setState(() => _snapshot = next);
+    _refreshStaticSceneChildrenIfNeeded(next.playerPosition);
+    _snapshot = next;
+    _sceneSnapshotNotifier.value = next;
+    // Keep the 3D scene at 30 Hz; rebuild the HUD only at 10 Hz.
+    _hudTicksSinceLastBuild++;
+    if (_hudTicksSinceLastBuild >= 3) {
+      _hudTicksSinceLastBuild = 0;
+      setState(() {});
+    }
 
     if (next.winner != null && !_finishSent) {
       _finishSent = true;
@@ -317,6 +453,17 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _cameraPitch = (_cameraPitch - delta.dy * 0.005)
           .clamp(0.24, 0.68).toDouble();
     });
+  }
+
+  void _refreshStaticSceneChildrenIfNeeded(MobaPoint focus) {
+    final nextCellX = (focus.x / _staticSceneCellSize).floor();
+    final nextCellZ = (focus.z / _staticSceneCellSize).floor();
+    if (nextCellX == _staticSceneCellX && nextCellZ == _staticSceneCellZ) {
+      return;
+    }
+    _staticSceneCellX = nextCellX;
+    _staticSceneCellZ = nextCellZ;
+    _staticSceneChildren = _buildStaticSceneChildren(focus);
   }
 
   void _markWorldAssetReady(String assetKey) {
@@ -351,6 +498,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   @override
   void dispose() {
     _worldLoadTimeout?.cancel();
+    _sceneSnapshotNotifier.dispose();
     _physicsRuntime?.dispose();
     _physicsRuntime = null;
     super.dispose();
@@ -372,9 +520,34 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Walk',
       };
 
+  String _heroRun(MobaHeroId hero) => switch (hero) {
+        MobaHeroId.lyra => 'HumanArmature|Female_Run',
+        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Run',
+      };
+
+  String _heroLocomotionClip(MobaMatchSnapshot snapshot) {
+    if (!snapshot.playerMoving) return _heroIdle(snapshot.heroId);
+    return _locomotionRatio >= 0.88
+        ? _heroRun(snapshot.heroId)
+        : _heroWalk(snapshot.heroId);
+  }
+
+  double _heroLocomotionRate(MobaMatchSnapshot snapshot) {
+    if (!snapshot.playerMoving) return 0.82;
+    if (_locomotionRatio >= 0.88) {
+      return (0.96 + (_locomotionRatio - 0.88) * 0.35)
+          .clamp(0.96, 1.12)
+          .toDouble();
+    }
+    return (0.78 + _locomotionRatio * 0.22)
+        .clamp(0.78, 0.98)
+        .toDouble();
+  }
+
   String _heroAttack(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 'HumanArmature|Female_SwordSlash',
-        MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
+        MobaHeroId.bastion => 'HumanArmature|Man_Punch',
+        MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
       };
 
   String _towerAsset(int laneIndex, int tier) {
@@ -407,20 +580,26 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
     // The bundled Quaternius and Kenney humanoid rigs face local +Z.
     // Do not add a half-turn: +Z movement must make the character face +Z.
-    final yaw = math.atan2(facingX, facingZ);
+    final yaw = HumanoidOrientation.yawForDirection(facingX, facingZ);
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
   vm.Quaternion _playerFacing(MobaMatchSnapshot snapshot) =>
-      _entityFacing(snapshot.playerFacingX, snapshot.playerFacingZ);
+      vm.Quaternion.axisAngle(
+        vm.Vector3(0, 1, 0),
+        HumanoidOrientation.yawForNegativeZDirection(
+          snapshot.playerFacingX,
+          snapshot.playerFacingZ,
+        ),
+      );
 
-  static const _bridges = <(String, double, double)>[
-    ('west', -36.0, 0.0),
-    ('central', 0.0, 0.1),
-    ('east', 36.0, -0.1),
-  ];
+  List<Widget> _buildStaticSceneChildren(MobaPoint focus) {
+    bool nearby(double x, double z, double radius) {
+      final dx = x - focus.x;
+      final dz = z - focus.z;
+      return dx * dx + dz * dz <= radius * radius;
+    }
 
-  List<Widget> _buildStaticSceneChildren() {
     return <Widget>[
       SceneModel(
         _terrainAsset,
@@ -429,76 +608,63 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         onLoaded: (_) => _markWorldAssetReady('terrain'),
       ),
       for (var i = 0; i < ArenaWorldCatalog.trees.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
+        if (nearby(ArenaWorldCatalog.trees[i].x, ArenaWorldCatalog.trees[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
       for (var i = 0; i < ArenaWorldCatalog.largeTrees.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.largeTrees[i], 'match-large-tree-$i'),
+        if (nearby(ArenaWorldCatalog.largeTrees[i].x, ArenaWorldCatalog.largeTrees[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.largeTrees[i], 'match-large-tree-$i'),
       for (var i = 0; i < ArenaWorldCatalog.bushes.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
+        if (nearby(ArenaWorldCatalog.bushes[i].x, ArenaWorldCatalog.bushes[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
       for (var i = 0; i < ArenaWorldCatalog.cityProps.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.cityProps[i], 'city-detail-$i'),
+        if (nearby(ArenaWorldCatalog.cityProps[i].x, ArenaWorldCatalog.cityProps[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.cityProps[i], 'city-detail-$i'),
       for (final building in ArenaWorldCatalog.cityInteriors)
-        ..._buildCityInterior(building),
+        if (nearby(building.$2, building.$3, _staticPropViewRadius))
+          ..._buildCityInterior(building),
       for (final access in ArenaWorldCatalog.verticalAccesses)
-        ..._buildVerticalAccess(access),
+        if (nearby(access.x, access.z, _staticPropViewRadius))
+          ..._buildVerticalAccess(access),
       for (final block in ArenaWorldCatalog.commercialBlocks)
-        _buildCommercialBlock(block),
-      for (final laneX in const [-36.0, 0.0, 36.0])
-        for (final roadZ in const [-60.0, -40.0, -20.0, 20.0, 40.0, 60.0])
-          SceneModel(
-            'assets/world/city/road_straight.glb',
-            key: ValueKey('street-$laneX-$roadZ'),
-            name: 'urban_avenue_${laneX}_$roadZ',
-            position: _worldPosition(MobaPoint(laneX, roadZ)),
-            rotation: vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), math.pi / 2),
-            scale: vm.Vector3(12.0, 1.0, 20.0),
-          ),
-      for (final laneX in const [-36.0, 0.0, 36.0])
-        SceneModel(
-          'assets/world/city/road_crossroad.glb',
-          key: ValueKey('crossroad-$laneX'),
-          name: 'canal_crossing_$laneX',
-          position: _worldPosition(MobaPoint(laneX, 0)),
-          scale: vm.Vector3(12.0, 1.0, 12.0),
-        ),
+        if (nearby(block.$2, block.$3, _staticPropViewRadius + 12.0))
+          _buildCommercialBlock(block),
+      // Bases stay resident; neighborhood dressing is refreshed per 24-unit cell.
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
-      SceneModel(
-        'assets/world/city/interior_desk.glb',
-        key: const ValueKey('central-objective-pedestal'),
-        name: 'central_relay_pedestal',
-        position: _worldPosition(const MobaPoint(0, 0)),
-        scale: vm.Vector3.all(2.7),
-      ),
-      SceneModel(
-        'assets/world/city/interior_computer_screen.glb',
-        key: const ValueKey('central-objective-terminal'),
-        name: 'central_relay_terminal',
-        position: vm.Vector3(
-          0,
-          _groundHeight(const MobaPoint(0, 0)) + 1.15,
-          0,
-        ),
-        scale: vm.Vector3.all(2.1),
-      ),
-      for (final bridge in _bridges)
+      if (nearby(0, 0, _staticPropViewRadius + 12.0))
         SceneModel(
-          'assets/world/city/road_straight.glb',
-          key: ValueKey('match-bridge-${bridge.$1}'),
-          name: 'lane_bridge_${bridge.$1}',
-          position: _worldPosition(MobaPoint(bridge.$2, bridge.$3)),
-          rotation: vm.Quaternion.axisAngle(
-            vm.Vector3(0, 1, 0),
-            math.pi / 2,
+          'assets/world/city/interior_desk.glb',
+          key: const ValueKey('central-objective-pedestal'),
+          name: 'central_relay_pedestal',
+          position: _worldPosition(const MobaPoint(0, 0)),
+          scale: vm.Vector3.all(1.35),
+        ),
+      if (nearby(0, 0, _staticPropViewRadius + 12.0))
+        SceneModel(
+          'assets/world/city/interior_computer_screen.glb',
+          key: const ValueKey('central-objective-terminal'),
+          name: 'central_relay_terminal',
+          position: vm.Vector3(
+            0,
+            _groundHeight(const MobaPoint(0, 0)) + 0.92,
+            0,
           ),
-          scale: vm.Vector3(8.0, 1.0, 9.0),
+          scale: vm.Vector3.all(0.92),
         ),
     ];
   }
 
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
+    bool pointNearby(MobaPoint point, double radius) {
+      final dx = point.x - snapshot.playerPosition.x;
+      final dz = point.z - snapshot.playerPosition.z;
+      return dx * dx + dz * dz <= radius * radius;
+    }
+
     return <Widget>[
       ..._staticSceneChildren,
-      SceneMesh(
+      if (pointNearby(const MobaPoint(0, 0), _dynamicEntityViewRadius + 12.0))
+        SceneMesh(
         name: 'central_relay_control_ring',
         geometry: _relayRingGeometry,
         material: snapshot.centralObjective.contested
@@ -518,9 +684,59 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           0,
         ),
       ),
-      for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
+      for (final district in snapshot.districts)
+        if (pointNearby(district.position, _dynamicEntityViewRadius + 12.0))
+          ..._buildDistrictVisuals(district, snapshot.elapsedSeconds),
       for (final tower in snapshot.towers)
-        if (tower.health > 0)
+        if (tower.health > 0 && pointNearby(tower.position, _dynamicEntityViewRadius + 14.0))
+          SceneMesh(
+            name: 'tower_identity_${tower.team.name}_${tower.lane.name}_${tower.tier}',
+            geometry: _towerIdentityGeometry,
+            material: tower.team == MobaTeam.blue
+                ? _blueTowerMaterial
+                : _redTowerMaterial,
+            position: _worldPosition(tower.position, heightOffset: 0.08),
+            scale: vm.Vector3.all(
+              0.72 + 0.28 * (tower.health / tower.maxHealth),
+            ),
+          ),
+      if (snapshot.playerSkillPulseSeconds > 0)
+        SceneMesh(
+          name: 'player_skill_feedback_${snapshot.heroId.name}',
+          geometry: _skillFeedbackGeometry,
+          material: switch (snapshot.heroId) {
+            MobaHeroId.lyra => _lyraSkillMaterial,
+            MobaHeroId.bastion => _bastionSkillMaterial,
+            MobaHeroId.kairo => _kairoSkillMaterial,
+          },
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.09),
+          scale: vm.Vector3.all(
+            0.72 + (1.0 - snapshot.playerSkillPulseSeconds / 0.82) * 1.05,
+          ),
+        ),
+      if (snapshot.playerSpawnShieldSeconds > 0)
+        SceneMesh(
+          name: 'player_shield_feedback',
+          geometry: _skillFeedbackGeometry,
+          material: _shieldMaterial,
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.12),
+          scale: vm.Vector3.all(1.55),
+        ),
+      if (snapshot.playerHitConfirmSeconds > 0)
+        SceneMesh(
+          name: 'player_hit_confirm_feedback',
+          geometry: _skillFeedbackGeometry,
+          material: _attackFeedbackMaterial,
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.16),
+          scale: vm.Vector3.all(
+            0.78 + (1.0 - snapshot.playerHitConfirmSeconds / 0.22) * 0.55,
+          ),
+        ),
+      for (final npc in _ambientNpcs)
+        if (pointNearby(MobaPoint(npc.x, npc.z), _dynamicEntityViewRadius - 8.0))
+          _buildAmbientNpc(npc, snapshot),
+      for (final tower in snapshot.towers)
+        if (tower.health > 0 && pointNearby(tower.position, _dynamicEntityViewRadius + 14.0))
           SceneModel(
           _towerAsset(tower.lane.index, tower.tier),
           key: ValueKey(
@@ -532,10 +748,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           scale: vm.Vector3.all(4.8),
         ),
       for (final cover in snapshot.covers)
-        if (!cover.isDestroyed) _buildCover(cover),
+        if (!cover.isDestroyed && pointNearby(cover.position, _dynamicEntityViewRadius))
+          _buildCover(cover),
       for (final bot in snapshot.bots)
-        if (bot.respawnSeconds <= 0) _buildBot(bot),
-      for (final minion in snapshot.minions) _buildMinion(minion),
+        if (bot.respawnSeconds <= 0 && pointNearby(bot.position, _dynamicEntityViewRadius))
+          _buildBot(bot),
+      for (final minion in snapshot.minions)
+        if (pointNearby(minion.position, _dynamicEntityViewRadius))
+          _buildMinion(minion),
       if (snapshot.playerHealth > 0)
         SceneModel(
           _heroAsset(snapshot.heroId),
@@ -547,21 +767,76 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           },
           position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
           rotation: _playerFacing(snapshot),
-          scale: vm.Vector3.all(1.0),
+          scale: vm.Vector3.all(
+            ArenaHeroCatalog.byId(snapshot.heroId.name)?.matchScale ?? 0.76,
+          ),
           animations: [
             SceneAnimationSpec(
               snapshot.playerAttackSeconds > 0
                   ? _heroAttack(snapshot.heroId)
-                  : (snapshot.playerMoving
-                      ? _heroWalk(snapshot.heroId)
-                      : _heroIdle(snapshot.heroId)),
+                  : _heroLocomotionClip(snapshot),
               loop: snapshot.playerAttackSeconds <= 0,
               speed: snapshot.playerAttackSeconds > 0
                   ? 1.2
-                  : (snapshot.playerMoving ? 1.08 : 0.78),
+                  : _heroLocomotionRate(snapshot),
             ),
           ],
         ),
+    ];
+  }
+
+  List<Widget> _buildDistrictVisuals(
+    MobaDistrictSnapshot district,
+    double elapsedSeconds,
+  ) {
+    final progress = (district.control.abs() / 100.0)
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final pulse = district.contested
+        ? 0.07 * math.sin(elapsedSeconds * 7.5)
+        : 0.0;
+    final material = district.contested
+        ? _relayContestedMaterial
+        : district.owner == MobaTeam.blue
+            ? _relayBlueMaterial
+            : district.owner == MobaTeam.red
+                ? _relayRedMaterial
+                : (district.control > 0
+                    ? _relayBlueMaterial
+                    : (district.control < 0
+                        ? _relayRedMaterial
+                        : _relayNeutralMaterial));
+    final position = vm.Vector3(
+      district.position.x,
+      _groundHeight(district.position) + 0.07,
+      district.position.z,
+    );
+    return [
+      SceneMesh(
+        name: 'district_control_${district.id}',
+        geometry: _relayRingGeometry,
+        material: material,
+        position: position,
+        scale: vm.Vector3.all(0.86 + progress * 0.22 + pulse),
+      ),
+      SceneMesh(
+        name: 'district_capture_progress_${district.id}',
+        geometry: _districtProgressGeometry,
+        material: material,
+        position: vm.Vector3(
+          district.position.x,
+          _groundHeight(district.position) + 0.085,
+          district.position.z,
+        ),
+        scale: vm.Vector3.all(0.76 + progress * 0.32 + pulse),
+      ),
+      SceneModel(
+        'assets/world/city/interior_computer_screen.glb',
+        key: ValueKey('district-console-${district.id}'),
+        name: 'district-console-${district.id}',
+        position: _worldPosition(district.position, heightOffset: 0.08),
+        scale: vm.Vector3.all(1.25),
+      ),
     ];
   }
 
@@ -595,59 +870,69 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       (access) => access.id == id,
     );
     final ground = _groundHeight(MobaPoint(x, z));
+    const halfWidth = ArenaWorldCatalog.roomHalfWidth;
+    const halfDepth = ArenaWorldCatalog.roomHalfDepth;
+    const doorHalfWidth = ArenaWorldCatalog.roomDoorHalfWidth;
+    const wallHeightScale = 2.8;
+    const wallThicknessScale = 1.0;
     vm.Vector3 p(double px, double py, double pz) =>
         vm.Vector3(px, ground + py, pz);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
-    final deskZ = hasVerticalAccess ? z - 2.0 : z + 2.2;
-    final chairZ = hasVerticalAccess ? z - 2.0 : z + 2.0;
-    final screenZ = hasVerticalAccess ? z - 2.0 : z + 2.0;
-    final benchZ = hasVerticalAccess ? z - 4.0 : z - 2.8;
+    final segmentHalf = (halfWidth - doorHalfWidth) * 0.5;
+    final segmentOffset = doorHalfWidth + segmentHalf;
+    final deskZ = hasVerticalAccess ? z - 2.4 : z + 2.5;
+    final chairZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
+    final screenZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
+    final benchZ = hasVerticalAccess ? z - 4.2 : z - 3.0;
 
     return [
       SceneModel('assets/world/city/interior_floor.glb',
         key: ValueKey('interior-floor-$id'), name: 'interior_floor_$id',
-        position: p(x - 10, 0.02, z + 8), scale: vm.Vector3(20, 1, 16)),
+        position: p(x - halfWidth, 0.02, z + halfDepth),
+        scale: vm.Vector3(halfWidth * 2, 1, halfDepth * 2)),
       SceneModel('assets/world/city/interior_wall_window.glb',
         key: ValueKey('interior-back-$id'), name: 'interior_back_wall_$id',
-        position: p(x - 10, 0, z + 8), scale: vm.Vector3(20, 2.5, 1)),
+        position: p(x - halfWidth, 0, z + halfDepth),
+        scale: vm.Vector3(halfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
-        position: p(x - 10, 0, z), rotation: yaw(math.pi / 2),
-        scale: vm.Vector3(16, 2.5, 1)),
+        position: p(x - halfWidth, 0, z), rotation: yaw(math.pi / 2),
+        scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
-        position: p(x + 10, 0, z), rotation: yaw(-math.pi / 2),
-        scale: vm.Vector3(16, 2.5, 1)),
-      SceneModel('assets/world/city/interior_wall.glb',
-        key: ValueKey('interior-front-left-$id'), name: 'interior_front_left_$id',
-        position: p(x - 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
-      SceneModel('assets/world/city/interior_wall.glb',
-        key: ValueKey('interior-front-right-$id'), name: 'interior_front_right_$id',
-        position: p(x + 6.2, 0, z - 8), scale: vm.Vector3(7.6, 2.5, 1)),
+        position: p(x + halfWidth, 0, z), rotation: yaw(-math.pi / 2),
+        scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
+      for (final sign in const [-1.0, 1.0])
+        SceneModel('assets/world/city/interior_wall.glb',
+          key: ValueKey('interior-front-$id-$sign'),
+          name: 'interior_front_wall_$id-$sign',
+          position: p(x + sign * segmentOffset, 0, z - halfDepth),
+          scale: vm.Vector3(segmentHalf * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x, 0, z - 8), scale: vm.Vector3(4.8, 2.5, 1)),
+        position: p(x, 0, z - halfDepth),
+        scale: vm.Vector3(doorHalfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
-        position: p(hasVerticalAccess ? x - 5.2 : x - 4.5, 0, deskZ),
-        scale: vm.Vector3(3.2, 2, 2)),
+        position: p(hasVerticalAccess ? x - 6.0 : x - 5.2, 0, deskZ),
+        scale: vm.Vector3(1.6, 1.05, 1.05)),
       SceneModel('assets/world/city/interior_chair.glb',
         key: ValueKey('interior-chair-$id'), name: 'interior_chair_$id',
-        position: p(x + 1.4, 0, chairZ), scale: vm.Vector3.all(2)),
+        position: p(x + 1.6, 0, chairZ), scale: vm.Vector3.all(1.0)),
       SceneModel('assets/world/city/interior_computer_screen.glb',
         key: ValueKey('interior-screen-$id'), name: 'interior_terminal_$id',
-        position: p(x - 0.6, 0.78, screenZ), scale: vm.Vector3.all(2)),
+        position: p(x - 0.8, 0.8, screenZ), scale: vm.Vector3.all(1.0)),
       SceneModel('assets/world/city/interior_bench.glb',
         key: ValueKey('interior-bench-$id'), name: 'interior_cover_bench_$id',
-        position: p(x + 2.7, 0, benchZ), scale: vm.Vector3(4, 2, 2)),
+        position: p(x + 3.0, 0, benchZ), scale: vm.Vector3(1.8, 0.9, 0.9)),
       if (id == 'west_south')
         SceneModel(
           'assets/world/city/interior_computer_screen.glb',
           key: const ValueKey('interior-ops-wall-terminal'),
           name: 'operations_wall_terminal',
           position: p(x + 4.0, 1.0, z + 2.7),
-          scale: vm.Vector3.all(1.8),
+          scale: vm.Vector3.all(1.0),
         ),
       if (id == 'east_south')
         SceneModel(
@@ -655,7 +940,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           key: const ValueKey('interior-workshop-bin'),
           name: 'workshop_service_bin',
           position: p(x + 4.4, 0, z + 2.7),
-          scale: vm.Vector3.all(1.8),
+          scale: vm.Vector3.all(0.9),
         ),
       if (id == 'west_north') ...[
         SceneModel(
@@ -663,14 +948,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           key: const ValueKey('interior-park-planter'),
           name: 'park_information_planter',
           position: p(x - 4.4, 0, z + 2.7),
-          scale: vm.Vector3.all(3.8),
+          scale: vm.Vector3.all(1.0),
         ),
         SceneModel(
           'assets/world/city/interior_plant.glb',
           key: const ValueKey('interior-park-plant'),
           name: 'park_information_plant',
           position: p(x + 4.1, 0, z + 2.8),
-          scale: vm.Vector3.all(4.4),
+          scale: vm.Vector3.all(1.0),
         ),
       ],
       if (id == 'east_north') ...[
@@ -679,16 +964,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           key: const ValueKey('interior-community-plant'),
           name: 'community_room_plant',
           position: p(x - 4.2, 0, z + 2.8),
-          scale: vm.Vector3.all(4.5),
+          scale: vm.Vector3.all(1.0),
         ),
         SceneModel(
           'assets/world/city/interior_bench.glb',
           key: const ValueKey('interior-community-seat'),
           name: 'community_room_seat',
           position: p(x + 3.3, 0, z + 2.8),
-          scale: vm.Vector3(3.2, 1.6, 1.8),
+          scale: vm.Vector3(1.5, 0.9, 0.9),
         ),
       ],
+      if (id == 'west_depot' || id == 'east_depot')
+        SceneModel(
+          'assets/world/city/interior_trashcan.glb',
+          key: ValueKey('service-depot-bin-$id'),
+          name: 'service_depot_storage_detail_$id',
+          position: p(x + (id == 'west_depot' ? 7.0 : -7.0), 0, z + 3.4),
+          scale: vm.Vector3.all(0.9),
+        ),
     ];
   }
 
@@ -815,7 +1108,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(0.84),
+      scale: vm.Vector3.all(1.12),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -832,7 +1125,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   }
 
   Widget _buildMinion(MobaMinionSnapshot minion) {
-    final scale = minion.ranged ? 0.68 : 0.74;
+    // Kenney mini-character meshes need a larger presentation scale beside
+    // the full-height playable Quaternius heroes. Keep ranged and melee
+    // silhouettes distinct without changing gameplay collision sizes.
+    final scale = minion.ranged ? 1.35 : 1.45;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
@@ -934,7 +1230,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: 'ambient_npc_${npc.id}',
       position: _worldPosition(pose.position, heightOffset: 0.015),
       rotation: _entityFacing(pose.facingX, pose.facingZ),
-      scale: vm.Vector3.all(0.96),
+      scale: vm.Vector3.all(1.08),
       animations: [
         SceneAnimationSpec(
           interacting
@@ -952,7 +1248,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     double elapsedSeconds,
   ) {
     _AmbientNpc? nearest;
-    var nearestDistance = 4.8;
+    var nearestDistance = 8.0;
     for (final npc in _ambientNpcs) {
       final position = _ambientNpcPose(npc, elapsedSeconds).position;
       final distance = player.distanceTo(position);
@@ -1021,7 +1317,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 ),
               ),
             ),
-            SceneView.declarative(
+            ValueListenableBuilder<MobaMatchSnapshot>(
+              valueListenable: _sceneSnapshotNotifier,
+              builder: (context, sceneSnapshot, _) => SceneView.declarative(
               key: const ValueKey('live-moba-scene'),
               pixelRatio: 0.82,
               maxFrameRate: 30,
@@ -1030,9 +1328,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               cameraBuilder: (elapsed) {
                 // Smoothed trailing perspective with a restrained motion
                 // response. The battlefield overview remains in the minimap.
+                final gait = _locomotionRatio.clamp(0.0, 1.25).toDouble();
                 final cameraBob = math.sin(
-                  elapsed.inMicroseconds / 1000000.0 * 1.35,
-                ) * 0.035 * _worldScale;
+                  elapsed.inMicroseconds / 1000000.0 * (2.6 + gait * 3.2),
+                ) * 0.028 * gait * _worldScale;
                 return PerspectiveCamera(
                   fovRadiansY: 49 * math.pi / 180,
                   position: vm.Vector3(
@@ -1060,9 +1359,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 SceneNode(
                   name: 'scaled_battlefield_root',
                   scale: vm.Vector3.all(_worldScale),
-                  children: _buildSceneChildren(snapshot),
+                  children: _buildSceneChildren(sceneSnapshot),
                 ),
               ],
+            ),
             ),
             Positioned(
               left: viewport.maxWidth * 0.42,
@@ -1099,20 +1399,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                   }
                 },
                 child: const SizedBox.expand(),
-              ),
-            ),
-            Positioned(
-              right: side + 42,
-              top: viewport.maxHeight * 0.43,
-              child: const IgnorePointer(
-                child: Opacity(
-                  opacity: 0.28,
-                  child: Icon(
-                    Icons.threesixty,
-                    size: 24,
-                    color: Colors.white,
-                  ),
-                ),
               ),
             ),
             const IgnorePointer(
@@ -1162,15 +1448,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                             snapshot.redCoreMaxHealth,
                         blueTowers: snapshot.blueTowersAlive,
                         redTowers: snapshot.redTowersAlive,
-                      ),
-                    ),
-                  ),
-                  Positioned(
-                    top: 64,
-                    left: 0,
-                    right: 0,
-                    child: Center(
-                      child: _ObjectiveHud(
+                        districts: snapshot.districts,
                         objective: snapshot.centralObjective,
                       ),
                     ),
@@ -1242,9 +1520,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     ),
                   ),
                   Positioned(
-                    left: compact ? 132 : 150,
-                    right: compact ? 182 : 208,
-                    bottom: compact ? 12 : 16,
+                    left: side,
+                    bottom: compact ? 130 : 140,
                     child: _PlayerHud(snapshot: snapshot),
                   ),
                   Positioned(
@@ -1255,7 +1532,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         _TargetLockButton(
-                          size: compact ? 48 : 52,
+                          size: compact ? 44 : 48,
                           onTap: () {
                             widget.simulation.cyclePlayerTarget();
                             setState(() => _snapshot = widget.simulation.snapshot);
@@ -1265,7 +1542,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         _MatchActionButton(
                           label: 'SKILL',
                           icon: Icons.auto_awesome,
-                          size: compact ? 60 : 68,
+                          size: compact ? 56 : 62,
                           secondary: true,
                           cooldown: snapshot.playerSkillCooldown,
                           onPress: () => setState(() => _skillHeld = true),
@@ -1275,7 +1552,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         _MatchActionButton(
                           label: 'ATAQUE',
                           icon: Icons.flash_on,
-                          size: compact ? 72 : 82,
+                          size: compact ? 68 : 74,
                           onPress: () =>
                               setState(() => _basicAttackHeld = true),
                           onRelease: () =>
@@ -1365,19 +1642,43 @@ class _CoreHud extends StatelessWidget {
     required this.redHealth,
     required this.blueTowers,
     required this.redTowers,
+    required this.districts,
+    required this.objective,
   });
 
   final double blueHealth;
   final double redHealth;
   final int blueTowers;
   final int redTowers;
+  final List<MobaDistrictSnapshot> districts;
+  final MobaObjectiveSnapshot objective;
 
   @override
   Widget build(BuildContext context) {
+    final blueDistricts =
+        districts.where((item) => item.owner == MobaTeam.blue).length;
+    final redDistricts =
+        districts.where((item) => item.owner == MobaTeam.red).length;
+    final neutralDistricts = districts.length - blueDistricts - redDistricts;
+    final status = objective.contested
+        ? 'DISPUTADO'
+        : objective.owner == MobaTeam.blue
+            ? 'AZUL'
+            : objective.owner == MobaTeam.red
+                ? 'VERMELHO'
+                : 'NEUTRO';
+    final statusColor = objective.contested
+        ? const Color(0xFFFFD68E)
+        : objective.owner == MobaTeam.blue
+            ? const Color(0xFF83C9F0)
+            : objective.owner == MobaTeam.red
+                ? const Color(0xFFEF9298)
+                : const Color(0xFFC4CED1);
+
     return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 7),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       child: SizedBox(
-        width: 232,
+        width: 246,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1387,138 +1688,68 @@ class _CoreHud extends StatelessWidget {
                   blueTowers.toString(),
                   style: const TextStyle(
                     color: Color(0xFF9ED4F4),
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 5),
                 Expanded(child: _CoreBar(value: blueHealth, blue: true)),
-                const SizedBox(width: 8),
-                Expanded(child: _CoreBar(value: redHealth, blue: false)),
                 const SizedBox(width: 6),
+                Expanded(child: _CoreBar(value: redHealth, blue: false)),
+                const SizedBox(width: 5),
                 Text(
                   redTowers.toString(),
                   style: const TextStyle(
                     color: Color(0xFFFFA4A4),
-                    fontSize: 10,
+                    fontSize: 9,
                     fontWeight: FontWeight.w900,
                   ),
                 ),
               ],
             ),
             const SizedBox(height: 5),
-            const Text(
-              'TORRES  •  NÚCLEOS',
-              style: TextStyle(
-                color: Color(0xFFCAD9DF),
-                fontSize: 8,
-                letterSpacing: 1.45,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _ObjectiveHud extends StatelessWidget {
-  const _ObjectiveHud({required this.objective});
-
-  final MobaObjectiveSnapshot objective;
-
-  @override
-  Widget build(BuildContext context) {
-    final progress = (objective.control.abs() / 100)
-        .clamp(0.0, 1.0)
-        .toDouble();
-    final blueControl = objective.control >= 0;
-    final owner = objective.owner;
-    final Color controlColor = owner == MobaTeam.blue
-        ? const Color(0xFF6BBDEB)
-        : owner == MobaTeam.red
-            ? const Color(0xFFED7A80)
-            : blueControl
-                ? const Color(0xFF6BBDEB)
-                : const Color(0xFFED7A80);
-    final String status = objective.contested
-        ? 'DISPUTADO'
-        : owner == MobaTeam.blue
-            ? 'AZUL  •  +12% DANO'
-            : owner == MobaTeam.red
-                ? 'VERMELHO  •  +12% DANO'
-                : progress <= 0.001
-                    ? 'NEUTRO'
-                    : blueControl
-                        ? 'CAPTURANDO AZUL'
-                        : 'CAPTURANDO VERMELHO';
-
-    return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      child: SizedBox(
-        width: 184,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
             Row(
               children: [
-                const Icon(
-                  Icons.radar_rounded,
-                  color: Color(0xFFD6E8EA),
-                  size: 11,
-                ),
-                const SizedBox(width: 5),
                 const Text(
-                  'REATOR CENTRAL',
+                  'SETORES',
                   style: TextStyle(
-                    color: Color(0xFFE4EFF0),
+                    color: Color(0xFFC6D3D6),
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
-                    letterSpacing: 1.15,
+                    letterSpacing: 0.8,
+                  ),
+                ),
+                const SizedBox(width: 5),
+                Text(
+                  '$blueDistricts : $redDistricts : $neutralDistricts',
+                  style: const TextStyle(
+                    color: Color(0xFFE7EEEE),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: [FontFeature.tabularFigures()],
                   ),
                 ),
                 const Spacer(),
+                const Text(
+                  'REATOR',
+                  style: TextStyle(
+                    color: Color(0xFFC6D3D6),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: 0.55,
+                  ),
+                ),
+                const SizedBox(width: 4),
                 Text(
                   status,
                   style: TextStyle(
-                    color: objective.contested
-                        ? const Color(0xFFFFD68E)
-                        : controlColor,
+                    color: statusColor,
                     fontSize: 8,
                     fontWeight: FontWeight.w900,
+                    letterSpacing: 0.35,
                   ),
                 ),
               ],
-            ),
-            const SizedBox(height: 4),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(3),
-              child: SizedBox(
-                height: 4,
-                child: Stack(
-                  fit: StackFit.expand,
-                  children: [
-                    const ColoredBox(color: Color(0xFF26333D)),
-                    Align(
-                      alignment: blueControl
-                          ? Alignment.centerLeft
-                          : Alignment.centerRight,
-                      child: FractionallySizedBox(
-                        widthFactor: progress,
-                        child: ColoredBox(color: controlColor),
-                      ),
-                    ),
-                    if (objective.contested)
-                      const Center(
-                        child: SizedBox(
-                          width: 28,
-                          child: ColoredBox(color: Color(0xFFFFD68E)),
-                        ),
-                      ),
-                  ],
-                ),
-              ),
             ),
           ],
         ),
@@ -1575,73 +1806,109 @@ class _PlayerHud extends StatelessWidget {
         .clamp(0.0, 1.0)
         .toDouble();
     final hero = snapshot.heroId.name.toUpperCase();
+    final healthColor = health > 0.55
+        ? const Color(0xFF70D18B)
+        : health > 0.25
+            ? const Color(0xFFFFC66D)
+            : const Color(0xFFFF747E);
 
     return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 8),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              Text(
-                hero,
-                style: const TextStyle(
-                  color: Color(0xFFF1E4C9),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 1.0,
-                ),
-              ),
-              const Spacer(),
-              Text(
-                'NÍVEL ${snapshot.playerLevel}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
-                ),
-              ),
-              const SizedBox(width: 9),
-              Text(
-                '${snapshot.playerGold.floor()} G',
-                style: const TextStyle(
-                  color: Color(0xFFFFD68E),
-                  fontSize: 10,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          _Bar(value: health, color: const Color(0xFF69C98A), height: 7),
-          const SizedBox(height: 4),
-          _Bar(value: xp, color: const Color(0xFF62B8E8), height: 4),
-          if (snapshot.playerRespawnSeconds > 0)
-            Padding(
-              padding: const EdgeInsets.only(top: 5),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(
-                    Icons.close_rounded,
-                    color: Color(0xFFFF7777),
-                    size: 12,
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      child: SizedBox(
+        width: 186,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Text(
+                  hero,
+                  style: const TextStyle(
+                    color: Color(0xFFF1E4C9),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.8,
                   ),
-                  const SizedBox(width: 4),
-                  Text(
-                    'ELIMINADO  •  RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
-                    style: const TextStyle(
-                      color: Color(0xFFFFA0A0),
-                      fontSize: 9,
-                      fontWeight: FontWeight.w900,
-                      letterSpacing: 0.35,
-                    ),
+                ),
+                const Spacer(),
+                Text(
+                  'NV ${snapshot.playerLevel}',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.45,
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 7),
+                Text(
+                  '${snapshot.playerGold.floor()} G',
+                  style: const TextStyle(
+                    color: Color(0xFFFFD68E),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ],
             ),
-        ],
+            const SizedBox(height: 6),
+            Row(
+              children: [
+                const Text(
+                  'HP',
+                  style: TextStyle(
+                    color: Color(0xFFC9D7DA),
+                    fontSize: 9,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.55,
+                  ),
+                ),
+                const Spacer(),
+                Text(
+                  '${snapshot.playerHealth.floor()} / ${snapshot.playerMaxHealth.floor()}',
+                  style: TextStyle(
+                    color: healthColor,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w900,
+                    fontFeatures: const [FontFeature.tabularFigures()],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
+            _Bar(value: health, color: healthColor, height: 7),
+            const SizedBox(height: 4),
+            _Bar(value: xp, color: const Color(0xFF62B8E8), height: 2),
+            if (snapshot.playerDamageFeedbackSeconds > 0 &&
+                snapshot.playerLastDamageSource != null)
+              Padding(
+                padding: const EdgeInsets.only(top: 5),
+                child: Text(
+                  '-${snapshot.playerLastDamageAmount.ceil()} HP  ·  ${snapshot.playerLastDamageSource}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: const TextStyle(
+                    color: Color(0xFFFFA0A0),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+            if (snapshot.playerRespawnSeconds > 0)
+              Padding(
+                padding: const EdgeInsets.only(top: 4),
+                child: Text(
+                  'ELIMINADO  ·  RETORNO ${snapshot.playerRespawnSeconds.toStringAsFixed(1)}s',
+                  style: const TextStyle(
+                    color: Color(0xFFFFA0A0),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                  ),
+                ),
+              ),
+          ],
+        ),
       ),
     );
   }
@@ -1972,8 +2239,8 @@ class _MiniMap extends StatelessWidget {
       child: GestureDetector(
         behavior: HitTestBehavior.opaque,
         onTapDown: (details) {
-          const mapWidth = 120.0;
-          const mapHeight = 76.0;
+          const mapWidth = 104.0;
+          const mapHeight = 64.0;
           final x = (details.localPosition.dx / mapWidth) *
                   (ArenaWorldCatalog.halfWidth * 2) -
               ArenaWorldCatalog.halfWidth;
@@ -1983,8 +2250,8 @@ class _MiniMap extends StatelessWidget {
           onPing(MobaPoint(x, z));
         },
         child: SizedBox(
-          width: 120,
-          height: 76,
+          width: 104,
+          height: 64,
           child: CustomPaint(painter: _MiniMapPainter(snapshot)),
         ),
       ),

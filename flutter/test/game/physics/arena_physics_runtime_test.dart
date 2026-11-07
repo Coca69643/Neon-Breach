@@ -52,16 +52,17 @@ void main() {
       expect(
         physics.playerPosition.z,
         greaterThan(-47),
-        reason: 'the capsule must pass through the 4.8-unit doorway',
+        reason: 'the capsule must pass through the 6.4-unit doorway',
       );
 
       physics.teleport(const MobaPoint(-63, -38));
       await advance(frames: 180, moveX: -1);
       expect(
         physics.playerPosition.x,
-        greaterThan(-72.8),
+        greaterThan(-74.5),
         reason: 'the capsule must stop before the west interior wall',
       );
+      expect(physics.playerPosition.x, lessThan(-73.0));
       expect(physics.grounded, isTrue);
     });
 
@@ -99,7 +100,7 @@ void main() {
       final access = ArenaWorldCatalog.verticalAccesses.first;
       final z = (access.corridorMinZ + access.corridorMaxZ) * 0.5;
       physics.teleport(MobaPoint(access.rampStartX + 0.2, z));
-      await advance(frames: 90, moveX: 1);
+      await advance(frames: 100, moveX: 1);
 
       expect(
         physics.playerPosition.x,
@@ -111,6 +112,103 @@ void main() {
         reason: 'the capsule must gain height while climbing the ramp',
       );
       expect(physics.grounded, isTrue);
+    });
+
+    test('surface traction changes speed and releases momentum smoothly',
+        () async {
+      await advance(frames: 90, moveZ: -1);
+      final pavedSpeed = physics.horizontalSpeed;
+      expect(pavedSpeed, greaterThan(4.6));
+
+      physics.teleport(const MobaPoint(-86, 14));
+      await advance(frames: 90, moveX: 1);
+      final grassSpeed = physics.horizontalSpeed;
+      expect(grassSpeed, lessThan(pavedSpeed * 0.9));
+
+      await advance(frames: 30);
+      expect(physics.horizontalSpeed, lessThan(grassSpeed * 0.35));
+    });
+
+    test('Rapier dash is swept, short and blocked by interior walls', () async {
+      physics.teleport(const MobaPoint(0, -60));
+      expect(physics.triggerDash(1, 0), isTrue);
+      await advance(frames: 22);
+      expect(physics.playerPosition.x, greaterThan(3.2));
+      expect(physics.playerPosition.x, lessThan(5.4));
+      expect(physics.consumeDashCompletion(), isTrue);
+      expect(physics.consumeDashCompletion(), isFalse);
+      expect(physics.grounded, isTrue);
+
+      physics.teleport(const MobaPoint(-71, -38));
+      expect(physics.triggerDash(-1, 0), isTrue);
+      await advance(frames: 22);
+      expect(
+        physics.playerPosition.x,
+        greaterThan(-74.5),
+        reason: 'the dash must stop at the physical interior wall',
+      );
+      expect(physics.consumeDashCompletion(), isTrue);
+      expect(physics.grounded, isTrue);
+    });
+
+    test('diagonal input is normalized and never exceeds forward speed', () async {
+      await advance(frames: 90, moveX: 1, moveZ: 1);
+
+      expect(
+        physics.horizontalSpeed,
+        lessThanOrEqualTo(ArenaPhysicsRuntime.moveSpeed * 1.03),
+      );
+    });
+
+    test('direction reversal brakes before building speed in the new direction',
+        () async {
+      await advance(frames: 60, moveX: 1);
+      final beforeReverse = physics.playerPosition.x;
+      expect(physics.horizontalSpeed, greaterThan(4.6));
+
+      await advance(frames: 12, moveX: -1);
+
+      expect(
+        physics.horizontalSpeed,
+        lessThan(1.0),
+        reason: 'the motor must absorb forward momentum before reversing',
+      );
+      expect(
+        physics.playerPosition.x,
+        greaterThan(beforeReverse),
+        reason: 'the character must not instantly teleport into reverse motion',
+      );
+
+      await advance(frames: 36, moveX: -1);
+      expect(physics.playerPosition.x, lessThan(beforeReverse));
+    });
+
+    test('fixed-step movement stays consistent across render frame rates',
+        () async {
+      final secondRuntime = await ArenaPhysicsRuntime.create(
+        spawn: const MobaPoint(0, -60),
+      );
+      try {
+        physics.setInput(1, 0);
+        secondRuntime.setInput(1, 0);
+        for (var frame = 0; frame < 60; frame++) {
+          physics.update(1 / 60);
+        }
+        for (var frame = 0; frame < 30; frame++) {
+          secondRuntime.update(1 / 30);
+        }
+
+        expect(
+          physics.playerPosition.x,
+          closeTo(secondRuntime.playerPosition.x, 0.08),
+        );
+        expect(
+          physics.playerPosition.z,
+          closeTo(secondRuntime.playerPosition.z, 0.08),
+        );
+      } finally {
+        secondRuntime.dispose();
+      }
     });
 
     test('teleport is an explicit respawn operation and resets velocity',

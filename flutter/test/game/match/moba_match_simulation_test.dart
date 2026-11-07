@@ -65,6 +65,32 @@ void main() {
       }
     });
 
+    test('one allied bot starts inside the player camera area for every hero', () {
+      for (final hero in MobaHeroId.values) {
+        final simulation = MobaMatchSimulation(heroId: hero);
+        final state = simulation.snapshot;
+        final player = state.playerPosition;
+        final alliedBots = state.bots.where((bot) => bot.team == MobaTeam.blue);
+        final nearest = alliedBots
+            .map((bot) => bot.position.distanceTo(player))
+            .reduce((a, b) => a < b ? a : b);
+
+        expect(nearest, lessThan(9.0),
+            reason: '${hero.name} must see at least one ally near the opening position');
+        final visibleAlly = alliedBots.firstWhere(
+          (bot) => bot.position.distanceTo(player) == nearest,
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(
+            visibleAlly.position.x,
+            visibleAlly.position.z,
+            elevation: visibleAlly.position.elevation,
+          ),
+          isTrue,
+        );
+      }
+    });
+
     test('all bots spawn on walkable ground outside tower collision footprints', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
@@ -192,6 +218,9 @@ void main() {
       simulation.applyPhysicsPlayerPosition(const MobaPoint(110, 0));
 
       expect(simulation.snapshot.playerHealth, 0);
+      expect(simulation.snapshot.playerLastDamageSource, 'Queda fora do mapa');
+      expect(simulation.snapshot.playerLastDamageAmount, greaterThan(0));
+      expect(simulation.snapshot.playerDamageFeedbackSeconds, greaterThan(0));
       expect(simulation.snapshot.playerRespawnSeconds, greaterThan(4.9));
       expect(
         simulation.snapshot.playerPosition.x,
@@ -206,6 +235,50 @@ void main() {
       expect(simulation.snapshot.playerPosition.x, closeTo(home.x, 0.001));
       expect(simulation.snapshot.playerPosition.z, closeTo(home.z, 0.001));
       expect(simulation.snapshot.playerSpawnShieldSeconds, greaterThan(0));
+    });
+
+    test('Bastion shield strike exposes the heavy punch animation window', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
+
+      simulation.step(1 / 30, castSkill: true);
+
+      expect(simulation.snapshot.playerSkillPulseSeconds, greaterThan(0.8));
+      expect(simulation.snapshot.playerAttackSeconds, greaterThan(0.4));
+    });
+
+    test('attacks turn the hero toward the target and hold that facing through the strike', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.lyra,
+        spawnPosition: const MobaPoint(-3.0, 65.0),
+      );
+      simulation.cyclePlayerTarget();
+
+      simulation.step(
+        1 / 30,
+        moveX: 0,
+        moveZ: -1,
+        basicAttack: true,
+        externalPlayerMovement: true,
+      );
+
+      expect(simulation.snapshot.playerFacingX, greaterThan(0.8));
+      expect(simulation.snapshot.playerFacingZ.abs(), lessThan(0.35));
+
+      for (var frame = 0; frame < 10; frame++) {
+        simulation.step(
+          1 / 30,
+          moveX: 0,
+          moveZ: -1,
+          externalPlayerMovement: true,
+        );
+      }
+
+      expect(
+        simulation.snapshot.playerFacingX,
+        greaterThan(0.8),
+        reason: 'movement input must not overwrite target-facing during the strike',
+      );
+      expect(simulation.snapshot.playerFacingZ.abs(), lessThan(0.35));
     });
 
     test('external physics position disables duplicate logical movement', () {
@@ -270,13 +343,13 @@ void main() {
 
       expect(
         simulation.snapshot.playerPosition.x,
-        lessThan(-53.4),
+        lessThan(-51.4),
         reason: 'the hero must stop before crossing the east interior side wall',
       );
     });
 
     test('player stays on the island while moving diagonally toward the border', () {
-      final spawn = const MobaPoint(80, 24);
+      final spawn = const MobaPoint(80, 30);
       expect(ArenaWorldCatalog.isWalkable(spawn.x, spawn.z), isTrue);
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.kairo,
@@ -692,6 +765,30 @@ void main() {
       expect(kairo.snapshot.playerPosition.z, greaterThan(-56));
     });
 
+    test('Kairo dash is handed to Rapier when physics owns player movement', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.kairo);
+      final start = simulation.snapshot.playerPosition;
+
+      simulation.step(
+        1 / 30,
+        moveZ: 1,
+        castSkill: true,
+        externalPlayerMovement: true,
+      );
+
+      final request = simulation.consumePhysicsDashRequest();
+      expect(request, isNotNull);
+      expect(request!.x, closeTo(0, 1e-5));
+      expect(request.z, closeTo(5.0, 1e-5));
+      expect(simulation.snapshot.playerPosition.distanceTo(start), 0);
+      expect(simulation.consumePhysicsDashRequest(), isNull);
+      final resolved = MobaPoint(0, start.z + 4.2);
+      simulation.applyPhysicsPlayerPosition(resolved);
+      simulation.resolvePhysicsDashAt(resolved);
+      expect(simulation.snapshot.playerPosition.z, resolved.z);
+      expect(simulation.snapshot.playerSkillPulseSeconds, greaterThan(0));
+    });
+
     test('long simulation keeps minion count within its fixed mobile budget', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.bastion);
 
@@ -714,6 +811,22 @@ void main() {
       expect(state.playerLevel, 1);
       expect(state.minions.every((unit) => MobaLane.values.contains(unit.lane)), isTrue);
       expect(state.towers.every((tower) => MobaLane.values.contains(tower.lane)), isTrue);
+    });
+    test('district capture grants territorial progression', () {
+      final site = ArenaWorldCatalog.districtSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      for (var tick = 0; tick < 240; tick++) {
+        simulation.step(1 / 30);
+      }
+      final captured = simulation.snapshot.districts.firstWhere(
+        (district) => district.id == site.$1,
+      );
+      expect(captured.owner, MobaTeam.blue);
+      expect(captured.control, 100);
+      expect(simulation.snapshot.playerGold, greaterThan(500));
     });
   });
 }
