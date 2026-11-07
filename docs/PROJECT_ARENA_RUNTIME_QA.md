@@ -82,7 +82,7 @@ The fix is not accepted until a fresh PR CI run builds the APK, reports exactly 
 The first mobility slice is implemented on the existing Flutter Scene + Rapier runtime. It does not replace the existing hero-skill dash path.
 
 - A dedicated traversal dash is camera-relative and defaults to camera-forward when the joystick is neutral.
-- Traversal has a three-charge stamina budget; one charge is spent only after a valid dash starts.
+- Each hero receives a distinct traversal profile: Lyra has three charges and balanced range, Bastion has two charges and a shorter dash, and Kairo has four charges and the longest dash. One charge is spent only after a valid dash starts.
 - Stamina regeneration begins after a short recovery delay and advances on the existing 60 Hz physics clock.
 - Rapier still resolves the swept displacement against the authored world, so the dash stops at collision geometry rather than teleporting through it.
 - Traversal completion uses its own event and cannot call the hero-skill dash completion resolver.
@@ -101,4 +101,4 @@ The first mobility slice is implemented on the existing Flutter Scene + Rapier r
 - [ ] The DASH button and charge indicators remain legible on the Realme C53 landscape viewport.
 - [ ] Physical acceptance records actual frame pacing, memory, temperature and battery impact.
 
-The three-charge values and recovery timing are Arena tuning parameters inspired by Deadlock's movement-resource design, not copied game constants. The next mobility slice should add momentum-preserving slide/air control only after this one passes physics and device acceptance.
+Charge capacity, dash distance, duration and recovery timing are Arena tuning parameters inspired by Deadlock's movement-resource design, not copied game constants. The three hero profiles must be tuned and accepted independently. The next mobility slice should add momentum-preserving slide/air control only after this one passes physics and device acceptance.
