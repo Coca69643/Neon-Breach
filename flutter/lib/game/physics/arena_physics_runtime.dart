@@ -89,7 +89,6 @@ class ArenaPhysicsRuntime {
   static const double gravity = 24.0;
   static const double moveSpeed = 5.6;
   static const double acceleration = 21.0;
-  static const double airAccelerationRatio = 0.42;
   static const double airFriction = 2.6;
   static const double dashDistance = 4.8;
   static const double dashDuration = 0.24;
@@ -151,7 +150,9 @@ class ArenaPhysicsRuntime {
       _grounded &&
       !_slideActive &&
       _dashRemaining <= 0 &&
-      _actualHorizontalSpeed + 1e-6 >= slideStartSpeed;
+      _actualHorizontalSpeed + 1e-6 >= slideStartSpeed &&
+      math.sqrt(_velocityX * _velocityX + _velocityZ * _velocityZ) + 1e-6 >=
+          slideStartSpeed;
   double get traversalStamina => _traversalStamina;
   double get traversalStaminaMax => _traversalProfile.maxCharges;
   double get traversalStaminaRatio =>
@@ -571,9 +572,12 @@ class ArenaPhysicsRuntime {
     if (inputLength > 0.10) {
       final currentAngle = math.atan2(_velocityZ, _velocityX);
       final targetAngle = math.atan2(_moveZ, _moveX);
-      final delta = (targetAngle - currentAngle + math.pi) % (math.pi * 2) - math.pi;
+      var delta = targetAngle - currentAngle;
+      if (delta > math.pi) delta -= math.pi * 2;
+      if (delta < -math.pi) delta += math.pi * 2;
       final maxTurn = _traversalProfile.slideSteeringRadiansPerSecond * dt;
-      final nextAngle = currentAngle + delta.clamp(-maxTurn, maxTurn);
+      final nextAngle =
+          currentAngle + delta.clamp(-maxTurn, maxTurn).toDouble();
       _velocityX = math.cos(nextAngle) * speed;
       _velocityZ = math.sin(nextAngle) * speed;
     }
