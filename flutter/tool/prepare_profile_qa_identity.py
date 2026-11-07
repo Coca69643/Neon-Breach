@@ -34,7 +34,7 @@ def main() -> None:
         pattern = r"(applicationId\s+['\"])" + re.escape(APP_ID) + r"(['\"])"
     updated, count = re.subn(pattern, lambda match: match.group(1) + QA_APP_ID + match.group(2), source)
     require(count == 1, f"expected one generated applicationId {APP_ID!r}, found {count}.")
-    default_config_matches = list(re.finditer(r"(?m)^([ \\t]*)defaultConfig\\s*\\{", updated))
+    default_config_matches = list(re.finditer(r"(?m)^([ \t]*)defaultConfig\s*\{", updated))
     require(
         len(default_config_matches) == 1,
         f"expected one generated defaultConfig block, found {len(default_config_matches)}.",
@@ -43,15 +43,15 @@ def main() -> None:
     block_indent = default_config.group(1) + "    "
     if gradle.suffix == ".kts":
         abi_filter = (
-            f"\\n{block_indent}ndk {{\\n"
-            f'{block_indent}    abiFilters += setOf("arm64-v8a")\\n'
-            f"{block_indent}}}\\n"
+            f"\n{block_indent}ndk {{\n"
+            f'{block_indent}    abiFilters += setOf("arm64-v8a")\n'
+            f"{block_indent}}}\n"
         )
     else:
         abi_filter = (
-            f"\\n{block_indent}ndk {{\\n"
-            f'{block_indent}    abiFilters "arm64-v8a"\\n'
-            f"{block_indent}}}\\n"
+            f"\n{block_indent}ndk {{\n"
+            f'{block_indent}    abiFilters "arm64-v8a"\n'
+            f"{block_indent}}}\n"
         )
     updated = updated[:default_config.end()] + abi_filter + updated[default_config.end():]
     require(
