@@ -588,7 +588,7 @@ class MobaMatchSimulation {
                 ArenaWorldCatalog.shopkeeperZ,
               ),
             ) >
-            ArenaWorldCatalog.shopkeeperInteractionRadius) {
+            ArenaWorldCatalog.shopkeeperInteractionRadius + 2.25) {
       return false;
     }
 
