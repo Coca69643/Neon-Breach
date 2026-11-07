@@ -1352,6 +1352,33 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     });
   }
 
+  /// Dedicated traversal dash. Direction follows the camera-relative joystick;
+  /// when neutral, the hero moves forward relative to the camera.
+  void _triggerTraversalDash() {
+    final physics = _physicsRuntime;
+    if (!mounted || physics == null || !physics.canTriggerTraversalDash) {
+      return;
+    }
+
+    final forwardX = math.sin(_cameraYaw);
+    final forwardZ = math.cos(_cameraYaw);
+    final rightX = math.cos(_cameraYaw);
+    final rightZ = -math.sin(_cameraYaw);
+    var directionX = _moveX * rightX + _moveZ * forwardX;
+    var directionZ = _moveX * rightZ + _moveZ * forwardZ;
+    final length = math.sqrt(
+      directionX * directionX + directionZ * directionZ,
+    );
+    if (length < 0.12) {
+      directionX = forwardX;
+      directionZ = forwardZ;
+    }
+
+    if (physics.triggerTraversalDash(directionX, directionZ)) {
+      setState(() {});
+    }
+  }
+
   String _clock(double seconds) {
     final total = seconds.floor();
     final minutes = (total ~/ 60).toString().padLeft(2, '0');
@@ -1629,6 +1656,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                             widget.simulation.cyclePlayerTarget();
                             setState(() => _snapshot = widget.simulation.snapshot);
                           },
+                        ),
+                        const SizedBox(width: 7),
+                        _MovementDashButton(
+                          size: compact ? 50 : 54,
+                          stamina: _physicsRuntime?.traversalStamina ?? 0,
+                          maxStamina: ArenaPhysicsRuntime.traversalStaminaMax,
+                          enabled:
+                              _physicsRuntime?.canTriggerTraversalDash ?? false,
+                          onTap: _triggerTraversalDash,
                         ),
                         const SizedBox(width: 7),
                         _MatchActionButton(
@@ -2210,6 +2246,109 @@ class _TargetLockButton extends StatelessWidget {
                 ),
               ),
             ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MovementDashButton extends StatelessWidget {
+  const _MovementDashButton({
+    required this.size,
+    required this.stamina,
+    required this.maxStamina,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final double size;
+  final double stamina;
+  final double maxStamina;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final slots = (stamina / maxStamina * 3.0).clamp(0.0, 3.0).toDouble();
+    final activeColor = enabled
+        ? const Color(0xFF9CE0C8)
+        : const Color(0xFF73888B);
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(
+        color: enabled
+            ? const Color(0xFF9BC2CF)
+            : const Color(0xFF64777F),
+        width: 1.1,
+      ),
+    );
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: 'Dash de mobilidade, ${slots.toStringAsFixed(1)} de 3 cargas',
+      child: Material(
+        color: enabled
+            ? const Color(0xD0446878)
+            : const Color(0xC32C3842),
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: shape,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.speed_rounded,
+                  size: size * 0.29,
+                  color: enabled
+                      ? const Color(0xFFF0F6F0)
+                      : const Color(0xFFA4B1B2),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'DASH',
+                  style: TextStyle(
+                    color: enabled ? Colors.white : const Color(0xFFA4B1B2),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.55,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < 3; index++) ...[
+                      if (index > 0) const SizedBox(width: 3),
+                      SizedBox(
+                        width: 7,
+                        height: 3,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: ColoredBox(
+                            color: const Color(0xFF354750),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor:
+                                    (slots - index).clamp(0.0, 1.0).toDouble(),
+                                child: ColoredBox(color: activeColor),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
