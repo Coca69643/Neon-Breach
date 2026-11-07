@@ -461,6 +461,30 @@ abstract final class ArenaWorldCatalog {
     return ArenaSurfaceType.grass;
   }
 
+  static const double asphaltSurfaceLift = 0.11;
+  static const double asphaltCrownLift = 0.025;
+  static const double concreteSurfaceLift = 0.16;
+
+  /// Surface lift shared by the rendered GLB overlays and Rapier terrain.
+  /// Bridges and mezzanines are resolved before this offset is applied.
+  static double surfaceElevationOffsetAt(double x, double z) {
+    switch (surfaceAt(x, z)) {
+      case ArenaSurfaceType.asphalt:
+        final laneGap = laneDistance(x, z);
+        final accessGap = flankPathDistance(x, z);
+        final useLane = laneGap <= accessGap;
+        final nearestGap = math.min(laneGap, accessGap);
+        final halfWidth = useLane ? asphaltHalfWidth : asphaltAccessHalfWidth;
+        final crown = (1.0 - nearestGap / halfWidth).clamp(0.0, 1.0).toDouble();
+        return asphaltSurfaceLift + asphaltCrownLift * crown;
+      case ArenaSurfaceType.concrete:
+        return concreteSurfaceLift;
+      case ArenaSurfaceType.grass:
+      case ArenaSurfaceType.interior:
+        return 0.0;
+    }
+  }
+
   static double movementSpeedMultiplierAt(double x, double z) =>
       switch (surfaceAt(x, z)) {
         ArenaSurfaceType.asphalt => 1.0,
@@ -486,7 +510,7 @@ abstract final class ArenaWorldCatalog {
     final base = heightAt(x, z) + elevation;
     final access = _accessForPoint(x, z);
     if (access != null) return base;
-    if (!_isOnBridge(x, z)) return base;
+    if (!_isOnBridge(x, z)) return base + surfaceElevationOffsetAt(x, z);
     final riverZ = _riverCenterZ(x);
     final bankOffset = _riverHalfWidth(x) + 1.25;
     final nearBank = heightAt(x, riverZ - bankOffset);
@@ -505,8 +529,7 @@ abstract final class ArenaWorldCatalog {
         math.exp(-math.pow(riverDistance, 2) / (riverWidth * riverWidth * 1.8));
     final curbBank = 0.12 *
         math.exp(-math.pow(riverDistance - riverWidth - 0.75, 2) / 2.8);
-    final roadDrain = -0.035 * math.exp(-math.pow(laneDistance(x, z), 2) / 9.0);
-    return rolling + canalBed + curbBank + roadDrain;
+    return rolling + canalBed + curbBank;
   }
 
   static List<ArenaWorldPlacement> _makeTrees() {
@@ -580,7 +603,7 @@ abstract final class ArenaWorldCatalog {
         asset: 'assets/world/city/$file',
         x: x,
         z: z,
-        y: heightAt(x, z) + y,
+        y: navigationHeightAt(x, z) + y,
         scale: scale,
         yaw: yaw,
       ));

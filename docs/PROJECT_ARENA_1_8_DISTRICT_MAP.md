@@ -4,6 +4,8 @@
 - Campo lógico expandido para 224 × 188 unidades, com contorno orgânico e seis setores.
 - Seis distritos: Distrito Cívico, Reserva Verde, Mercado Central, Pátio Industrial, Estação Intermodal e Orla do Canal.
 - Três avenidas mantêm pressão de siege; ruas secundárias, vielas e cinco travessias conectam os setores.
+- Asfalto e calçadas são overlays elevados no GLB, com meio-fio, marcações e travessias; navegação e colisão usam os mesmos offsets.
+- A malha-base não afunda sob as ruas; superfícies pavimentadas ficam visualmente separadas do terreno.
 - Seis interiores acessíveis com portas, mobiliário e colisões derivados do mesmo catálogo.
 - Duas rampas conectam mezaninos; terreno, navegação e Rapier usam coordenadas lógicas comuns.
 
@@ -30,6 +32,12 @@ Somente packs com licença CC0 explícita entram no bundle:
 - Kenney City Kit Industrial: https://kenney.nl/assets/city-kit-industrial
 - Poly Haven: https://polyhaven.com/license
 - ambientCG: https://ambientcg.com/
+
+## Otimização de cena mobile
+- Props estáticos são carregados por vizinhança em células de 24 unidades, com raio de renderização limitado.
+- Bots, minions, torres, NPCs e marcadores distantes são filtrados pela distância do jogador.
+- A cena recebe snapshots a 30 Hz; o HUD visual é reconstruído a 10 Hz.
+- A validação de FPS, memória e temperatura em perfil Release no Realme C53 permanece obrigatória.
 
 ## Gate de validação
 - `flutter analyze`

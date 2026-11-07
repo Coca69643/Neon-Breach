@@ -250,6 +250,29 @@ void main() {
       );
     });
 
+    test('raised asphalt and concrete match navigation collision height', () {
+      final roadBase = ArenaWorldCatalog.heightAt(-36, -60);
+      expect(
+        ArenaWorldCatalog.navigationHeightAt(-36, -60),
+        closeTo(roadBase + 0.135, 0.001),
+      );
+
+      final sidewalkBase = ArenaWorldCatalog.heightAt(-30, -60);
+      expect(
+        ArenaWorldCatalog.navigationHeightAt(-30, -60),
+        closeTo(sidewalkBase + ArenaWorldCatalog.concreteSurfaceLift, 0.001),
+      );
+
+      final parkBase = ArenaWorldCatalog.heightAt(-86, 14);
+      expect(
+        ArenaWorldCatalog.navigationHeightAt(-86, 14),
+        closeTo(parkBase, 0.001),
+      );
+      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(-36, -60), closeTo(0.135, 0.001));
+      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(-30, -60), closeTo(0.16, 0.001));
+      expect(ArenaWorldCatalog.surfaceElevationOffsetAt(-86, 14), 0);
+    });
+
     test('visible interior furniture has matching navigation blockers', () {
       expect(ArenaWorldCatalog.interiorFurnitureFootprints, isNotEmpty);
       for (final item in ArenaWorldCatalog.interiorFurnitureFootprints) {

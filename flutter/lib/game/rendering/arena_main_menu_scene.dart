@@ -78,7 +78,7 @@ class _ArenaMenuBackdropPainter extends CustomPainter {
           Color(0x008AB7BD),
         ],
         stops: [0.0, 0.52, 1.0],
-      ).createShader(const Rect.fromCircle(
+      ).createShader(Rect.fromCircle(
         center: Offset(1040, 440),
         radius: 520,
       ));

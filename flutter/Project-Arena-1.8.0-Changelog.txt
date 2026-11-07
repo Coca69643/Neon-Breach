@@ -32,7 +32,7 @@ PENDÊNCIAS DAS PRÓXIMAS ETAPAS
 - Reequilibrar visibilidade e escala dos minions e bots.
 - Tornar NPCs e interiores mais evidentes e interativos.
 - Exibir vida, valores de dano e origem do dano de forma legível.
-- Adicionar um personagem não humano com rig e animações quadrúpedes próprios.
+- Novo herói planejado como robô sintético humanoide; a ultimate assume temporariamente uma forma quadrúpede de raposa. Formas animais adicionais ficam para uma expansão futura.
 - Projetar progressão e loja com preços transparentes e itens cosméticos, sem recompensas aleatórias.
 - Validar a apresentação e o desempenho prolongado no Realme C53.
 

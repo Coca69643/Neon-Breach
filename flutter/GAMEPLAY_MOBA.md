@@ -6,7 +6,7 @@ Projeto Arena é um MOBA 5v5 mobile de controle territorial. As rotas mantêm pr
 
 ## Loop de partida — District Control
 
-1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base.
+1. Jogador escolhe Lyra, Bastion ou Kairo e entra na base; o próximo slot planejado é um robô sintético humanoide cuja ultimate assume temporariamente uma forma quadrúpede de raposa.
 2. A partida abre com tropas nas rotas e disputa simultânea dos seis distritos.
 3. Bots roamers procuram distritos neutros ou adversários; o bot central contesta o reator.
 4. Capturar um distrito concede ouro, experiência e bônus territorial de 3,5% de dano à equipe.
@@ -59,6 +59,7 @@ O ouro de partida é economia MOBA, não recurso de sobrevivência.
 - Simulação usa passo fixo e orçamento explícito de entidades; não deve depender da taxa de quadros do aparelho. Unidades derrotadas são removidas antes de verificar o limite de 48 tropas, permitindo novas ondas ao longo da partida.
 - Renderização e simulação são separadas: um frame perdido não altera a velocidade lógica da partida.
 - A câmera de combate é traseira e baixa; o arrasto na zona central/direita altera yaw/pitch e o joystick esquerdo altera apenas movimento. A visão estratégica fica no minimapa.
+- O streaming visual carrega apenas props e unidades próximas; o mapa completo continua navegável e representado no minimapa.
 - Alvo inicial é 30 FPS sustentados em aparelho intermediário; medir no perfil/release em aparelho físico.
 - Câmera de combate usa perspectiva 3/4, acompanhando o jogador por trás e um pouco acima; não usar enquadramento de mapa inteiro durante a luta.
 - Configuração atual: follow distance 9.4, look-ahead 3.0, pitch inicial 0.34 rad e FOV vertical 49°; validar enquadramento no Realme C53.

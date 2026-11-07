@@ -249,11 +249,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   ];
 
   late MobaMatchSnapshot _snapshot;
+  late final ValueNotifier<MobaMatchSnapshot> _sceneSnapshotNotifier;
+  late List<Widget> _staticSceneChildren;
+  static const double _staticSceneCellSize = 24.0;
+  static const double _staticPropViewRadius = 62.0;
+  static const double _dynamicEntityViewRadius = 60.0;
+  int _staticSceneCellX = 0;
+  int _staticSceneCellZ = 0;
+  int _hudTicksSinceLastBuild = 0;
   double _cameraYaw = 0;
   double _cameraPitch = 0.34;
   int? _cameraPointerId;
   Offset? _lastCameraPointer;
-  late final List<Widget> _staticSceneChildren = _buildStaticSceneChildren();
   double _moveX = 0;
   double _moveZ = 0;
   double _locomotionRatio = 0;
@@ -277,6 +284,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   void initState() {
     super.initState();
     _snapshot = widget.simulation.snapshot;
+    _sceneSnapshotNotifier = ValueNotifier<MobaMatchSnapshot>(_snapshot);
+    _staticSceneCellX = (_snapshot.playerPosition.x / _staticSceneCellSize).floor();
+    _staticSceneCellZ = (_snapshot.playerPosition.z / _staticSceneCellSize).floor();
+    _staticSceneChildren = _buildStaticSceneChildren(_snapshot.playerPosition);
     _initialiseCameraRig(_snapshot);
     _worldLoadTimeout = Timer(
       const Duration(seconds: 35),
@@ -416,7 +427,15 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       physics.syncCovers(next.covers);
     }
     _advanceCameraRig(next, deltaSeconds);
-    setState(() => _snapshot = next);
+    _refreshStaticSceneChildrenIfNeeded(next.playerPosition);
+    _snapshot = next;
+    _sceneSnapshotNotifier.value = next;
+    // Keep the 3D scene at 30 Hz; rebuild the HUD only at 10 Hz.
+    _hudTicksSinceLastBuild++;
+    if (_hudTicksSinceLastBuild >= 3) {
+      _hudTicksSinceLastBuild = 0;
+      setState(() {});
+    }
 
     if (next.winner != null && !_finishSent) {
       _finishSent = true;
@@ -434,6 +453,17 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _cameraPitch = (_cameraPitch - delta.dy * 0.005)
           .clamp(0.24, 0.68).toDouble();
     });
+  }
+
+  void _refreshStaticSceneChildrenIfNeeded(MobaPoint focus) {
+    final nextCellX = (focus.x / _staticSceneCellSize).floor();
+    final nextCellZ = (focus.z / _staticSceneCellSize).floor();
+    if (nextCellX == _staticSceneCellX && nextCellZ == _staticSceneCellZ) {
+      return;
+    }
+    _staticSceneCellX = nextCellX;
+    _staticSceneCellZ = nextCellZ;
+    _staticSceneChildren = _buildStaticSceneChildren(focus);
   }
 
   void _markWorldAssetReady(String assetKey) {
@@ -468,6 +498,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   @override
   void dispose() {
     _worldLoadTimeout?.cancel();
+    _sceneSnapshotNotifier.dispose();
     _physicsRuntime?.dispose();
     _physicsRuntime = null;
     super.dispose();
@@ -562,7 +593,13 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ),
       );
 
-  List<Widget> _buildStaticSceneChildren() {
+  List<Widget> _buildStaticSceneChildren(MobaPoint focus) {
+    bool nearby(double x, double z, double radius) {
+      final dx = x - focus.x;
+      final dz = z - focus.z;
+      return dx * dx + dz * dz <= radius * radius;
+    }
+
     return <Widget>[
       SceneModel(
         _terrainAsset,
@@ -571,48 +608,63 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         onLoaded: (_) => _markWorldAssetReady('terrain'),
       ),
       for (var i = 0; i < ArenaWorldCatalog.trees.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
+        if (nearby(ArenaWorldCatalog.trees[i].x, ArenaWorldCatalog.trees[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.trees[i], 'match-tree-$i'),
       for (var i = 0; i < ArenaWorldCatalog.largeTrees.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.largeTrees[i], 'match-large-tree-$i'),
+        if (nearby(ArenaWorldCatalog.largeTrees[i].x, ArenaWorldCatalog.largeTrees[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.largeTrees[i], 'match-large-tree-$i'),
       for (var i = 0; i < ArenaWorldCatalog.bushes.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
+        if (nearby(ArenaWorldCatalog.bushes[i].x, ArenaWorldCatalog.bushes[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.bushes[i], 'match-bush-$i'),
       for (var i = 0; i < ArenaWorldCatalog.cityProps.length; i++)
-        _buildWorldProp(ArenaWorldCatalog.cityProps[i], 'city-detail-$i'),
+        if (nearby(ArenaWorldCatalog.cityProps[i].x, ArenaWorldCatalog.cityProps[i].z, _staticPropViewRadius))
+          _buildWorldProp(ArenaWorldCatalog.cityProps[i], 'city-detail-$i'),
       for (final building in ArenaWorldCatalog.cityInteriors)
-        ..._buildCityInterior(building),
+        if (nearby(building.$2, building.$3, _staticPropViewRadius))
+          ..._buildCityInterior(building),
       for (final access in ArenaWorldCatalog.verticalAccesses)
-        ..._buildVerticalAccess(access),
+        if (nearby(access.x, access.z, _staticPropViewRadius))
+          ..._buildVerticalAccess(access),
       for (final block in ArenaWorldCatalog.commercialBlocks)
-        _buildCommercialBlock(block),
-      // Continuous streets, sidewalks and bridges live in arena_terrain.glb.
-      // Independent scaled road tiles used to create overlapping slabs/seams.
+        if (nearby(block.$2, block.$3, _staticPropViewRadius + 12.0))
+          _buildCommercialBlock(block),
+      // Bases stay resident; neighborhood dressing is refreshed per 24-unit cell.
       _buildBase(MobaTeam.blue),
       _buildBase(MobaTeam.red),
-      SceneModel(
-        'assets/world/city/interior_desk.glb',
-        key: const ValueKey('central-objective-pedestal'),
-        name: 'central_relay_pedestal',
-        position: _worldPosition(const MobaPoint(0, 0)),
-        scale: vm.Vector3.all(1.35),
-      ),
-      SceneModel(
-        'assets/world/city/interior_computer_screen.glb',
-        key: const ValueKey('central-objective-terminal'),
-        name: 'central_relay_terminal',
-        position: vm.Vector3(
-          0,
-          _groundHeight(const MobaPoint(0, 0)) + 0.92,
-          0,
+      if (nearby(0, 0, _staticPropViewRadius + 12.0))
+        SceneModel(
+          'assets/world/city/interior_desk.glb',
+          key: const ValueKey('central-objective-pedestal'),
+          name: 'central_relay_pedestal',
+          position: _worldPosition(const MobaPoint(0, 0)),
+          scale: vm.Vector3.all(1.35),
         ),
-        scale: vm.Vector3.all(0.92),
-      ),
+      if (nearby(0, 0, _staticPropViewRadius + 12.0))
+        SceneModel(
+          'assets/world/city/interior_computer_screen.glb',
+          key: const ValueKey('central-objective-terminal'),
+          name: 'central_relay_terminal',
+          position: vm.Vector3(
+            0,
+            _groundHeight(const MobaPoint(0, 0)) + 0.92,
+            0,
+          ),
+          scale: vm.Vector3.all(0.92),
+        ),
     ];
   }
 
   List<Widget> _buildSceneChildren(MobaMatchSnapshot snapshot) {
+    bool pointNearby(MobaPoint point, double radius) {
+      final dx = point.x - snapshot.playerPosition.x;
+      final dz = point.z - snapshot.playerPosition.z;
+      return dx * dx + dz * dz <= radius * radius;
+    }
+
     return <Widget>[
       ..._staticSceneChildren,
-      SceneMesh(
+      if (pointNearby(const MobaPoint(0, 0), _dynamicEntityViewRadius + 12.0))
+        SceneMesh(
         name: 'central_relay_control_ring',
         geometry: _relayRingGeometry,
         material: snapshot.centralObjective.contested
@@ -633,9 +685,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         ),
       ),
       for (final district in snapshot.districts)
-        ..._buildDistrictVisuals(district, snapshot.elapsedSeconds),
+        if (pointNearby(district.position, _dynamicEntityViewRadius + 12.0))
+          ..._buildDistrictVisuals(district, snapshot.elapsedSeconds),
       for (final tower in snapshot.towers)
-        if (tower.health > 0)
+        if (tower.health > 0 && pointNearby(tower.position, _dynamicEntityViewRadius + 14.0))
           SceneMesh(
             name: 'tower_identity_${tower.team.name}_${tower.lane.name}_${tower.tier}',
             geometry: _towerIdentityGeometry,
@@ -679,9 +732,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
             0.78 + (1.0 - snapshot.playerHitConfirmSeconds / 0.22) * 0.55,
           ),
         ),
-      for (final npc in _ambientNpcs) _buildAmbientNpc(npc, snapshot),
+      for (final npc in _ambientNpcs)
+        if (pointNearby(MobaPoint(npc.x, npc.z), _dynamicEntityViewRadius - 8.0))
+          _buildAmbientNpc(npc, snapshot),
       for (final tower in snapshot.towers)
-        if (tower.health > 0)
+        if (tower.health > 0 && pointNearby(tower.position, _dynamicEntityViewRadius + 14.0))
           SceneModel(
           _towerAsset(tower.lane.index, tower.tier),
           key: ValueKey(
@@ -693,10 +748,14 @@ class _MobaMatchViewState extends State<MobaMatchView> {
           scale: vm.Vector3.all(4.8),
         ),
       for (final cover in snapshot.covers)
-        if (!cover.isDestroyed) _buildCover(cover),
+        if (!cover.isDestroyed && pointNearby(cover.position, _dynamicEntityViewRadius))
+          _buildCover(cover),
       for (final bot in snapshot.bots)
-        if (bot.respawnSeconds <= 0) _buildBot(bot),
-      for (final minion in snapshot.minions) _buildMinion(minion),
+        if (bot.respawnSeconds <= 0 && pointNearby(bot.position, _dynamicEntityViewRadius))
+          _buildBot(bot),
+      for (final minion in snapshot.minions)
+        if (pointNearby(minion.position, _dynamicEntityViewRadius))
+          _buildMinion(minion),
       if (snapshot.playerHealth > 0)
         SceneModel(
           _heroAsset(snapshot.heroId),
@@ -1258,7 +1317,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 ),
               ),
             ),
-            SceneView.declarative(
+            ValueListenableBuilder<MobaMatchSnapshot>(
+              valueListenable: _sceneSnapshotNotifier,
+              builder: (context, sceneSnapshot, _) => SceneView.declarative(
               key: const ValueKey('live-moba-scene'),
               pixelRatio: 0.82,
               maxFrameRate: 30,
@@ -1298,9 +1359,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                 SceneNode(
                   name: 'scaled_battlefield_root',
                   scale: vm.Vector3.all(_worldScale),
-                  children: _buildSceneChildren(snapshot),
+                  children: _buildSceneChildren(sceneSnapshot),
                 ),
               ],
+            ),,
             ),
             Positioned(
               left: viewport.maxWidth * 0.42,

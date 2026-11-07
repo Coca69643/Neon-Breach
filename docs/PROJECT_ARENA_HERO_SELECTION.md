@@ -46,6 +46,24 @@ The current roster contains only humans, so no species selector is shown.
 species is added. The species taxonomy remains ready for synthetic, creature
 and other character types without adding empty or redundant controls.
 
+## Novo herói — sintético metamórfico
+
+A identidade selecionável deve ser um **robô humanoide original**, não uma raposa
+que ocupa permanentemente um slot. A silhueta base precisa ser reconhecível por
+proporções, capacete/sensores, núcleo visual e placas modulares, sem copiar um
+personagem conhecido.
+
+A ultimate, provisoriamente chamada **Protocolo Feral**, transforma o robô
+temporariamente em uma forma quadrúpede de raposa. A raposa é uma forma de jogo
+com rig e animações próprios — não a identidade completa do herói. A primeira
+implementação deve conter somente essa transformação; formas animais adicionais
+podem ser adicionadas depois por dados de catálogo, sem multiplicar slots no
+elenco nem exigir que o jogador escolha um animal separado.
+
+O robô humanoide permanece como apresentação principal na seleção de herói.
+A transformação deve ter início/fim explícitos, duração e recarga legíveis, e
+retornar à forma-base ao terminar ou quando a partida for interrompida.
+
 ## Scene integration
 
 The selection stage is full-bleed: the 3D preview is the screen background,
