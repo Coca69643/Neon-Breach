@@ -30,6 +30,23 @@ void main() {
       physics.dispose();
     });
 
+    test('hero traversal profiles create distinct movement identities', () {
+      final lyra = ArenaTraversalProfile.forHero(MobaHeroId.lyra);
+      final bastion = ArenaTraversalProfile.forHero(MobaHeroId.bastion);
+      final kairo = ArenaTraversalProfile.forHero(MobaHeroId.kairo);
+
+      expect(lyra.maxCharges, 3);
+      expect(bastion.maxCharges, 2);
+      expect(kairo.maxCharges, 4);
+      expect(bastion.dashDistance, lessThan(lyra.dashDistance));
+      expect(kairo.dashDistance, greaterThan(lyra.dashDistance));
+      expect(
+        {lyra.dashDuration, bastion.dashDuration, kairo.dashDuration}.length,
+        3,
+        reason: 'each hero has an independently tuned traversal response',
+      );
+    });
+
     test('gravity settles the capsule on the terrain', () async {
       await advance(frames: 60);
 
@@ -155,14 +172,14 @@ void main() {
       physics.teleport(const MobaPoint(0, -60));
       expect(
         physics.traversalStamina,
-        closeTo(ArenaPhysicsRuntime.traversalStaminaMax, 1e-6),
+        closeTo(physics.traversalStaminaMax, 1e-6),
       );
       expect(physics.canTriggerTraversalDash, isTrue);
 
       expect(physics.triggerTraversalDash(1, 0), isTrue);
       expect(
         physics.traversalStamina,
-        closeTo(ArenaPhysicsRuntime.traversalStaminaMax - 1, 1e-6),
+        closeTo(physics.traversalStaminaMax - 1, 1e-6),
       );
       expect(
         physics.triggerTraversalDash(0, 1),
@@ -177,7 +194,7 @@ void main() {
       expect(physics.consumeTraversalDashCompletion(), isFalse);
       expect(
         physics.traversalStamina,
-        closeTo(ArenaPhysicsRuntime.traversalStaminaMax - 1, 0.02),
+        closeTo(physics.traversalStaminaMax - 1, 0.02),
         reason: 'stamina does not regenerate during the recovery delay',
       );
 
@@ -197,7 +214,7 @@ void main() {
       physics.teleport(const MobaPoint(0, -60));
       expect(
         physics.traversalStamina,
-        closeTo(ArenaPhysicsRuntime.traversalStaminaMax, 1e-6),
+        closeTo(physics.traversalStaminaMax, 1e-6),
         reason: 'the explicit respawn transition restores the movement budget',
       );
     });
