@@ -100,7 +100,7 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [x] Quartermaster funcional: loja em mundo com célula de impacto (+12% poder) e placa reforçada (+100 vida), custos em ouro, bloqueio por proximidade e compras únicas por partida; testes cobrem preço, alcance e efeitos.
 - [ ] NPCs neutros de combate/camps (equivalente a jungle camps) ainda não implementados; não confundir o mercador e pedestres com esse sistema.
 - [ ] Equipamentos por rig: calibração visual pendente.
-- [x] Perfil local do jogador: editor de nome e foto integrado ao menu; validação automática pendente.
+- [x] Perfil local do jogador: editor de nome e foto integrado ao menu; `flutter analyze` aprovado e 94 testes passaram no CI #42386693010 (HEAD de código `d5fdc7d`); inspeção física e persistência em atualização por cima da instalação existentes ainda pendentes.
 
 - [ ] Novo herói sintético metamórfico: não implementado.
 - [ ] HUD e seleção: revisão de UX pendente.
