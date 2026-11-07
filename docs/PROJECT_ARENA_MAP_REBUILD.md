@@ -14,7 +14,7 @@ O mapa precisa mudar como espaço jogável, não apenas como composição de pro
 ## Diagnóstico atual confirmado no código
 
 - O mundo lógico atual mede 224 × 188 unidades e mantém seis setores.
-- O catálogo contém treze placements comerciais/residenciais com doze silhuetas GLB distintas; quatro volumes de escala maior formam o primeiro quarteirão ao redor do interior west-north.
+- O catálogo contém treze placements comerciais/residenciais com doze silhuetas GLB distintas; quatro volumes de escala maior formam o primeiro quarteirão ao redor do interior west-north. A implantação foi ajustada para preservar o ponto de captura da Reserva Verde e manter toda a geometria dentro do perímetro jogável.
 - Existem seis interiores construídos com paredes, mobiliário e vãos de entrada; o primeiro quarteirão vertical slice envolve o interior west-north com quatro edifícios CC0.
 - Vias, canal, pontes, árvores, fachadas, navegação e colisores já têm uma fundação funcional, mas a composição de superfície ainda não comunica uma cidade completa com silhuetas densas, quarteirões conectados e identidade própria por distrito.
 - A auditoria encontrou um desvio de escala: a raiz 3D aplicava 1.35× aos modelos, enquanto Rapier e navegação usavam as dimensões lógicas sem essa conversão. `worldScale` agora é 1.0 para manter renderização, câmera e física no mesmo sistema de unidades; a validação em runtime ainda é obrigatória.
@@ -124,6 +124,6 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 - Aquisição/inspeção do ZIP: pendente.
 - Reuso de modelos já presentes no bundle offline: composição M1 preparada com assets já pinados; novos arquivos externos ainda não adquiridos.
 - Escala renderização/física: reconciliada em código; runtime ainda pendente.
-- M1 — quarteirão vertical slice: composição de código preparada; CI, captura de gameplay e revisão física ainda pendentes.
+- M1 — quarteirão vertical slice: composição de código preparada; teste inicial detectou colisão com o ponto da Reserva Verde. A posição foi corrigida; CI de revalidação, captura de gameplay e revisão física ainda pendentes.
 - M2 — rede urbana e cinco distritos restantes: não iniciada.
 - Screenshots e teste Realme C53: pendentes.

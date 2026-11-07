@@ -218,7 +218,7 @@ abstract final class ArenaWorldCatalog {
   static const commercialBlocks = <(String, double, double, double)>[
     ('commercial_building_b.glb', -82.0, -60.0, 5.8),
     ('commercial_building_c.glb', 82.0, -60.0, 5.8),
-    ('commercial_building_f.glb', -87.0, 60.0, 12.0),
+    ('commercial_building_f.glb', -78.0, 60.0, 12.0),
     ('commercial_building_h.glb', 82.0, 60.0, 5.8),
     ('commercial_building_d.glb', -98.0, -42.0, 5.0),
     ('commercial_building_g.glb', 98.0, 42.0, 5.0),
@@ -227,7 +227,7 @@ abstract final class ArenaWorldCatalog {
     ('commercial_building_i.glb', 20.5, -68.0, 5.0),
     ('commercial_building_j.glb', 20.5, -40.0, 5.0),
     ('commercial_building_i.glb', -51.0, 60.0, 10.0),
-    ('suburban_building_e.glb', -87.0, 10.0, 10.0),
+    ('suburban_building_e.glb', -97.0, 10.0, 9.0),
     ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
   ];
 

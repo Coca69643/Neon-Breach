@@ -221,8 +221,11 @@ void main() {
           reason: 'the long facade must not be approximated by a square collider');
       expect(ArenaWorldCatalog.commercialLocalBounds, hasLength(12));
       final marketBuildings = ArenaWorldCatalog.commercialBlocks.where(
-        (block) => block.$1 == 'commercial_building_i.glb' ||
-            block.$1 == 'commercial_building_j.glb',
+        (block) =>
+            block.$2 == 20.5 &&
+            (block.$3 == -68.0 || block.$3 == -40.0) &&
+            (block.$1 == 'commercial_building_i.glb' ||
+                block.$1 == 'commercial_building_j.glb'),
       ).toList();
       expect(marketBuildings, hasLength(2));
       expect(ArenaWorldCatalog.isWalkable(12.0, -54.0), isTrue,
@@ -261,9 +264,9 @@ void main() {
 
     test('west-north block frames its enterable interior with four full-scale CC0 buildings', () {
       const authoredBlock = <(String, double, double, double)>[
-        ('commercial_building_f.glb', -87.0, 60.0, 12.0),
+        ('commercial_building_f.glb', -78.0, 60.0, 12.0),
         ('commercial_building_i.glb', -51.0, 60.0, 10.0),
-        ('suburban_building_e.glb', -87.0, 10.0, 10.0),
+        ('suburban_building_e.glb', -97.0, 10.0, 9.0),
         ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
       ];
       expect(authoredBlock, hasLength(4));
@@ -300,6 +303,27 @@ void main() {
               reason: 'CC0 building volumes must not overlap');
         }
       }
+
+      // Every GLB footprint must remain inside the island, not merely have
+      // its center inside the polygon.
+      for (final placement in authoredBlock) {
+        final footprint = ArenaWorldCatalog.commercialFootprint(placement);
+        for (final corner in [
+          (placement.$2 - footprint.$1, placement.$3 - footprint.$2),
+          (placement.$2 - footprint.$1, placement.$3 + footprint.$2),
+          (placement.$2 + footprint.$1, placement.$3 - footprint.$2),
+          (placement.$2 + footprint.$1, placement.$3 + footprint.$2),
+        ]) {
+          expect(
+            ArenaWorldCatalog.contains(corner.$1, corner.$2),
+            isTrue,
+            reason: '${placement.$1} must remain inside the island perimeter',
+          );
+        }
+      }
+
+      expect(ArenaWorldCatalog.isWalkable(-86.0, 14.0), isTrue,
+          reason: 'Reserva Verde capture point must stay free of new buildings');
 
       // The 24 × 18 m west-north interior remains accessible from the south
       // approach and keeps the main lane/sidewalk corridor open.
