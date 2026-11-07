@@ -54,7 +54,7 @@ void main() {
       final site = ArenaWorldCatalog.neutralCampSites.first;
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.bastion,
-        spawnPosition: MobaPoint(site.$3, site.$4),
+        spawnPosition: MobaPoint(site.$3 + 6.0, site.$4),
       );
       final health = simulation.snapshot.playerHealth;
       advanceFor(simulation, 3);
@@ -77,6 +77,17 @@ void main() {
         isTrue,
         reason: 'a fully returned camp restores its original group and health',
       );
+      final expectedSpawnPoints = <MobaPoint>[
+        MobaPoint(site.$3 - 1.15, site.$4),
+        MobaPoint(site.$3 + 1.15, site.$4 + 0.65),
+      ];
+      for (var index = 0; index < expectedSpawnPoints.length; index++) {
+        expect(
+          returned.units[index].position.distanceTo(expectedSpawnPoints[index]),
+          lessThan(0.01),
+          reason: 'unit $index must return to its authored anchor',
+        );
+      }
     });
 
     test('neutral camps are selectable and take damage through the normal attack path', () {
