@@ -61,8 +61,22 @@ void main() {
       expect(simulation.snapshot.playerHealth, lessThan(health));
       expect(simulation.snapshot.neutralCamps.first.state, MobaNeutralCampState.aggro);
       simulation.applyPhysicsPlayerPosition(MobaPoint(site.$3 + 18, site.$4));
+      simulation.step(1 / 30);
+      expect(
+        simulation.snapshot.neutralCamps.first.state,
+        MobaNeutralCampState.returning,
+        reason: 'the leash transition must be observable on the first tick after leaving the aggro radius',
+      );
+
       advanceFor(simulation, 1.5);
-      expect(simulation.snapshot.neutralCamps.first.state, MobaNeutralCampState.returning);
+      final returned = simulation.snapshot.neutralCamps.first;
+      expect(returned.state, MobaNeutralCampState.dormant);
+      expect(returned.units, hasLength(2));
+      expect(
+        returned.units.every((unit) => unit.health == unit.maxHealth),
+        isTrue,
+        reason: 'a fully returned camp restores its original group and health',
+      );
     });
 
     test('neutral camps are selectable and take damage through the normal attack path', () {
