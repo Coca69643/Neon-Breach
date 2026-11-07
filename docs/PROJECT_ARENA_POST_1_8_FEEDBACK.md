@@ -22,6 +22,8 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - Algumas construções aparentam não ter entrada funcional ou o interior não corresponde ao espaço visual.
 - Render, navegação e colisão precisam usar a mesma fonte de dimensões, origem, rotação e footprint. Não adicionar fachadas isoladamente sem validar o espaço de circulação.
 
+**Causa de geometria confirmada na auditoria:** os GLBs fixados do Kenney Furniture Pack usam origem no início do segmento (bounds locais X=[0,1], não um pivô central). O renderer estava colocando paredes laterais no centro do eixo Z, deslocando-as 9 unidades para fora da sala; os dois segmentos frontais começavam em offsets centrais, e a moldura da porta também iniciava no centro. Isso não correspondia ao footprint lógico da colisão. A PR corrige os pontos iniciais para os limites reais do cômodo e mantém o vão de porta de 6,4 unidades. Assets verificados no commit CC0 fixado `ea2f2aa1ca8da0898330c97df8a5489976b051d0`: `wall.glb` (blob `ba5b8d2a16bdb6042750d1bef5e7afe78c9b0091`) e `walldoorwaywide.glb` (blob `76c658e0919d2acfd77630efc1851358579a964f`).
+
 ### P0 — NPCs de MOBA, não somente pedestres
 - Os NPCs atuais são pedestres ambientais com patrulha e diálogo; isso não satisfaz a expectativa de entidades neutras de gameplay de um MOBA.
 - A próxima implementação de NPC de gameplay deve ter papel de jogo explícito, presença consistente no mapa, estado/comportamento, interação/combatibilidade, recompensa/objetivo e representação legível no HUD/minimapa.
@@ -89,7 +91,8 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [x] Auditoria inicial de call paths, pipeline CC0, documentos de arquitetura e testes.
 - [x] Orientação de rigs: NPCs, bots e minions agora usam a base local -Z, alinhada ao deslocamento; aguarda CI e inspeção visual.
 - [x] Escala de bots, minions e pedestres aumentada de forma controlada; aguarda inspeção visual para confirmar proporção.
-- [ ] Mapa: auditoria de footprint/GLB pendente; não declarar corrigido.
+- [x] Mapa — interiores: origem dos GLBs de parede/porta auditada; âncoras laterais/frontais/porta alinhadas ao footprint e testes geométricos adicionados; aguarda CI e screenshot de jogo.
+- [ ] Mapa — conjunto urbano: posicionamento de edifícios comerciais, vias, fachadas completas e colisões externas ainda pendente; não declarar o mapa corrigido.
 - [ ] NPCs neutros de gameplay: não implementados.
 - [ ] Equipamentos por rig: calibração visual pendente.
 - [ ] Perfil real do jogador: não implementado.
