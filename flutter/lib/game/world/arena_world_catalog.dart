@@ -162,6 +162,13 @@ abstract final class ArenaWorldCatalog {
   /// District capture points share the six authored district anchors.
   static const districtSites = districts;
 
+  /// Three neutral camp anchors on open, non-canal ground.
+  static const neutralCampSites = <(String, String, double, double)>[
+    ('verdant', 'NÚCLEO DA RESERVA', -78.0, 14.0),
+    ('industrial', 'GUARDA DO PÁTIO', 78.0, 14.0),
+    ('riverside', 'SENTINELA DA ORLA', 0.0, 34.0),
+  ];
+
   /// Two opposing mezzanine routes create a real height layer without
   /// introducing a second navigation grid or increasing entity budgets.
   static const verticalAccesses = <ArenaVerticalAccess>[

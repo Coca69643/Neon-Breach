@@ -75,6 +75,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
   );
   static final UnlitMaterial _npcMarkerMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(1.0, 0.77, 0.34, 0.98);
+  static final RingGeometry _neutralCampRingGeometry = RingGeometry(
+    innerRadius: 1.65, outerRadius: 1.92, segments: 28,
+  );
+  static final UnlitMaterial _neutralCampMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.96, 0.68, 0.28, 0.98);
   static final RingGeometry _relayRingGeometry = RingGeometry(
     innerRadius: 3.2,
     outerRadius: 3.55,
@@ -700,6 +705,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final district in snapshot.districts)
         if (pointNearby(district.position, _dynamicEntityViewRadius + 12.0))
           ..._buildDistrictVisuals(district, snapshot.elapsedSeconds),
+      for (final camp in snapshot.neutralCamps)
+        if (pointNearby(camp.position, _dynamicEntityViewRadius + 12.0))
+          SceneMesh(
+            name: 'neutral_camp_marker_${camp.id}',
+            geometry: _neutralCampRingGeometry,
+            material: _neutralCampMaterial,
+            position: _worldPosition(camp.position, heightOffset: 0.07),
+          ),
+      for (final camp in snapshot.neutralCamps)
+        for (final unit in camp.units)
+          if (pointNearby(unit.position, _dynamicEntityViewRadius))
+            SceneMesh(
+              name: 'neutral_unit_marker_${unit.id}',
+              geometry: _npcMarkerGeometry,
+              material: _neutralCampMaterial,
+              position: _worldPosition(unit.position, heightOffset: 0.10),
+              scale: vm.Vector3.all(0.72),
+            ),
       for (final tower in snapshot.towers)
         if (tower.health > 0 && pointNearby(tower.position, _dynamicEntityViewRadius + 14.0))
           SceneMesh(
@@ -2448,6 +2471,18 @@ class _MiniMapPainter extends CustomPainter {
         2.2,
         Paint()..color = const Color(0xFFFFD58A),
       );
+    }
+
+    for (final camp in snapshot.neutralCamps) {
+      final center = project(camp.position);
+      final color = camp.state == MobaNeutralCampState.defeated
+          ? const Color(0xFF65716F)
+          : const Color(0xFFFFD58A);
+      canvas.drawCircle(
+        center, 3.1,
+        Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.2,
+      );
+      canvas.drawCircle(center, 1.45, Paint()..color = color);
     }
 
     for (final tower in snapshot.towers.where((item) => item.health > 0)) {

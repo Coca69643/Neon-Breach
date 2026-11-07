@@ -3,6 +3,14 @@ import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
 void main() {
   group('ArenaWorldCatalog — urban battlefield', () {
+    test('neutral camp anchors are walkable and outside the canal', () {
+      expect(ArenaWorldCatalog.neutralCampSites, hasLength(3));
+      for (final site in ArenaWorldCatalog.neutralCampSites) {
+        expect(ArenaWorldCatalog.isWalkable(site.$3, site.$4), isTrue,
+            reason: '${site.$1} camp anchor must be reachable');
+        expect(ArenaWorldCatalog.isCanalAt(site.$3, site.$4), isFalse);
+      }
+    });
     test('uses the same irregular 224 × 188 boundary as the terrain baker', () {
       expect(ArenaWorldCatalog.halfWidth, 112);
       expect(ArenaWorldCatalog.halfDepth, 94);

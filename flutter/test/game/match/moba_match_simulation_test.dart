@@ -42,6 +42,43 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('neutral camps are present in the live match snapshot', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      final camps = simulation.snapshot.neutralCamps;
+      expect(camps, hasLength(3));
+      expect(camps.every((camp) => camp.state == MobaNeutralCampState.dormant), isTrue);
+      expect(camps.every((camp) => camp.units.length == 2), isTrue);
+    });
+
+    test('neutral camp aggro damages a nearby player and returns after leash break', () {
+      final site = ArenaWorldCatalog.neutralCampSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      final health = simulation.snapshot.playerHealth;
+      advanceFor(simulation, 3);
+      expect(simulation.snapshot.playerHealth, lessThan(health));
+      expect(simulation.snapshot.neutralCamps.first.state, MobaNeutralCampState.aggro);
+      simulation.applyPhysicsPlayerPosition(MobaPoint(site.$3 + 18, site.$4));
+      advanceFor(simulation, 1.5);
+      expect(simulation.snapshot.neutralCamps.first.state, MobaNeutralCampState.returning);
+    });
+
+    test('neutral camps are selectable and take damage through the normal attack path', () {
+      final site = ArenaWorldCatalog.neutralCampSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      simulation.cyclePlayerTarget();
+      final before = simulation.snapshot.selectedTarget;
+      expect(before, isNotNull);
+      expect(before!.kind, 'NEUTRAL');
+      simulation.step(1 / 30, basicAttack: true);
+      expect(simulation.snapshot.selectedTarget!.health, lessThan(before.health));
+    });
+
     test('quartermaster shop is proximity-gated and sells each upgrade once', () {
       final away = MobaMatchSimulation(heroId: MobaHeroId.lyra);
       expect(
