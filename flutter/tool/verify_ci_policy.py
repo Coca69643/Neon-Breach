@@ -29,6 +29,30 @@ def main() -> None:
     require("pull_request:" in workflow, "pull requests must execute the verification job.")
     require("flutter analyze" in workflow, "static analysis must run in CI.")
     require("flutter test --reporter expanded" in workflow, "unit tests must run in CI.")
+
+    profile_build = workflow.split("Build ARM64 profile APK for PR runtime validation", 1)
+    require(len(profile_build) == 2, "PR profile QA build step is missing.")
+    profile_build_header = profile_build[1].split("run:", 1)[0]
+    require(
+        "if: github.event_name == 'pull_request'" in profile_build_header,
+        "profile QA APK may only be built for pull requests.",
+    )
+    require(
+        "flutter build apk --profile --target-platform android-arm64" in profile_build[1],
+        "PR profile QA build must target ARM64 profile mode.",
+    )
+
+    profile_artifact = workflow.split("Upload profile QA artifact", 1)
+    require(len(profile_artifact) == 2, "PR profile QA artifact upload step is missing.")
+    profile_artifact_header = profile_artifact[1].split("uses:", 1)[0]
+    require(
+        "if: github.event_name == 'pull_request'" in profile_artifact_header,
+        "profile QA artifacts may only be uploaded from pull requests.",
+    )
+    require(
+        "project-arena-1.8.0-arm64-profile-qa" in profile_artifact[1],
+        "PR profile QA artifact name is missing or inconsistent.",
+    )
     require("flutter build apk --release --target-platform android-arm64" in workflow,
             "ARM64 release build must run in CI.")
     require("tool/verify_release_apk.py" in workflow,
