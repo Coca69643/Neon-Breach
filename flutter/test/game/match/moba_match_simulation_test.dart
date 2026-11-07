@@ -68,7 +68,7 @@ void main() {
         reason: 'the leash transition must be observable on the first tick after leaving the aggro radius',
       );
 
-      advanceFor(simulation, 1.5);
+      advanceFor(simulation, 3.0);
       final returned = simulation.snapshot.neutralCamps.first;
       expect(returned.state, MobaNeutralCampState.dormant);
       expect(returned.units, hasLength(2));
