@@ -316,6 +316,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       final initial = widget.simulation.snapshot;
       final runtime = await ArenaPhysicsRuntime.create(
         spawn: initial.playerPosition,
+        heroId: initial.heroId,
         towers: initial.towers,
         covers: initial.covers,
       );
@@ -1661,7 +1662,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         _MovementDashButton(
                           size: compact ? 50 : 54,
                           stamina: _physicsRuntime?.traversalStamina ?? 0,
-                          maxStamina: ArenaPhysicsRuntime.traversalStaminaMax,
+                          maxStamina: _physicsRuntime?.traversalStaminaMax ??
+                              ArenaPhysicsRuntime.defaultTraversalStaminaMax,
                           enabled:
                               _physicsRuntime?.canTriggerTraversalDash ?? false,
                           onTap: _triggerTraversalDash,
