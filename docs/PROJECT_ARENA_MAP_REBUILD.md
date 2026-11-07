@@ -14,8 +14,8 @@ O mapa precisa mudar como espaço jogável, não apenas como composição de pro
 ## Diagnóstico atual confirmado no código
 
 - O mundo lógico atual mede 224 × 188 unidades e mantém seis setores.
-- O catálogo contém dez blocos comerciais/residenciais, cada qual referenciando um GLB isolado e uma escala individual.
-- Existem seis interiores construídos separadamente com paredes, mobiliário e vãos de entrada.
+- O catálogo contém treze placements comerciais/residenciais com doze silhuetas GLB distintas; quatro volumes de escala maior formam o primeiro quarteirão ao redor do interior west-north.
+- Existem seis interiores construídos com paredes, mobiliário e vãos de entrada; o primeiro quarteirão vertical slice envolve o interior west-north com quatro edifícios CC0.
 - Vias, canal, pontes, árvores, fachadas, navegação e colisores já têm uma fundação funcional, mas a composição de superfície ainda não comunica uma cidade completa com silhuetas densas, quarteirões conectados e identidade própria por distrito.
 - A auditoria encontrou um desvio de escala: a raiz 3D aplicava 1.35× aos modelos, enquanto Rapier e navegação usavam as dimensões lógicas sem essa conversão. `worldScale` agora é 1.0 para manter renderização, câmera e física no mesmo sistema de unidades; a validação em runtime ainda é obrigatória.
 - A auditoria visual final dos edifícios, acessos e proporções continua pendente.
@@ -81,10 +81,11 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 - Não criar paths presumidos nem preencher o repositório com placeholders.
 
 ### M1 — Quarteirão vertical slice
-- Montar um quarteirão representativo em escala real.
-- Incluir um volume dominante, um volume secundário, uma rua contínua, calçada, cruzamento e um interior realmente navegável.
-- Validar geometria e colisão com a cápsula de jogo.
-- Conferir o resultado na câmera de gameplay, não somente em viewport de modelagem.
+- [ ] Compor um quarteirão em escala de gameplay ao redor do interior west-north.
+- [ ] Integrar quatro volumes CC0 distintos (comercial, residencial e silhueta alta) sem transformar o quarteirão em edifícios miniaturizados.
+- [ ] Derivar renderização e colisão dos mesmos bounds GLB e manter os volumes sem interseção.
+- [ ] Manter a rota sul da porta e a calçada da avenida oeste transitáveis.
+- [ ] Validar o resultado na câmera real da partida e no Realme C53.
 
 ### M2 — Rede urbana
 - Conectar os quarteirões com ruas, avenidas, calçadas, pontes e travessias.
@@ -121,7 +122,8 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 
 - Pesquisa do kit oficial: concluída.
 - Aquisição/inspeção do ZIP: pendente.
-- Importação de módulos: não iniciada.
+- Reuso de modelos já presentes no bundle offline: composição M1 preparada com assets já pinados; novos arquivos externos ainda não adquiridos.
 - Escala renderização/física: reconciliada em código; runtime ainda pendente.
-- Reconstrução geométrica do mapa: não iniciada.
+- M1 — quarteirão vertical slice: composição de código preparada; CI, captura de gameplay e revisão física ainda pendentes.
+- M2 — rede urbana e cinco distritos restantes: não iniciada.
 - Screenshots e teste Realme C53: pendentes.

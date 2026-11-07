@@ -261,6 +261,8 @@ COMMERCIAL_LOCAL_BOUNDS = {
     "suburban_building_c.glb": (0.64319015, 0.51406890, 1.03354096),
     "commercial_building_i.glb": (0.62000003, 0.65100002, 1.68000007),
     "commercial_building_j.glb": (1.04179400, 0.67000002, 1.69300008),
+    "suburban_building_e.glb": (0.64999998, 0.51400000, 1.13750005),
+    "commercial_skyscraper_a.glb": (0.68000000, 0.68000000, 2.87999988),
 }
 
 

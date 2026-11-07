@@ -202,7 +202,7 @@ void main() {
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(10));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(13));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
         final footprint = ArenaWorldCatalog.commercialFootprint(block);
         expect(footprint.$1, greaterThan(0));
@@ -219,7 +219,7 @@ void main() {
           ArenaWorldCatalog.commercialFootprint(wideMarketBuilding);
       expect(wideFootprint.$1, greaterThan(wideFootprint.$2 * 1.4),
           reason: 'the long facade must not be approximated by a square collider');
-      expect(ArenaWorldCatalog.commercialLocalBounds, hasLength(10));
+      expect(ArenaWorldCatalog.commercialLocalBounds, hasLength(12));
       final marketBuildings = ArenaWorldCatalog.commercialBlocks.where(
         (block) => block.$1 == 'commercial_building_i.glb' ||
             block.$1 == 'commercial_building_j.glb',
@@ -259,11 +259,65 @@ void main() {
       }
     });
 
+    test('west-north block frames its enterable interior with four full-scale CC0 buildings', () {
+      const authoredBlock = <(String, double, double, double)>[
+        ('commercial_building_f.glb', -87.0, 60.0, 12.0),
+        ('commercial_building_i.glb', -51.0, 60.0, 10.0),
+        ('suburban_building_e.glb', -87.0, 10.0, 10.0),
+        ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
+      ];
+      expect(authoredBlock, hasLength(4));
+
+      for (final expected in authoredBlock) {
+        final placement = ArenaWorldCatalog.commercialBlocks.firstWhere(
+          (entry) =>
+              entry.$1 == expected.$1 &&
+              entry.$2 == expected.$2 &&
+              entry.$3 == expected.$3 &&
+              entry.$4 == expected.$4,
+        );
+        final footprint = ArenaWorldCatalog.commercialFootprint(placement);
+        expect(footprint.$1, greaterThan(5.0));
+        expect(footprint.$2, greaterThan(5.0));
+        expect(footprint.$3, greaterThan(10.0));
+        expect(
+          ArenaWorldCatalog.isWalkable(placement.$2, placement.$3),
+          isFalse,
+          reason: '${placement.$1} must have a matching full-size collider',
+        );
+      }
+
+      // Building footprints must not intersect each other.
+      for (var i = 0; i < authoredBlock.length; i++) {
+        for (var j = i + 1; j < authoredBlock.length; j++) {
+          final a = ArenaWorldCatalog.commercialFootprint(authoredBlock[i]);
+          final b = ArenaWorldCatalog.commercialFootprint(authoredBlock[j]);
+          final overlapsX =
+              (authoredBlock[i].$2 - authoredBlock[j].$2).abs() < a.$1 + b.$1;
+          final overlapsZ =
+              (authoredBlock[i].$3 - authoredBlock[j].$3).abs() < a.$2 + b.$2;
+          expect(overlapsX && overlapsZ, isFalse,
+              reason: 'CC0 building volumes must not overlap');
+        }
+      }
+
+      // The 24 × 18 m west-north interior remains accessible from the south
+      // approach and keeps the main lane/sidewalk corridor open.
+      for (final point in const [
+        (-63.0, 26.0), (-63.0, 29.0), (-63.0, 33.0), (-63.0, 38.0),
+      ]) {
+        expect(ArenaWorldCatalog.isWalkable(point.$1, point.$2), isTrue,
+            reason: 'the west-north entrance route must remain traversable');
+      }
+      expect(ArenaWorldCatalog.isWalkable(-43.0, 60.0), isTrue,
+          reason: 'the west-side avenue sidewalk must remain clear');
+    });
+
     test('city districts use distinct architecture and authored street dressing', () {
       final buildingNames = ArenaWorldCatalog.commercialBlocks
           .map((block) => block.$1)
           .toSet();
-      expect(buildingNames, hasLength(10));
+      expect(buildingNames, hasLength(12));
       expect(ArenaWorldCatalog.largeTrees, hasLength(8));
       expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(50));
       final marketProps = ArenaWorldCatalog.cityProps.where(
