@@ -92,13 +92,26 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [x] Orientação de rigs: NPCs, bots e minions agora usam a base local -Z, alinhada ao deslocamento; `flutter analyze` e 86 testes passaram (run 42380337841); inspeção visual ainda pendente.
 - [x] Escala de bots, minions e pedestres aumentada de forma controlada; compilação/análise/testes passaram; inspeção visual ainda pendente para confirmar proporção.
 - [x] Mapa — interiores: origem dos GLBs de parede/porta auditada; âncoras laterais/frontais/porta alinhadas ao footprint; testes geométricos passaram no run 42380337841; screenshot de jogo ainda pendente.
-- [ ] Mapa — conjunto urbano: posicionamento de edifícios comerciais, vias, fachadas completas e colisões externas ainda pendente; não declarar o mapa corrigido.
-- [ ] NPCs neutros de gameplay: não implementados.
+- [x] Footprints externos: colisores Rapier e navegação agora usam meia-largura, meia-profundidade e altura derivados do GLB de cada uma das dez fachadas; o bake offline valida os limites contra os assets CC0 fixados.
+- [ ] Mapa — composição urbana: posicionamento final dos edifícios, afastamento visual das vias, fachadas completas, entradas reais e leitura dos seis distritos ainda exigem screenshots de gameplay; não declarar o mapa completo.
+- [x] NPCs de serviço: todos os pedestres/NPCs de cidade recebem marcador de chão/cabeça e pinos móveis no minimapa; o quartermaster foi movido para o Mercado Central.
+- [x] Quartermaster funcional: loja em mundo com célula de impacto (+12% poder) e placa reforçada (+100 vida), custos em ouro, bloqueio por proximidade e compras únicas por partida; testes cobrem preço, alcance e efeitos.
+- [ ] NPCs neutros de combate/camps (equivalente a jungle camps) ainda não implementados; não confundir o mercador e pedestres com esse sistema.
 - [ ] Equipamentos por rig: calibração visual pendente.
 - [ ] Perfil real do jogador: não implementado.
 - [ ] Novo herói sintético metamórfico: não implementado.
 - [ ] HUD e seleção: revisão de UX pendente.
 - [ ] Realme C53: sem validação física nesta etapa.
+
+## Validação da etapa seguinte — 07/11/2026
+
+- CI run: [42383763525](https://github.com/Coca69643/Neon-Breach/actions/runs/42383763525), HEAD `0b4915c11702e7170008962fe93204b227829b84`.
+- `flutter analyze`: sem issues.
+- Testes: 89 aprovados.
+- Preparação offline de terreno, cidade, NPCs, heróis e armas: aprovada.
+- Os dez GLBs de fachada tiveram bounds conferidos no bake contra o manifesto do código e usam footprint retangular/altura exatos no catálogo e no Rapier.
+- Nenhuma etapa de release/APK foi executada por esta PR.
+- Inspeção visual de screenshots e validação física no Realme C53 continuam pendentes.
 
 ## Fontes internas
 
