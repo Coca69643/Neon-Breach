@@ -15,7 +15,8 @@ ELENCO E APRESENTAÇÃO
 - Seleção em tela cheia, com personagem em destaque e elenco lateral.
 - Filtros de espécie aparecem apenas quando o catálogo possui mais de uma espécie.
 - Prévia com orientação, escala e enquadramento configuráveis por personagem.
-- Menu com torre urbana original e praça apoiada no chão; o mapa de combate não é mais usado como cenário do menu.
+- Menu principal com fundo 2D estático desenhado em CustomPainter; sem SceneView ou GLBs 3D no menu.
+- A ilustração 2D da torre mantém a identidade urbana; gameplay e mapa de batalha continuam 3D.
 
 ETAPA 1 — TERRENO URBANO E MENU
 - Ruas principais e acessos passam a integrar uma única malha contínua de terreno.
@@ -23,8 +24,8 @@ ETAPA 1 — TERRENO URBANO E MENU
 - Faixas de rua e calçadas seguem a altura da malha; a classificação de superfície da física usa os mesmos limites.
 - Removidas peças de estrada, cruzamentos e pontes em escala excessiva que eram desenhadas sobre o terreno e criavam placas e emendas.
 - Travessias do canal permanecem integradas ao terreno.
-- Torre do menu reconstruída com volumes arquitetônicos escalonados, fachada envidraçada, base, alas de serviço, praça e antena de comunicação.
-- Menu usa modelos urbanos Kenney CC0 como cenário auxiliar, sem exibir a arena de combate.
+- Fundo do menu migrado de cena 3D para composição 2D estática, reduzindo trabalho de renderização fora da partida.
+- Assets CC0 de cidade e natureza permanecem reservados à cena 3D da gameplay.
 - Assets 3D de cidade e natureza permanecem empacotados offline.
 
 PENDÊNCIAS DAS PRÓXIMAS ETAPAS
