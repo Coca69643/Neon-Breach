@@ -30,6 +30,15 @@ class ArenaPhysicsRuntime {
   static const double airFriction = 2.6;
   static const double dashDistance = 4.8;
   static const double dashDuration = 0.24;
+
+  // Separate traversal budget: the existing hero-skill dash remains unchanged.
+  static const double traversalStaminaMax = 3.0;
+  static const double traversalDashCost = 1.0;
+  static const double traversalDashDistance = 4.4;
+  static const double traversalDashDuration = 0.23;
+  static const double traversalStaminaRegenPerSecond = 0.62;
+  static const double traversalStaminaRegenDelay = 0.55;
+
   static const double capsuleRadius = 0.38;
   static const double capsuleHalfHeight = 0.50;
   static const double footOffset = capsuleRadius + capsuleHalfHeight;
@@ -54,6 +63,8 @@ class ArenaPhysicsRuntime {
   double _dashVelocityZ = 0;
   double _dashRemaining = 0;
   bool _dashCompletionPending = false;
+  double _traversalStamina = traversalStaminaMax;
+  double _traversalStaminaRegenDelayRemaining = 0;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -66,6 +77,14 @@ class ArenaPhysicsRuntime {
   double get movementSpeedRatio =>
       (_actualHorizontalSpeed / moveSpeed).clamp(0.0, 1.35).toDouble();
   bool get dashing => _dashRemaining > 0;
+  double get traversalStamina => _traversalStamina;
+  double get traversalStaminaRatio =>
+      (_traversalStamina / traversalStaminaMax).clamp(0.0, 1.0).toDouble();
+  bool get canTriggerTraversalDash =>
+      !_disposed &&
+      _active &&
+      _dashRemaining <= 0 &&
+      _traversalStamina + 1e-6 >= traversalDashCost;
 
   /// True once the swept dash has ended, including a wall/canal interruption.
   bool consumeDashCompletion() {
@@ -204,6 +223,26 @@ class ArenaPhysicsRuntime {
     return true;
   }
 
+  /// Starts a traversal-only dash. It has its own stamina budget and does not
+  /// alter the existing hero-skill dash path used by the match simulation.
+  bool triggerTraversalDash(double directionX, double directionZ) {
+    if (!canTriggerTraversalDash) return false;
+    final started = triggerDash(
+      directionX,
+      directionZ,
+      distance: traversalDashDistance,
+      duration: traversalDashDuration,
+    );
+    if (!started) return false;
+
+    _traversalStamina = math.max(
+      0.0,
+      _traversalStamina - traversalDashCost,
+    );
+    _traversalStaminaRegenDelayRemaining = traversalStaminaRegenDelay;
+    return true;
+  }
+
   /// Advances on Rapier's fixed clock, independently of render frame rate.
   void update(double frameDelta) {
     if (_disposed || !frameDelta.isFinite || frameDelta <= 0) return;
@@ -299,6 +338,26 @@ class ArenaPhysicsRuntime {
       vm.Quaternion.identity(),
     );
     _world.step(dt);
+    _updateTraversalStamina(dt);
+  }
+
+  void _updateTraversalStamina(double dt) {
+    if (!_active ||
+        _disposed ||
+        _traversalStamina >= traversalStaminaMax) {
+      return;
+    }
+    if (_traversalStaminaRegenDelayRemaining > 0) {
+      _traversalStaminaRegenDelayRemaining = math.max(
+        0.0,
+        _traversalStaminaRegenDelayRemaining - dt,
+      );
+      return;
+    }
+    _traversalStamina = math.min(
+      traversalStaminaMax,
+      _traversalStamina + traversalStaminaRegenPerSecond * dt,
+    );
   }
 
   /// The river is a non-walkable volume; only the catalogued bridge spans
@@ -440,6 +499,8 @@ class ArenaPhysicsRuntime {
     _dashVelocityZ = 0;
     _dashRemaining = 0;
     _dashCompletionPending = false;
+    _traversalStamina = traversalStaminaMax;
+    _traversalStaminaRegenDelayRemaining = 0;
     _actualHorizontalSpeed = 0;
     _grounded = false;
     _world.step(fixedStep);
