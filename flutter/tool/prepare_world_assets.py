@@ -53,6 +53,7 @@ LANES = [
 ]
 
 # Curved connectors lead from the three main combat corridors to six buildings.
+# Keep this exact route geometry mirrored by ArenaWorldCatalog._accessPaths.
 ACCESS_PATHS = [
     [(-36, -36), (-46, -36), (-56, -36), (-64, -36)],
     [(36, -36), (46, -36), (56, -36), (64, -36)],
