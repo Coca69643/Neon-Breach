@@ -73,7 +73,6 @@ class _ArenaSyntheticTraversalLabState
   double _moveX = 0;
   double _moveZ = 0;
   double _elapsed = 0;
-  double _padCooldown = 0;
   bool _padTriggered = false;
   late final ValueNotifier<String> _status =
       ValueNotifier<String>('Explore a arena e teste a mobilidade do sintético.');
@@ -152,7 +151,6 @@ class _ArenaSyntheticTraversalLabState
 
     final dt = deltaSeconds.clamp(0.0, 0.05).toDouble();
     _elapsed += dt;
-    _padCooldown = math.max(0.0, _padCooldown - dt);
     physics.setInput(_moveX, _moveZ);
     physics.update(dt);
 
@@ -165,7 +163,6 @@ class _ArenaSyntheticTraversalLabState
     // trigger: contact while grounded applies one boosted vertical impulse.
     if (onSpringPad && ! _padTriggered && physics.grounded) {
       if (physics.triggerTraversalJump(impulseMultiplier: 1.55)) {
-        _padCooldown = 2.0;
         _padTriggered = true;
         _status.value = 'Plataforma de impulso ativada.';
       }
