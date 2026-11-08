@@ -311,7 +311,7 @@ class ArenaSyntheticHeroStage extends StatelessWidget {
         position: vm.Vector3(0, 2.6, -5.8),
         target: vm.Vector3(0, 1.0, 0),
       ),
-      children: const [
+      children: [
         ArenaSyntheticHeroModel(
           position: vm.Vector3(0, 0, 0),
           facingRadians: 0,
