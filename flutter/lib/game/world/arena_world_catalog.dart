@@ -221,7 +221,7 @@ abstract final class ArenaWorldCatalog {
     // North quay: the original west/north vertical slice remains part of the map.
     ('commercial_building_b.glb', -82.0, -60.0, 5.8),
     ('commercial_building_c.glb', 82.0, -60.0, 5.8),
-    ('commercial_building_f.glb', -78.0, 60.0, 12.0),
+    ('commercial_building_f.glb', -77.0, 48.0, 12.0),
     ('commercial_building_h.glb', 82.0, 60.0, 5.8),
     ('commercial_building_d.glb', -98.0, -42.0, 5.0),
     ('commercial_building_g.glb', 98.0, 42.0, 5.0),
@@ -234,7 +234,7 @@ abstract final class ArenaWorldCatalog {
     ('suburban_building_e.glb', -97.0, 10.0, 9.0),
     ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
     // Additional warehouse-like volumes complete the outer quay blocks.
-    ('commercial_building_b.glb', -72.0, 78.0, 4.8),
+    ('commercial_building_b.glb', -64.0, 74.0, 4.8),
     ('commercial_building_c.glb', 72.0, 78.0, 4.8),
     ('commercial_building_d.glb', -72.0, -78.0, 4.5),
     ('commercial_building_g.glb', 72.0, -78.0, 4.5),
@@ -257,7 +257,7 @@ abstract final class ArenaWorldCatalog {
 
   static const dockPlazaAnchors = <(double, double)>[
     (-92.0, -8.0), (92.0, 8.0),
-    (-90.0, 54.0), (90.0, -54.0),
+    (-86.0, 50.0), (90.0, -54.0),
   ];
   static const double dockPlazaRadius = 8.8;
 
@@ -304,14 +304,14 @@ abstract final class ArenaWorldCatalog {
   static const _towerRows = <double>[-52.0, -36.0, -20.0, 20.0, 36.0, 52.0];
 
   static const treeBlockerPoints = <(double, double)>[
-    (-100, -4), (-100, 20), (-90, 44), (-72, 74),
+    (-100, -4), (-100, 20), (-90, 44), (-56, 82),
     (-91, -34), (-78, -54), (-64, 68), (-46, 72),
     (104, -4), (100, 20), (82, 60), (72, 74),
     (91, -34), (78, -54), (64, 68), (46, 72),
   ];
 
   static const largeTreePoints = <(double, double)>[
-    (-96, -52), (-96, 52), (-58, 76), (-28, 76),
+    (-96, -52), (-84, 60), (-58, 76), (-28, 76),
     (96, -52), (90, 52), (58, 76), (28, 76),
   ];
 
@@ -562,6 +562,7 @@ abstract final class ArenaWorldCatalog {
         accessGap <= asphaltAccessHalfWidth) {
       return ArenaSurfaceType.asphalt;
     }
+    final channelDistance = (z - _riverCenterZ(x)).abs();
     if (laneGap <= sidewalkHalfWidth ||
         accessGap <= sidewalkAccessHalfWidth ||
         sideApproachAnchors.any((point) =>
@@ -569,7 +570,8 @@ abstract final class ArenaWorldCatalog {
             3.2 * 3.2) ||
         dockPlazaAnchors.any((point) =>
             math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
-            dockPlazaRadius * dockPlazaRadius)) {
+            dockPlazaRadius * dockPlazaRadius) ||
+        channelDistance <= _riverHalfWidth(x) + 4.0) {
       return ArenaSurfaceType.concrete;
     }
     return ArenaSurfaceType.grass;
@@ -801,11 +803,10 @@ abstract final class ArenaWorldCatalog {
     // without entering the authored lane, alley, bridge or room footprints.
     for (final point in dockPlazaAnchors) {
       add('street_light_square.glb', point.$1 - 6.8, point.$2, scale: 1.15);
-      add('road_sign_warning.glb', point.$1 + 6.8, point.$2, scale: 1.05);
     }
     for (final point in const [
-      (-92.0, -30.0), (92.0, 30.0),
-      (-92.0, 30.0), (92.0, -30.0),
+      (-80.0, -30.0), (80.0, 30.0),
+      (-80.0, 30.0), (80.0, -30.0),
       (-58.0, -70.0), (58.0, 70.0),
     ]) {
       add('construction_barrier.glb', point.$1, point.$2, scale: 1.1);
