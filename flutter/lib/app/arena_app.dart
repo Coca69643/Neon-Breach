@@ -10,8 +10,8 @@ import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
 import 'arena_hero_selection_screen.dart';
-import 'arena_player_profile.dart';
 import 'arena_network_lobby_screen.dart';
+import 'arena_player_profile.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
