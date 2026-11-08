@@ -29,17 +29,13 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
   static final CuboidGeometry _chestPlate = CuboidGeometry(vm.Vector3(0.48, 0.47, 0.12));
   static final CuboidGeometry _head = CuboidGeometry(vm.Vector3(0.42, 0.40, 0.36));
   static final CuboidGeometry _visor = CuboidGeometry(vm.Vector3(0.32, 0.105, 0.055));
-  static final CuboidGeometry _sensor = CuboidGeometry(vm.Vector3(0.075, 0.06, 0.045));
   static final CuboidGeometry _core = CuboidGeometry(vm.Vector3(0.15, 0.19, 0.055));
   static final CuboidGeometry _shoulder = CuboidGeometry(vm.Vector3(0.29, 0.22, 0.31));
-  static final CuboidGeometry _upperArm = CuboidGeometry(vm.Vector3(0.20, 0.38, 0.22));
-  static final CuboidGeometry _forearm = CuboidGeometry(vm.Vector3(0.23, 0.34, 0.25));
+  static final CuboidGeometry _arm = CuboidGeometry(vm.Vector3(0.21, 0.58, 0.23));
   static final CuboidGeometry _hand = CuboidGeometry(vm.Vector3(0.18, 0.16, 0.19));
   static final CuboidGeometry _hip = CuboidGeometry(vm.Vector3(0.48, 0.22, 0.30));
-  static final CuboidGeometry _thigh = CuboidGeometry(vm.Vector3(0.25, 0.39, 0.27));
-  static final CuboidGeometry _shin = CuboidGeometry(vm.Vector3(0.22, 0.39, 0.24));
+  static final CuboidGeometry _leg = CuboidGeometry(vm.Vector3(0.24, 0.68, 0.25));
   static final CuboidGeometry _boot = CuboidGeometry(vm.Vector3(0.28, 0.15, 0.42));
-  static final CuboidGeometry _joint = CuboidGeometry(vm.Vector3(0.16, 0.13, 0.16));
   static final CuboidGeometry _backpack = CuboidGeometry(vm.Vector3(0.34, 0.46, 0.18));
   static final CuboidGeometry _antenna = CuboidGeometry(vm.Vector3(0.055, 0.17, 0.055));
 
@@ -119,16 +115,10 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               position: vm.Vector3(0, 1.78, 0.225),
             ),
             SceneMesh(
-              name: 'synthetic_01_sensor_left',
-              geometry: _sensor,
+              name: 'synthetic_01_visor_light',
+              geometry: _visor,
               material: _cyan,
-              position: vm.Vector3(-0.105, 1.78, 0.261),
-            ),
-            SceneMesh(
-              name: 'synthetic_01_sensor_right',
-              geometry: _sensor,
-              material: _cyan,
-              position: vm.Vector3(0.105, 1.78, 0.261),
+              position: vm.Vector3(0, 1.78, 0.261),
             ),
             SceneMesh(
               name: 'synthetic_01_antenna',
@@ -136,12 +126,7 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               material: _amber,
               position: vm.Vector3(0.14, 2.065, -0.02),
             ),
-            SceneMesh(
-              name: 'synthetic_01_antenna_base',
-              geometry: _joint,
-              material: _dark,
-              position: vm.Vector3(0.14, 1.99, -0.02),
-            ),
+antenna base
             SceneMesh(
               name: 'synthetic_01_shoulder_left',
               geometry: _shoulder,
@@ -160,28 +145,16 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               rotation: _swing(stride + armLift),
               children: [
                 SceneMesh(
-                  name: 'synthetic_01_upper_arm_left',
-                  geometry: _upperArm,
+                  name: 'synthetic_01_arm_left_mesh',
+                  geometry: _arm,
                   material: _shell,
-                  position: vm.Vector3(0, -0.20, 0),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_elbow_left',
-                  geometry: _joint,
-                  material: _dark,
-                  position: vm.Vector3(0, -0.42, 0),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_forearm_left',
-                  geometry: _forearm,
-                  material: _shellLight,
-                  position: vm.Vector3(0, -0.60, 0.025),
+                  position: vm.Vector3(0, -0.29, 0),
                 ),
                 SceneMesh(
                   name: 'synthetic_01_hand_left',
                   geometry: _hand,
                   material: _dark,
-                  position: vm.Vector3(0, -0.84, 0.055),
+                  position: vm.Vector3(0, -0.63, 0.045),
                 ),
               ],
             ),
@@ -191,28 +164,16 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               rotation: _swing(-stride + armLift),
               children: [
                 SceneMesh(
-                  name: 'synthetic_01_upper_arm_right',
-                  geometry: _upperArm,
+                  name: 'synthetic_01_arm_right_mesh',
+                  geometry: _arm,
                   material: _shell,
-                  position: vm.Vector3(0, -0.20, 0),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_elbow_right',
-                  geometry: _joint,
-                  material: _dark,
-                  position: vm.Vector3(0, -0.42, 0),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_forearm_right',
-                  geometry: _forearm,
-                  material: _shellLight,
-                  position: vm.Vector3(0, -0.60, 0.025),
+                  position: vm.Vector3(0, -0.29, 0),
                 ),
                 SceneMesh(
                   name: 'synthetic_01_hand_right',
                   geometry: _hand,
                   material: _dark,
-                  position: vm.Vector3(0, -0.84, 0.055),
+                  position: vm.Vector3(0, -0.63, 0.045),
                 ),
               ],
             ),
@@ -222,28 +183,16 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               rotation: _swing(-stride),
               children: [
                 SceneMesh(
-                  name: 'synthetic_01_thigh_left',
-                  geometry: _thigh,
+                  name: 'synthetic_01_leg_left_mesh',
+                  geometry: _leg,
                   material: _shell,
-                  position: vm.Vector3(0, -0.22, 0),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_knee_left',
-                  geometry: _joint,
-                  material: _dark,
-                  position: vm.Vector3(0, -0.43, 0.035),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_shin_left',
-                  geometry: _shin,
-                  material: _shellLight,
-                  position: vm.Vector3(0, -0.64, 0),
+                  position: vm.Vector3(0, -0.36, 0),
                 ),
                 SceneMesh(
                   name: 'synthetic_01_boot_left',
                   geometry: _boot,
                   material: _dark,
-                  position: vm.Vector3(0, -0.88, 0.085),
+                  position: vm.Vector3(0, -0.72, 0.085),
                 ),
               ],
             ),
@@ -253,42 +202,32 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               rotation: _swing(stride),
               children: [
                 SceneMesh(
-                  name: 'synthetic_01_thigh_right',
-                  geometry: _thigh,
+                  name: 'synthetic_01_leg_right_mesh',
+                  geometry: _leg,
                   material: _shell,
-                  position: vm.Vector3(0, -0.22, 0),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_knee_right',
-                  geometry: _joint,
-                  material: _dark,
-                  position: vm.Vector3(0, -0.43, 0.035),
-                ),
-                SceneMesh(
-                  name: 'synthetic_01_shin_right',
-                  geometry: _shin,
-                  material: _shellLight,
-                  position: vm.Vector3(0, -0.64, 0),
+                  position: vm.Vector3(0, -0.36, 0),
                 ),
                 SceneMesh(
                   name: 'synthetic_01_boot_right',
                   geometry: _boot,
                   material: _dark,
-                  position: vm.Vector3(0, -0.88, 0.085),
+                  position: vm.Vector3(0, -0.72, 0.085),
                 ),
               ],
             ),
             SceneMesh(
-              name: 'synthetic_01_forearm_band_left',
-              geometry: _joint,
+              name: 'synthetic_01_arm_band_left',
+              geometry: _hand,
               material: _amber,
-              position: vm.Vector3(-0.46, 0.94, 0.015),
+              position: vm.Vector3(-0.46, 0.99, 0.02),
+              scale: vm.Vector3(0.9, 0.35, 1.05),
             ),
             SceneMesh(
-              name: 'synthetic_01_forearm_band_right',
-              geometry: _joint,
+              name: 'synthetic_01_arm_band_right',
+              geometry: _hand,
               material: _amber,
-              position: vm.Vector3(0.46, 0.94, 0.015),
+              position: vm.Vector3(0.46, 0.99, 0.02),
+              scale: vm.Vector3(0.9, 0.35, 1.05),
             ),
           ],
         ),
