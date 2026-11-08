@@ -13,8 +13,8 @@ import '../network/arena_network_preflight.dart';
 import '../network/arena_online_lobby_service.dart';
 import 'arena_hero_selection_screen.dart';
 import 'arena_network_lobby_screen.dart';
-import 'arena_startup_gate.dart';
 import 'arena_player_profile.dart';
+import 'arena_startup_gate.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
