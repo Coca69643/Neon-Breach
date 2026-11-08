@@ -141,7 +141,6 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
               material: _amber,
               position: vm.Vector3(0.14, 2.065, -0.02),
             ),
-antenna base
             SceneMesh(
               name: 'synthetic_01_shoulder_left',
               geometry: _shoulder,
