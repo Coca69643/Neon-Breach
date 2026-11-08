@@ -241,13 +241,13 @@ if min_sdk_replacements != 1:
 
 if gradle.suffix == ".kts":
     content, target_sdk_replacements = re.subn(
-        r"targetSdk\\s*=\\s*flutter\\.targetSdkVersion",
+        r"targetSdk\s*=\s*flutter\.targetSdkVersion",
         f"targetSdk = {TARGET_SDK}",
         content,
     )
 else:
     content, target_sdk_replacements = re.subn(
-        r"targetSdkVersion\\s+flutter\\.targetSdkVersion",
+        r"targetSdkVersion\s+flutter\.targetSdkVersion",
         f"targetSdkVersion {TARGET_SDK}",
         content,
     )
