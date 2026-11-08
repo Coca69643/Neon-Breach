@@ -113,7 +113,7 @@ The second traversal pass builds on the existing fixed-step Rapier motor:
 - Slide and both dash paths are mutually exclusive while active. The move still goes through Rapier's normal swept character movement and world restrictions.
 - The landscape HUD exposes a separate SLIDE/DRIFT control. The control remains disabled until the runtime confirms the start conditions.
 
-These are initial tuning values, not a balance acceptance. The synthetic metamorphic hero remains a separate integration gate: its primary identity is the original humanoid robot and the quadrupedal fox is a temporary form, not a separate roster slot. No placeholder model or selectable gameplay identity is added before its dedicated GLB, rig, clips and full integration exist.
+These are initial tuning values, not a balance acceptance. The synthetic metamorphic hero remains a separate integration gate: its primary identity is the original humanoid robot and the quadrupedal fox is a temporary form, not a separate roster slot. The current third slice exposes SYNTH-01 as an explicitly experimental prototype outside the playable MobaHeroId roster; it does not mark the final rigged GLB or the temporary fox form as complete.
 
 ### Slide and aerial-control acceptance
 
@@ -129,3 +129,29 @@ These are initial tuning values, not a balance acceptance. The synthetic metamor
 
 Implementation status: source changes and deterministic tests are present on the PR branch. The new tests have not yet been executed or confirmed by CI. The original first-slice device acceptance also remains pending; no visual or physical acceptance is inferred from source changes.
 
+
+
+## Third slice — SYNTH-01 traversal lab and world response
+
+Implemented on `fix/1.8.1-feedback-recovery`:
+
+- The hero-selection screen now exposes **SYNTH-01** as an experimental prototype entry, distinct from the three playable heroes. Selecting it opens a dedicated 3D preview; the confirmation action enters the traversal lab instead of starting a production match.
+- The robot is an original procedural articulated mesh in code, with cached primitive geometry, metallic PBR armor, illuminated core/visor, gait-driven arm and leg motion, body bob and an airborne pose. This is a gameplay/visual prototype, not a final rigged GLB.
+- A dedicated `ArenaTraversalProfile.syntheticPrototype()` sets independent ground speed, acceleration, air control, slide duration/steering, dash budget/recovery and vertical jump impulse. Standard hero profiles remain separate and the production `MobaHeroId` enum is unchanged.
+- The laboratory uses the existing pinned Kenney CC0 terrain and city props already bundled by the offline asset pipeline. The procedural robot and service drone are original code assets, not claimed as third-party CC0 downloads.
+- A grounded spring pad applies a one-shot boosted traversal hop on entry and re-arms only after the player leaves its area.
+- A non-combat service drone has an isolated deterministic state machine: patrol route, player observation, personal-space repositioning and spring-pad inspection. Its visual propellers animate independently from the gameplay state.
+- Tests were added for the synthetic movement profile, jump lifecycle and teleport reset, plus drone patrol/observation/reposition/inspection and invalid time-step handling.
+
+### Third-slice acceptance gate
+
+- [ ] `flutter analyze` passes on the current PR head.
+- [ ] All physics and drone controller tests pass.
+- [ ] Selector preview and lab load without missing assets or scene errors.
+- [ ] Ground hop, air control, dash and momentum slide stay consistent with Rapier collision boundaries.
+- [ ] Spring pad activates once per entry and resets after leaving.
+- [ ] Drone transitions between all four states without leaving its authored lab bounds.
+- [ ] Physical Realme C53 test confirms touch response, model visibility, stable frame pacing, memory, temperature and battery impact.
+- [ ] Final rigged character asset and the temporary quadrupedal form remain separate completion gates; neither is represented as finished by this prototype.
+
+**Status:** implementation and tests are committed to the PR branch. The latest automated CI result, Flutter analyzer/test output and physical-device acceptance have not yet been confirmed. This source-level implementation is not a release or merge approval.
