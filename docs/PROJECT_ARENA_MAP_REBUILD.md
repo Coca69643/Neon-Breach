@@ -127,3 +127,26 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 - M1 — quarteirão vertical slice: composição de código preparada; teste inicial detectou colisão com o ponto da Reserva Verde. A posição foi corrigida; CI de revalidação, captura de gameplay e revisão física ainda pendentes.
 - M2 — rede urbana e cinco distritos restantes: não iniciada.
 - Screenshots e teste Realme C53: pendentes.
+
+
+## 4ª fatia — Mercado Central e Boulevard Sul
+
+Implementação adicionada ao branch fix/1.8.1-feedback-recovery:
+
+- O Mercado Central agora tem quatro volumes comerciais CC0 distribuídos em duas fachadas opostas, mantendo a praça de captura em (12, -54) livre.
+- As quatro footprints usam os bounds GLB já fixados no catálogo e alimentam a mesma validação de navegação/colisão.
+- A malha de vias passou a incluir um Boulevard Sul atrás da base, com três conexões às rotas principais e uma ligação transversal contínua.
+- O gerador offline e ArenaWorldCatalog compartilham 18 caminhos de acesso; o pavimento novo é asfalto elevado, com o mesmo offset e perfil de movimento usado pelo Rapier.
+- Iluminação e sinalização CC0 identificam o novo corredor sem ocupar o centro da via.
+- A prévia de mundo agora mostra os edifícios comerciais em escala e identifica o cenário como Distrito Urbano, em vez de exibir somente terreno e vegetação.
+
+### Critérios automatizados adicionados
+
+- Quatro fachadas do Mercado Central são reconhecidas e têm circulação lateral livre.
+- A praça central permanece caminhável.
+- Quatro pontos do Boulevard Sul são verificados como asfalto, internos ao perímetro e caminháveis.
+- O catálogo de navegação declara 18 caminhos de acesso.
+
+### Limites de validação
+
+Esta fatia adiciona um novo quarteirão e uma nova rota de rotação ao mapa urbano; não representa a reconstrução final de todos os seis distritos. O GLB final é gerado no pipeline CI a partir do script offline. Capturas da câmera real de partida, inspeção visual dos acessos e teste físico no Realme C53 continuam pendentes.
