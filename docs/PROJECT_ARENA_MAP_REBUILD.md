@@ -1,6 +1,6 @@
 # Project Arena — reconstrução integral do mapa CC0
 
-Status: escala global de renderização/colisão reconciliada em código; reconstrução geométrica do mapa ainda pendente.
+Status: escala global de renderização/colisão reconciliada; composição geométrica em expansão. A 4ª fatia adiciona um quarteirão comercial de quatro volumes e o Boulevard Sul ao mapa jogável; a reconstrução integral dos seis distritos continua pendente.
 
 ## Diretriz do usuário
 
@@ -125,7 +125,7 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 - Reuso de modelos já presentes no bundle offline: composição M1 preparada com assets já pinados; novos arquivos externos ainda não adquiridos.
 - Escala renderização/física: reconciliada em código; runtime ainda pendente.
 - M1 — quarteirão vertical slice: composição de código preparada; teste inicial detectou colisão com o ponto da Reserva Verde. A posição foi corrigida; CI de revalidação, captura de gameplay e revisão física ainda pendentes.
-- M2 — rede urbana e cinco distritos restantes: não iniciada.
+- M2 — rede urbana: primeira expansão implementada com o Boulevard Sul e 18 caminhos espelhados entre bake e navegação; conexão e identidade dos demais distritos continuam pendentes.
 - Screenshots e teste Realme C53: pendentes.
 
 
