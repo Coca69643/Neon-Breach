@@ -3,6 +3,48 @@ import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
 void main() {
   group('ArenaWorldCatalog — urban battlefield', () {
+    test('Porto de Vésper has a distinct harbor footprint and connected quays', () {
+      expect(ArenaWorldCatalog.mapName, 'PORTO DE VÉSPER');
+      expect(ArenaWorldCatalog.mapSubtitle, 'TERMINAL INDUSTRIAL COSTEIRO');
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(21));
+      expect(ArenaWorldCatalog.dockPlazaAnchors, hasLength(4));
+
+      for (final district in ArenaWorldCatalog.districtSites) {
+        expect(
+          ArenaWorldCatalog.isWalkable(district.$3, district.$4),
+          isTrue,
+          reason: '${district.$2} capture point must remain reachable',
+        );
+      }
+      for (final plaza in ArenaWorldCatalog.dockPlazaAnchors) {
+        expect(ArenaWorldCatalog.isWalkable(plaza.$1, plaza.$2), isTrue);
+        expect(
+          ArenaWorldCatalog.surfaceAt(plaza.$1, plaza.$2),
+          ArenaSurfaceType.concrete,
+        );
+      }
+      for (final block in ArenaWorldCatalog.commercialBlocks) {
+        final footprint = ArenaWorldCatalog.commercialFootprint(block);
+        for (final corner in [
+          (block.$2 - footprint.$1, block.$3 - footprint.$2),
+          (block.$2 - footprint.$1, block.$3 + footprint.$2),
+          (block.$2 + footprint.$1, block.$3 - footprint.$2),
+          (block.$2 + footprint.$1, block.$3 + footprint.$2),
+        ]) {
+          expect(
+            ArenaWorldCatalog.contains(corner.$1, corner.$2),
+            isTrue,
+            reason: '${block.$1} must remain inside the port coastline',
+          );
+        }
+      }
+      expect(
+        ArenaWorldCatalog.surfaceAt(18, 7.5),
+        ArenaSurfaceType.concrete,
+        reason: 'the channel edge must read as a paved quay',
+      );
+    });
+
     test('neutral camp anchors are walkable and outside the canal', () {
       expect(ArenaWorldCatalog.neutralCampSites, hasLength(3));
       for (final site in ArenaWorldCatalog.neutralCampSites) {
@@ -177,7 +219,7 @@ void main() {
         expect(ArenaWorldCatalog.isBridgeAt(crossing.$1, crossing.$2), isTrue);
       }
       expect(ArenaWorldCatalog.isWalkable(18, 0), isFalse);
-      expect(ArenaWorldCatalog.isWalkable(18, 2.5), isTrue);
+      expect(ArenaWorldCatalog.isWalkable(18, 7.5), isTrue);
       expect(ArenaWorldCatalog.isCanalAt(100, 0), isFalse);
     });
 
@@ -202,7 +244,7 @@ void main() {
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(13));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(21));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
         final footprint = ArenaWorldCatalog.commercialFootprint(block);
         expect(footprint.$1, greaterThan(0));
@@ -264,7 +306,7 @@ void main() {
 
     test('west-north block frames its enterable interior with four full-scale CC0 buildings', () {
       const authoredBlock = <(String, double, double, double)>[
-        ('commercial_building_f.glb', -78.0, 60.0, 12.0),
+        ('commercial_building_f.glb', -77.0, 48.0, 12.0),
         ('commercial_building_i.glb', -51.0, 60.0, 10.0),
         ('suburban_building_e.glb', -97.0, 10.0, 9.0),
         ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
