@@ -483,7 +483,7 @@ void main() {
         reason: 'the side access road should share the continuous asphalt mesh',
       );
       expect(
-        ArenaWorldCatalog.surfaceAt(-86, 14),
+        ArenaWorldCatalog.surfaceAt(-104, 70),
         ArenaSurfaceType.grass,
       );
       expect(
@@ -492,7 +492,7 @@ void main() {
       );
       expect(
         ArenaWorldCatalog.movementSpeedMultiplierAt(-36, -60),
-        greaterThan(ArenaWorldCatalog.movementSpeedMultiplierAt(-86, 14)),
+        greaterThan(ArenaWorldCatalog.movementSpeedMultiplierAt(-104, 70)),
       );
     });
 
@@ -519,8 +519,8 @@ void main() {
         closeTo(sidewalkBase + sidewalkLift, 0.00001),
       );
 
-      const parkX = -86.0;
-      const parkZ = 14.0;
+      const parkX = -104.0;
+      const parkZ = 70.0;
       final parkBase = ArenaWorldCatalog.heightAt(parkX, parkZ);
       expect(ArenaWorldCatalog.surfaceElevationOffsetAt(parkX, parkZ), 0);
       expect(
