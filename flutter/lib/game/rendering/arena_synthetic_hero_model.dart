@@ -64,7 +64,12 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
     final gait = speedRatio.clamp(0.0, 1.25).toDouble();
     final stride = math.sin(gaitPhase) * 0.48 * gait;
     final armLift = airborne ? -0.28 : 0.0;
-    final bob = airborne ? 0.0 : math.sin(gaitPhase * 2) * 0.022 * gait;
+    final idleMotion = math.sin(gaitPhase * 0.48) * 0.035 * (1 - gait);
+    final bob = airborne
+        ? 0.0
+        : math.sin(gaitPhase * 2) * 0.022 * gait +
+            math.sin(gaitPhase * 0.48) * 0.009 * (1 - gait);
+    final bodyPitch = airborne ? -0.055 : 0.0;
 
     return SceneNode(
       name: 'synthetic_01_root',
@@ -77,6 +82,10 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
         SceneNode(
           name: 'synthetic_01_body',
           position: vm.Vector3(0, bob, 0),
+          rotation: vm.Quaternion.axisAngle(
+            vm.Vector3(1, 0, 0),
+            bodyPitch,
+          ),
           children: [
             SceneMesh(
               name: 'synthetic_01_backpack',
@@ -148,7 +157,7 @@ antenna base
             SceneNode(
               name: 'synthetic_01_arm_left',
               position: vm.Vector3(-0.46, 1.40, 0),
-              rotation: _swing(stride + armLift),
+              rotation: _swing(stride + armLift + idleMotion),
               children: [
                 SceneMesh(
                   name: 'synthetic_01_arm_left_mesh',
@@ -167,7 +176,7 @@ antenna base
             SceneNode(
               name: 'synthetic_01_arm_right',
               position: vm.Vector3(0.46, 1.40, 0),
-              rotation: _swing(-stride + armLift),
+              rotation: _swing(-stride + armLift - idleMotion),
               children: [
                 SceneMesh(
                   name: 'synthetic_01_arm_right_mesh',
