@@ -122,7 +122,7 @@ abstract final class ArenaHeroCatalog {
       previewCameraHeight: 1.45,
       previewCameraDistance: 5.8,
       previewTargetHeight: 0.98,
-      previewYawRadians: 0,
+      previewYawRadians: 3.141592653589793,
       previewFovDegrees: 38,
     ),
     ArenaHeroDefinition(

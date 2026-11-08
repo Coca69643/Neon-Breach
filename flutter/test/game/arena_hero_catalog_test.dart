@@ -86,7 +86,10 @@ void main() {
 
     test('current roster previews use the front-facing calibration', () {
       for (final hero in ArenaHeroCatalog.playable) {
-        expect(hero.previewYawRadians, 0);
+        expect(
+          hero.previewYawRadians,
+          hero.id == 'linn' ? closeTo(3.141592653589793, 1e-6) : 0,
+        );
       }
     });
   });
