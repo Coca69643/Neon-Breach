@@ -267,7 +267,21 @@ abstract final class ArenaWorldCatalog {
     [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
     [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
     [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
+    [(-36, -18), (-52, -18), (-70, -18), (-88, -18)],
+    [(36, 18), (52, 18), (70, 18), (88, 18)],
+    [(-92, -40), (-92, -24), (-88, -18)],
+    [(92, 40), (92, 24), (88, 18)],
+    [(-88, -18), (-92, -4), (-92, 12), (-76, 24), (-64, 36)],
+    [(88, 18), (92, 4), (92, -12), (76, -24), (64, -36)],
+    // Southern boulevard: bypass route behind the southern base compound.
+    [(-36, -70), (-44, -74), (-54, -77), (-68, -77)],
+    [(0, -70), (0, -78)],
+    [(36, -70), (44, -74), (54, -77), (68, -77)],
+    [(-68, -77), (-44, -80), (-20, -81), (0, -80),
+      (20, -81), (44, -80), (68, -77)],
   ];
+
+  static int get accessPathCount => _accessPaths.length;
 
   static const bridgePositions = <double>[-72.0, -36.0, 0.0, 36.0, 72.0];
   static const _bridges = bridgePositions;
@@ -716,6 +730,18 @@ abstract final class ArenaWorldCatalog {
     ]) {
       add('city_planter.glb', point.$1, point.$2, scale: 0.95);
     }
+
+    // Southern boulevard lighting makes the alternate rotation route readable.
+    for (final point in const [
+      (-60.0, -76.0), (-20.0, -80.5),
+      (20.0, -80.5), (60.0, -76.0),
+    ]) {
+      add('street_light_square.glb', point.$1, point.$2, scale: 1.05);
+    }
+    add('road_sign_warning.glb', -48.0, -74.5,
+        scale: 1.0, yaw: math.pi / 2);
+    add('road_sign_warning.glb', 48.0, -74.5,
+        scale: 1.0, yaw: -math.pi / 2);
 
     // Each of the five crossings is signalled from both approaches.
     for (final bridgeX in bridgePositions) {
