@@ -27,21 +27,21 @@ HALF_Z = 94.0
 GRID_X = 224
 GRID_Z = 188
 WORLD_BOUNDARY = [
-    (-72.0, -86.0), (-40.0, -92.0), (8.0, -89.0), (48.0, -93.0),
-    (82.0, -84.0), (101.0, -69.0), (109.0, -44.0), (104.0, -17.0),
-    (111.0, 10.0), (104.0, 37.0), (91.0, 60.0), (71.0, 82.0),
-    (42.0, 87.0), (8.0, 82.0), (-24.0, 88.0), (-56.0, 82.0),
-    (-82.0, 70.0), (-101.0, 48.0), (-108.0, 22.0), (-103.0, -6.0),
-    (-109.0, -34.0), (-97.0, -62.0), (-84.0, -78.0),
+    (-82.0, -88.0), (-45.0, -94.0), (-2.0, -90.0), (40.0, -93.0),
+    (78.0, -82.0), (102.0, -60.0), (110.0, -28.0), (104.0, 4.0),
+    (111.0, 34.0), (96.0, 62.0), (73.0, 82.0), (42.0, 90.0),
+    (7.0, 85.0), (-28.0, 92.0), (-60.0, 82.0), (-86.0, 64.0),
+    (-104.0, 42.0), (-111.0, 14.0), (-106.0, -18.0), (-109.0, -48.0),
+    (-96.0, -72.0),
 ]
 BRIDGES = (-72.0, -36.0, 0.0, 36.0, 72.0)
 
 # Meandering canal follows the edge between the six city districts.
 RIVER = [
-    (-90.0, -4.0, 1.55), (-60.0, -2.0, 1.85),
-    (-30.0, 1.5, 2.05), (0.0, 0.5, 2.15),
-    (30.0, -1.5, 2.05), (60.0, 1.8, 1.85),
-    (90.0, 3.0, 1.55),
+    (-90.0, -4.0, 2.8), (-60.0, -2.0, 3.4),
+    (-30.0, 1.5, 4.1), (0.0, 0.5, 4.5),
+    (30.0, -1.5, 4.25), (60.0, 1.8, 3.6),
+    (90.0, 3.0, 2.9),
 ]
 LANES = [
     [(-36.0, -70), (-36.5, -52), (-35.8, -35), (-36.2, -18),
@@ -68,6 +68,10 @@ ACCESS_PATHS = [
     [(92, 40), (92, 24), (88, 18)],
     [(-88, -18), (-92, -4), (-92, 12), (-76, 24), (-64, 36)],
     [(88, 18), (92, 4), (92, -12), (76, -24), (64, -36)],
+    [(-80, 60), (-70, 52), (-56, 52), (-44, 48), (-36, 36)],
+    [(80, 60), (70, 52), (56, 52), (44, 48), (36, 36)],
+    [(-80, -60), (-70, -52), (-56, -52), (-44, -48), (-36, -36)],
+    [(80, -60), (70, -52), (56, -52), (44, -48), (36, -36)],
 ]
 
 SIDE_APPROACH_ANCHORS = [
@@ -80,6 +84,11 @@ SIDE_APPROACH_ANCHORS = [
     (-72.0, -72.0), (72.0, 72.0),
     (-42.0, 76.0), (42.0, -76.0),
 ]
+DOCK_PLAZAS = [
+    (-92.0, -8.0), (92.0, 8.0),
+    (-90.0, 54.0), (90.0, -54.0),
+]
+DOCK_PLAZA_RADIUS = 8.8
 ASPHALT_SURFACE_LIFT = 0.11
 ASPHALT_CROWN_LIFT = 0.025
 CONCRETE_SURFACE_LIFT = 0.16
@@ -121,11 +130,11 @@ def height(x: float, z: float) -> float:
     )
     river_distance = abs(z - river_center_z(x))
     river_width = river_half_width(x)
-    canal_bed = -0.42 * math.exp(
-        -(river_distance * river_distance) / (river_width * river_width * 1.8)
+    canal_bed = -0.66 * math.exp(
+        -(river_distance * river_distance) / (river_width * river_width * 1.4)
     )
-    curb_bank = 0.12 * math.exp(
-        -((river_distance - river_width - 0.75) ** 2) / 2.8
+    curb_bank = 0.17 * math.exp(
+        -((river_distance - river_width - 0.85) ** 2) / 3.0
     )
     return rolling + canal_bed + curb_bank
 
@@ -457,6 +466,11 @@ def build_terrain_glb(output: Path) -> None:
                 (cx - anchor_x) ** 2 + (cz - anchor_z) ** 2 <= 3.2 ** 2
                 for anchor_x, anchor_z in SIDE_APPROACH_ANCHORS
             )
+            on_dock_plaza = any(
+                (cx - anchor_x) ** 2 + (cz - anchor_z) ** 2
+                <= DOCK_PLAZA_RADIUS ** 2
+                for anchor_x, anchor_z in DOCK_PLAZAS
+            )
             if on_bridge:
                 material = "moss" if (
                     math.sin(cx * 0.11 - cz * 0.17)
@@ -467,7 +481,8 @@ def build_terrain_glb(output: Path) -> None:
             elif (
                 lane_dist <= 7.4 or access_dist <= 4.4
                 or anchor_concrete
-                or river_distance < river_width + 2.8
+                or on_dock_plaza
+                or river_distance < river_width + 4.0
             ):
                 material = "concrete"
             elif (
@@ -557,11 +572,11 @@ def build_terrain_glb(output: Path) -> None:
         dx, dz = after[0] - before[0], after[1] - before[1]
         tangent_length = max(1e-5, math.hypot(dx, dz))
         side_x, side_z = -dz / tangent_length, dx / tangent_length
-        water_y = height(cx, cz) + 0.56
+        water_y = height(cx, cz) + 0.68
 
-        # Water: one continuous strip from left bank to right bank.
+        # Water: one continuous wide shipping channel from left bank to right bank.
         water_indices = []
-        water_half_width = half_width * 0.70
+        water_half_width = half_width * 0.80
         for side in (1.0, -1.0):
             x = cx + side_x * water_half_width * side
             z = cz + side_z * water_half_width * side
@@ -578,8 +593,8 @@ def build_terrain_glb(output: Path) -> None:
 
         # Moss and concrete each form two strips, one on either side of the channel.
         bands = (
-            ("moss", half_width * 0.70, half_width * 0.92),
-            ("concrete", half_width * 0.92, half_width + 0.82),
+            ("moss", half_width * 0.80, half_width * 0.92),
+            ("concrete", half_width * 0.92, half_width + 1.35),
         )
         for group_name, inner, outer in bands:
             current_indices = []
@@ -616,7 +631,7 @@ def build_terrain_glb(output: Path) -> None:
         bank_a = height(lane_x, river_z - river_width - 1.25)
         bank_b = height(lane_x, river_z + river_width + 1.25)
         deck_y = max(bank_a, bank_b) + 0.28
-        deck_length = river_width * 2.0 + 3.5
+        deck_length = river_width * 2.0 + 5.5
         add_box("stone", lane_x, deck_y, river_z, 4.4, 0.42, deck_length)
         add_box("stone", lane_x - 2.02, deck_y + 0.34, river_z,
                 0.28, 0.55, deck_length)
