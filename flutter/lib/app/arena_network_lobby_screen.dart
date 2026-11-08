@@ -367,7 +367,7 @@ class _ArenaNetworkLobbyScreenState extends State<ArenaNetworkLobbyScreen> {
           const SizedBox(height: 12),
           StreamBuilder<List<String>>(
             stream: host.members,
-            initialData: <String>[_displayName],
+            initialData: host.currentMembers,
             builder: (context, snapshot) => _members(
               snapshot.data ?? const <String>[],
               accent,
