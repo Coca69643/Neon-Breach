@@ -478,11 +478,14 @@ def build_terrain_glb(output: Path) -> None:
                     math.sin(cx * 0.11 - cz * 0.17)
                     + math.cos(cx * 0.19 + cz * 0.13) < -0.55
                 ) else "grass"
+            elif on_dock_plaza:
+                # Quay aprons stay concrete where service paths meet the plaza.
+                material = "concrete"
             elif lane_dist <= 4.8 or access_dist <= 3.0:
                 material = "asphalt"
             elif (
                 lane_dist <= 7.4 or access_dist <= 4.4
-                or anchor_concrete or on_dock_plaza
+                or anchor_concrete
                 or river_distance < river_width + 4.0
             ):
                 material = "concrete"

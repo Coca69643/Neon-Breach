@@ -561,8 +561,16 @@ abstract final class ArenaWorldCatalog {
 
     final laneGap = laneDistance(x, z);
     final accessGap = flankPathDistance(x, z);
-    if (isBridgeAt(x, z) ||
-        laneGap <= asphaltHalfWidth ||
+    if (isBridgeAt(x, z)) return ArenaSurfaceType.asphalt;
+
+    // A quay plaza is its own concrete apron, even where a service path
+    // connects to it. Keep this priority mirrored by the offline terrain bake.
+    final onDockPlaza = dockPlazaAnchors.any((point) =>
+        math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
+        dockPlazaRadius * dockPlazaRadius);
+    if (onDockPlaza) return ArenaSurfaceType.concrete;
+
+    if (laneGap <= asphaltHalfWidth ||
         accessGap <= asphaltAccessHalfWidth) {
       return ArenaSurfaceType.asphalt;
     }
@@ -572,9 +580,6 @@ abstract final class ArenaWorldCatalog {
         sideApproachAnchors.any((point) =>
             math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
             3.2 * 3.2) ||
-        dockPlazaAnchors.any((point) =>
-            math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
-            dockPlazaRadius * dockPlazaRadius) ||
         channelDistance <= _riverHalfWidth(x) + 4.0) {
       return ArenaSurfaceType.concrete;
     }
@@ -776,12 +781,22 @@ abstract final class ArenaWorldCatalog {
       add('street_light_square.glb', point.$1, point.$2, scale: 1.1);
     }
 
-    // Each of the five crossings is signalled from both approaches.
+    // Each crossing is signalled from the dry quays on both approaches.
     for (final bridgeX in bridgePositions) {
-      add('traffic_light.glb', bridgeX - 6.0,
-          _riverCenterZ(bridgeX) - 5.0, scale: 1.2);
-      add('traffic_light.glb', bridgeX + 6.0,
-          _riverCenterZ(bridgeX) + 5.0, scale: 1.5);
+      final westX = bridgeX - 8.0;
+      final eastX = bridgeX + 8.0;
+      add(
+        'traffic_light.glb',
+        westX,
+        _riverCenterZ(westX) - (_riverHalfWidth(westX) + 2.2),
+        scale: 1.2,
+      );
+      add(
+        'traffic_light.glb',
+        eastX,
+        _riverCenterZ(eastX) + (_riverHalfWidth(eastX) + 2.2),
+        scale: 1.5,
+      );
     }
 
     // Street signs sit on the outer sidewalks, not in the travel corridor.
@@ -824,9 +839,9 @@ abstract final class ArenaWorldCatalog {
           point.$2 + 1.6, scale: 1.1);
     }
 
-    // Planted edges soften the hard canal geometry without filling the lanes.
+    // Low plants sit on the quay side of the widened shipping channel.
     for (final point in const [
-      (-15.0, -5.4), (15.0, -5.4), (-15.0, 5.4), (15.0, 5.4),
+      (-15.0, -7.0), (15.0, -7.0), (-15.0, 7.0), (15.0, 7.0),
     ]) {
       add('interior_plant.glb', point.$1, point.$2, scale: 1.0);
     }

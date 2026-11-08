@@ -214,7 +214,7 @@ void main() {
 
     test('the canal blocks ordinary crossings but leaves bridge corridors open',
         () async {
-      physics.teleport(const MobaPoint(18, -5));
+      physics.teleport(const MobaPoint(18, -8));
       await advance(frames: 120, moveZ: 1);
       expect(
         physics.playerPosition.z,
