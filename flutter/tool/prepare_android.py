@@ -153,10 +153,15 @@ if not manifest.exists():
     raise SystemExit(f"Android manifest not generated: {manifest}")
 
 # Reuse the existing Project Arena identity rather than Flutter's template branding.
-source_icon = REPO_ROOT / "app/src/main/res/drawable/ic_launcher.xml"
-target_icon = ANDROID / "app/src/main/res/drawable/ic_launcher.xml"
+source_icon = REPO_ROOT / "app/src/main/res/drawable-nodpi/ic_launcher.webp"
+target_icon = ANDROID / "app/src/main/res/drawable-nodpi/ic_launcher.webp"
 if not source_icon.is_file():
     raise SystemExit(f"Project Arena launcher icon is missing: {source_icon}")
+icon_header = source_icon.read_bytes()
+if icon_header[:4] != b"RIFF" or icon_header[8:12] != b"WEBP":
+    raise SystemExit(f"Project Arena launcher icon is not a valid WebP file: {source_icon}")
+legacy_target_icon = ANDROID / "app/src/main/res/drawable/ic_launcher.xml"
+legacy_target_icon.unlink(missing_ok=True)
 target_icon.parent.mkdir(parents=True, exist_ok=True)
 shutil.copy2(source_icon, target_icon)
 

@@ -10,6 +10,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Android landscape, offline-first
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
+- Ícone launcher: `app/src/main/res/drawable-nodpi/ic_launcher.webp` (192×192 WebP), copiado pelo `prepare_android.py` para o host Flutter gerado.
 - minSdk: 24 (Android 7.0 ou superior)
 - versionName/versionCode: 1.8.3 / 74
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
@@ -50,6 +51,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos heróis Lyra, Bastion e Kairo via SceneModel; Linn usa preview procedural próprio e entra no catálogo jogável com forma robótica e forma Feral temporária.
 - A ilustração 2D do menu mantém a identidade da torre; modelos 3D urbanos são carregados exclusivamente na gameplay.
+- Identidade do launcher atualizada: emblema robótico teal/âmbar, sem texto, em WebP otimizado e referenciado por `@drawable/ic_launcher`.
 - Mapa District Control: 224 × 188, seis distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e seis interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.

@@ -13,6 +13,9 @@
 - O transporte atual sincroniza somente a presença no lobby; partida, movimento e objetivos continuam locais/offline.
 - Anonymous Sign-Ins precisa ser habilitado no projeto Supabase antes dos testes online com convidados.
 
+### Identidade visual do launcher
+- Ícone do Projeto Arena redesenhado como emblema robótico sci-fi em teal/ciano e âmbar, sem texto, com recurso WebP otimizado e cópia validada pelo gerador Android.
+
 ### Herói metamórfico — Linn (integração inicial)
 - Linn adicionado ao elenco jogável e à seleção por espécie, com apresentação robótica humanoide.
 - Ultimate Protocolo Feral: forma quadrúpede temporária por 8 s, transição de 0,55 s, cooldown de 22 s e bônus de movimento de 18%.

@@ -30,13 +30,17 @@ MAPA PORTO DE VÉSPER
 - Três rotas principais, cinco pontes, seis distritos, seis interiores e acessos elevados mantidos.
 - Prévia e HUD exibem a identidade do novo mapa.
 
+IDENTIDADE VISUAL
+- Ícone Android substituído por emblema sci-fi robótico em teal/ciano e âmbar, sem texto e legível em tamanhos pequenos.
+- Asset principal otimizado em WebP 192×192, carregado offline pelo gerador do host Android.
+
 VERSÃO E COMPATIBILIDADE
 - versionName 1.8.3.
 - versionCode 74, superior à versão publicada 1.8.0+73.
 - applicationId preservado: com.duckdream.projectarena.
 
 VALIDAÇÃO
-- CI anterior do candidato passou em análise, 132 testes e preparação de assets. A integração de Linn precisa de novo CI e inspeção física no Realme C53.
+- CI do HEAD `96c1124` passou em análise, 135 testes e preparação offline dos assets. A atualização do ícone exige nova execução CI; inspeção física no Realme C53 permanece pendente.
 - QA Profile usa applicationId isolado e não atualiza a instalação de produção.
 - Release assinado, continuidade do certificado e teste prolongado no Realme C53 pendentes.
 - O modo Online aguarda habilitar Anonymous Sign-Ins no Dashboard do Supabase.
