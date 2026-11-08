@@ -154,4 +154,26 @@ Implemented on `fix/1.8.1-feedback-recovery`:
 - [ ] Physical Realme C53 test confirms touch response, model visibility, stable frame pacing, memory, temperature and battery impact.
 - [ ] Final rigged character asset and the temporary quadrupedal form remain separate completion gates; neither is represented as finished by this prototype.
 
-**Status:** implementation and tests are committed to the PR branch. The latest automated CI result, Flutter analyzer/test output and physical-device acceptance have not yet been confirmed. This source-level implementation is not a release or merge approval.
+**Status:** implementation and tests are committed to the PR branch. CI run 892 passed Flutter static analysis and unit tests for the third slice. Physical-device acceptance remains pending. This source-level implementation is not a release or merge approval.
+
+
+## Fourth slice — urban map expansion
+
+Implemented on fix/1.8.1-feedback-recovery:
+
+- Central Market gains a four-building CC0 block with measured GLB footprints and an unobstructed capture plaza.
+- The terrain baker adds a southern bypass boulevard, three lane connections and a continuous cross-link. The Dart navigation catalog mirrors the same 18 access paths.
+- The new road uses the existing raised asphalt surface profile and movement tuning; its geometry is baked offline into the terrain GLB.
+- CC0 street lighting and warning signs mark the alternate rotation route.
+- The world preview now renders the commercial building volumes and identifies the scene as the Urban District.
+
+### Fourth-slice acceptance gate
+
+- [ ] Current PR-head flutter analyze and all Flutter tests pass.
+- [ ] Terrain bake produces a valid GLB with the southern boulevard metadata.
+- [ ] Market capture plaza and both sides of all four building footprints remain walkable.
+- [ ] The southern boulevard is paved and traversable from each lane connection.
+- [ ] Gameplay screenshots confirm scale, continuous curb/road geometry, and no prop/building clipping.
+- [ ] Physical Realme C53 test confirms stable frame pacing, memory, thermal and battery impact.
+
+Status: source changes and regression tests are in the PR branch. CI for this fourth slice and visual/device acceptance are pending.
