@@ -15,7 +15,7 @@ class ManifestValidationResult {
 abstract final class ArenaManifestValidator {
   static const String manifestPath = 'assets/data/arena_manifest.json';
   static const String studioLogoPath =
-      'assets/branding/duck_dream_studios.webp.b64';
+      'assets/branding/duck_dream_studios.webp';
 
   static const Map<String, String> requiredAssetGroups = {
     'assets/heroes/': 'modelos de heróis',
