@@ -62,8 +62,8 @@ A página do kit menciona janelas com interior falso. Esse efeito não satisfaz 
 
 **Primeira implementação submetida no catálogo de mundo:**
 
-- Duas fachadas comerciais diferentes: `commercial_building_i.glb` e `commercial_building_j.glb`.
-- As duas fachadas enquadram o núcleo do distrito sem ocupar o ponto de captura.
+- Quatro fachadas comerciais CC0: duas combinações de `commercial_building_i.glb` e `commercial_building_j.glb`, em lados opostos da praça.
+- As quatro fachadas enquadram o núcleo do distrito sem ocupar o ponto de captura.
 - Marquises, dois pontos de convivência com guarda-sol, quatro floreiras e dois postes de iluminação formam a primeira composição de rua.
 - As footprints dos dois edifícios entram em `commercialBlocks`; o mesmo catálogo alimenta o renderizador, `isWalkable` e os colliders estáticos do Rapier.
 - Os modelos já estão na lista de assets Kenney fixados e validados pelo script `prepare_city_assets.py`; não foi introduzida dependência de download em runtime.
