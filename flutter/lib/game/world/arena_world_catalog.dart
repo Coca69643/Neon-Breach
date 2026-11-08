@@ -212,7 +212,7 @@ abstract final class ArenaWorldCatalog {
     );
   }
 
-  // Thirteen authored building placements. Four full-scale CC0 volumes now
+  // Fifteen authored building placements. Four full-scale CC0 volumes now
   // frame the west-north service interior as one readable urban block.
   // Each placement shares the same measured GLB bounds with Rapier/nav.
   static const commercialBlocks = <(String, double, double, double)>[
@@ -226,6 +226,9 @@ abstract final class ArenaWorldCatalog {
     ('suburban_building_c.glb', 98.0, -42.0, 4.8),
     ('commercial_building_i.glb', 20.5, -68.0, 5.0),
     ('commercial_building_j.glb', 20.5, -40.0, 5.0),
+    // West frontage closes the market into a four-volume urban block.
+    ('commercial_building_j.glb', -20.5, -68.0, 5.0),
+    ('commercial_building_i.glb', -20.5, -40.0, 5.0),
     ('commercial_building_i.glb', -51.0, 60.0, 10.0),
     ('suburban_building_e.glb', -97.0, 10.0, 9.0),
     ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
@@ -721,6 +724,10 @@ abstract final class ArenaWorldCatalog {
     add('detail_awning_wide.glb', 20.5, -74.0,
         scale: 1.65, yaw: math.pi, y: 1.25);
     add('detail_awning_wide.glb', 20.5, -34.0,
+        scale: 1.65, yaw: math.pi, y: 1.25);
+    add('detail_awning_wide.glb', -20.5, -74.0,
+        scale: 1.65, yaw: math.pi, y: 1.25);
+    add('detail_awning_wide.glb', -20.5, -34.0,
         scale: 1.65, yaw: math.pi, y: 1.25);
     add('detail_parasol_a.glb', 11.0, -47.0, scale: 1.15);
     add('detail_parasol_a.glb', 11.0, -61.0, scale: 1.15);
