@@ -387,6 +387,29 @@ void main() {
       expect(simulation.snapshot.playerAttackSeconds, greaterThan(0.4));
     });
 
+    test('Linn Protocolo Feral transforms temporarily and returns to humanoid form', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.linn);
+
+      expect(simulation.snapshot.playerFeralSeconds, 0);
+      expect(simulation.snapshot.playerFeralBlend, 0);
+      simulation.step(1 / 30, castSkill: true);
+
+      expect(simulation.snapshot.playerFeralSeconds, closeTo(8, 1e-6));
+      expect(simulation.snapshot.playerSkillCooldown, closeTo(22, 1e-6));
+      expect(simulation.consumePhysicsDashRequest(), isNull,
+          reason: 'Linn changes form; the ultimate is not Kairo’s dash path');
+
+      advanceFor(simulation, 0.35);
+      expect(simulation.snapshot.playerFeralBlend, greaterThan(0.5));
+      expect(simulation.snapshot.playerFeralBlend, lessThanOrEqualTo(1));
+      expect(simulation.snapshot.playerFeralSeconds, greaterThan(7.5));
+
+      advanceFor(simulation, 8.7);
+      expect(simulation.snapshot.playerFeralSeconds, 0);
+      expect(simulation.snapshot.playerFeralBlend, 0);
+      expect(simulation.snapshot.playerSkillCooldown, greaterThan(12.5));
+    });
+
     test('attacks turn the hero toward the target and hold that facing through the strike', () {
       final simulation = MobaMatchSimulation(
         heroId: MobaHeroId.lyra,

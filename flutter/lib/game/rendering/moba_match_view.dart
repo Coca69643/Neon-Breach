@@ -11,6 +11,7 @@ import '../physics/arena_physics_runtime.dart';
 import '../world/arena_world_catalog.dart';
 import 'hero_weapon_socket.dart';
 import 'humanoid_orientation.dart';
+import 'arena_linn_hero_model.dart';
 
 class MobaMatchView extends StatefulWidget {
   const MobaMatchView({
@@ -106,6 +107,8 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ..baseColorFactor = vm.Vector4(0.34, 0.72, 1.0, 0.98);
   static final UnlitMaterial _kairoSkillMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.86, 0.52, 1.0, 0.96);
+  static final UnlitMaterial _linnSkillMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.24, 0.91, 0.83, 0.98);
   static final UnlitMaterial _shieldMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.32, 0.78, 1.0, 0.86);
   static final UnlitMaterial _attackFeedbackMaterial = UnlitMaterial()
@@ -349,7 +352,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _cameraY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     _cameraZ = z - forwardZ * horizontalDistance;
     _lookX = x + forwardX * 3.6 * _worldScale;
-    _lookY = ground + 1.2 * _worldScale;
+    final heroLookHeight = 1.2 -
+        0.25 * (snapshot.heroId == MobaHeroId.linn ? snapshot.playerFeralBlend : 0);
+    _lookY = ground + heroLookHeight * _worldScale;
     _lookZ = z + forwardZ * 3.6 * _worldScale;
   }
 
@@ -367,7 +372,9 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     final desiredY = ground + (1.25 + _cameraFollowDistance * math.sin(_cameraPitch)) * _worldScale;
     final desiredZ = z - forwardZ * horizontalDistance;
     final desiredLookX = x + forwardX * 3.6 * _worldScale;
-    final desiredLookY = ground + 1.2 * _worldScale;
+    final heroLookHeight = 1.2 -
+        0.25 * (snapshot.heroId == MobaHeroId.linn ? snapshot.playerFeralBlend : 0);
+    final desiredLookY = ground + heroLookHeight * _worldScale;
     final desiredLookZ = z + forwardZ * 3.6 * _worldScale;
     final blend = 1.0 - math.exp(-7.0 * deltaSeconds);
 
@@ -430,6 +437,11 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     _locomotionRatio = physics?.movementSpeedRatio ??
         (next.playerMoving ? 1.0 : 0.0);
     if (physics != null) {
+      physics.setLinnFeralMode(
+        next.heroId == MobaHeroId.linn &&
+            next.playerHealth > 0 &&
+            next.playerFeralBlend >= 0.5,
+      );
       // The only legal teleport is the explicit defeated -> respawn transition.
       if (previous.playerRespawnSeconds > 0 &&
           next.playerRespawnSeconds <= 0 &&
@@ -524,21 +536,25 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaHeroId.lyra => 'assets/heroes/lyra.glb',
         MobaHeroId.bastion => 'assets/heroes/bastion.glb',
         MobaHeroId.kairo => 'assets/heroes/kairo.glb',
+        MobaHeroId.linn => 'procedural://linn',
       };
 
   String _heroIdle(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 'HumanArmature|Female_Idle',
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Idle',
+        MobaHeroId.linn => 'procedural://linn-idle',
       };
 
   String _heroWalk(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 'HumanArmature|Female_Walk',
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Walk',
+        MobaHeroId.linn => 'procedural://linn-walk',
       };
 
   String _heroRun(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 'HumanArmature|Female_Run',
         MobaHeroId.bastion || MobaHeroId.kairo => 'HumanArmature|Man_Run',
+        MobaHeroId.linn => 'procedural://linn-run',
       };
 
   String _heroLocomotionClip(MobaMatchSnapshot snapshot) {
@@ -564,6 +580,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         MobaHeroId.lyra => 'HumanArmature|Female_SwordSlash',
         MobaHeroId.bastion => 'HumanArmature|Man_Punch',
         MobaHeroId.kairo => 'HumanArmature|Man_SwordSlash',
+        MobaHeroId.linn => 'procedural://linn-strike',
       };
 
   String _towerAsset(int laneIndex, int tier) {
@@ -745,6 +762,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
             MobaHeroId.lyra => _lyraSkillMaterial,
             MobaHeroId.bastion => _bastionSkillMaterial,
             MobaHeroId.kairo => _kairoSkillMaterial,
+            MobaHeroId.linn => _linnSkillMaterial,
           },
           position: _worldPosition(snapshot.playerPosition, heightOffset: 0.09),
           scale: vm.Vector3.all(
@@ -793,7 +811,20 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final minion in snapshot.minions)
         if (pointNearby(minion.position, _dynamicEntityViewRadius))
           _buildMinion(minion),
-      if (snapshot.playerHealth > 0)
+      if (snapshot.playerHealth > 0 && snapshot.heroId == MobaHeroId.linn)
+        ArenaLinnHeroModel(
+          key: const ValueKey('linn-match-player'),
+          position: _worldPosition(snapshot.playerPosition, heightOffset: 0.04),
+          rotation: _playerFacing(snapshot),
+          scale: ArenaHeroCatalog.byId('linn')?.matchScale ?? 0.84,
+          elapsedSeconds: snapshot.elapsedSeconds,
+          speedRatio: _locomotionRatio,
+          moving: snapshot.playerMoving,
+          attacking: snapshot.playerAttackSeconds > 0,
+          formBlend: snapshot.playerFeralBlend,
+          onReady: () => _markWorldAssetReady('player'),
+        ),
+      if (snapshot.playerHealth > 0 && snapshot.heroId != MobaHeroId.linn)
         SceneModel(
           _heroAsset(snapshot.heroId),
           key: const ValueKey('match-player-hero'),
@@ -1687,11 +1718,20 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                         ),
                         const SizedBox(width: 7),
                         _MatchActionButton(
-                          label: 'SKILL',
-                          icon: Icons.auto_awesome,
+                          label: snapshot.heroId == MobaHeroId.linn
+                              ? (snapshot.playerFeralSeconds > 0
+                                  ? 'FERAL ${snapshot.playerFeralSeconds.ceil()}s'
+                                  : 'PROTOCOLO')
+                              : 'SKILL',
+                          icon: snapshot.heroId == MobaHeroId.linn
+                              ? Icons.pets
+                              : Icons.auto_awesome,
                           size: compact ? 56 : 62,
                           secondary: true,
-                          cooldown: snapshot.playerSkillCooldown,
+                          cooldown: snapshot.heroId == MobaHeroId.linn &&
+                                  snapshot.playerFeralSeconds > 0
+                              ? snapshot.playerFeralSeconds
+                              : snapshot.playerSkillCooldown,
                           onPress: () => setState(() => _skillHeld = true),
                           onRelease: () => setState(() => _skillHeld = false),
                         ),

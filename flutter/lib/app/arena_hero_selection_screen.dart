@@ -4,8 +4,6 @@ import 'package:flutter/material.dart';
 
 import '../game/arena_hero_catalog.dart';
 import '../game/rendering/arena_hero_preview.dart';
-import '../game/rendering/arena_synthetic_hero_model.dart';
-import 'arena_synthetic_traversal_lab.dart';
 
 class ArenaHeroSelectionScreen extends StatefulWidget {
   const ArenaHeroSelectionScreen({
@@ -30,8 +28,6 @@ class ArenaHeroSelectionScreen extends StatefulWidget {
 
 class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
   ArenaHeroSpecies? _speciesFilter;
-  bool _previewingSynthetic = false;
-  bool _showTraversalLab = false;
 
   List<ArenaHeroDefinition> get _visibleHeroes {
     final heroes = ArenaHeroCatalog.playable;
@@ -50,7 +46,6 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
 
     setState(() {
       _speciesFilter = species;
-      _previewingSynthetic = false;
     });
     if (!nextHeroes.any((hero) => hero.id == widget.selectedHeroId)) {
       widget.onSelect(nextHeroes.first.id);
@@ -59,22 +54,12 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_showTraversalLab) {
-      return ArenaSyntheticTraversalLab(
-        onBack: () => setState(() => _showTraversalLab = false),
-      );
-    }
-
-    final selectedHero = _previewingSynthetic
-        ? ArenaHeroCatalog.syntheticPrototype
-        : (ArenaHeroCatalog.byId(widget.selectedHeroId) ??
-            ArenaHeroCatalog.fallback);
+    final selectedHero = ArenaHeroCatalog.byId(widget.selectedHeroId) ??
+        ArenaHeroCatalog.fallback;
     final roster = _visibleHeroes;
-    final total = ArenaHeroCatalog.playable.length + 1;
-    final selectedIndex = _previewingSynthetic
-        ? total
-        : ArenaHeroCatalog.playable
-                .indexWhere((hero) => hero.id == selectedHero.id) +
+    final total = ArenaHeroCatalog.playable.length;
+    final selectedIndex =
+        ArenaHeroCatalog.playable.indexWhere((hero) => hero.id == selectedHero.id) +
             1;
 
     return LayoutBuilder(
@@ -90,9 +75,7 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
         return Stack(
           fit: StackFit.expand,
           children: [
-            _previewingSynthetic
-                ? const ArenaSyntheticHeroStage()
-                : ArenaHeroPreview(heroId: selectedHero.id),
+            ArenaHeroPreview(heroId: selectedHero.id),
             const IgnorePointer(
               child: DecoratedBox(
                 decoration: BoxDecoration(
@@ -179,16 +162,8 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
                           showSpeciesFilters:
                               ArenaHeroCatalog.hasMultipleSpecies,
                           compact: compact,
-                          onSelect: (heroId) {
-                            setState(() => _previewingSynthetic = false);
-                            widget.onSelect(heroId);
-                          },
+                          onSelect: widget.onSelect,
                           onFilter: _setSpeciesFilter,
-                          prototypeSelected: _previewingSynthetic,
-                          onPreviewPrototype: () =>
-                              setState(() => _previewingSynthetic = true),
-                          onOpenPrototypeLab: () =>
-                              setState(() => _showTraversalLab = true),
                           onBack: widget.onBack,
                           onConfirm: widget.onConfirm,
                         ),
@@ -357,9 +332,6 @@ class _HeroRosterPanel extends StatelessWidget {
     required this.compact,
     required this.onSelect,
     required this.onFilter,
-    required this.prototypeSelected,
-    required this.onPreviewPrototype,
-    required this.onOpenPrototypeLab,
     required this.onBack,
     required this.onConfirm,
   });
@@ -371,9 +343,6 @@ class _HeroRosterPanel extends StatelessWidget {
   final bool compact;
   final ValueChanged<String> onSelect;
   final ValueChanged<ArenaHeroSpecies?> onFilter;
-  final bool prototypeSelected;
-  final VoidCallback onPreviewPrototype;
-  final VoidCallback onOpenPrototypeLab;
   final VoidCallback onBack;
   final VoidCallback onConfirm;
 
@@ -430,7 +399,7 @@ class _HeroRosterPanel extends StatelessWidget {
               ),
               const Spacer(),
               Text(
-                '${heroes.length.toString().padLeft(2, '0')} JOGÁVEIS  +  01 PROTÓTIPO',
+                '${heroes.length.toString().padLeft(2, '0')} JOGÁVEIS',
                 style: const TextStyle(
                   color: Color(0xFF9DADB3),
                   fontSize: 8,
@@ -444,21 +413,13 @@ class _HeroRosterPanel extends StatelessWidget {
           Expanded(
             child: ListView.separated(
               padding: EdgeInsets.zero,
-              itemCount: heroes.length + 1,
+              itemCount: heroes.length,
               separatorBuilder: (_, __) => SizedBox(height: compact ? 5 : 7),
               itemBuilder: (context, index) {
-                if (index == heroes.length) {
-                  return _HeroRosterCard(
-                    hero: ArenaHeroCatalog.syntheticPrototype,
-                    selected: prototypeSelected,
-                    compact: compact,
-                    onTap: onPreviewPrototype,
-                  );
-                }
                 final hero = heroes[index];
                 return _HeroRosterCard(
                   hero: hero,
-                  selected: hero.id == selectedHeroId && !prototypeSelected,
+                  selected: hero.id == selectedHeroId,
                   compact: compact,
                   onTap: () => onSelect(hero.id),
                 );
@@ -492,7 +453,7 @@ class _HeroRosterPanel extends StatelessWidget {
                 height: 46,
                 width: compact ? 128 : 150,
                 child: FilledButton(
-                  onPressed: prototypeSelected ? onOpenPrototypeLab : onConfirm,
+                  onPressed: onConfirm,
                   style: FilledButton.styleFrom(
                     backgroundColor: const Color(0xFF83D6C1),
                     foregroundColor: const Color(0xFF122C2C),
@@ -502,7 +463,7 @@ class _HeroRosterPanel extends StatelessWidget {
                     ),
                   ),
                   child: Text(
-                    prototypeSelected ? 'TESTAR NO LAB' : 'CONFIRMAR',
+                    'CONFIRMAR',
                     style: TextStyle(
                       fontSize: 10,
                       fontWeight: FontWeight.w900,

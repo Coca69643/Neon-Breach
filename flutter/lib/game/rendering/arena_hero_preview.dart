@@ -5,6 +5,7 @@ import 'package:flutter_scene/scene.dart';
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../arena_hero_catalog.dart';
+import 'arena_linn_hero_model.dart';
 
 class ArenaHeroPreview extends StatelessWidget {
   const ArenaHeroPreview({super.key, required this.heroId});
@@ -14,6 +15,42 @@ class ArenaHeroPreview extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final hero = ArenaHeroCatalog.byId(heroId) ?? ArenaHeroCatalog.fallback;
+
+    if (hero.id == 'linn') {
+      return DecoratedBox(
+        decoration: const BoxDecoration(
+          gradient: RadialGradient(
+            center: Alignment(0, -0.2),
+            radius: 0.95,
+            colors: [Color(0xFF243A42), Color(0xFF111B22), Color(0xFF0D141A)],
+          ),
+        ),
+        child: SceneView.declarative(
+          pixelRatio: 0.9,
+          maxFrameRate: 30,
+          cameraBuilder: (_) => PerspectiveCamera(
+            fovRadiansY: hero.previewFovDegrees * math.pi / 180,
+            position: vm.Vector3(0, hero.previewCameraHeight, -hero.previewCameraDistance),
+            target: vm.Vector3(0, hero.previewTargetHeight, 0),
+          ),
+          children: [
+            ArenaLinnHeroModel(
+              position: vm.Vector3(0, 0, 0),
+              rotation: vm.Quaternion.axisAngle(
+                vm.Vector3(0, 1, 0),
+                hero.previewYawRadians,
+              ),
+              scale: hero.previewScale,
+              elapsedSeconds: 0.4,
+              speedRatio: 0,
+              moving: false,
+              attacking: false,
+              formBlend: 0,
+            ),
+          ],
+        ),
+      );
+    }
 
     return DecoratedBox(
       decoration: const BoxDecoration(

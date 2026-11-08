@@ -34,17 +34,16 @@ species in the roster filters.
 
 ## Rendering constraints
 
-The preview uses a dedicated `SceneView` with pixel ratio capped at 1.0.
+The preview uses a dedicated `SceneView` with pixel ratio capped at 1.0. Linn uses a 0.9 pixel-ratio procedural scene capped at 30 Hz.
 Camera and model framing are per-character metadata, not global constants.
 This allows varied silhouettes to share the same screen while keeping the
 preview renderer bounded for mobile hardware.
 
 ## Species filter policy
 
-The current roster contains only humans, so no species selector is shown.
-`ArenaHeroCatalog.hasMultipleSpecies` enables the filters as soon as a second
-species is added. The species taxonomy remains ready for synthetic, creature
-and other character types without adding empty or redundant controls.
+**Linn is now part of the production roster** as the first synthetic species.
+The species filter is therefore visible and is derived from the actual playable
+catalog rather than a hard-coded list.
 
 ## Novo herói — sintético metamórfico
 

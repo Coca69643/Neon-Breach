@@ -13,6 +13,12 @@
 - O transporte atual sincroniza somente a presença no lobby; partida, movimento e objetivos continuam locais/offline.
 - Anonymous Sign-Ins precisa ser habilitado no projeto Supabase antes dos testes online com convidados.
 
+### Herói metamórfico — Linn (integração inicial)
+- Linn adicionado ao elenco jogável e à seleção por espécie, com apresentação robótica humanoide.
+- Ultimate Protocolo Feral: forma quadrúpede temporária por 8 s, transição de 0,55 s, cooldown de 22 s e bônus de movimento de 18%.
+- Forma robótica utiliza emissor integrado ao antebraço; forma Feral tem alcance, dano e cadência de ataque próprios.
+- As duas formas usam geometria procedural offline e recursos 3D cacheados. Rig/arte final e teste visual/performance no Realme C53 continuam pendentes; não é ainda um clip glTF de morph targets.
+
 ### Inicialização e identidade
 - Splash Duck Dream Studios com logo transparente e transição curta.
 - Inicialização em etapas, validação do manifesto, recuperação e fallback offline.
@@ -31,7 +37,7 @@
 - applicationId preservado: `com.duckdream.projectarena`.
 
 ### Validação e limites conhecidos
-- CI anterior da linha de recuperação/hub passou em análise, testes e geração de assets; o candidato consolidado ainda precisa de sua própria execução de CI.
+- CI anterior do candidato passou em análise, 132 testes e preparação dos assets. A integração de Linn precisa de uma nova execução CI e de inspeção física no Realme C53.
 - Builds QA Profile anteriores usam identidade isolada `com.duckdream.projectarena.qa`; não substituem a instalação de produção.
 - Release assinado, comparação do certificado de produção e validação visual/performance no Realme C53 continuam pendentes.
 - A camada Online exige habilitar Anonymous Sign-Ins; o modo offline não depende dela.

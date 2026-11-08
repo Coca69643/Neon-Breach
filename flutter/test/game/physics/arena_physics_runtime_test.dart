@@ -34,17 +34,52 @@ void main() {
       final lyra = ArenaTraversalProfile.forHero(MobaHeroId.lyra);
       final bastion = ArenaTraversalProfile.forHero(MobaHeroId.bastion);
       final kairo = ArenaTraversalProfile.forHero(MobaHeroId.kairo);
+      final linn = ArenaTraversalProfile.forHero(MobaHeroId.linn);
 
       expect(lyra.maxCharges, 3);
       expect(bastion.maxCharges, 2);
       expect(kairo.maxCharges, 4);
+      expect(linn.maxCharges, 3);
+      expect(linn.groundSpeed, closeTo(5.6, 1e-6));
       expect(bastion.dashDistance, lessThan(lyra.dashDistance));
       expect(kairo.dashDistance, greaterThan(lyra.dashDistance));
       expect(
-        {lyra.dashDuration, bastion.dashDuration, kairo.dashDuration}.length,
-        3,
+        {
+          lyra.dashDuration,
+          bastion.dashDuration,
+          kairo.dashDuration,
+          linn.dashDuration,
+        }.length,
+        4,
         reason: 'each hero has an independently tuned traversal response',
       );
+    });
+
+    test('Linn Feral mode raises the Rapier movement speed without replacing its collider', () async {
+      final feral = await ArenaPhysicsRuntime.create(
+        spawn: const MobaPoint(0, -60),
+        heroId: MobaHeroId.linn,
+      );
+      try {
+        feral.setInput(1, 0);
+        for (var frame = 0; frame < 60; frame++) {
+          feral.update(1 / 60);
+        }
+        final syntheticSpeed = feral.horizontalSpeed;
+        final positionBefore = feral.playerPosition;
+
+        feral.setLinnFeralMode(true);
+        for (var frame = 0; frame < 60; frame++) {
+          feral.update(1 / 60);
+        }
+
+        expect(feral.horizontalSpeed, greaterThan(syntheticSpeed * 1.10));
+        expect(feral.playerPosition.x, greaterThan(positionBefore.x));
+        expect(feral.traversalStamina, closeTo(feral.traversalStaminaMax, 1e-6),
+            reason: 'form change does not consume traversal stamina');
+      } finally {
+        feral.dispose();
+      }
     });
 
     test('air steering and slide tuning are distinct for each hero', () {

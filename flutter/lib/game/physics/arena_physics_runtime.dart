@@ -98,6 +98,20 @@ class ArenaTraversalProfile {
             groundAcceleration: 23.0,
             jumpImpulse: 7.0,
           ),
+        MobaHeroId.linn => const ArenaTraversalProfile(
+            maxCharges: 3,
+            dashDistance: 4.1,
+            dashDuration: 0.26,
+            regenerationPerSecond: 0.68,
+            regenerationDelay: 0.60,
+            airControlRatio: 0.50,
+            slideDuration: 0.62,
+            slideFrictionMultiplier: 0.30,
+            slideSteeringRadiansPerSecond: 2.0,
+            groundSpeed: 5.6,
+            groundAcceleration: 20.5,
+            jumpImpulse: 6.4,
+          ),
       };
 }
 
@@ -167,13 +181,15 @@ class ArenaPhysicsRuntime {
   bool _grounded = false;
   bool _disposed = false;
   bool _slidingDownSlope = false;
+  bool _linnFeralMode = false;
 
   bool get grounded => _grounded;
   bool get slidingDownSlope => _slidingDownSlope;
   double get verticalVelocity => _verticalVelocity;
   double get horizontalSpeed => _actualHorizontalSpeed;
   double get movementSpeedRatio =>
-      (_actualHorizontalSpeed / _traversalProfile.groundSpeed)
+      (_actualHorizontalSpeed /
+              (_traversalProfile.groundSpeed * (_linnFeralMode ? 1.18 : 1.0)))
           .clamp(0.0, 1.35)
           .toDouble();
   bool get dashing => _dashRemaining > 0;
@@ -295,6 +311,13 @@ class ArenaPhysicsRuntime {
       world.dispose();
       rethrow;
     }
+  }
+
+  /// Toggles Linn's short-lived Feral movement profile. The character
+  /// capsule, collision solver, and traversal-stamina budget remain unchanged.
+  void setLinnFeralMode(bool active) {
+    if (_disposed) return;
+    _linnFeralMode = active;
   }
 
   void setInput(double x, double z) {
@@ -661,8 +684,9 @@ class ArenaPhysicsRuntime {
         _playerPose.translation.x,
         _playerPose.translation.z,
       );
-      final targetSpeed = _traversalProfile.groundSpeed * surfaceSpeed *
-          math.min(1.0, inputLength);
+      final formSpeedMultiplier = _linnFeralMode ? 1.18 : 1.0;
+      final targetSpeed = _traversalProfile.groundSpeed *
+          formSpeedMultiplier * surfaceSpeed * math.min(1.0, inputLength);
       final targetX = _moveX / inputLength * targetSpeed;
       final targetZ = _moveZ / inputLength * targetSpeed;
       final deltaX = targetX - _velocityX;

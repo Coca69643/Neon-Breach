@@ -81,7 +81,7 @@ extension MobaShopItemRules on MobaShopItem {
 
 enum MobaLane { top, middle, bottom }
 
-enum MobaHeroId { lyra, bastion, kairo }
+enum MobaHeroId { lyra, bastion, kairo, linn }
 
 // Gameplay archetype and rendered appearance are kept independent.
 enum MobaNpcVisualId { maleA, femaleA, maleB, femaleB, maleC, femaleC }
@@ -91,24 +91,28 @@ extension MobaHeroRules on MobaHeroId {
         MobaHeroId.bastion => MobaLane.top,
         MobaHeroId.kairo => MobaLane.middle,
         MobaHeroId.lyra => MobaLane.bottom,
+        MobaHeroId.linn => MobaLane.middle,
       };
 
   double get basicDamage => switch (this) {
         MobaHeroId.bastion => 48.0,
         MobaHeroId.kairo => 34.0,
         MobaHeroId.lyra => 39.0,
+        MobaHeroId.linn => 40.0,
       };
 
   double get basicRange => switch (this) {
         MobaHeroId.lyra => 6.2,
         MobaHeroId.bastion => 4.0,
         MobaHeroId.kairo => 3.5,
+        MobaHeroId.linn => 6.2,
       };
 
   double get basicAttackCooldown => switch (this) {
         MobaHeroId.lyra => 0.86,
         MobaHeroId.bastion => 0.78,
         MobaHeroId.kairo => 0.54,
+        MobaHeroId.linn => 0.78,
       };
 
   String get id => name;
@@ -338,6 +342,9 @@ class MobaMatchSnapshot {
     required this.playerPower,
     required this.playerItems,
     required this.playerSkillCooldown,
+    required this.playerFeralSeconds,
+    required this.playerFeralBlend,
+    required this.playerTransformationPulseSeconds,
     required this.playerRespawnSeconds,
     required this.playerSpawnShieldSeconds,
     required this.playerMoving,
@@ -384,6 +391,9 @@ class MobaMatchSnapshot {
   final double playerPower;
   final List<MobaShopItem> playerItems;
   final double playerSkillCooldown;
+  final double playerFeralSeconds;
+  final double playerFeralBlend;
+  final double playerTransformationPulseSeconds;
   final double playerRespawnSeconds;
   final double playerSpawnShieldSeconds;
   final bool playerMoving;
@@ -628,6 +638,10 @@ class MobaMatchSimulation {
   double _playerHitConfirmSeconds = 0;
   double _playerSkillPulseSeconds = 0;
   double _playerSkillCooldown = 0;
+  double _playerFeralSeconds = 0;
+  double _playerFeralBlend = 0;
+  double _playerTransformationPulseSeconds = 0;
+  bool _playerTransformingToFeral = false;
   double _playerFacingLockSeconds = 0;
   MobaPoint? _pendingPhysicsDash;
   double _playerShieldTime = 0;
@@ -827,6 +841,10 @@ class MobaMatchSimulation {
     _playerAttackPulseSeconds = 0;
     _playerHitConfirmSeconds = 0;
     _playerSkillCooldown = 0;
+    _playerFeralSeconds = 0;
+    _playerFeralBlend = 0;
+    _playerTransformationPulseSeconds = 0;
+    _playerTransformingToFeral = false;
     _playerFacingLockSeconds = 0;
     _playerShieldTime = 0;
     _playerXp = 0;
@@ -876,6 +894,7 @@ class MobaMatchSimulation {
       MobaHeroId.bastion => 0,
       MobaHeroId.kairo => 2,
       MobaHeroId.lyra => 3,
+      MobaHeroId.linn => 1,
     };
 
     final visibleAllyRole = List<int>.generate(roleLanes.length, (index) => index)
@@ -1112,6 +1131,7 @@ class MobaMatchSimulation {
         math.max(0, _playerSkillPulseSeconds - dt);
     _playerSkillCooldown = math.max(0, _playerSkillCooldown - dt);
     _playerShieldTime = math.max(0, _playerShieldTime - dt);
+    _updateLinnTransformation(dt);
     final wasRespawning = _playerRespawn > 0;
     _playerRespawn = math.max(0, _playerRespawn - dt);
     if (wasRespawning && _playerRespawn <= 0) {
@@ -1191,7 +1211,13 @@ class MobaMatchSimulation {
       _lastMoveX = nx;
       _lastMoveZ = nz;
     }
-    _tryMovePlayer(nx * playerMoveSpeed * dt, nz * playerMoveSpeed * dt);
+    final feralBoost = heroId == MobaHeroId.linn && _playerFeralBlend >= 0.5
+        ? 1.18
+        : 1.0;
+    _tryMovePlayer(
+      nx * playerMoveSpeed * feralBoost * dt,
+      nz * playerMoveSpeed * feralBoost * dt,
+    );
   }
 
   void _tryMovePlayer(
@@ -1247,12 +1273,21 @@ class MobaMatchSimulation {
     // Damage remains server-independent and is applied only to valid nearby MOBA
     // targets; the renderer plays the rig's SwordSlash combat clip.
     _playerAttackPulseSeconds = 0.46;
-    _playerAttackCooldown = heroId.basicAttackCooldown;
+    final linnFeral = heroId == MobaHeroId.linn && _playerFeralBlend >= 0.5;
+    final attackRange = heroId == MobaHeroId.linn
+        ? (linnFeral ? 4.8 : 6.2)
+        : heroId.basicRange;
+    final attackDamage = heroId == MobaHeroId.linn
+        ? (linnFeral ? 58.0 : 40.0)
+        : heroId.basicDamage;
+    _playerAttackCooldown = heroId == MobaHeroId.linn
+        ? (linnFeral ? 0.66 : 0.78)
+        : heroId.basicAttackCooldown;
 
-    final damage = heroId.basicDamage * _playerPower;
+    final damage = attackDamage * _playerPower;
     final selectedTarget = _selectedTargetSnapshot();
     if (selectedTarget != null &&
-        _playerPosition.distanceTo(selectedTarget.position) <= heroId.basicRange) {
+        _playerPosition.distanceTo(selectedTarget.position) <= attackRange) {
       _facePlayerToward(selectedTarget.position);
       if (selectedTarget.kind == 'NEUTRAL') {
         _damageNeutralUnit(selectedTarget.id, MobaTeam.blue, damage);
@@ -1281,7 +1316,7 @@ class MobaMatchSimulation {
     final enemyBot = _nearestBot(
       _playerPosition,
       MobaTeam.red,
-      maxRange: heroId.basicRange,
+      maxRange: attackRange,
     );
     if (enemyBot != null) {
       _facePlayerToward(enemyBot.position);
@@ -1290,7 +1325,7 @@ class MobaMatchSimulation {
       return;
     }
 
-    final cover = _nearestCover(_playerPosition, heroId.basicRange);
+    final cover = _nearestCover(_playerPosition, attackRange);
     if (cover != null) {
       _facePlayerToward(cover.position);
       cover.health = math.max(0, cover.health - damage);
@@ -1303,7 +1338,7 @@ class MobaMatchSimulation {
       _playerPosition,
       MobaTeam.red,
       lane,
-      maxRange: heroId.basicRange,
+      maxRange: attackRange,
     );
     if (minion != null) {
       _facePlayerToward(minion.position);
@@ -1314,7 +1349,7 @@ class MobaMatchSimulation {
 
     final tower = _activeTower(MobaTeam.red, lane);
     if (tower != null &&
-        _playerPosition.distanceTo(tower.position) <= heroId.basicRange &&
+        _playerPosition.distanceTo(tower.position) <= attackRange &&
         _hasFriendlyMinionSupport(MobaTeam.blue, lane, tower.position, 7.2)) {
       _facePlayerToward(tower.position);
       _damageTower(tower, MobaTeam.blue, damage);
@@ -1323,7 +1358,7 @@ class MobaMatchSimulation {
     }
 
     if (_laneOpen(MobaTeam.red, lane) &&
-        _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= heroId.basicRange + 0.8) {
+        _playerPosition.distanceTo(_corePosition(MobaTeam.red)) <= attackRange + 0.8) {
       _facePlayerToward(_corePosition(MobaTeam.red));
       _damageCore(MobaTeam.red, damage, lane);
       _confirmPlayerHit();
@@ -1386,8 +1421,47 @@ class MobaMatchSimulation {
           );
           if (target != null) _damageBot(target, MobaTeam.blue, 72);
         }
+      case MobaHeroId.linn:
+        if (_playerFeralSeconds <= 0 && _playerFeralBlend <= 0) {
+          _playerFeralSeconds = 8.0;
+          _playerTransformingToFeral = true;
+          _playerTransformationPulseSeconds = 0.55;
+        }
     }
-    _playerSkillCooldown = 9.0;
+    _playerSkillCooldown = heroId == MobaHeroId.linn ? 22.0 : 9.0;
+  }
+
+  void _updateLinnTransformation(double dt) {
+    if (heroId != MobaHeroId.linn) return;
+    if (_playerHealth <= 0) {
+      _playerFeralSeconds = 0;
+      _playerFeralBlend = 0;
+      _playerTransformationPulseSeconds = 0;
+      _playerTransformingToFeral = false;
+      return;
+    }
+
+    if (_playerFeralSeconds > 0) {
+      _playerFeralSeconds = math.max(0, _playerFeralSeconds - dt);
+      if (_playerFeralSeconds <= 0) {
+        _playerTransformingToFeral = false;
+        _playerTransformationPulseSeconds = 0.55;
+        _playerSkillPulseSeconds = math.max(_playerSkillPulseSeconds, 0.55);
+      }
+    }
+
+    _playerTransformationPulseSeconds = math.max(
+      0,
+      _playerTransformationPulseSeconds - dt,
+    );
+    if (_playerTransformationPulseSeconds > 0) {
+      final progress = 1 - _playerTransformationPulseSeconds / 0.55;
+      _playerFeralBlend = _playerTransformingToFeral
+          ? progress
+          : 1 - progress;
+    } else {
+      _playerFeralBlend = _playerFeralSeconds > 0 ? 1 : 0;
+    }
   }
 
   void _updateWaves(double dt) {
@@ -2447,6 +2521,9 @@ class MobaMatchSimulation {
       playerPower: _playerPower,
       playerItems: List.unmodifiable(_playerItems),
       playerSkillCooldown: _playerSkillCooldown,
+      playerFeralSeconds: _playerFeralSeconds,
+      playerFeralBlend: _playerFeralBlend,
+      playerTransformationPulseSeconds: _playerTransformationPulseSeconds,
       playerRespawnSeconds: _playerRespawn,
       playerSpawnShieldSeconds: _playerShieldTime,
       playerMoving: _playerMoving,

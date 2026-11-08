@@ -37,9 +37,11 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [ ] Validar no Android físico que nome e foto sobrevivem a encerramento/reabertura e atualização por cima da instalação existente.
 
 ### P1 — Novo herói e seleção
-- O elenco permanece com Lyra, Bastion e Kairo; o novo herói solicitado não está implementado nem selecionável.
-- A direção já registrada em `PROJECT_ARENA_HERO_SELECTION.md` é um sintético humanoide original cuja habilidade principal transforma temporariamente sua forma em uma criatura quadrúpede original. A forma-base robótica deve continuar sendo a identidade principal.
-- A seleção deve ser ampliada para acomodar espécies e silhuetas distintas sem comprimir o modelo 3D nem deixar o personagem de costas. Catálogo, preview, rig, animações, identidade de gameplay e testes devem ser integrados em conjunto.
+- [x] Linn integrado ao catálogo jogável e state machine; seleção filtrada por espécie, prévia procedural e confirmação.
+- [x] Protocolo Feral integrado à simulação: 8 s de duração, 22 s de cooldown, transições de 0,55 s e perfil Feral de Rapier com +18% de velocidade horizontal.
+- [x] Forma robótica com emissor de antebraço e forma quadrúpede original com ataques próprios, ambas montadas offline por primitivas Flutter Scene cacheadas.
+- [ ] Rig/arte final exportados, inspeção renderizada da transição e balanço em gameplay; a implementação atual alterna dois rigs procedurais e não é um clip glTF de morph targets.
+- [ ] Teste físico no Realme C53 para escala, frame pacing, clipping e legibilidade da forma quadrúpede.
 
 ### P1 — HUD de partida
 - A HUD mostrada nas capturas é genérica e ocupa espaço com placas visuais pouco integradas ao mundo.
@@ -102,7 +104,7 @@ Registro permanente de requisitos e defeitos apontados pelo jogador nas capturas
 - [ ] Equipamentos por rig: calibração visual pendente.
 - [x] Perfil local do jogador: editor de nome e foto integrado ao menu; `flutter analyze` aprovado e 94 testes passaram no CI #42386693010 (HEAD de código `d5fdc7d`); inspeção física e persistência em atualização por cima da instalação existentes ainda pendentes.
 
-- [ ] Novo herói sintético metamórfico: não implementado.
+- [x] Linn: primeira integração de runtime e roster concluída no código; CI e teste físico pendentes.
 - [ ] HUD e seleção: revisão de UX pendente.
 - [ ] Realme C53: sem validação física nesta etapa.
 

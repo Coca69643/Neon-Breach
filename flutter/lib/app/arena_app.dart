@@ -316,6 +316,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   MobaHeroId _mapHero(String? id) => switch (id) {
         'bastion' => MobaHeroId.bastion,
         'kairo' => MobaHeroId.kairo,
+        'linn' => MobaHeroId.linn,
         _ => MobaHeroId.lyra,
       };
 
