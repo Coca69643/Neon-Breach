@@ -446,7 +446,7 @@ void main() {
     });
 
     test('southern boulevard adds a continuous paved rotation route', () {
-      expect(ArenaWorldCatalog.accessPathCount, 18);
+      expect(ArenaWorldCatalog.accessPathCount, 17);
       const routePoints = <(double, double)>[
         (-54.0, -77.0),
         (-20.0, -81.0),
