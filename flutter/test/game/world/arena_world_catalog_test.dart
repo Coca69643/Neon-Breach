@@ -202,7 +202,7 @@ void main() {
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(13));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(15));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
         final footprint = ArenaWorldCatalog.commercialFootprint(block);
         expect(footprint.$1, greaterThan(0));
