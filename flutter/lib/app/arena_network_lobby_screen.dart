@@ -73,7 +73,7 @@ class _ArenaNetworkLobbyScreenState extends State<ArenaNetworkLobbyScreen> {
     if (value.contains('SocketException')) {
       return 'Host LAN inacessível. Verifique se os aparelhos estão no mesmo Wi-Fi e confira IP/porta.';
     }
-    return value.length > 220 ? value.substring(0, 220) + '…' : value;
+    return value.length > 220 ? '${value.substring(0, 220)}…' : value;
   }
 
   Future<void> _createOnline() async {
@@ -514,7 +514,7 @@ class _ArenaNetworkLobbyScreenState extends State<ArenaNetworkLobbyScreen> {
         ],
       );
 
-  Widget _input(String label, IconData icon) => InputDecoration(
+  InputDecoration _input(String label, IconData icon) => InputDecoration(
         labelText: label,
         prefixIcon: Icon(icon, color: const Color(0xFF9BAEB8)),
         labelStyle: const TextStyle(color: Color(0xFF9BAEB8)),
