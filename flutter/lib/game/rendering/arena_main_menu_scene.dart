@@ -45,6 +45,7 @@ class _ArenaMenuBackdropPainter extends CustomPainter {
     _drawSky(canvas);
     _drawAtmosphere(canvas);
     _drawDistantSkyline(canvas);
+    _drawMarketDistrict(canvas);
     _drawCommandTower(canvas);
     _drawForeground(canvas);
     _drawVignette(canvas);
@@ -249,6 +250,150 @@ class _ArenaMenuBackdropPainter extends CustomPainter {
           windowPaint,
         );
       }
+    }
+  }
+
+  void _drawMarketDistrict(Canvas canvas) {
+    // Low-rise storefronts, awnings and warm windows create a lived-in
+    // district beneath the command tower without requiring scene assets.
+    final shopShadow = Paint()..color = const Color(0xAA101E28);
+    final shopFace = Paint()..color = const Color(0xFF243B47);
+    final shopTop = Paint()..color = const Color(0xFF52656A);
+    final shopGlass = Paint()..color = const Color(0xFF172E3B);
+    final warmWindow = Paint()..color = const Color(0xFFD7B879);
+    final coolWindow = Paint()..color = const Color(0xFF6FB7B7);
+    final awning = Paint()..color = const Color(0xFF9B8060);
+
+    final marketMass = Path()
+      ..moveTo(78, 782)
+      ..lineTo(78, 686)
+      ..lineTo(126, 654)
+      ..lineTo(286, 654)
+      ..lineTo(324, 684)
+      ..lineTo(324, 782)
+      ..close();
+    canvas.drawPath(marketMass.shift(const Offset(8, 10)), shopShadow);
+    canvas.drawPath(marketMass, shopFace);
+    canvas.drawPath(
+      Path()
+        ..moveTo(78, 686)
+        ..lineTo(126, 654)
+        ..lineTo(286, 654)
+        ..lineTo(324, 684)
+        ..lineTo(324, 698)
+        ..lineTo(78, 700)
+        ..close(),
+      shopTop,
+    );
+
+    final marketGlass = Path()
+      ..moveTo(100, 707)
+      ..lineTo(304, 705)
+      ..lineTo(304, 766)
+      ..lineTo(100, 770)
+      ..close();
+    canvas.drawPath(marketGlass, shopGlass);
+    for (var i = 0; i < 4; i++) {
+      final x = 116.0 + i * 47;
+      canvas.drawRect(
+        Rect.fromLTWH(x, 716, 28, 39),
+        Paint()..color = const Color(0xFF294955),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(x + 5, 720, 7, 13),
+        i.isEven ? warmWindow : coolWindow,
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(x + 16, 720, 7, 13),
+        i.isEven ? coolWindow : warmWindow,
+      );
+    }
+
+    final awningPath = Path()
+      ..moveTo(92, 700)
+      ..lineTo(310, 697)
+      ..lineTo(326, 715)
+      ..lineTo(90, 719)
+      ..close();
+    canvas.drawPath(awningPath, awning);
+    for (var i = 0; i < 7; i++) {
+      final x = 98.0 + i * 32;
+      canvas.drawLine(
+        Offset(x, 701),
+        Offset(x + 1, 717),
+        Paint()
+          ..color = const Color(0xAAE5C994)
+          ..strokeWidth = 2,
+      );
+    }
+
+    final sideStore = Path()
+      ..moveTo(365, 788)
+      ..lineTo(365, 704)
+      ..lineTo(405, 674)
+      ..lineTo(555, 674)
+      ..lineTo(590, 705)
+      ..lineTo(590, 788)
+      ..close();
+    canvas.drawPath(sideStore.shift(const Offset(7, 9)), shopShadow);
+    canvas.drawPath(sideStore, Paint()..color = const Color(0xFF1E3542));
+    canvas.drawPath(
+      Path()
+        ..moveTo(365, 704)
+        ..lineTo(405, 674)
+        ..lineTo(555, 674)
+        ..lineTo(590, 705)
+        ..close(),
+      shopTop,
+    );
+    canvas.drawRect(
+      const Rect.fromLTWH(388, 719, 180, 53),
+      shopGlass,
+    );
+    for (var i = 0; i < 5; i++) {
+      canvas.drawRect(
+        Rect.fromLTWH(398 + i * 34, 726, 20, 30),
+        Paint()..color = const Color(0xFF2B4A55),
+      );
+      canvas.drawRect(
+        Rect.fromLTWH(404 + i * 34, 730, 8, 12),
+        i.isEven ? coolWindow : warmWindow,
+      );
+    }
+    canvas.drawLine(
+      const Offset(372, 711),
+      const Offset(580, 708),
+      Paint()
+        ..color = const Color(0xFFD0B07A)
+        ..strokeWidth = 8,
+    );
+
+    // Street lamps and ground-level route markers anchor the street.
+    for (final x in <double>[56, 620, 862]) {
+      canvas.drawLine(
+        Offset(x, 790),
+        Offset(x, 713),
+        Paint()
+          ..color = const Color(0xFF65777A)
+          ..strokeWidth = 4,
+      );
+      canvas.drawLine(
+        Offset(x, 715),
+        Offset(x + 17, 711),
+        Paint()
+          ..color = const Color(0xFF65777A)
+          ..strokeWidth = 3,
+      );
+      canvas.drawCircle(
+        Offset(x + 19, 711),
+        4,
+        Paint()..color = const Color(0xFFFFD68A),
+      );
+      canvas.drawCircle(
+        Offset(x + 19, 711),
+        13,
+        Paint()..color = const Color(0x22FFD68A),
+      );
     }
   }
 
@@ -475,6 +620,38 @@ class _ArenaMenuBackdropPainter extends CustomPainter {
       Paint()
         ..color = const Color(0x66D4BC8A)
         ..strokeWidth = 3,
+    );
+
+    // Small illuminated curb markers add depth without scene assets.
+    final curbLight = Paint()..color = const Color(0xA8D0B477);
+    for (var i = 0; i < 10; i++) {
+      final x = 112.0 + i * 74.0;
+      canvas.drawRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(x, 856 - (i % 3) * 4.0, 15, 3),
+          const Radius.circular(2),
+        ),
+        curbLight,
+      );
+    }
+    final canal = Path()
+      ..moveTo(0, 838)
+      ..cubicTo(190, 827, 295, 845, 440, 832)
+      ..cubicTo(600, 820, 760, 838, 915, 826)
+      ..lineTo(910, 856)
+      ..cubicTo(730, 869, 550, 849, 430, 860)
+      ..cubicTo(260, 874, 130, 850, 0, 864)
+      ..close();
+    canvas.drawPath(
+      canal,
+      Paint()..color = const Color(0xFF152C38),
+    );
+    canvas.drawLine(
+      const Offset(0, 844),
+      const Offset(910, 837),
+      Paint()
+        ..color = const Color(0x446EB8BC)
+        ..strokeWidth = 2,
     );
   }
 

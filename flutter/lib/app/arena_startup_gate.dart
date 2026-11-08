@@ -1,6 +1,8 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 
 import '../game/rendering/arena_main_menu_scene.dart';
 
@@ -459,7 +461,7 @@ class _PlayerAvatar extends StatelessWidget {
   }
 }
 
-class _ArenaStudioLogo extends StatelessWidget {
+class _ArenaStudioLogo extends StatefulWidget {
   const _ArenaStudioLogo({
     required this.width,
     required this.height,
@@ -469,21 +471,56 @@ class _ArenaStudioLogo extends StatelessWidget {
   final double height;
 
   @override
+  State<_ArenaStudioLogo> createState() => _ArenaStudioLogoState();
+}
+
+class _ArenaStudioLogoState extends State<_ArenaStudioLogo> {
+  late final Future<Uint8List> _imageBytes;
+
+  @override
+  void initState() {
+    super.initState();
+    _imageBytes = Future.wait([
+      rootBundle.loadString('assets/branding/duck_dream_studios.0.b64'),
+      rootBundle.loadString('assets/branding/duck_dream_studios.1.b64'),
+      rootBundle.loadString('assets/branding/duck_dream_studios.2.b64'),
+    ]).then((parts) => base64Decode(parts.join()));
+  }
+
+  @override
   Widget build(BuildContext context) {
-    return Image.asset(
-      'assets/branding/duck_dream_studios.webp',
-      width: width,
-      height: height,
-      fit: BoxFit.contain,
-      filterQuality: FilterQuality.medium,
-      errorBuilder: (context, error, stackTrace) {
-        return SizedBox(
-          width: width,
-          height: height,
-          child: const Icon(
-            Icons.person_outline_rounded,
-            color: Color(0xFFE4BB63),
-          ),
+    return FutureBuilder<Uint8List>(
+      future: _imageBytes,
+      builder: (context, snapshot) {
+        if (!snapshot.hasData) {
+          return SizedBox(
+            width: widget.width,
+            height: widget.height,
+            child: const Center(
+              child: CircularProgressIndicator(
+                strokeWidth: 1.5,
+                color: Color(0xFFE4BB63),
+              ),
+            ),
+          );
+        }
+        return Image.memory(
+          snapshot.data!,
+          width: widget.width,
+          height: widget.height,
+          fit: BoxFit.contain,
+          filterQuality: FilterQuality.medium,
+          gaplessPlayback: true,
+          errorBuilder: (context, error, stackTrace) {
+            return SizedBox(
+              width: widget.width,
+              height: widget.height,
+              child: const Icon(
+                Icons.person_outline_rounded,
+                color: Color(0xFFE4BB63),
+              ),
+            );
+          },
         );
       },
     );

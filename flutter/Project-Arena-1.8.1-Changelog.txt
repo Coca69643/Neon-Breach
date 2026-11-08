@@ -1,29 +1,31 @@
 PROJECT ARENA
-Versão 1.8.1 — changelog de desenvolvimento
+Versão 1.8.1 — Changelog incremental
 
-STATUS: RASCUNHO INTERNO
-Este documento acompanha a linha de desenvolvimento 1.8.1. Não tratar como changelog final de publicação antes da aprovação da release e da conclusão das validações.
+HUB E IDENTIDADE DO JOGADOR
+- Fundo 2D do hub ampliado com fachadas comerciais distintas, vitrines iluminadas, marquises, postes e camada de canal urbano.
+- O cabeçalho fixo foi substituído por ícone de jogador e nome local.
+- Nova sub-tela de perfil com edição de nome, foto, estatísticas e molduras equipadas.
+- Perfil e progresso local persistem entre reinicializações.
 
-VERSÃO E PACOTE
-- versionName: 1.8.1.
-- versionCode Android: 74.
-- A versão publicada anterior permanece identificada como 1.8.0 / versionCode 73.
+SELEÇÃO DE HERÓIS
+- Elenco reorganizado em painel lateral.
+- Prévia 3D do herói em destaque no lado oposto, com função, resumo e confirmação.
+- Mantido o runtime de prévia Flutter Scene existente.
 
-INTEGRAÇÃO E RECUPERAÇÃO
-- Continuidade das correções de feedback, retorno ao hub e recuperação de estado.
-- Fundação de salas Online e Rede Local com convites e presença; a sincronização completa da partida permanece fora deste escopo.
+BAÚS, DESAFIOS E MERCADOR
+- Baú diário com recompensa fixa de 100 créditos, uma vez por dia.
+- Desafios: primeira partida (60 créditos), primeira vitória (90 créditos) e cinco partidas (220 créditos).
+- Recompensas de desafios são resgatadas uma única vez e atualizadas após resultado de partida aceito pela máquina de estados.
+- Mercador vende molduras cosméticas de perfil usando créditos locais.
+- Molduras alteram somente a apresentação do perfil; não modificam atributos dos heróis.
+- Loja de partida permanece separada do mercador do hub.
 
-INICIALIZAÇÃO E IDENTIDADE
-- Quinta gate com splash da Duck Dream Studios, pré-verificação de assets e inicialização dos serviços opcionais.
-- Fallback offline preservado quando os serviços de rede não estiverem disponíveis.
+VERSÃO E COMPATIBILIDADE
+- versionName 1.8.1.
+- versionCode 74, incrementado em relação à versão lançada 1.8.0+73.
+- O identificador Android do aplicativo permanece inalterado.
 
-HUB E ELENCO
-- Evolução do hub 2D e da seleção de heróis.
-- Perfil local com nome, avatar e moldura cosmética.
-- Subtelas de baús, desafios e mercador em desenvolvimento; progressão local sem alterar atributos competitivos.
-
-VALIDAÇÃO PENDENTE
-- Aprovação final de CI e verificador de pacote.
-- Teste de navegação e interrupções em Android landscape.
-- Teste físico no Realme C53, incluindo desempenho sustentado, memória e temperatura.
-- Revisar este documento antes da publicação para refletir somente o escopo efetivamente entregue.
+VALIDAÇÃO
+- flutter analyze aprovado.
+- flutter test aprovado.
+- Build Android de validação e teste visual/performance prolongado no Realme C53 ainda precisam ser concluídos.
