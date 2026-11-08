@@ -155,6 +155,27 @@ void main() {
       }
     });
 
+    test('synthetic jump state resets on an explicit teleport', () async {
+      final synthetic = await ArenaPhysicsRuntime.create(
+        spawn: const MobaPoint(0, -60),
+        traversalProfile: ArenaTraversalProfile.syntheticPrototype(),
+      );
+      try {
+        for (var frame = 0; frame < 4; frame++) {
+          synthetic.update(1 / 60);
+        }
+        expect(synthetic.triggerTraversalJump(), isTrue);
+        expect(synthetic.jumping, isTrue);
+
+        synthetic.teleport(const MobaPoint(0, -60));
+
+        expect(synthetic.jumping, isFalse);
+        expect(synthetic.verticalVelocity, 0);
+      } finally {
+        synthetic.dispose();
+      }
+    });
+
     test('gravity settles the capsule on the terrain', () async {
       await advance(frames: 60);
 
