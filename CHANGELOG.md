@@ -1,5 +1,14 @@
 # Changelog — Projeto Arena
 
+## [1.8.1] — Porto de Vésper (em desenvolvimento)
+
+- Novo contorno costeiro e canal de navegação ampliado.
+- Quatro praças de cais pavimentadas e fachadas adicionais com assets CC0 já pinados.
+- Identidade PORTO DE VÉSPER exibida na HUD da partida.
+- Catálogo lógico e bake offline de terreno atualizados em conjunto.
+- Validação visual no Realme C53 permanece pendente; esta alteração não autoriza publicação.
+
+
 ## [1.8.1] — em desenvolvimento
 
 ### Hub, identidade e seleção

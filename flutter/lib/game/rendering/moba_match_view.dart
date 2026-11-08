@@ -1532,6 +1532,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                     top: 8,
                     left: side,
                     child: _TopLeftHud(
+                      mapName: ArenaWorldCatalog.mapName,
                       time: _clock(snapshot.elapsedSeconds),
                       kills: '${snapshot.blueTeamKills}  :  ${snapshot.redTeamKills}',
                     ),
@@ -1741,40 +1742,61 @@ class _MobaMatchViewState extends State<MobaMatchView> {
 }
 
 class _TopLeftHud extends StatelessWidget {
-  const _TopLeftHud({required this.time, required this.kills});
+  const _TopLeftHud({
+    required this.mapName,
+    required this.time,
+    required this.kills,
+  });
 
+  final String mapName;
   final String time;
   final String kills;
 
   @override
   Widget build(BuildContext context) {
     return _HudPlate(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-      child: Row(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+      child: Column(
         mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF9BD9C7)),
-          const SizedBox(width: 5),
           Text(
-            time,
+            mapName,
             style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-              fontFeatures: [FontFeature.tabularFigures()],
+              color: Color(0xFF9BD9C7),
+              fontSize: 8,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.9,
             ),
           ),
-          const SizedBox(width: 10),
-          const Icon(Icons.bolt, size: 14, color: Color(0xFFFFD68E)),
-          const SizedBox(width: 3),
-          Text(
-            kills,
-            style: const TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w900,
-              color: Colors.white,
-              letterSpacing: 0.6,
-            ),
+          const SizedBox(height: 4),
+          Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.timer_outlined, size: 14, color: Color(0xFF9BD9C7)),
+              const SizedBox(width: 5),
+              Text(
+                time,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color: Colors.white,
+                  fontFeatures: [FontFeature.tabularFigures()],
+                ),
+              ),
+              const SizedBox(width: 10),
+              const Icon(Icons.bolt, size: 14, color: Color(0xFFFFD68E)),
+              const SizedBox(width: 3),
+              Text(
+                kills,
+                style: const TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w900,
+                  color: Colors.white,
+                  letterSpacing: 0.6,
+                ),
+              ),
+            ],
           ),
         ],
       ),
