@@ -1,6 +1,6 @@
 # Project Arena — runtime QA gate
 
-Status: 1.8.3 consolidation candidate; Profile ARM64 QA pipeline is retained for pull-request CI. Physical-device acceptance is pending.
+Status: Linn integration candidate on the consolidated 1.8.3 branch. Pull-request analysis/tests run automatically; Profile APK QA is opt-in through repository variable `ARENA_BUILD_PROFILE_QA=true` and remains disabled unless explicitly requested. Physical-device acceptance is pending.
 
 ## QA artifact identity
 
@@ -14,11 +14,11 @@ Status: 1.8.3 consolidation candidate; Profile ARM64 QA pipeline is retained for
 
 The package suffix allows the QA build to coexist with the stable `com.duckdream.projectarena` installation. Its app data is isolated. It is not an update package and must never be uploaded as a release.
 
-The PR-only job does not load the persistent production keystore, create a release tag, publish a GitHub Release, or modify the stable app's data.
+The optional PR-only QA job does not load the persistent production keystore, create a release tag, publish a GitHub Release, or modify the stable app's data. With `ARENA_BUILD_PROFILE_QA` unset or not equal to `true`, the entire Profile APK build/verify/sign/upload sequence is skipped; analysis and unit tests still run.
 
 ## Automated artifact checks
 
-The PR workflow:
+When `ARENA_BUILD_PROFILE_QA=true`, the optional PR workflow:
 
 1. Generates the Android host and Flutter GPU manifest.
 2. Changes the generated host's package identity to the isolated QA ID and updates its launcher label.
@@ -113,7 +113,7 @@ The second traversal pass builds on the existing fixed-step Rapier motor:
 - Slide and both dash paths are mutually exclusive while active. The move still goes through Rapier's normal swept character movement and world restrictions.
 - The landscape HUD exposes a separate SLIDE/DRIFT control. The control remains disabled until the runtime confirms the start conditions.
 
-These are initial tuning values, not a balance acceptance. The synthetic metamorphic hero remains a separate integration gate: its primary identity is the original humanoid robot and the quadrupedal fox is a temporary form, not a separate roster slot. The current third slice exposes SYNTH-01 as an explicitly experimental prototype outside the playable MobaHeroId roster; it does not mark the final rigged GLB or the temporary fox form as complete.
+These are initial tuning values, not a balance acceptance. The synthetic metamorphic hero remains a separate integration gate: its primary identity is the original humanoid robot and the quadrupedal fox is a temporary form, not a separate roster slot. The old SYNTH-01 experiment remains outside the production roster and is no longer shown as a selectable prototype. Linn is the production roster entry; its temporary quadruped form is implemented procedurally, while final exported rigs and true glTF morph-target animation remain future art-polish work.
 
 ### Slide and aerial-control acceptance
 

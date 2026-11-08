@@ -18,7 +18,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 
 - Sem sombras dinâmicas.
 - PBR com iluminação de ambiente controlada e materiais bem trabalhados.
-- Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
+- Assets orgânicos com rigs/animações; Linn usa dois rigs procedurais cacheados na primeira integração de metamorfose, com arte e rig exportados ainda pendentes.
 - Meta inicial: 30 FPS sustentados no Realme C53.
 - Arena urbana 224 × 188, com seis distritos, três avenidas de siege, seis edifícios acessíveis, ruas secundárias e cinco travessias do canal.
 - Distritos com silhuetas comerciais distintas, sinalização/iluminação de rua, praças laterais, árvores grandes e mobiliário urbano CC0.
@@ -48,7 +48,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Baús, Desafios e Mercador são sub-telas funcionais, com recompensas locais persistentes e cosméticos sem atributos competitivos.
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
-- Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
+- Preview 3D dos heróis Lyra, Bastion e Kairo via SceneModel; Linn usa preview procedural próprio e entra no catálogo jogável com forma robótica e forma Feral temporária.
 - A ilustração 2D do menu mantém a identidade da torre; modelos 3D urbanos são carregados exclusivamente na gameplay.
 - Mapa District Control: 224 × 188, seis distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e seis interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
@@ -62,7 +62,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Locomoção com aceleração, frenagem, tração por superfície, colisão de cápsula e passo fixo Rapier a 60 Hz. Bastion usa golpe pesado próprio; Lyra e Kairo mantêm cortes de espada distintos.
 - Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
-- CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
+- CI: análise estática, testes e preparação/verificação dos assets offline. Profile APK QA em PR é opt-in pela variável `ARENA_BUILD_PROFILE_QA=true`; sem a variável, nenhum APK é gerado. Builds confiáveis de `main` mantêm a política de assinatura de release.
 - Build candidato 1.8.3+74: recuperações de gameplay e loja de campo; lobby Online/LAN de presença; splash e startup humanizados; hub, perfil, seleção, baú diário, desafios e mercador; novo mapa Porto de Vésper. O transporte online não sincroniza a partida. Teste visual, rede física e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos

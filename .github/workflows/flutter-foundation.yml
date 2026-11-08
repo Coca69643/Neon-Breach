@@ -102,7 +102,7 @@ jobs:
       - name: Generate Android host, identity and Flutter GPU setup
         run: python3 tool/prepare_android.py
       - name: Isolate PR profile application identity
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
         run: python3 tool/prepare_profile_qa_identity.py
       - name: Resolve dependencies
         run: flutter pub get
@@ -111,13 +111,13 @@ jobs:
       - name: Unit tests
         run: flutter test --reporter expanded
       - name: Build ARM64 profile APK for PR runtime validation
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
         run: flutter build apk --profile --target-platform android-arm64
       - name: Inspect profile APK identity, runtime assets and ABI
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
         run: python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-profile.apk --qa-profile
       - name: Verify profile APK signature
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
         run: |
           set -euo pipefail
           SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
@@ -126,12 +126,12 @@ jobs:
           test -n "$APKSIGNER"
           "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-profile.apk
       - name: Prepare profile QA artifact
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
         run: |
           cp build/app/outputs/flutter-apk/app-profile.apk Project-Arena-1.8.3-arm64-profile-qa.apk
           sha256sum Project-Arena-1.8.3-arm64-profile-qa.apk > Project-Arena-1.8.3-arm64-profile-qa.apk.sha256
       - name: Upload profile QA artifact
-        if: github.event_name == 'pull_request'
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
         uses: actions/upload-artifact@v4
         with:
           name: project-arena-1.8.3-arm64-profile-qa

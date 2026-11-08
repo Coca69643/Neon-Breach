@@ -34,7 +34,8 @@ def main() -> None:
     require(len(profile_build) == 2, "PR profile QA build step is missing.")
     profile_build_header = profile_build[1].split("run:", 1)[0]
     require(
-        "if: github.event_name == 'pull_request'" in profile_build_header,
+        "if: github.event_name == 'pull_request'" in profile_build_header
+        and "vars.ARENA_BUILD_PROFILE_QA == 'true'" in profile_build_header,
         "profile QA APK may only be built for pull requests.",
     )
     require(
@@ -47,6 +48,7 @@ def main() -> None:
     qa_identity_header = qa_identity[1].split("run:", 1)[0]
     require(
         "if: github.event_name == 'pull_request'" in qa_identity_header
+        and "vars.ARENA_BUILD_PROFILE_QA == 'true'" in qa_identity_header
         and "tool/prepare_profile_qa_identity.py" in qa_identity[1],
         "isolated QA application identity must be prepared only for pull requests.",
     )
@@ -69,7 +71,8 @@ def main() -> None:
     require(len(profile_artifact) == 2, "PR profile QA artifact upload step is missing.")
     profile_artifact_header = profile_artifact[1].split("uses:", 1)[0]
     require(
-        "if: github.event_name == 'pull_request'" in profile_artifact_header,
+        "if: github.event_name == 'pull_request'" in profile_artifact_header
+        and "vars.ARENA_BUILD_PROFILE_QA == 'true'" in profile_artifact_header,
         "profile QA artifacts may only be uploaded from pull requests.",
     )
     require(
