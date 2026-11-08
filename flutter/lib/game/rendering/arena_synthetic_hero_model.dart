@@ -242,6 +242,106 @@ antenna base
   }
 }
 
+/// Non-combat maintenance drone used to validate world-aware NPC states.
+class ArenaSurveyDroneModel extends StatelessWidget {
+  const ArenaSurveyDroneModel({
+    super.key,
+    required this.position,
+    required this.facingRadians,
+    required this.phase,
+  });
+
+  final vm.Vector3 position;
+  final double facingRadians;
+  final double phase;
+
+  static final CuboidGeometry _body =
+      CuboidGeometry(vm.Vector3(0.48, 0.22, 0.48));
+  static final CuboidGeometry _crown =
+      CuboidGeometry(vm.Vector3(0.30, 0.13, 0.30));
+  static final CuboidGeometry _sensor =
+      CuboidGeometry(vm.Vector3(0.15, 0.09, 0.055));
+  static final CuboidGeometry _arm =
+      CuboidGeometry(vm.Vector3(0.94, 0.055, 0.085));
+  static final CuboidGeometry _rotor =
+      CuboidGeometry(vm.Vector3(0.18, 0.07, 0.18));
+  static final PhysicallyBasedMaterial _frame = PhysicallyBasedMaterial()
+    ..baseColorFactor = vm.Vector4(0.16, 0.22, 0.25, 1)
+    ..metallicFactor = 0.72
+    ..roughnessFactor = 0.38;
+  static final PhysicallyBasedMaterial _plate = PhysicallyBasedMaterial()
+    ..baseColorFactor = vm.Vector4(0.72, 0.80, 0.81, 1)
+    ..metallicFactor = 0.54
+    ..roughnessFactor = 0.32;
+  static final UnlitMaterial _signal = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.12, 0.86, 0.78, 1);
+
+  @override
+  Widget build(BuildContext context) {
+    final hover = math.sin(phase * 3.2) * 0.035;
+    final rotorAngle = phase * 7.5;
+    return SceneNode(
+      name: 'arena_survey_drone_root',
+      position: vm.Vector3(position.x, position.y + hover, position.z),
+      rotation: vm.Quaternion.axisAngle(
+        vm.Vector3(0, 1, 0),
+        facingRadians,
+      ),
+      children: [
+        SceneMesh(
+          name: 'arena_survey_drone_body',
+          geometry: _body,
+          material: _frame,
+        ),
+        SceneMesh(
+          name: 'arena_survey_drone_crown',
+          geometry: _crown,
+          material: _plate,
+          position: vm.Vector3(0, 0.15, 0),
+        ),
+        SceneMesh(
+          name: 'arena_survey_drone_sensor',
+          geometry: _sensor,
+          material: _signal,
+          position: vm.Vector3(0, 0.035, 0.26),
+        ),
+        SceneMesh(
+          name: 'arena_survey_drone_rotor_arm_x',
+          geometry: _arm,
+          material: _frame,
+          position: vm.Vector3(0, 0.02, 0),
+        ),
+        SceneMesh(
+          name: 'arena_survey_drone_rotor_arm_z',
+          geometry: _arm,
+          material: _frame,
+          position: vm.Vector3(0, 0.02, 0),
+          rotation: vm.Quaternion.axisAngle(
+            vm.Vector3(0, 1, 0),
+            math.pi / 2,
+          ),
+        ),
+        for (final corner in const [
+          vm.Vector3(-0.41, 0.08, -0.41),
+          vm.Vector3(0.41, 0.08, -0.41),
+          vm.Vector3(-0.41, 0.08, 0.41),
+          vm.Vector3(0.41, 0.08, 0.41),
+        ])
+          SceneMesh(
+            name: 'arena_survey_drone_rotor_${corner.x}_${corner.z}',
+            geometry: _rotor,
+            material: _signal,
+            position: corner,
+            rotation: vm.Quaternion.axisAngle(
+              vm.Vector3(0, 1, 0),
+              rotorAngle,
+            ),
+          ),
+      ],
+    );
+  }
+}
+
 /// Full-bleed 3D stage for the selector's experimental synthetic preview.
 class ArenaSyntheticHeroStage extends StatelessWidget {
   const ArenaSyntheticHeroStage({super.key});
