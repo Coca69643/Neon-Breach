@@ -9,9 +9,9 @@ import '../arena_hero_catalog.dart';
 import '../match/moba_match_simulation.dart';
 import '../physics/arena_physics_runtime.dart';
 import '../world/arena_world_catalog.dart';
+import 'arena_linn_hero_model.dart';
 import 'hero_weapon_socket.dart';
 import 'humanoid_orientation.dart';
-import 'arena_linn_hero_model.dart';
 
 class MobaMatchView extends StatefulWidget {
   const MobaMatchView({
