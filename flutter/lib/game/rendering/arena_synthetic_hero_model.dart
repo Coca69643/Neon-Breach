@@ -179,26 +179,26 @@ antenna base
             ),
             SceneNode(
               name: 'synthetic_01_leg_left',
-              position: vm.Vector3(-0.145, 0.69, 0),
+              position: vm.Vector3(-0.145, 0.75, 0),
               rotation: _swing(-stride),
               children: [
                 SceneMesh(
                   name: 'synthetic_01_leg_left_mesh',
                   geometry: _leg,
                   material: _shell,
-                  position: vm.Vector3(0, -0.36, 0),
+                  position: vm.Vector3(0, -0.34, 0),
                 ),
                 SceneMesh(
                   name: 'synthetic_01_boot_left',
                   geometry: _boot,
                   material: _dark,
-                  position: vm.Vector3(0, -0.72, 0.085),
+                  position: vm.Vector3(0, -0.70, 0.085),
                 ),
               ],
             ),
             SceneNode(
               name: 'synthetic_01_leg_right',
-              position: vm.Vector3(0.145, 0.69, 0),
+              position: vm.Vector3(0.145, 0.75, 0),
               rotation: _swing(stride),
               children: [
                 SceneMesh(
