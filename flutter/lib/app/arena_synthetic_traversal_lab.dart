@@ -74,9 +74,11 @@ class _ArenaSyntheticTraversalLabState
   double _moveZ = 0;
   double _elapsed = 0;
   double _padCooldown = 0;
+  bool _padTriggered = false;
+  late final ValueNotifier<String> _status =
+      ValueNotifier<String>('Explore a arena e teste a mobilidade do sintético.');
   bool _loading = true;
   String? _failure;
-  String _status = 'Explore a arena e teste a mobilidade do sintético.';
   Offset _stickOffset = Offset.zero;
 
   @override
@@ -161,11 +163,14 @@ class _ArenaSyntheticTraversalLabState
 
     // The floor pad is an actual traversal interaction, not a decorative
     // trigger: contact while grounded applies one boosted vertical impulse.
-    if (onSpringPad && physics.grounded && _padCooldown <= 0) {
+    if (onSpringPad && ! _padTriggered && physics.grounded) {
       if (physics.triggerTraversalJump(impulseMultiplier: 1.55)) {
         _padCooldown = 2.0;
-        _status = 'Plataforma de impulso ativada.';
+        _padTriggered = true;
+        _status.value = 'Plataforma de impulso ativada.';
       }
+    } else if (!onSpringPad) {
+      _padTriggered = false;
     }
 
     _frame.value = _snapshotFrame(physics);
@@ -197,7 +202,7 @@ class _ArenaSyntheticTraversalLabState
     final physics = _physics;
     if (physics == null) return;
     if (physics.triggerTraversalJump()) {
-      setState(() => _status = 'Salto vetorial executado.');
+      _status.value = 'Salto vetorial executado.';
     }
   }
 
@@ -211,7 +216,7 @@ class _ArenaSyntheticTraversalLabState
       z = 1;
     }
     if (physics.triggerTraversalDash(x, z)) {
-      setState(() => _status = 'Impulso vetorial executado.');
+      _status.value = 'Impulso vetorial executado.';
     }
   }
 
@@ -219,7 +224,7 @@ class _ArenaSyntheticTraversalLabState
     final physics = _physics;
     if (physics == null) return;
     if (physics.triggerTraversalSlide()) {
-      setState(() => _status = 'Deslizamento por conservação de momento.');
+      _status.value = 'Deslizamento por conservação de momento.';
     }
   }
 
@@ -232,6 +237,7 @@ class _ArenaSyntheticTraversalLabState
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _frame.dispose();
+    _status.dispose();
     _physics?.dispose();
     _physics = null;
     super.dispose();
@@ -388,7 +394,10 @@ class _ArenaSyntheticTraversalLabState
                 Positioned(
                   right: 16,
                   bottom: 18,
-                  child: _buildActionButtons(),
+                  child: ValueListenableBuilder<_SyntheticLabFrame>(
+                    valueListenable: _frame,
+                    builder: (context, frame, _) => _buildActionButtons(frame),
+                  ),
                 ),
                 Positioned(
                   left: 18,
@@ -396,8 +405,10 @@ class _ArenaSyntheticTraversalLabState
                   top: 106,
                   child: Align(
                     alignment: Alignment.topCenter,
-                    child: Text(
-                      _status,
+                    child: ValueListenableBuilder<String>(
+                      valueListenable: _status,
+                      builder: (context, status, _) => Text(
+                      status,
                       textAlign: TextAlign.center,
                       style: const TextStyle(
                         color: Color(0xFFE6F2EF),
@@ -501,8 +512,7 @@ class _ArenaSyntheticTraversalLabState
     );
   }
 
-  Widget _buildActionButtons() {
-    final frame = _frame.value;
+  Widget _buildActionButtons(_SyntheticLabFrame frame) {
     return Column(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.end,
