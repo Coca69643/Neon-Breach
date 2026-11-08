@@ -2,6 +2,13 @@
 
 ## [1.8.1] — em desenvolvimento
 
+### Quarta fatia — Porto de Vésper
+- Novo contorno costeiro e canal ampliado no catálogo e no bake offline.
+- Quatro praças de cais pavimentadas e oito volumes arquitetônicos adicionais, usando assets CC0 já pinados.
+- Identidade PORTO DE VÉSPER exibida na prévia e na HUD da partida.
+- Validação visual no Realme C53 permanece pendente; esta alteração não autoriza publicação.
+
+
 ### Hub, identidade e seleção
 - Fundo 2D do hub ampliado com distrito comercial, vitrines iluminadas, marquises, postes e canal urbano.
 - Cabeçalho do jogador substitui a marca fixa: ícone de perfil e nome local editável.
