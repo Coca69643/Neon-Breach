@@ -162,7 +162,7 @@ Implemented on `fix/1.8.1-feedback-recovery`:
 Implemented on fix/1.8.1-feedback-recovery:
 
 - Central Market gains a four-building CC0 block with measured GLB footprints and an unobstructed capture plaza.
-- The terrain baker adds a southern bypass boulevard, three lane connections and a continuous cross-link. The Dart navigation catalog mirrors the same 18 access paths.
+- The terrain baker adds a southern bypass boulevard, three lane connections and a continuous cross-link. The Dart navigation catalog mirrors the same 17 access paths.
 - The new road uses the existing raised asphalt surface profile and movement tuning; its geometry is baked offline into the terrain GLB.
 - CC0 street lighting and warning signs mark the alternate rotation route.
 - The world preview now renders the commercial building volumes and identifies the scene as the Urban District.
