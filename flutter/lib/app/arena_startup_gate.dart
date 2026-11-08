@@ -75,7 +75,7 @@ class _StudioSplash extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const ColoredBox(
+    return ColoredBox(
       color: Color(0xFF070A0E),
       child: Center(
         child: TweenAnimationBuilder<double>(
