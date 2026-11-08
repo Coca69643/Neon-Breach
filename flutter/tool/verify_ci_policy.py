@@ -73,7 +73,7 @@ def main() -> None:
         "profile QA artifacts may only be uploaded from pull requests.",
     )
     require(
-        "project-arena-1.8.0-arm64-profile-qa" in profile_artifact[1],
+        f"project-arena-{version_name}-arm64-profile-qa" in profile_artifact[1],
         "PR profile QA artifact name is missing or inconsistent.",
     )
     require("flutter build apk --release --target-platform android-arm64" in workflow,

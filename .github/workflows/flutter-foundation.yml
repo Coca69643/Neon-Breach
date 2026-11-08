@@ -127,16 +127,16 @@ jobs:
       - name: Prepare profile QA artifact
         if: github.event_name == 'pull_request'
         run: |
-          cp build/app/outputs/flutter-apk/app-profile.apk Project-Arena-1.8.0-arm64-profile-qa.apk
-          sha256sum Project-Arena-1.8.0-arm64-profile-qa.apk > Project-Arena-1.8.0-arm64-profile-qa.apk.sha256
+          cp build/app/outputs/flutter-apk/app-profile.apk Project-Arena-1.8.1-arm64-profile-qa.apk
+          sha256sum Project-Arena-1.8.1-arm64-profile-qa.apk > Project-Arena-1.8.1-arm64-profile-qa.apk.sha256
       - name: Upload profile QA artifact
         if: github.event_name == 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: project-arena-1.8.0-arm64-profile-qa
+          name: project-arena-1.8.1-arm64-profile-qa
           path: |
-            flutter/Project-Arena-1.8.0-arm64-profile-qa.apk
-            flutter/Project-Arena-1.8.0-arm64-profile-qa.apk.sha256
+            flutter/Project-Arena-1.8.1-arm64-profile-qa.apk
+            flutter/Project-Arena-1.8.1-arm64-profile-qa.apk.sha256
           if-no-files-found: error
           retention-days: 7
       - name: Build ARM64 Android release
@@ -157,17 +157,17 @@ jobs:
       - name: Prepare versioned APK and checksum
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.8.0-arm64.apk
-          sha256sum Project-Arena-1.8.0-arm64.apk > Project-Arena-1.8.0-arm64.apk.sha256
+          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.8.1-arm64.apk
+          sha256sum Project-Arena-1.8.1-arm64.apk > Project-Arena-1.8.1-arm64.apk.sha256
       - name: Upload trusted ARM64 update artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: project-arena-1.8.0-arm64
+          name: project-arena-1.8.1-arm64
           path: |
-            flutter/Project-Arena-1.8.0-arm64.apk
-            flutter/Project-Arena-1.8.0-arm64.apk.sha256
-            flutter/Project-Arena-1.8.0-Changelog.txt
+            flutter/Project-Arena-1.8.1-arm64.apk
+            flutter/Project-Arena-1.8.1-arm64.apk.sha256
+            flutter/Project-Arena-1.8.1-Changelog.txt
           if-no-files-found: error
           retention-days: 30
 
@@ -183,31 +183,31 @@ jobs:
       - name: Download verified ARM64 build
         uses: actions/download-artifact@v4
         with:
-          name: project-arena-1.8.0-arm64
+          name: project-arena-1.8.1-arm64
           path: release
       - name: Refuse to overwrite an existing version tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/project-arena-1.8.0" >/dev/null 2>&1; then
-            echo "::error::Tag project-arena-1.8.0 already exists; refusing to replace a published build."
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/project-arena-1.8.1" >/dev/null 2>&1; then
+            echo "::error::Tag project-arena-1.8.1 already exists; refusing to replace a published build."
             exit 1
           fi
-      - name: Publish Projeto Arena 1.8.0 stable tester release
+      - name: Publish Projeto Arena 1.8.1 stable tester release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-1.8.0
+          tag_name: project-arena-1.8.1
           target_commitish: ${{ github.sha }}
-          name: Projeto Arena 1.8.0 — build de teste
+          name: Projeto Arena 1.8.1 — build de teste
           body: |
-            Projeto Arena 1.8.0 para Android ARM64.
+            Projeto Arena 1.8.1 para Android ARM64.
             - Aplicativo offline em landscape, compilado para Android ARM64.
             - Seis aparências CC0 independentes dos heróis jogáveis para bots, tropas e NPCs.
             - Animações de locomoção e interação social incluídas nos modelos de NPC.
             - Entradas dos interiores alinhadas com a abertura de colisão.
             - NPCs do distrito incluídos no pacote offline.
-            - versionName 1.8.0 / versionCode 73.
+            - versionName 1.8.1 / versionCode 74.
             - APK compilado, assets conferidos e assinatura verificada pelo GitHub Actions.
             - Orientação visual, exploração e desempenho sustentado ainda precisam de validação no Realme C53.
           draft: false
@@ -215,5 +215,5 @@ jobs:
           make_latest: true
           overwrite_files: false
           files: |
-            release/Project-Arena-1.8.0-arm64.apk
-            release/Project-Arena-1.8.0-arm64.apk.sha256
+            release/Project-Arena-1.8.1-arm64.apk
+            release/Project-Arena-1.8.1-arm64.apk.sha256
