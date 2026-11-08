@@ -36,10 +36,9 @@ class ArenaLanLobbyHost {
 
   ServerSocket? _server;
   bool _closed = false;
-  List<String> _currentMembers = const <String>[];
 
   Stream<List<String>> get members => _members.stream;
-  List<String> get currentMembers => _currentMembers;
+  List<String> get currentMembers => List<String>.unmodifiable(_memberNames());
   int get currentMemberCount => 1 + _clients.length;
 
   Future<ArenaLanEndpoint> start() async {
@@ -198,9 +197,11 @@ class ArenaLanLobbyClient {
   final StreamController<List<String>> _members =
       StreamController<List<String>>.broadcast();
   StreamSubscription<String>? _subscription;
+  List<String> _currentMembers = const <String>[];
   bool _closed = false;
 
   Stream<List<String>> get members => _members.stream;
+  List<String> get currentMembers => _currentMembers;
 
   static Future<ArenaLanLobbyClient> join({
     required String address,
