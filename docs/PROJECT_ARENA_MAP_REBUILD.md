@@ -125,7 +125,7 @@ A base visual passa a ser a família de kits urbanos **Kenney**, cuja página of
 - Reuso de modelos já presentes no bundle offline: composição M1 preparada com assets já pinados; novos arquivos externos ainda não adquiridos.
 - Escala renderização/física: reconciliada em código; runtime ainda pendente.
 - M1 — quarteirão vertical slice: composição de código preparada; teste inicial detectou colisão com o ponto da Reserva Verde. A posição foi corrigida; CI de revalidação, captura de gameplay e revisão física ainda pendentes.
-- M2 — rede urbana: primeira expansão implementada com o Boulevard Sul e 18 caminhos espelhados entre bake e navegação; conexão e identidade dos demais distritos continuam pendentes.
+- M2 — rede urbana: primeira expansão implementada com o Boulevard Sul e 17 caminhos espelhados entre bake e navegação; conexão e identidade dos demais distritos continuam pendentes.
 - Screenshots e teste Realme C53: pendentes.
 
 
@@ -136,7 +136,7 @@ Implementação adicionada ao branch fix/1.8.1-feedback-recovery:
 - O Mercado Central agora tem quatro volumes comerciais CC0 distribuídos em duas fachadas opostas, mantendo a praça de captura em (12, -54) livre.
 - As quatro footprints usam os bounds GLB já fixados no catálogo e alimentam a mesma validação de navegação/colisão.
 - A malha de vias passou a incluir um Boulevard Sul atrás da base, com três conexões às rotas principais e uma ligação transversal contínua.
-- O gerador offline e ArenaWorldCatalog compartilham 18 caminhos de acesso; o pavimento novo é asfalto elevado, com o mesmo offset e perfil de movimento usado pelo Rapier.
+- O gerador offline e ArenaWorldCatalog compartilham 17 caminhos de acesso; o pavimento novo é asfalto elevado, com o mesmo offset e perfil de movimento usado pelo Rapier.
 - Iluminação e sinalização CC0 identificam o novo corredor sem ocupar o centro da via.
 - A prévia de mundo agora mostra os edifícios comerciais em escala e identifica o cenário como Distrito Urbano, em vez de exibir somente terreno e vegetação.
 
