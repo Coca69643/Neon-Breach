@@ -42,6 +42,147 @@ void main() {
       expect(state.winner, isNull);
     });
 
+    test('neutral camps are present in the live match snapshot', () {
+      final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      final camps = simulation.snapshot.neutralCamps;
+      expect(camps, hasLength(3));
+      expect(camps.every((camp) => camp.state == MobaNeutralCampState.dormant), isTrue);
+      expect(camps.every((camp) => camp.units.length == 2), isTrue);
+    });
+
+    test('neutral camp aggro damages a nearby player and returns after leash break', () {
+      final site = ArenaWorldCatalog.neutralCampSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3 + 6.0, site.$4),
+      );
+      final health = simulation.snapshot.playerHealth;
+      advanceFor(simulation, 3);
+      expect(simulation.snapshot.playerHealth, lessThan(health));
+      expect(simulation.snapshot.neutralCamps.first.state, MobaNeutralCampState.aggro);
+      simulation.applyPhysicsPlayerPosition(MobaPoint(site.$3 + 18, site.$4));
+      simulation.step(1 / 30);
+      expect(
+        simulation.snapshot.neutralCamps.first.state,
+        MobaNeutralCampState.returning,
+        reason: 'the leash transition must be observable on the first tick after leaving the aggro radius',
+      );
+
+      advanceFor(simulation, 3.0);
+      final returned = simulation.snapshot.neutralCamps.first;
+      expect(returned.state, MobaNeutralCampState.dormant);
+      expect(returned.units, hasLength(2));
+      expect(
+        returned.units.every((unit) => unit.health == unit.maxHealth),
+        isTrue,
+        reason: 'a fully returned camp restores its original group and health',
+      );
+      final expectedSpawnPoints = <MobaPoint>[
+        MobaPoint(site.$3 - 1.15, site.$4),
+        MobaPoint(site.$3 + 1.15, site.$4 + 0.65),
+      ];
+      for (var index = 0; index < expectedSpawnPoints.length; index++) {
+        expect(
+          returned.units[index].position.distanceTo(expectedSpawnPoints[index]),
+          lessThan(0.01),
+          reason: 'unit $index must return to its authored anchor',
+        );
+      }
+    });
+
+    test('neutral camps are selectable and take damage through the normal attack path', () {
+      final site = ArenaWorldCatalog.neutralCampSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      simulation.cyclePlayerTarget();
+      final before = simulation.snapshot.selectedTarget;
+      expect(before, isNotNull);
+      expect(before!.kind, 'NEUTRAL');
+      simulation.step(1 / 30, basicAttack: true);
+      expect(simulation.snapshot.selectedTarget!.health, lessThan(before.health));
+    });
+
+    test('clearing a neutral camp pays once and the camp respawns', () {
+      final site = ArenaWorldCatalog.neutralCampSites.first;
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: MobaPoint(site.$3, site.$4),
+      );
+      for (var frame = 0; frame < 900; frame++) {
+        if (simulation.snapshot.selectedTarget == null) {
+          simulation.cyclePlayerTarget();
+        }
+        simulation.step(1 / 30, basicAttack: true);
+        if (simulation.snapshot.neutralCamps.first.state ==
+            MobaNeutralCampState.defeated) {
+          break;
+        }
+      }
+      final cleared = simulation.snapshot.neutralCamps.first;
+      expect(cleared.state, MobaNeutralCampState.defeated);
+      expect(cleared.respawnSeconds, greaterThan(0));
+      expect(simulation.snapshot.playerGold, greaterThanOrEqualTo(629),
+          reason: 'two unit rewards and the clear bonus must be paid exactly once');
+
+      simulation.applyPhysicsPlayerPosition(const MobaPoint(0, -63));
+      advanceFor(simulation, 61);
+      final respawned = simulation.snapshot.neutralCamps.first;
+      expect(respawned.state, MobaNeutralCampState.dormant);
+      expect(respawned.units, hasLength(2));
+      expect(respawned.units.every((unit) => unit.health == unit.maxHealth), isTrue);
+    });
+
+    test('quartermaster shop is proximity-gated and sells each upgrade once', () {
+      final away = MobaMatchSimulation(heroId: MobaHeroId.lyra);
+      expect(
+        away.purchaseShopItem(MobaShopItem.impactCell),
+        isFalse,
+        reason: 'shop purchases require the player to be near the in-world merchant',
+      );
+
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.lyra,
+        spawnPosition: const MobaPoint(
+          ArenaWorldCatalog.shopkeeperX,
+          ArenaWorldCatalog.shopkeeperZ,
+        ),
+      );
+      expect(simulation.snapshot.playerGold, 500);
+      expect(simulation.purchaseShopItem(MobaShopItem.impactCell), isTrue);
+      expect(simulation.snapshot.playerGold, closeTo(220, 1e-9));
+      expect(simulation.snapshot.playerPower, closeTo(1.12, 1e-9));
+      expect(
+        simulation.snapshot.playerItems,
+        contains(MobaShopItem.impactCell),
+      );
+      expect(
+        simulation.purchaseShopItem(MobaShopItem.impactCell),
+        isFalse,
+        reason: 'a purchased upgrade cannot be bought repeatedly',
+      );
+    });
+
+    test('reinforced plate raises maximum health and heals the player', () {
+      final simulation = MobaMatchSimulation(
+        heroId: MobaHeroId.bastion,
+        spawnPosition: const MobaPoint(
+          ArenaWorldCatalog.shopkeeperX,
+          ArenaWorldCatalog.shopkeeperZ,
+        ),
+      );
+
+      expect(simulation.purchaseShopItem(MobaShopItem.reinforcedPlate), isTrue);
+      expect(simulation.snapshot.playerMaxHealth, 700);
+      expect(simulation.snapshot.playerHealth, 700);
+      expect(simulation.snapshot.playerGold, closeTo(180, 1e-9));
+      expect(
+        simulation.snapshot.playerItems,
+        contains(MobaShopItem.reinforcedPlate),
+      );
+    });
+
     test('AI heroes and minions use independent NPC appearance variants', () {
       final simulation = MobaMatchSimulation(heroId: MobaHeroId.lyra);
       final state = simulation.snapshot;

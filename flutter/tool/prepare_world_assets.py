@@ -53,6 +53,7 @@ LANES = [
 ]
 
 # Curved connectors lead from the three main combat corridors to six buildings.
+# Keep this exact route geometry mirrored by ArenaWorldCatalog._accessPaths.
 ACCESS_PATHS = [
     [(-36, -36), (-46, -36), (-56, -36), (-64, -36)],
     [(36, -36), (46, -36), (56, -36), (64, -36)],
@@ -68,6 +69,11 @@ ACCESS_PATHS = [
     [(92, 40), (92, 24), (88, 18)],
     [(-88, -18), (-92, -4), (-92, 12), (-76, 24), (-64, 36)],
     [(88, 18), (92, 4), (92, -12), (76, -24), (64, -36)],
+    # Southern boulevard: a paved bypass behind the southern base compound.
+    [(-36, -70), (-44, -74), (-54, -77), (-68, -77)],
+    [(36, -70), (44, -74), (54, -77), (68, -77)],
+    [(-68, -77), (-44, -80), (-20, -81), (0, -80),
+     (20, -81), (44, -80), (68, -77)],
 ]
 
 SIDE_APPROACH_ANCHORS = [
@@ -830,10 +836,12 @@ def build_terrain_glb(output: Path) -> None:
             },
             "mapShape": "irregular-six-district-polygon",
             "laneCount": 3,
+            "southernBoulevard": True,
+            "accessRouteCount": 17,
             "bridgeCount": 5,
             "districtCount": 6,
             "enterableGroundFloorCount": 6,
-            "sideApproachCount": 14,
+            "sideApproachCount": 17,
             "walkableSideCourtyards": True,
             "baseCount": 2,
             "dynamicShadows": False,

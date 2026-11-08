@@ -1,3 +1,5 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -8,6 +10,7 @@ import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
 import 'arena_hero_selection_screen.dart';
+import 'arena_player_profile.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
@@ -19,6 +22,8 @@ class ArenaApp extends StatefulWidget {
 class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   late final ArenaStateMachine _machine;
   MobaMatchSimulation? _matchSimulation;
+  final ArenaPlayerProfileStore _profileStore = ArenaPlayerProfileStore();
+  ArenaPlayerProfile _playerProfile = const ArenaPlayerProfile();
 
   @override
   void initState() {
@@ -31,7 +36,156 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
 
   Future<void> _bootstrap() async {
     _machine.dispatch(const BootCompleted());
-    await _initializeFoundation();
+    await Future.wait([
+      _initializeFoundation(),
+      _restorePlayerProfile(),
+    ]);
+  }
+
+  Future<void> _restorePlayerProfile() async {
+    try {
+      var profile = await _profileStore.load();
+      try {
+        final recovered = await _profileStore.recoverLostAvatar();
+        if (recovered != null) profile = recovered;
+      } catch (_) {
+        // A failed gallery recovery must not block the game from opening.
+      }
+      if (!mounted) return;
+      setState(() => _playerProfile = profile);
+    } catch (_) {
+      // Keep the safe in-memory default when local preferences are unavailable.
+    }
+  }
+
+  Future<ArenaPlayerProfile?> _pickPlayerAvatar() async {
+    try {
+      return await _profileStore.pickAndSaveAvatar();
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível abrir ou salvar a foto.'),
+          ),
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<void> _editPlayerProfile() async {
+    final nameController = TextEditingController(
+      text: _playerProfile.displayName,
+    );
+    var draftProfile = _playerProfile;
+
+    await showDialog<void>(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xF0182A32),
+          title: const Text(
+            'PERFIL DO JOGADOR',
+            style: TextStyle(
+              color: Color(0xFFE8D3A2),
+              fontSize: 15,
+              fontWeight: FontWeight.w900,
+              letterSpacing: 0.7,
+            ),
+          ),
+          content: SizedBox(
+            width: 420,
+            child: Row(
+              children: [
+                InkWell(
+                  borderRadius: BorderRadius.circular(40),
+                  onTap: () async {
+                    final updated = await _pickPlayerAvatar();
+                    if (updated == null || !mounted) return;
+                    setState(() => _playerProfile = updated);
+                    if (dialogContext.mounted) {
+                      setDialogState(() => draftProfile = updated);
+                    }
+                  },
+                  child: _ProfileAvatar(
+                    path: draftProfile.avatarPath,
+                    size: 62,
+                    borderColor: const Color(0xFF83D9C5),
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      TextField(
+                        controller: nameController,
+                        maxLength: ArenaPlayerProfile.maxDisplayNameLength,
+                        textCapitalization: TextCapitalization.words,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                        decoration: const InputDecoration(
+                          labelText: 'Nome exibido',
+                          hintText: 'Seu nome no jogo',
+                          counterText: '',
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      TextButton.icon(
+                        onPressed: () async {
+                          final updated = await _pickPlayerAvatar();
+                          if (updated == null || !mounted) return;
+                          setState(() => _playerProfile = updated);
+                          if (dialogContext.mounted) {
+                            setDialogState(() => draftProfile = updated);
+                          }
+                        },
+                        icon: const Icon(Icons.photo_library_outlined, size: 17),
+                        label: const Text('ESCOLHER FOTO'),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('FECHAR'),
+            ),
+            FilledButton(
+              onPressed: () async {
+                try {
+                  final updated = await _profileStore.saveDisplayName(
+                    nameController.text,
+                  );
+                  if (!mounted) return;
+                  setState(() => _playerProfile = updated);
+                  if (dialogContext.mounted) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                } catch (_) {
+                  if (dialogContext.mounted) {
+                    ScaffoldMessenger.of(dialogContext).showSnackBar(
+                      const SnackBar(
+                        content: Text('Não foi possível salvar o perfil.'),
+                      ),
+                    );
+                  }
+                }
+              },
+              child: const Text('SALVAR'),
+            ),
+          ],
+        ),
+      ),
+    );
+    nameController.dispose();
   }
 
   Future<void> _initializeFoundation() async {
@@ -106,6 +260,8 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
           onEvent: _dispatch,
           onRetry: _retry,
           simulation: _matchSimulation,
+          playerProfile: _playerProfile,
+          onEditPlayerProfile: _editPlayerProfile,
         ),
       ),
     );
@@ -147,12 +303,16 @@ class _ArenaScreen extends StatelessWidget {
     required this.onEvent,
     required this.onRetry,
     required this.simulation,
+    required this.playerProfile,
+    required this.onEditPlayerProfile,
   });
 
   final ArenaSnapshot snapshot;
   final TransitionDecision Function(ArenaEvent) onEvent;
   final VoidCallback onRetry;
   final MobaMatchSimulation? simulation;
+  final ArenaPlayerProfile playerProfile;
+  final VoidCallback onEditPlayerProfile;
 
   @override
   Widget build(BuildContext context) {
@@ -234,90 +394,25 @@ class _ArenaScreen extends StatelessWidget {
                   Positioned(
                     left: edgeX,
                     top: edgeY,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: compact ? 30 : 34,
-                          height: compact ? 30 : 34,
-                          decoration: BoxDecoration(
-                            color: const Color(0xC91B3442),
-                            border: Border.all(
-                              color: const Color(0xAAE2C58A),
-                              width: 1.2,
-                            ),
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: const Icon(
-                            Icons.shield_moon_outlined,
-                            color: Color(0xFFE8D3A2),
-                            size: 19,
-                          ),
-                        ),
-                        const SizedBox(width: 9),
-                        const Text(
-                          'PROJETO ARENA',
-                          style: TextStyle(
-                            color: Color(0xFFF4F0E5),
-                            fontSize: 13,
-                            letterSpacing: 1.4,
-                            fontWeight: FontWeight.w900,
-                            shadows: [
-                              Shadow(
-                                color: Color(0x99000000),
-                                blurRadius: 9,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
+                    child: _PlayerProfileBadge(
+                      profile: playerProfile,
+                      compact: compact,
+                      onTap: onEditPlayerProfile,
                     ),
                   ),
                   Positioned(
                     left: edgeX,
                     bottom: edgeY,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _HubShortcut(
-                          label: 'HERÓIS',
-                          icon: Icons.groups_rounded,
-                          width: 126 * scale,
-                          height: 50 * scale,
-                          active: true,
-                          onTap: () => onEvent(const OpenHeroSelection()),
-                        ),
-                        SizedBox(width: 7 * scale),
-                        _HubShortcut(
-                          label: 'BAÚS',
-                          icon: Icons.inventory_2_outlined,
-                          width: 96 * scale,
-                          height: 46 * scale,
-                          locked: true,
-                        ),
-                        SizedBox(width: 7 * scale),
-                        _HubShortcut(
-                          label: 'DESAFIOS',
-                          icon: Icons.flag_outlined,
-                          width: 132 * scale,
-                          height: 46 * scale,
-                          locked: true,
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    right: edgeX,
-                    top: viewport.maxHeight * 0.40,
                     child: _HubShortcut(
-                      label: 'MERCADOR',
-                      icon: Icons.storefront_outlined,
-                      width: 142 * scale,
-                      height: 49 * scale,
-                      locked: true,
+                      label: 'HERÓIS',
+                      icon: Icons.groups_rounded,
+                      width: 126 * scale,
+                      height: 50 * scale,
+                      active: true,
+                      onTap: () => onEvent(const OpenHeroSelection()),
                     ),
                   ),
+
                   Positioned(
                     right: edgeX,
                     bottom: edgeY,
@@ -460,6 +555,133 @@ class _ArenaScreen extends StatelessWidget {
   }
 }
 
+class _PlayerProfileBadge extends StatelessWidget {
+  const _PlayerProfileBadge({
+    required this.profile,
+    required this.compact,
+    required this.onTap,
+  });
+
+  final ArenaPlayerProfile profile;
+  final bool compact;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final avatarSize = compact ? 34.0 : 42.0;
+    return Material(
+      color: const Color(0xC91B3442),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            compact ? 5 : 6,
+            compact ? 4 : 5,
+            compact ? 11 : 14,
+            compact ? 4 : 5,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _ProfileAvatar(
+                path: profile.avatarPath,
+                size: avatarSize,
+                borderColor: const Color(0xFFE2C58A),
+              ),
+              SizedBox(width: compact ? 7 : 10),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: const Color(0xFFF4F0E5),
+                      fontSize: compact ? 11 : 13,
+                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.w900,
+                      shadows: const [
+                        Shadow(
+                          color: Color(0x99000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'PERFIL DO JOGADOR',
+                    style: TextStyle(
+                      color: const Color(0xFFB8D6D1),
+                      fontSize: compact ? 7 : 8,
+                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(width: compact ? 7 : 9),
+              Icon(
+                Icons.edit_outlined,
+                size: compact ? 14 : 16,
+                color: const Color(0xFFE2C58A),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _ProfileAvatar extends StatelessWidget {
+  const _ProfileAvatar({
+    required this.path,
+    required this.size,
+    required this.borderColor,
+  });
+
+  final String? path;
+  final double size;
+  final Color borderColor;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      width: size,
+      height: size,
+      padding: const EdgeInsets.all(1.5),
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        border: Border.all(color: borderColor, width: 1.2),
+        color: const Color(0xFF203B46),
+      ),
+      child: ClipOval(
+        child: path == null
+            ? Icon(
+                Icons.person_outline_rounded,
+                color: const Color(0xFFE8D3A2),
+                size: size * 0.58,
+              )
+            : Image.file(
+                File(path!),
+                fit: BoxFit.cover,
+                errorBuilder: (context, error, stackTrace) => Icon(
+                  Icons.person_outline_rounded,
+                  color: const Color(0xFFE8D3A2),
+                  size: size * 0.58,
+                ),
+              ),
+      ),
+    );
+  }
+}
+
 class _HubShortcut extends StatelessWidget {
   const _HubShortcut({
     required this.label,
@@ -467,7 +689,6 @@ class _HubShortcut extends StatelessWidget {
     required this.width,
     required this.height,
     this.active = false,
-    this.locked = false,
     this.onTap,
   });
 
@@ -476,7 +697,6 @@ class _HubShortcut extends StatelessWidget {
   final double width;
   final double height;
   final bool active;
-  final bool locked;
   final VoidCallback? onTap;
 
   @override
@@ -497,7 +717,7 @@ class _HubShortcut extends StatelessWidget {
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: locked ? null : onTap,
+        onTap: onTap,
         customBorder: shape,
         child: SizedBox(
           width: width,
@@ -529,12 +749,6 @@ class _HubShortcut extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (locked)
-                  const Icon(
-                    Icons.lock_outline_rounded,
-                    size: 13,
-                    color: Color(0xFFB6C7C9),
-                  ),
               ],
             ),
           ),

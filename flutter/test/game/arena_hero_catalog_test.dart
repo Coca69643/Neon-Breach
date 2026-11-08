@@ -24,6 +24,28 @@ void main() {
       }
     });
 
+    test('synthetic prototype stays outside the production playable roster',
+        () {
+      expect(
+        ArenaHeroCatalog.playableIds,
+        containsAll(<String>{'lyra', 'bastion', 'kairo'}),
+      );
+      expect(
+        ArenaHeroCatalog.playableIds,
+        isNot(contains(ArenaHeroCatalog.syntheticPrototype.id)),
+      );
+      expect(ArenaHeroCatalog.playable, hasLength(3));
+    });
+
+    test('synthetic prototype metadata is marked experimental', () {
+      final prototype = ArenaHeroCatalog.syntheticPrototype;
+
+      expect(prototype.name, 'SYNTH-01');
+      expect(prototype.species, ArenaHeroSpecies.synthetic);
+      expect(prototype.modelAsset, 'procedural://synthetic-01');
+      expect(prototype.role, 'MOBILIDADE EXPERIMENTAL');
+    });
+
     test('state machine accepts ids from the roster catalog', () {
       expect(
         ArenaStateMachine.supportedHeroIds,

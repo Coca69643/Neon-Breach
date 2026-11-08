@@ -1,0 +1,29 @@
+PROJECT ARENA
+Versão 1.8.1 — changelog de desenvolvimento
+
+STATUS: RASCUNHO INTERNO
+Este documento acompanha a linha de desenvolvimento 1.8.1. Não tratar como changelog final de publicação antes da aprovação da release e da conclusão das validações.
+
+VERSÃO E PACOTE
+- versionName: 1.8.1.
+- versionCode Android: 74.
+- A versão publicada anterior permanece identificada como 1.8.0 / versionCode 73.
+
+INTEGRAÇÃO E RECUPERAÇÃO
+- Continuidade das correções de feedback, retorno ao hub e recuperação de estado.
+- Fundação de salas Online e Rede Local com convites e presença; a sincronização completa da partida permanece fora deste escopo.
+
+INICIALIZAÇÃO E IDENTIDADE
+- Quinta gate com splash da Duck Dream Studios, pré-verificação de assets e inicialização dos serviços opcionais.
+- Fallback offline preservado quando os serviços de rede não estiverem disponíveis.
+
+HUB E ELENCO
+- Evolução do hub 2D e da seleção de heróis.
+- Perfil local com nome, avatar e moldura cosmética.
+- Subtelas de baús, desafios e mercador em desenvolvimento; progressão local sem alterar atributos competitivos.
+
+VALIDAÇÃO PENDENTE
+- Aprovação final de CI e verificador de pacote.
+- Teste de navegação e interrupções em Android landscape.
+- Teste físico no Realme C53, incluindo desempenho sustentado, memória e temperatura.
+- Revisar este documento antes da publicação para refletir somente o escopo efetivamente entregue.

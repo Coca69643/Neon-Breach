@@ -42,6 +42,7 @@ class _AmbientNpc {
     required this.patrol,
     required this.phaseOffset,
     required this.dialogue,
+    this.isShopkeeper = false,
   });
 
   final String id;
@@ -52,6 +53,7 @@ class _AmbientNpc {
   final List<MobaPoint> patrol;
   final double phaseOffset;
   final String dialogue;
+  final bool isShopkeeper;
 }
 
 class _MobaMatchViewState extends State<MobaMatchView> {
@@ -66,6 +68,18 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ..baseColorFactor = vm.Vector4(0.16, 0.62, 0.98, 1);
   static final UnlitMaterial _redTeamRingMaterial = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.98, 0.28, 0.30, 1);
+  static final RingGeometry _npcMarkerGeometry = RingGeometry(
+    innerRadius: 0.30,
+    outerRadius: 0.39,
+    segments: 20,
+  );
+  static final UnlitMaterial _npcMarkerMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(1.0, 0.77, 0.34, 0.98);
+  static final RingGeometry _neutralCampRingGeometry = RingGeometry(
+    innerRadius: 1.65, outerRadius: 1.92, segments: 28,
+  );
+  static final UnlitMaterial _neutralCampMaterial = UnlitMaterial()
+    ..baseColorFactor = vm.Vector4(0.96, 0.68, 0.28, 0.98);
   static final RingGeometry _relayRingGeometry = RingGeometry(
     innerRadius: 3.2,
     outerRadius: 3.55,
@@ -173,18 +187,19 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     ),
     _AmbientNpc(
       id: 'quartermaster',
-      label: 'Coordenador de Suprimentos',
+      label: 'Mercador do Mercado Central',
       asset: 'assets/npcs/npc_male_a.glb',
-      x: -96.0,
-      z: -22.0,
+      x: ArenaWorldCatalog.shopkeeperX,
+      z: ArenaWorldCatalog.shopkeeperZ,
       patrol: [
-        MobaPoint(-96.0, -22.0),
-        MobaPoint(-90.0, -22.0),
-        MobaPoint(-90.0, -18.0),
-        MobaPoint(-96.0, -18.0),
+        MobaPoint(-9.0, -45.0),
+        MobaPoint(-7.0, -45.0),
+        MobaPoint(-7.0, -43.0),
+        MobaPoint(-9.0, -43.0),
       ],
       phaseOffset: 4.6,
-      dialogue: 'O Mercado Central abastece a equipe que mantém suas rotas protegidas.',
+      dialogue: 'Equipamentos calibrados para melhorar ataque ou resistência da equipe.',
+      isShopkeeper: true,
     ),
     _AmbientNpc(
       id: 'base-guide-top',
@@ -301,6 +316,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       final initial = widget.simulation.snapshot;
       final runtime = await ArenaPhysicsRuntime.create(
         spawn: initial.playerPosition,
+        heroId: initial.heroId,
         towers: initial.towers,
         covers: initial.covers,
       );
@@ -578,9 +594,12 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       );
 
   vm.Quaternion _entityFacing(double facingX, double facingZ) {
-    // The bundled Quaternius and Kenney humanoid rigs face local +Z.
-    // Do not add a half-turn: +Z movement must make the character face +Z.
-    final yaw = HumanoidOrientation.yawForDirection(facingX, facingZ);
+    // The bundled animated Kenney Mini Character clips travel along local -Z.
+    // Apply the same movement-basis correction used by playable hero rigs.
+    final yaw = HumanoidOrientation.yawForNegativeZDirection(
+      facingX,
+      facingZ,
+    );
     return vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), yaw);
   }
 
@@ -604,7 +623,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       SceneModel(
         _terrainAsset,
         key: const ValueKey('match-terrain'),
-        name: 'vale_das_coroas_match_terrain',
+        name: 'project_arena_urban_battlefield',
         onLoaded: (_) => _markWorldAssetReady('terrain'),
       ),
       for (var i = 0; i < ArenaWorldCatalog.trees.length; i++)
@@ -687,6 +706,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       for (final district in snapshot.districts)
         if (pointNearby(district.position, _dynamicEntityViewRadius + 12.0))
           ..._buildDistrictVisuals(district, snapshot.elapsedSeconds),
+      for (final camp in snapshot.neutralCamps)
+        if (pointNearby(camp.position, _dynamicEntityViewRadius + 12.0))
+          SceneMesh(
+            name: 'neutral_camp_marker_${camp.id}',
+            geometry: _neutralCampRingGeometry,
+            material: _neutralCampMaterial,
+            position: _worldPosition(camp.position, heightOffset: 0.07),
+          ),
+      for (final camp in snapshot.neutralCamps)
+        for (final unit in camp.units)
+          if (pointNearby(unit.position, _dynamicEntityViewRadius))
+            SceneMesh(
+              name: 'neutral_unit_marker_${unit.id}',
+              geometry: _npcMarkerGeometry,
+              material: _neutralCampMaterial,
+              position: _worldPosition(unit.position, heightOffset: 0.10),
+              scale: vm.Vector3.all(0.72),
+            ),
       for (final tower in snapshot.towers)
         if (tower.health > 0 && pointNearby(tower.position, _dynamicEntityViewRadius + 14.0))
           SceneMesh(
@@ -879,8 +916,6 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         vm.Vector3(px, ground + py, pz);
     vm.Quaternion yaw(double angle) =>
         vm.Quaternion.axisAngle(vm.Vector3(0, 1, 0), angle);
-    final segmentHalf = (halfWidth - doorHalfWidth) * 0.5;
-    final segmentOffset = doorHalfWidth + segmentHalf;
     final deskZ = hasVerticalAccess ? z - 2.4 : z + 2.5;
     final chairZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
     final screenZ = hasVerticalAccess ? z - 1.8 : z + 2.0;
@@ -897,21 +932,42 @@ class _MobaMatchViewState extends State<MobaMatchView> {
         scale: vm.Vector3(halfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-left-$id'), name: 'interior_left_wall_$id',
-        position: p(x - halfWidth, 0, z), rotation: yaw(math.pi / 2),
+        // Local X starts at 0; +90° rotates that axis toward -Z.
+        position: p(x - halfWidth, 0,
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: false)),
+        rotation: yaw(math.pi / 2),
         scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_wall.glb',
         key: ValueKey('interior-right-$id'), name: 'interior_right_wall_$id',
-        position: p(x + halfWidth, 0, z), rotation: yaw(-math.pi / 2),
+        // Local X starts at 0; -90° rotates that axis toward +Z.
+        position: p(x + halfWidth, 0,
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: true)),
+        rotation: yaw(-math.pi / 2),
         scale: vm.Vector3(halfDepth * 2, wallHeightScale, wallThicknessScale)),
-      for (final sign in const [-1.0, 1.0])
+      for (final rightSegment in const [false, true])
         SceneModel('assets/world/city/interior_wall.glb',
-          key: ValueKey('interior-front-$id-$sign'),
-          name: 'interior_front_wall_$id-$sign',
-          position: p(x + sign * segmentOffset, 0, z - halfDepth),
-          scale: vm.Vector3(segmentHalf * 2, wallHeightScale, wallThicknessScale)),
+          key: ValueKey('interior-front-$id-$rightSegment'),
+          name: 'interior_front_wall_$id-$rightSegment',
+          position: p(
+            ArenaWorldCatalog.interiorFrontWallStartX(
+              x,
+              rightSegment: rightSegment,
+            ),
+            0,
+            z - halfDepth,
+          ),
+          scale: vm.Vector3(
+            ArenaWorldCatalog.interiorFrontWallSegmentLength,
+            wallHeightScale,
+            wallThicknessScale,
+          )),
       SceneModel('assets/world/city/interior_doorway_wide.glb',
         key: ValueKey('interior-door-$id'), name: 'interior_entry_$id',
-        position: p(x, 0, z - halfDepth),
+        position: p(
+          ArenaWorldCatalog.interiorDoorwayStartX(x),
+          0,
+          z - halfDepth,
+        ),
         scale: vm.Vector3(doorHalfWidth * 2, wallHeightScale, wallThicknessScale)),
       SceneModel('assets/world/city/interior_desk.glb',
         key: ValueKey('interior-desk-$id'), name: 'interior_service_desk_$id',
@@ -1108,7 +1164,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: bot.id,
       position: _worldPosition(bot.position, heightOffset: 0.03),
       rotation: _entityFacing(bot.facingX, bot.facingZ),
-      scale: vm.Vector3.all(1.12),
+      scale: vm.Vector3.all(1.25),
       animations: [
         SceneAnimationSpec(
           bot.attackSeconds > 0
@@ -1128,7 +1184,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     // Kenney mini-character meshes need a larger presentation scale beside
     // the full-height playable Quaternius heroes. Keep ranged and melee
     // silhouettes distinct without changing gameplay collision sizes.
-    final scale = minion.ranged ? 1.35 : 1.45;
+    final scale = minion.ranged ? 1.68 : 1.78;
     return SceneModel(
       _npcAsset(minion.visualId),
       key: ValueKey('match-minion-${minion.id}'),
@@ -1230,7 +1286,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       name: 'ambient_npc_${npc.id}',
       position: _worldPosition(pose.position, heightOffset: 0.015),
       rotation: _entityFacing(pose.facingX, pose.facingZ),
-      scale: vm.Vector3.all(1.08),
+      scale: vm.Vector3.all(1.15),
       animations: [
         SceneAnimationSpec(
           interacting
@@ -1238,6 +1294,22 @@ class _MobaMatchViewState extends State<MobaMatchView> {
               : (pose.moving ? 'walk' : 'idle'),
           loop: !interacting,
           speed: interacting ? 1.0 : (pose.moving ? 0.92 : 0.84),
+        ),
+      ],
+      children: [
+        SceneMesh(
+          name: 'ambient_npc_ground_marker',
+          geometry: _npcMarkerGeometry,
+          material: _npcMarkerMaterial,
+          position: vm.Vector3(0, 0.035, 0),
+          scale: vm.Vector3.all(1.65),
+        ),
+        SceneMesh(
+          name: 'ambient_npc_overhead_marker',
+          geometry: _npcMarkerGeometry,
+          material: _npcMarkerMaterial,
+          position: vm.Vector3(0, 2.2, 0),
+          scale: vm.Vector3.all(0.82),
         ),
       ],
     );
@@ -1248,7 +1320,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
     double elapsedSeconds,
   ) {
     _AmbientNpc? nearest;
-    var nearestDistance = 8.0;
+    var nearestDistance = ArenaWorldCatalog.shopkeeperInteractionRadius;
     for (final npc in _ambientNpcs) {
       final position = _ambientNpcPose(npc, elapsedSeconds).position;
       final distance = player.distanceTo(position);
@@ -1279,6 +1351,41 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       _moveX = 0;
       _moveZ = 0;
     });
+  }
+
+  /// Dedicated traversal dash. Direction follows the camera-relative joystick;
+  /// when neutral, the hero moves forward relative to the camera.
+  void _triggerTraversalDash() {
+    final physics = _physicsRuntime;
+    if (!mounted || physics == null || !physics.canTriggerTraversalDash) {
+      return;
+    }
+
+    final forwardX = math.sin(_cameraYaw);
+    final forwardZ = math.cos(_cameraYaw);
+    final rightX = math.cos(_cameraYaw);
+    final rightZ = -math.sin(_cameraYaw);
+    var directionX = _moveX * rightX + _moveZ * forwardX;
+    var directionZ = _moveX * rightZ + _moveZ * forwardZ;
+    final length = math.sqrt(
+      directionX * directionX + directionZ * directionZ,
+    );
+    if (length < 0.12) {
+      directionX = forwardX;
+      directionZ = forwardZ;
+    }
+
+    if (physics.triggerTraversalDash(directionX, directionZ)) {
+      setState(() {});
+    }
+  }
+
+  void _triggerTraversalSlide() {
+    final physics = _physicsRuntime;
+    if (!mounted || physics == null || !physics.canTriggerSlide) return;
+    if (physics.triggerTraversalSlide()) {
+      setState(() {});
+    }
   }
 
   String _clock(double seconds) {
@@ -1459,6 +1566,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       top: 108,
                       child: _NpcPrompt(
                         label: nearbyNpc.label,
+                        action: nearbyNpc.isShopkeeper ? 'ABRIR LOJA' : 'CONVERSAR',
                         onTap: () => setState(() => _activeNpcId = nearbyNpc.id),
                       ),
                     ),
@@ -1467,10 +1575,26 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       left: viewport.maxWidth * 0.28,
                       right: viewport.maxWidth * 0.28,
                       bottom: compact ? 94 : 108,
-                      child: _NpcDialogue(
-                        npc: nearbyNpc,
-                        onClose: () => setState(() => _activeNpcId = null),
-                      ),
+                      child: nearbyNpc.isShopkeeper
+                          ? _NpcShop(
+                              gold: snapshot.playerGold,
+                              purchasedItems: snapshot.playerItems,
+                              onPurchase: (item) {
+                                if (!widget.simulation.purchaseShopItem(item)) {
+                                  return;
+                                }
+                                final updated = widget.simulation.snapshot;
+                                setState(() {
+                                  _snapshot = updated;
+                                  _sceneSnapshotNotifier.value = updated;
+                                });
+                              },
+                              onClose: () => setState(() => _activeNpcId = null),
+                            )
+                          : _NpcDialogue(
+                              npc: nearbyNpc,
+                              onClose: () => setState(() => _activeNpcId = null),
+                            ),
                     ),
                   Positioned(
                     top: 8,
@@ -1479,6 +1603,10 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                       children: [
                         _MiniMap(
                           snapshot: snapshot,
+                          npcPositions: [
+                            for (final npc in _ambientNpcs)
+                              _ambientNpcPose(npc, snapshot.elapsedSeconds).position,
+                          ],
                           onPing: (point) {
                             if (!widget.simulation.issueTeamPing(point)) return;
                             setState(() {
@@ -1537,6 +1665,24 @@ class _MobaMatchViewState extends State<MobaMatchView> {
                             widget.simulation.cyclePlayerTarget();
                             setState(() => _snapshot = widget.simulation.snapshot);
                           },
+                        ),
+                        const SizedBox(width: 7),
+                        _MovementSlideButton(
+                          size: compact ? 44 : 48,
+                          enabled:
+                              _physicsRuntime?.canTriggerSlide ?? false,
+                          sliding: _physicsRuntime?.sliding ?? false,
+                          onTap: _triggerTraversalSlide,
+                        ),
+                        const SizedBox(width: 7),
+                        _MovementDashButton(
+                          size: compact ? 50 : 54,
+                          stamina: _physicsRuntime?.traversalStamina ?? 0,
+                          maxStamina: _physicsRuntime?.traversalStaminaMax ??
+                              ArenaPhysicsRuntime.defaultTraversalStaminaMax,
+                          enabled:
+                              _physicsRuntime?.canTriggerTraversalDash ?? false,
+                          onTap: _triggerTraversalDash,
                         ),
                         const SizedBox(width: 7),
                         _MatchActionButton(
@@ -2125,6 +2271,181 @@ class _TargetLockButton extends StatelessWidget {
   }
 }
 
+class _MovementSlideButton extends StatelessWidget {
+  const _MovementSlideButton({
+    required this.size,
+    required this.enabled,
+    required this.sliding,
+    required this.onTap,
+  });
+
+  final double size;
+  final bool enabled;
+  final bool sliding;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final accent = sliding
+        ? const Color(0xFF9CE0C8)
+        : enabled
+            ? const Color(0xFF9BC2CF)
+            : const Color(0xFF64777F);
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(color: accent, width: 1.1),
+    );
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: sliding ? 'Deslizando' : 'Iniciar deslize',
+      child: Material(
+        color: sliding
+            ? const Color(0xD046716B)
+            : const Color(0xD02B414B),
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: shape,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.speed_rounded,
+                  size: size * 0.31,
+                  color: sliding || enabled
+                      ? const Color(0xFFF0F6F0)
+                      : const Color(0xFFA4B1B2),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  sliding ? 'DRIFT' : 'SLIDE',
+                  style: TextStyle(
+                    color: sliding || enabled
+                        ? Colors.white
+                        : const Color(0xFFA4B1B2),
+                    fontSize: 7,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.35,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _MovementDashButton extends StatelessWidget {
+  const _MovementDashButton({
+    required this.size,
+    required this.stamina,
+    required this.maxStamina,
+    required this.enabled,
+    required this.onTap,
+  });
+
+  final double size;
+  final double stamina;
+  final double maxStamina;
+  final bool enabled;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final slots = (stamina / maxStamina * 3.0).clamp(0.0, 3.0).toDouble();
+    final activeColor = enabled
+        ? const Color(0xFF9CE0C8)
+        : const Color(0xFF73888B);
+    final shape = BeveledRectangleBorder(
+      borderRadius: BorderRadius.circular(8),
+      side: BorderSide(
+        color: enabled
+            ? const Color(0xFF9BC2CF)
+            : const Color(0xFF64777F),
+        width: 1.1,
+      ),
+    );
+
+    return Semantics(
+      button: true,
+      enabled: enabled,
+      label: 'Dash de mobilidade, ${slots.toStringAsFixed(1)} de 3 cargas',
+      child: Material(
+        color: enabled
+            ? const Color(0xD0446878)
+            : const Color(0xC32C3842),
+        shape: shape,
+        clipBehavior: Clip.antiAlias,
+        child: InkWell(
+          onTap: enabled ? onTap : null,
+          customBorder: shape,
+          child: SizedBox(
+            width: size,
+            height: size,
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  Icons.speed_rounded,
+                  size: size * 0.29,
+                  color: enabled
+                      ? const Color(0xFFF0F6F0)
+                      : const Color(0xFFA4B1B2),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  'DASH',
+                  style: TextStyle(
+                    color: enabled ? Colors.white : const Color(0xFFA4B1B2),
+                    fontSize: 8,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.55,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    for (var index = 0; index < 3; index++) ...[
+                      if (index > 0) const SizedBox(width: 3),
+                      SizedBox(
+                        width: 7,
+                        height: 3,
+                        child: ClipRRect(
+                          borderRadius: BorderRadius.circular(2),
+                          child: ColoredBox(
+                            color: const Color(0xFF354750),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: FractionallySizedBox(
+                                widthFactor:
+                                    (slots - index).clamp(0.0, 1.0).toDouble(),
+                                child: ColoredBox(color: activeColor),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _MatchActionButton extends StatelessWidget {
   const _MatchActionButton({
     required this.label,
@@ -2226,10 +2547,12 @@ class _PauseButton extends StatelessWidget {
 class _MiniMap extends StatelessWidget {
   const _MiniMap({
     required this.snapshot,
+    required this.npcPositions,
     required this.onPing,
   });
 
   final MobaMatchSnapshot snapshot;
+  final List<MobaPoint> npcPositions;
   final ValueChanged<MobaPoint> onPing;
 
   @override
@@ -2252,7 +2575,9 @@ class _MiniMap extends StatelessWidget {
         child: SizedBox(
           width: 104,
           height: 64,
-          child: CustomPaint(painter: _MiniMapPainter(snapshot)),
+          child: CustomPaint(
+            painter: _MiniMapPainter(snapshot, npcPositions),
+          ),
         ),
       ),
     );
@@ -2260,9 +2585,10 @@ class _MiniMap extends StatelessWidget {
 }
 
 class _MiniMapPainter extends CustomPainter {
-  const _MiniMapPainter(this.snapshot);
+  const _MiniMapPainter(this.snapshot, this.npcPositions);
 
   final MobaMatchSnapshot snapshot;
+  final List<MobaPoint> npcPositions;
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -2321,7 +2647,7 @@ class _MiniMapPainter extends CustomPainter {
     }
     canvas.drawPath(river, riverPaint);
 
-    // Mint markers identify the four accessible indoor service points.
+    // Mint markers identify all six enterable service interiors.
     for (final building in ArenaWorldCatalog.cityInteriors) {
       final marker = project(MobaPoint(building.$2, building.$3));
       canvas.drawCircle(
@@ -2333,6 +2659,26 @@ class _MiniMapPainter extends CustomPainter {
         marker,
         1.25,
         Paint()..color = const Color(0xFF17342F),
+      );
+    }
+
+    // Gold rings identify every discoverable city NPC, including the
+    // quartermaster. Patrol positions are projected from the same live clock
+    // used by their 3D models, so the tactical map never shows stale anchors.
+    for (final npc in npcPositions) {
+      final center = project(npc);
+      canvas.drawCircle(
+        center,
+        3.0,
+        Paint()
+          ..color = const Color(0xFFFFD58A)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.1,
+      );
+      canvas.drawCircle(
+        center,
+        1.55,
+        Paint()..color = const Color(0xFFFFD58A),
       );
     }
 
@@ -2354,6 +2700,18 @@ class _MiniMapPainter extends CustomPainter {
         2.2,
         Paint()..color = const Color(0xFFFFD58A),
       );
+    }
+
+    for (final camp in snapshot.neutralCamps) {
+      final center = project(camp.position);
+      final color = camp.state == MobaNeutralCampState.defeated
+          ? const Color(0xFF65716F)
+          : const Color(0xFFFFD58A);
+      canvas.drawCircle(
+        center, 3.1,
+        Paint()..color = color..style = PaintingStyle.stroke..strokeWidth = 1.2,
+      );
+      canvas.drawCircle(center, 1.45, Paint()..color = color);
     }
 
     for (final tower in snapshot.towers.where((item) => item.health > 0)) {
@@ -2416,9 +2774,14 @@ class _HudPlate extends StatelessWidget {
 
 
 class _NpcPrompt extends StatelessWidget {
-  const _NpcPrompt({required this.label, required this.onTap});
+  const _NpcPrompt({
+    required this.label,
+    required this.action,
+    required this.onTap,
+  });
 
   final String label;
+  final String action;
   final VoidCallback onTap;
 
   @override
@@ -2434,16 +2797,180 @@ class _NpcPrompt extends StatelessWidget {
           child: Row(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.chat_bubble_outline, size: 16,
-                  color: Color(0xFF8BDCC7)),
+              Icon(
+                action == 'ABRIR LOJA'
+                    ? Icons.storefront_outlined
+                    : Icons.chat_bubble_outline,
+                size: 16,
+                color: const Color(0xFF8BDCC7),
+              ),
               const SizedBox(width: 7),
               Text(
-                'CONVERSAR  ·  $label',
+                '$action  ·  $label',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 10,
                   fontWeight: FontWeight.w800,
                   letterSpacing: 0.7,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _NpcShop extends StatelessWidget {
+  const _NpcShop({
+    required this.gold,
+    required this.purchasedItems,
+    required this.onPurchase,
+    required this.onClose,
+  });
+
+  final double gold;
+  final List<MobaShopItem> purchasedItems;
+  final ValueChanged<MobaShopItem> onPurchase;
+  final VoidCallback onClose;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.fromLTRB(14, 11, 12, 12),
+      decoration: BoxDecoration(
+        color: const Color(0xF0182A32),
+        border: Border.all(color: const Color(0xFFE0B36A), width: 1.1),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.storefront_outlined,
+                  color: Color(0xFFEBC47A), size: 20),
+              const SizedBox(width: 9),
+              const Expanded(
+                child: Text(
+                  'MERCADO DE CAMPO',
+                  style: TextStyle(
+                    color: Color(0xFFF2D49B),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 1.0,
+                  ),
+                ),
+              ),
+              Text(
+                '${gold.floor()} G',
+                style: const TextStyle(
+                  color: Color(0xFF8DE0C7),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              IconButton(
+                onPressed: onClose,
+                icon: const Icon(Icons.close, color: Colors.white70, size: 18),
+                visualDensity: VisualDensity.compact,
+                tooltip: 'Fechar loja',
+              ),
+            ],
+          ),
+          const SizedBox(height: 7),
+          for (final item in MobaShopItem.values)
+            Padding(
+              padding: const EdgeInsets.only(top: 6),
+              child: _NpcShopOffer(
+                item: item,
+                gold: gold,
+                purchased: purchasedItems.contains(item),
+                onPurchase: onPurchase,
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class _NpcShopOffer extends StatelessWidget {
+  const _NpcShopOffer({
+    required this.item,
+    required this.gold,
+    required this.purchased,
+    required this.onPurchase,
+  });
+
+  final MobaShopItem item;
+  final double gold;
+  final bool purchased;
+  final ValueChanged<MobaShopItem> onPurchase;
+
+  @override
+  Widget build(BuildContext context) {
+    final affordable = gold >= item.price;
+    final enabled = !purchased && affordable;
+    final status = purchased
+        ? 'ADQUIRIDO'
+        : affordable
+            ? 'COMPRAR · ${item.price} G'
+            : 'OURO INSUFICIENTE';
+    return Material(
+      color: const Color(0xCC223942),
+      borderRadius: BorderRadius.circular(7),
+      child: InkWell(
+        onTap: enabled ? () => onPurchase(item) : null,
+        borderRadius: BorderRadius.circular(7),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          child: Row(
+            children: [
+              Icon(
+                item == MobaShopItem.impactCell
+                    ? Icons.bolt_rounded
+                    : Icons.shield_outlined,
+                color: const Color(0xFFEBC47A),
+                size: 20,
+              ),
+              const SizedBox(width: 9),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      item.title,
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      item.description,
+                      style: const TextStyle(
+                        color: Color(0xFFB7C8C9),
+                        fontSize: 9,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Text(
+                status,
+                style: TextStyle(
+                  color: purchased
+                      ? const Color(0xFF8DE0C7)
+                      : affordable
+                          ? const Color(0xFFF2D49B)
+                          : const Color(0xFF92A0A2),
+                  fontSize: 9,
+                  fontWeight: FontWeight.w900,
                 ),
               ),
             ],

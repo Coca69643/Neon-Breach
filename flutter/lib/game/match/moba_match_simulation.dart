@@ -60,6 +60,25 @@ class MobaObjectiveControl {
   }
 }
 
+enum MobaShopItem { impactCell, reinforcedPlate }
+
+extension MobaShopItemRules on MobaShopItem {
+  int get price => switch (this) {
+        MobaShopItem.impactCell => 280,
+        MobaShopItem.reinforcedPlate => 320,
+      };
+
+  String get title => switch (this) {
+        MobaShopItem.impactCell => 'CÉLULA DE IMPACTO',
+        MobaShopItem.reinforcedPlate => 'PLACA REFORÇADA',
+      };
+
+  String get description => switch (this) {
+        MobaShopItem.impactCell => '+12% de poder de ataque.',
+        MobaShopItem.reinforcedPlate => '+100 de vida máxima e recuperação imediata.',
+      };
+}
+
 enum MobaLane { top, middle, bottom }
 
 enum MobaHeroId { lyra, bastion, kairo }
@@ -257,6 +276,34 @@ class MobaDistrictSnapshot {
   final bool contested;
 }
 
+enum MobaNeutralCampState { dormant, aggro, returning, defeated }
+
+class MobaNeutralUnitSnapshot {
+  const MobaNeutralUnitSnapshot({
+    required this.id, required this.label, required this.position,
+    required this.health, required this.maxHealth, required this.attackSeconds,
+  });
+  final String id;
+  final String label;
+  final MobaPoint position;
+  final double health;
+  final double maxHealth;
+  final double attackSeconds;
+}
+
+class MobaNeutralCampSnapshot {
+  const MobaNeutralCampSnapshot({
+    required this.id, required this.label, required this.position,
+    required this.state, required this.respawnSeconds, required this.units,
+  });
+  final String id;
+  final String label;
+  final MobaPoint position;
+  final MobaNeutralCampState state;
+  final double respawnSeconds;
+  final List<MobaNeutralUnitSnapshot> units;
+}
+
 class MobaObjectiveSnapshot {
   const MobaObjectiveSnapshot({
     required this.control,
@@ -288,6 +335,8 @@ class MobaMatchSnapshot {
     required this.playerXp,
     required this.xpForNextLevel,
     required this.playerGold,
+    required this.playerPower,
+    required this.playerItems,
     required this.playerSkillCooldown,
     required this.playerRespawnSeconds,
     required this.playerSpawnShieldSeconds,
@@ -312,6 +361,7 @@ class MobaMatchSnapshot {
     required this.towers,
     required this.covers,
     required this.districts,
+    required this.neutralCamps,
     required this.centralObjective,
     required this.selectedTarget,
     required this.teamPingTarget,
@@ -331,6 +381,8 @@ class MobaMatchSnapshot {
   final double playerXp;
   final double xpForNextLevel;
   final double playerGold;
+  final double playerPower;
+  final List<MobaShopItem> playerItems;
   final double playerSkillCooldown;
   final double playerRespawnSeconds;
   final double playerSpawnShieldSeconds;
@@ -355,6 +407,7 @@ class MobaMatchSnapshot {
   final List<MobaTowerSnapshot> towers;
   final List<MobaCoverSnapshot> covers;
   final List<MobaDistrictSnapshot> districts;
+  final List<MobaNeutralCampSnapshot> neutralCamps;
   final MobaObjectiveSnapshot centralObjective;
   final MobaTargetSnapshot? selectedTarget;
   final MobaPoint? teamPingTarget;
@@ -464,6 +517,45 @@ class _DistrictControlPoint {
   final MobaObjectiveControl control = MobaObjectiveControl();
 }
 
+class _NeutralCampUnit {
+  _NeutralCampUnit({
+    required this.id, required this.label, required this.spawnPosition,
+    required this.maxHealth,
+  }) : position = spawnPosition, health = maxHealth;
+  final String id;
+  final String label;
+  final MobaPoint spawnPosition;
+  MobaPoint position;
+  final double maxHealth;
+  double health;
+  double attackCooldown = 0.35;
+  double attackSeconds = 0;
+  bool get alive => health > 0;
+}
+
+class _NeutralCamp {
+  _NeutralCamp({required this.id, required this.label, required this.position})
+      : units = [
+          _NeutralCampUnit(
+            id: 'neutral:$id:guardian', label: 'GUARDIÃO',
+            spawnPosition: MobaPoint(position.x - 1.15, position.z),
+            maxHealth: 230,
+          ),
+          _NeutralCampUnit(
+            id: 'neutral:$id:scout', label: 'PROTETOR',
+            spawnPosition: MobaPoint(position.x + 1.15, position.z + 0.65),
+            maxHealth: 145,
+          ),
+        ];
+  final String id;
+  final String label;
+  final MobaPoint position;
+  final List<_NeutralCampUnit> units;
+  MobaNeutralCampState state = MobaNeutralCampState.dormant;
+  double respawnSeconds = 0;
+  bool clearRewardPaid = false;
+}
+
 class MobaMatchSimulation {
   MobaMatchSimulation({
     required this.heroId,
@@ -492,12 +584,17 @@ class MobaMatchSimulation {
   final List<_Bot> _bots = [];
   final List<_Tower> _towers = [];
   final List<_Cover> _covers = [];
+  final Set<MobaShopItem> _playerItems = <MobaShopItem>{};
   String? _selectedTargetKey;
   static const double _targetCycleRange = 24.0;
   static const MobaPoint _objectivePosition = MobaPoint(0, 0);
   static const double objectiveRadius = 8.0;
   static const double districtRadius = 7.5;
   final MobaObjectiveControl _objective = MobaObjectiveControl();
+  final List<_NeutralCamp> _neutralCamps = [
+    for (final site in ArenaWorldCatalog.neutralCampSites)
+      _NeutralCamp(id: site.$1, label: site.$2, position: MobaPoint(site.$3, site.$4)),
+  ];
   final List<_DistrictControlPoint> _districts = [
     for (final site in ArenaWorldCatalog.districtSites)
       _DistrictControlPoint(id: site.$1, name: site.$2,
@@ -549,6 +646,36 @@ class MobaMatchSimulation {
   String? _teamPingBotId;
 
   MobaMatchSnapshot get snapshot => _makeSnapshot();
+
+  /// Purchases one persistent match upgrade from the in-world quartermaster.
+  /// The shop is only usable while the player is near its authored map position.
+  bool purchaseShopItem(MobaShopItem item) {
+    if (_winner != null ||
+        _playerHealth <= 0 ||
+        _playerRespawn > 0 ||
+        _playerItems.contains(item) ||
+        _playerGold < item.price ||
+        _playerPosition.distanceTo(
+              const MobaPoint(
+                ArenaWorldCatalog.shopkeeperX,
+                ArenaWorldCatalog.shopkeeperZ,
+              ),
+            ) >
+            ArenaWorldCatalog.shopkeeperInteractionRadius + 2.25) {
+      return false;
+    }
+
+    _playerGold -= item.price;
+    _playerItems.add(item);
+    switch (item) {
+      case MobaShopItem.impactCell:
+        _playerPower += 0.12;
+      case MobaShopItem.reinforcedPlate:
+        _playerMaxHealth += 100;
+        _playerHealth = math.min(_playerMaxHealth, _playerHealth + 100);
+    }
+    return true;
+  }
 
   /// Transfers a requested dash to the authoritative Rapier body exactly once.
   MobaPoint? consumePhysicsDashRequest() {
@@ -656,6 +783,19 @@ class MobaMatchSimulation {
     _minions.clear();
     _bots.clear();
     _towers.clear();
+    for (final camp in _neutralCamps) {
+      camp
+        ..state = MobaNeutralCampState.dormant
+        ..respawnSeconds = 0
+        ..clearRewardPaid = false;
+      for (final unit in camp.units) {
+        unit
+          ..position = unit.spawnPosition
+          ..health = unit.maxHealth
+          ..attackCooldown = 0.35
+          ..attackSeconds = 0;
+      }
+    }
     _objective.reset();
     for (final district in _districts) {
       district.control.reset();
@@ -692,6 +832,7 @@ class MobaMatchSimulation {
     _playerXp = 0;
     _playerGold = 500;
     _playerPower = 1;
+    _playerItems.clear();
     _playerLevel = 1;
     _nextMinionId = 0;
     _playerPosition = _spawnPosition ??
@@ -812,6 +953,12 @@ class MobaMatchSimulation {
         candidates.add(('minion:${minion.id}', distance));
       }
     }
+    for (final camp in _neutralCamps) {
+      for (final unit in camp.units.where((unit) => unit.alive)) {
+        final distance = _playerPosition.distanceTo(unit.position);
+        if (distance <= _targetCycleRange) candidates.add((unit.id, distance));
+      }
+    }
 
     candidates.sort((a, b) {
       final distanceOrder = a.$2.compareTo(b.$2);
@@ -851,6 +998,20 @@ class MobaMatchSimulation {
           health: bot.health,
           maxHealth: _Bot.maxHealth,
         );
+      }
+    } else if (key.startsWith('neutral:')) {
+      for (final camp in _neutralCamps) {
+        for (final unit in camp.units) {
+          if (unit.id != key) continue;
+          if (!unit.alive || _playerPosition.distanceTo(unit.position) > _targetCycleRange) {
+            _selectedTargetKey = null;
+            return null;
+          }
+          return MobaTargetSnapshot(
+            id: key, kind: 'NEUTRAL', label: unit.label, team: MobaTeam.red,
+            position: unit.position, health: unit.health, maxHealth: unit.maxHealth,
+          );
+        }
       }
     } else if (key.startsWith('minion:')) {
       final id = int.tryParse(key.substring(7));
@@ -991,6 +1152,7 @@ class MobaMatchSimulation {
     _updateWaves(dt);
     _updateMinions(dt);
     _updateBots(dt);
+    _updateNeutralCamps(dt);
     _updateCentralObjective(dt);
     _updateDistricts(dt);
     _updateTowers(dt);
@@ -1092,6 +1254,11 @@ class MobaMatchSimulation {
     if (selectedTarget != null &&
         _playerPosition.distanceTo(selectedTarget.position) <= heroId.basicRange) {
       _facePlayerToward(selectedTarget.position);
+      if (selectedTarget.kind == 'NEUTRAL') {
+        _damageNeutralUnit(selectedTarget.id, MobaTeam.blue, damage);
+        _confirmPlayerHit();
+        return;
+      }
       if (selectedTarget.kind == 'HERO') {
         for (final bot in _bots) {
           if ('bot:${bot.id}' != selectedTarget.id) continue;
@@ -1739,6 +1906,187 @@ class MobaMatchSimulation {
     );
   }
 
+  bool _neutralPathIsClear(MobaPoint from, MobaPoint to) {
+    if ((from.elevation - to.elevation).abs() > 0.65) return false;
+    final distance = from.distanceTo(to);
+    final steps = math.max(1, (distance / 0.8).ceil());
+    for (var i = 1; i <= steps; i++) {
+      final t = i / steps;
+      final x = from.x + (to.x - from.x) * t;
+      final z = from.z + (to.z - from.z) * t;
+      final y = from.elevation + (to.elevation - from.elevation) * t;
+      if (!ArenaWorldCatalog.isWalkable(x, z, elevation: y) ||
+          _isBlockedByCover(x, z, y)) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  ({MobaTeam team, String kind, String id, MobaPoint position})?
+      _nearestNeutralThreat(_NeutralCamp camp) {
+    ({MobaTeam team, String kind, String id, MobaPoint position})? best;
+    var nearest = 9.0;
+    void consider(MobaTeam team, String kind, String id, MobaPoint position) {
+      final distance = camp.position.distanceTo(position);
+      if (distance >= nearest || !_neutralPathIsClear(camp.position, position)) return;
+      nearest = distance;
+      best = (team: team, kind: kind, id: id, position: position);
+    }
+    if (_playerHealth > 0 && _playerRespawn <= 0) {
+      consider(MobaTeam.blue, 'player', 'player', _playerPosition);
+    }
+    for (final bot in _bots.where((bot) => bot.alive)) {
+      consider(bot.team, 'bot', bot.id, bot.position);
+    }
+    for (final minion in _minions.where((unit) => unit.alive)) {
+      consider(minion.team, 'minion', 'minion:${minion.id}', minion.position);
+    }
+    return best;
+  }
+
+  void _damageNeutralThreat(
+    ({MobaTeam team, String kind, String id, MobaPoint position}) target,
+    double damage,
+  ) {
+    switch (target.kind) {
+      case 'player':
+        _damagePlayer(damage, source: 'Acampamento neutro');
+      case 'bot':
+        for (final bot in _bots) {
+          if (bot.id == target.id && bot.alive) {
+            // Neutral damage never awards a team kill or gold to either side.
+            bot.health = math.max(0, bot.health - damage);
+            if (bot.health <= 0) {
+              bot
+                ..respawnSeconds = 6
+                ..attackSeconds = 0
+                ..moving = false;
+            }
+            break;
+          }
+        }
+      case 'minion':
+        final id = int.tryParse(target.id.substring(7));
+        for (final minion in _minions) {
+          if (minion.id == id && minion.alive) {
+            // Neutral damage must not be attributed to the opposing team.
+            minion.health = math.max(0, minion.health - damage);
+            break;
+          }
+        }
+    }
+  }
+
+  void _updateNeutralCamps(double dt) {
+    for (final camp in _neutralCamps) {
+      if (camp.state == MobaNeutralCampState.defeated) {
+        camp.respawnSeconds = math.max(0, camp.respawnSeconds - dt);
+        if (camp.respawnSeconds <= 0) {
+          camp
+            ..clearRewardPaid = false
+            ..state = MobaNeutralCampState.dormant;
+          for (final unit in camp.units) {
+            unit
+              ..position = unit.spawnPosition
+              ..health = unit.maxHealth
+              ..attackCooldown = 0.35
+              ..attackSeconds = 0;
+          }
+        }
+        continue;
+      }
+      for (final unit in camp.units) {
+        unit.attackSeconds = math.max(0, unit.attackSeconds - dt);
+        unit.attackCooldown = math.max(0, unit.attackCooldown - dt);
+      }
+      final threat = _nearestNeutralThreat(camp);
+      if (camp.state == MobaNeutralCampState.dormant && threat != null) {
+        camp.state = MobaNeutralCampState.aggro;
+      }
+      if (camp.state == MobaNeutralCampState.returning && threat != null &&
+          camp.position.distanceTo(threat.position) <= 14.0) {
+        camp.state = MobaNeutralCampState.aggro;
+      }
+      if (camp.state == MobaNeutralCampState.aggro &&
+          (threat == null || camp.position.distanceTo(threat.position) > 14.0)) {
+        camp.state = MobaNeutralCampState.returning;
+      }
+      if (camp.state == MobaNeutralCampState.returning) {
+        var returned = true;
+        for (final unit in camp.units.where((unit) => unit.alive)) {
+          if (unit.position.distanceTo(unit.spawnPosition) > 0.45) {
+            returned = false;
+            final next = unit.position.moveToward(unit.spawnPosition, 2.8 * dt);
+            if (_neutralPathIsClear(unit.position, next)) unit.position = next;
+          }
+        }
+        if (returned) {
+          camp.state = MobaNeutralCampState.dormant;
+          for (final unit in camp.units) {
+            unit
+              ..position = unit.spawnPosition
+              ..health = unit.maxHealth
+              ..attackCooldown = 0.35
+              ..attackSeconds = 0;
+          }
+        }
+        continue;
+      }
+      if (camp.state != MobaNeutralCampState.aggro || threat == null) continue;
+      for (final unit in camp.units.where((unit) => unit.alive)) {
+        final distance = unit.position.distanceTo(threat.position);
+        if (distance > 1.9) {
+          final next = unit.position.moveToward(threat.position, 2.25 * dt);
+          if (_neutralPathIsClear(unit.position, next)) unit.position = next;
+        } else if (unit.attackCooldown <= 0) {
+          unit
+            ..attackSeconds = 0.28
+            ..attackCooldown = 1.12;
+          _damageNeutralThreat(threat, unit.label == 'GUARDIÃO' ? 13 : 8);
+        }
+      }
+      if (camp.units.every((unit) => !unit.alive)) {
+        camp
+          ..state = MobaNeutralCampState.defeated
+          ..respawnSeconds = 60;
+      }
+    }
+  }
+
+  _NeutralCampUnit? _neutralUnitById(String id) {
+    for (final camp in _neutralCamps) {
+      for (final unit in camp.units) {
+        if (unit.id == id && unit.alive) return unit;
+      }
+    }
+    return null;
+  }
+
+  void _damageNeutralUnit(String id, MobaTeam source, double damage) {
+    final unit = _neutralUnitById(id);
+    if (unit == null) return;
+    unit.health = math.max(0, unit.health - damage * _objectiveDamageMultiplier(source));
+    final camp = _neutralCamps.firstWhere(
+      (candidate) => candidate.units.any((member) => member.id == id),
+    );
+    if (camp.state == MobaNeutralCampState.dormant) {
+      camp.state = MobaNeutralCampState.aggro;
+    }
+    if (!unit.alive) {
+      _awardGold(source, 32);
+      _awardXp(source, 22);
+      if (camp.units.every((member) => !member.alive) && !camp.clearRewardPaid) {
+        camp
+          ..clearRewardPaid = true
+          ..state = MobaNeutralCampState.defeated
+          ..respawnSeconds = 60;
+        _awardGold(source, 65);
+        _awardXp(source, 45);
+      }
+    }
+  }
+
   void _updateCentralObjective(double dt) {
     var blue = 0.0;
     var red = 0.0;
@@ -2096,6 +2444,8 @@ class MobaMatchSimulation {
       playerXp: _playerXp,
       xpForNextLevel: currentThreshold,
       playerGold: _playerGold,
+      playerPower: _playerPower,
+      playerItems: List.unmodifiable(_playerItems),
       playerSkillCooldown: _playerSkillCooldown,
       playerRespawnSeconds: _playerRespawn,
       playerSpawnShieldSeconds: _playerShieldTime,
@@ -2123,6 +2473,21 @@ class MobaMatchSimulation {
       minions: List.unmodifiable(minions),
       towers: List.unmodifiable(towers),
       covers: List.unmodifiable(covers),
+      neutralCamps: List.unmodifiable([
+        for (final camp in _neutralCamps)
+          MobaNeutralCampSnapshot(
+            id: camp.id, label: camp.label, position: camp.position,
+            state: camp.state, respawnSeconds: camp.respawnSeconds,
+            units: List.unmodifiable([
+              for (final unit in camp.units.where((unit) => unit.alive))
+                MobaNeutralUnitSnapshot(
+                  id: unit.id, label: unit.label, position: unit.position,
+                  health: unit.health, maxHealth: unit.maxHealth,
+                  attackSeconds: unit.attackSeconds,
+                ),
+            ]),
+          ),
+      ]),
       districts: List.unmodifiable([
         for (final district in _districts)
           MobaDistrictSnapshot(
