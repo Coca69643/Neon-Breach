@@ -13,6 +13,7 @@ ANDROID = ROOT / "android"
 APP_ID = "com.duckdream.projectarena"
 APP_LABEL = "Projeto Arena"
 MIN_SDK = 24
+TARGET_SDK = 36
 
 
 def add_arm64_abi_filter(content: str, gradle_path: Path) -> str:
@@ -161,11 +162,23 @@ shutil.copy2(source_icon, target_icon)
 
 ET.register_namespace("android", "http://schemas.android.com/apk/res/android")
 tree = ET.parse(manifest)
-application = tree.getroot().find("application")
+root = tree.getroot()
+android_ns = "{http://schemas.android.com/apk/res/android}"
+
+# INTERNET is a normal permission required by Supabase and by LAN TCP sockets.
+internet_permission = "android.permission.INTERNET"
+if not any(
+    node.get(android_ns + "name") == internet_permission
+    for node in root.findall("uses-permission")
+):
+    permission = ET.Element("uses-permission")
+    permission.set(android_ns + "name", internet_permission)
+    root.insert(0, permission)
+
+application = root.find("application")
 if application is None:
     raise SystemExit("AndroidManifest.xml has no application element")
 
-android_ns = "{http://schemas.android.com/apk/res/android}"
 application.set(android_ns + "label", APP_LABEL)
 application.set(android_ns + "icon", "@drawable/ic_launcher")
 application.set(android_ns + "roundIcon", "@drawable/ic_launcher")
@@ -226,10 +239,28 @@ if min_sdk_replacements != 1:
         f"Could not enforce the Flutter-supported minSdk {MIN_SDK} in the generated Android host."
     )
 
+if gradle.suffix == ".kts":
+    content, target_sdk_replacements = re.subn(
+        r"targetSdk\\s*=\\s*flutter\\.targetSdkVersion",
+        f"targetSdk = {TARGET_SDK}",
+        content,
+    )
+else:
+    content, target_sdk_replacements = re.subn(
+        r"targetSdkVersion\\s+flutter\\.targetSdkVersion",
+        f"targetSdkVersion {TARGET_SDK}",
+        content,
+    )
+if target_sdk_replacements != 1:
+    raise SystemExit(
+        "Could not pin Android targetSdk. Review local-network permission requirements before changing the target."
+    )
+
 content = add_arm64_abi_filter(content, gradle)
 content = add_persistent_signing(content, gradle)
 gradle.write_text(content, encoding="utf-8")
 print(
     f"Android host prepared: applicationId={APP_ID}, label={APP_LABEL}, "
-    f"minSdk={MIN_SDK}, ABI=arm64-v8a, Flutter GPU enabled, landscape, Project Arena icon."
+    f"minSdk={MIN_SDK}, targetSdk={TARGET_SDK}, INTERNET permission, ABI=arm64-v8a, "
+    "Flutter GPU enabled, landscape, Project Arena icon."
 )
