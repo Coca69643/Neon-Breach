@@ -361,7 +361,7 @@ class _ArenaNetworkLobbyScreenState extends State<ArenaNetworkLobbyScreen> {
             (address) => _copyRow(
               'IP',
               address,
-              () => _copy(address + ':' + endpoint.port.toString()),
+              () => _copy('$address:${endpoint.port}'),
             ),
           ),
           const SizedBox(height: 12),
@@ -459,7 +459,7 @@ class _ArenaNetworkLobbyScreenState extends State<ArenaNetworkLobbyScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          'JOGADORES (' + names.length.toString() + ')',
+          'JOGADORES (${names.length})',
           style: TextStyle(
             color: accent,
             fontWeight: FontWeight.w900,
@@ -484,7 +484,7 @@ class _ArenaNetworkLobbyScreenState extends State<ArenaNetworkLobbyScreen> {
           const Icon(Icons.people_alt_outlined, color: Color(0xFF79D6BD)),
           const SizedBox(width: 8),
           Text(
-            count.toString() + ' conectado(s)',
+            '$count conectado(s)',
             style: const TextStyle(color: Colors.white),
           ),
         ],
