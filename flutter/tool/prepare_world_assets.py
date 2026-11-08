@@ -86,7 +86,7 @@ SIDE_APPROACH_ANCHORS = [
 ]
 DOCK_PLAZAS = [
     (-92.0, -8.0), (92.0, 8.0),
-    (-90.0, 54.0), (90.0, -54.0),
+    (-86.0, 50.0), (90.0, -54.0),
 ]
 DOCK_PLAZA_RADIUS = 8.8
 ASPHALT_SURFACE_LIFT = 0.11
