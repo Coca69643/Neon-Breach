@@ -1,7 +1,7 @@
 name: project_arena_flutter
 description: Projeto Arena — MOBA 3D mobile com Flutter Scene.
 publish_to: none
-version: 1.8.0+73
+version: 1.8.1+74
 
 environment:
   sdk: ">=3.10.0 <4.0.0"
@@ -17,7 +17,6 @@ dependencies:
   image_picker: ^1.2.3
   path_provider: ^2.1.6
   shared_preferences: ^2.5.6
-  supabase_flutter: ^2.18.3
 
 dev_dependencies:
   flutter_test:
@@ -27,7 +26,6 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/branding/
     - assets/data/arena_manifest.json
     - assets/heroes/
     - assets/weapons/

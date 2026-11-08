@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.8.0 / 73
+- versionName/versionCode: 1.8.1 / 74
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -61,7 +61,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.8.0+73: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
+- Build 1.8.1+74: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
@@ -83,18 +83,3 @@ python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-release.apk
 ~~~
 
 Para assinar uma atualização compatível com instalações existentes, configure as quatro variáveis NEON_BREACH_KEYSTORE_* antes de executar prepare_android.py e o build. Consulte https://fscene.dev/getting-started/installation/.
-
-
-## Fundação de salas Online e Rede Local — em validação
-
-- Tela própria de salas acessível pelo atalho REDE no menu.
-- Online: Supabase Realtime em canal privado arena:lobby:<código>, com autenticação de convidado e presença.
-- Rede local: host TCP no aparelho, conexão manual por IP/porta e código de convite de 128 bits.
-- Lista de presença, criação/entrada/saída e encerramento de sessão.
-- supabase_flutter fixado na linha estável 2.18.x; não usar pré-release 3.x nesta entrega.
-- O manifesto gerado inclui INTERNET; targetSdk está fixado em 36. Se futuramente subir para 37, implementar ACCESS_LOCAL_NETWORK runtime antes de habilitar sockets LAN no Android 17.
-- O Supabase precisa ter Anonymous Sign-Ins habilitado. A chave incluída no app é apenas publishable; nunca incluir service_role.
-- Limite desta fatia: o transporte sincroniza somente presença no lobby. A partida 3D e a simulação seguem offline; não existe ainda sincronização de movimento, objetivos ou eventos da partida.
-- LAN usa TCP local e código temporário. Não enviar dados privados por esse canal.
-
-Critérios pendentes: testar duas instalações em Wi-Fi real, alternância de rede, reconexão, encerramento inesperado do host e autorização dos canais privados. A fundação não deve bloquear o boot nem o modo offline.
