@@ -1,29 +1,40 @@
 # Changelog — Projeto Arena
 
-## [1.8.1] — em desenvolvimento
+## [1.8.3] — candidata consolidada
 
-### Quarta fatia — Porto de Vésper
-- Novo contorno costeiro e canal ampliado no catálogo e no bake offline.
-- Quatro praças de cais pavimentadas e oito volumes arquitetônicos adicionais, usando assets CC0 já pinados.
-- Identidade PORTO DE VÉSPER exibida na prévia e na HUD da partida.
-- Validação visual no Realme C53 permanece pendente; esta alteração não autoriza publicação.
+### Recuperação de gameplay e estabilidade
+- Correções de movimento, colisões e alinhamento de footprints de edifícios, interiores, portas e mobiliário.
+- Loja de campo e Quartermaster com compra por proximidade, custos em ouro e upgrades de partida.
+- Ajustes de orientação e escala visual de NPCs, bots e minions; melhorias de navegação e rotas.
 
+### Salas Online e Rede Local
+- Lobby Online com Supabase Realtime em canal privado e presença de convidados.
+- Salas LAN por TCP local, convite temporário, código/IP/porta e roster.
+- O transporte atual sincroniza somente a presença no lobby; partida, movimento e objetivos continuam locais/offline.
+- Anonymous Sign-Ins precisa ser habilitado no projeto Supabase antes dos testes online com convidados.
 
-### Hub, identidade e seleção
-- Fundo 2D do hub ampliado com distrito comercial, vitrines iluminadas, marquises, postes e canal urbano.
-- Cabeçalho do jogador substitui a marca fixa: ícone de perfil e nome local editável.
-- Perfil próprio com foto, estatísticas de partidas/vitórias e molduras cosméticas.
-- Seleção de heróis reorganizada com elenco lateral, prévia 3D em destaque e confirmação explícita.
+### Inicialização e identidade
+- Splash Duck Dream Studios com logo transparente e transição curta.
+- Inicialização em etapas, validação do manifesto, recuperação e fallback offline.
+- Hub 2D mobile, perfil local com nome/foto/estatísticas/molduras e seleção de heróis reorganizada.
+- Baú diário de créditos, desafios de marcos e mercador de molduras cosméticas.
 
-### Progressão e sub-telas
-- Baú diário com recompensa garantida de 100 créditos, limitado a um resgate por dia.
-- Desafios de primeira partida, primeira vitória e cinco partidas, com recompensas locais resgatáveis uma única vez.
-- Mercador de molduras de perfil compradas com créditos conquistados; cosméticos não alteram atributos de gameplay.
-- Progresso e cosméticos persistidos localmente, com testes de restauração e prevenção de resgate duplicado.
+### Novo mapa — Porto de Vésper
+- Costa irregular remodelada e canal de navegação ampliado.
+- Quatro praças de cais pavimentadas e 23 volumes comerciais/industriais com footprints medidos.
+- Seis distritos, três rotas principais, cinco pontes, seis interiores e acessos elevados preservados.
+- Identidade do mapa na prévia e na HUD; terreno e navegação usam a mesma escala lógica.
 
-### Validação
-- `flutter analyze` e `flutter test` aprovados na PR de desenvolvimento.
-- Build Android de validação e teste físico no Realme C53 permanecem pendentes.
+### Identidade Android
+- versionName: 1.8.3.
+- versionCode: 74 (o release anterior publicado é 1.8.0+73).
+- applicationId preservado: `com.duckdream.projectarena`.
+
+### Validação e limites conhecidos
+- CI anterior da linha de recuperação/hub passou em análise, testes e geração de assets; o candidato consolidado ainda precisa de sua própria execução de CI.
+- Builds QA Profile anteriores usam identidade isolada `com.duckdream.projectarena.qa`; não substituem a instalação de produção.
+- Release assinado, comparação do certificado de produção e validação visual/performance no Realme C53 continuam pendentes.
+- A camada Online exige habilitar Anonymous Sign-Ins; o modo offline não depende dela.
 
 ## [1.7.10] — 2026-11-05
 

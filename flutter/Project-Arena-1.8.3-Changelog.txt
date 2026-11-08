@@ -1,0 +1,36 @@
+PROJECT ARENA
+Versão 1.8.3 — candidata consolidada
+
+RECUPERAÇÃO DE GAMEPLAY
+- Movimento, colisões e footprints de edifícios, interiores, portas e mobiliário revisados.
+- Quartermaster e loja de campo com compra por proximidade, custo em ouro e upgrades.
+- Ajustes de orientação/escala de NPCs, bots e minions; rotas e navegação revisadas.
+
+SALAS ONLINE E REDE LOCAL
+- Lobby Online por Supabase Realtime com canal privado e presença de convidados.
+- Lobby LAN por TCP local, com código temporário, IP/porta e roster.
+- O transporte sincroniza apenas presença da sala. A partida 3D e sua simulação continuam locais/offline.
+- Anonymous Sign-Ins precisa ser habilitado no Supabase antes dos testes online com convidados.
+
+SPLASH, STARTUP E HUB
+- Logo transparente Duck Dream Studios e splash com transição curta.
+- Inicialização em etapas, validação de manifesto e recuperação com fallback offline.
+- Hub 2D, perfil editável, seleção de heróis reorganizada e sub-telas de progressão.
+- Baú diário, desafios de marcos e mercador de molduras cosméticas.
+
+MAPA PORTO DE VÉSPER
+- Nova costa irregular, canal alargado e quatro praças de cais pavimentadas.
+- 23 volumes arquitetônicos com footprints derivados dos bounds GLB.
+- Três rotas principais, cinco pontes, seis distritos, seis interiores e acessos elevados mantidos.
+- Prévia e HUD exibem a identidade do novo mapa.
+
+VERSÃO E COMPATIBILIDADE
+- versionName 1.8.3.
+- versionCode 74, superior à versão publicada 1.8.0+73.
+- applicationId preservado: com.duckdream.projectarena.
+
+VALIDAÇÃO
+- CI das branches anteriores passou por análise/testes e geração de assets; o HEAD consolidado ainda precisa de CI próprio.
+- QA Profile usa applicationId isolado e não atualiza a instalação de produção.
+- Release assinado, continuidade do certificado e teste prolongado no Realme C53 pendentes.
+- O modo Online aguarda habilitar Anonymous Sign-Ins no Dashboard do Supabase.

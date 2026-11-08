@@ -169,11 +169,11 @@ def main() -> None:
 
     require(manifest.get("package") == expected_app_id,
             f"unexpected applicationId: {manifest.get('package')!r}; expected {expected_app_id!r}")
-    require(manifest.get("versionName") == "1.8.1",
+    require(manifest.get("versionName") == "1.8.3",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
     require(version_code == 74,
-            f"expected versionCode 74 for Projeto Arena 1.8.1, got {version_code!r}")
+            f"expected versionCode 74 for Projeto Arena 1.8.3, got {version_code!r}")
     require(application.get("label") == expected_label,
             f"unexpected launcher label: {application.get('label')!r}; expected {expected_label!r}")
 
@@ -407,7 +407,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=1.8.1+{version_code}, minSdk={min_sdk}, "
+        f"version=1.8.3+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )

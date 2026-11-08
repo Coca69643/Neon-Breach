@@ -4,6 +4,8 @@ MOBA 3D mobile para Android, com Flutter + Flutter Scene. Offline, landscape e r
 
 ## Log de atualizações
 
+- **1.8.3 (74) — build consolidada em validação:** correções de gameplay e colisão, lobby Online/LAN para presença, splash e inicialização humanizadas, hub/perfil/seleção/progressão e novo mapa costeiro Porto de Vésper. O lobby não sincroniza a partida 3D; validação física no Realme C53 e release assinado continuam pendentes.
+
 - **1.7.10 (72) — cidade viva e comando tático:** fachadas CC0 variadas, iluminação/sinalização urbana, quatro interiores com funções distintas, NPCs em patrulha, ping no minimapa que redireciona um aliado e reator com estado visual de controle. Inclui correções de colisão, ondas, rotas e animações de combate. CI validou análise, testes, build ARM64, pacote e assinatura; distribuição e teste físico no Realme C53 continuam pendentes.
 - **1.7.9 (71) — diversidade visual:** seis modelos CC0 independentes para bots, tropas e NPCs; interiores e entradas ajustados.
 - **1.7.8 (70) — combate legível:** botão touch de seleção de alvo, HUD contextual com vida do inimigo e marcador de impacto somente quando o ataque acerta.

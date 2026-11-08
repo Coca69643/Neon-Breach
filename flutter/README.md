@@ -11,7 +11,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.8.1 / 74
+- versionName/versionCode: 1.8.3 / 74
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
@@ -63,7 +63,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build candidato 1.8.1+74: hub 2D ampliado, perfil local do jogador, seleção de heróis reorganizada e sub-telas de Baús, Desafios e Mercador. Mapa District Control com seis setores, captura territorial, recompensas e bots roamers. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
+- Build candidato 1.8.3+74: recuperações de gameplay e loja de campo; lobby Online/LAN de presença; splash e startup humanizados; hub, perfil, seleção, baú diário, desafios e mercador; novo mapa Porto de Vésper. O transporte online não sincroniza a partida. Teste visual, rede física e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
@@ -87,7 +87,7 @@ python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-release.apk
 Para assinar uma atualização compatível com instalações existentes, configure as quatro variáveis NEON_BREACH_KEYSTORE_* antes de executar prepare_android.py e o build. Consulte https://fscene.dev/getting-started/installation/.
 
 
-## Fundação de salas Online e Rede Local — em validação
+## Fundação de salas Online e Rede Local — integrada à candidata 1.8.3
 
 - Tela própria de salas acessível pelo atalho REDE no menu.
 - Online: Supabase Realtime em canal privado arena:lobby:<código>, com autenticação de convidado e presença.
