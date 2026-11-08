@@ -14,7 +14,9 @@ on:
       - "app/src/main/assets/world/kaykit/**"
       - "app/src/main/assets/characters/quaternius-character.glb.b64"
       - "ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt"
-      - "app/src/main/res/drawable-nodpi/ic_launcher.webp"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/res/drawable/ic_launcher_*.xml"
+      - "app/src/main/res/mipmap-*/ic_launcher*"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   pull_request:
@@ -27,7 +29,9 @@ on:
       - "app/src/main/assets/world/kaykit/**"
       - "app/src/main/assets/characters/quaternius-character.glb.b64"
       - "ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt"
-      - "app/src/main/res/drawable-nodpi/ic_launcher.webp"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/res/drawable/ic_launcher_*.xml"
+      - "app/src/main/res/mipmap-*/ic_launcher*"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   workflow_dispatch:

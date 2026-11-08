@@ -14,7 +14,7 @@
 - Anonymous Sign-Ins precisa ser habilitado no projeto Supabase antes dos testes online com convidados.
 
 ### Identidade visual do launcher
-- Ícone do Projeto Arena redesenhado como emblema robótico sci-fi em teal/ciano e âmbar, sem texto, com recurso WebP otimizado e cópia validada pelo gerador Android.
+- Ícone do Projeto Arena redesenhado como emblema robótico sci-fi teal/ciano e âmbar, sem texto. Launcher usa WebP mipmap xxxhdpi em Android 7.0–7.1, adaptive foreground/background vetoriais em Android 8+ e camada monochrome em Android 13+.
 
 ### Herói metamórfico — Linn (integração inicial)
 - Linn adicionado ao elenco jogável e à seleção por espécie, com apresentação robótica humanoide.

@@ -32,7 +32,7 @@ MAPA PORTO DE VÉSPER
 
 IDENTIDADE VISUAL
 - Ícone Android substituído por emblema sci-fi robótico em teal/ciano e âmbar, sem texto e legível em tamanhos pequenos.
-- Asset principal otimizado em WebP 192×192, carregado offline pelo gerador do host Android.
+- Ícone bitmap WebP em mipmap xxxhdpi para Android 7.0–7.1; adaptive foreground/background vetoriais para Android 8+ e camada monochrome para Android 13+.
 
 VERSÃO E COMPATIBILIDADE
 - versionName 1.8.3.
@@ -40,7 +40,7 @@ VERSÃO E COMPATIBILIDADE
 - applicationId preservado: com.duckdream.projectarena.
 
 VALIDAÇÃO
-- CI do HEAD `96c1124` passou em análise, 135 testes e preparação offline dos assets. A atualização do ícone exige nova execução CI; inspeção física no Realme C53 permanece pendente.
+- CI do HEAD `96c1124` passou em análise, 135 testes e preparação offline dos assets. A nova estrutura de ícones precisa de nova execução CI; inspeção física no Realme C53 permanece pendente.
 - QA Profile usa applicationId isolado e não atualiza a instalação de produção.
 - Release assinado, continuidade do certificado e teste prolongado no Realme C53 pendentes.
 - O modo Online aguarda habilitar Anonymous Sign-Ins no Dashboard do Supabase.

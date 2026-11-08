@@ -10,7 +10,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Android landscape, offline-first
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
-- Ícone launcher: `app/src/main/res/drawable-nodpi/ic_launcher.webp` (192×192 WebP), copiado pelo `prepare_android.py` para o host Flutter gerado.
+- Launcher icons: bitmap WebP `mipmap-xxxhdpi` para Android 7.0–7.1; adaptive foreground/background vetoriais no Android 8+ e camada monochrome no Android 13+.
 - minSdk: 24 (Android 7.0 ou superior)
 - versionName/versionCode: 1.8.3 / 74
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
@@ -31,7 +31,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 
 ## Identidade e assinatura Android
 
-O host Android gerado reutiliza o ícone vetorial e a identidade "Projeto Arena" já existentes no repositório. O applicationId permanece idêntico ao APK 0.16.0, e o versionCode é maior que 59.
+O host Android gerado reutiliza o launcher icon Project Arena: mipmap WebP de alta densidade, adaptive foreground/background e monochrome layer por versão do Android. O applicationId permanece idêntico ao APK 0.16.0, e o versionCode é maior que 59.
 
 A chave persistente de atualização (variáveis NEON_BREACH_KEYSTORE_*) só é carregada em execuções confiáveis da branch `main`. Builds de branches de desenvolvimento executam análise, testes, build ARM64 e verificação da assinatura, mas não recebem essa chave e não publicam APK de atualização. Builds locais sem essas variáveis usam a assinatura de debug do Flutter e não devem ser instalados como substituição de uma versão assinada.
 
