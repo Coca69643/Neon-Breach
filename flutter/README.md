@@ -43,7 +43,9 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Dependência Flutter Scene: fixada em 0.24.3.
 - Build hook e pré-processamento de modelos/materiais: implementados.
 - Menu principal com fundo ilustrado 2D em `CustomPainter`; leve, estático e sem instanciar a cena 3D de gameplay.
-- `HERÓIS` abre o seletor independente; `ASCENDER` abre a prévia atual; Baús, Desafios e Mercador aparecem bloqueados até seus sistemas existirem.
+- O perfil do jogador abre uma sub-tela própria para nome, foto, estatísticas e moldura equipada.
+- `HERÓIS` abre a seleção em tela cheia; `ASCENDER` mantém a entrada da partida.
+- Baús, Desafios e Mercador são sub-telas funcionais, com recompensas locais persistentes e cosméticos sem atributos competitivos.
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
 - Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
@@ -61,7 +63,7 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
 - CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.8.1+74: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
+- Build candidato 1.8.1+74: hub 2D ampliado, perfil local do jogador, seleção de heróis reorganizada e sub-telas de Baús, Desafios e Mercador. Mapa District Control com seis setores, captura territorial, recompensas e bots roamers. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 

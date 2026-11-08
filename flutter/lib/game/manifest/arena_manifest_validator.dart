@@ -14,8 +14,11 @@ class ManifestValidationResult {
 
 abstract final class ArenaManifestValidator {
   static const String manifestPath = 'assets/data/arena_manifest.json';
-  static const String studioLogoPath =
-      'assets/branding/duck_dream_studios.webp';
+  static const List<String> studioLogoPaths = [
+    'assets/branding/duck_dream_studios.0.b64',
+    'assets/branding/duck_dream_studios.1.b64',
+    'assets/branding/duck_dream_studios.2.b64',
+  ];
 
   static const Map<String, String> requiredAssetGroups = {
     'assets/heroes/': 'modelos de heróis',
@@ -52,8 +55,8 @@ abstract final class ArenaManifestValidator {
       final assetManifest = await AssetManifest.loadFromAssetBundle(bundle);
       final assetPaths = assetManifest.listAssets();
 
-      if (!assetPaths.contains(studioLogoPath)) {
-        issues.add('Logo de inicialização ausente do pacote.');
+      if (!assetPaths.toSet().containsAll(studioLogoPaths)) {
+        issues.add('Partes do logo de inicialização ausentes do pacote.');
       }
       for (final group in missingAssetGroups(assetPaths)) {
         issues.add('Grupo de conteúdo obrigatório ausente: $group.');

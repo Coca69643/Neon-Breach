@@ -93,7 +93,7 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/lyra.glb',
       idleAnimation: 'HumanArmature|Female_Idle',
       previewYawRadians: 0,
-      previewOffsetX: -0.9,
+      previewOffsetX: 0.9,
       matchScale: 0.76,
     ),
     ArenaHeroDefinition(
@@ -105,7 +105,7 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/bastion.glb',
       idleAnimation: 'HumanArmature|Man_Idle',
       previewYawRadians: 0,
-      previewOffsetX: -0.9,
+      previewOffsetX: 0.9,
       matchScale: 0.76,
     ),
     ArenaHeroDefinition(
@@ -117,7 +117,7 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/kairo.glb',
       idleAnimation: 'HumanArmature|Man_Idle',
       previewYawRadians: 0,
-      previewOffsetX: -0.9,
+      previewOffsetX: 0.9,
       matchScale: 0.76,
     ),
   ];

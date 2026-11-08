@@ -1,5 +1,23 @@
 # Changelog — Projeto Arena
 
+## [1.8.1] — em desenvolvimento
+
+### Hub, identidade e seleção
+- Fundo 2D do hub ampliado com distrito comercial, vitrines iluminadas, marquises, postes e canal urbano.
+- Cabeçalho do jogador substitui a marca fixa: ícone de perfil e nome local editável.
+- Perfil próprio com foto, estatísticas de partidas/vitórias e molduras cosméticas.
+- Seleção de heróis reorganizada com elenco lateral, prévia 3D em destaque e confirmação explícita.
+
+### Progressão e sub-telas
+- Baú diário com recompensa garantida de 100 créditos, limitado a um resgate por dia.
+- Desafios de primeira partida, primeira vitória e cinco partidas, com recompensas locais resgatáveis uma única vez.
+- Mercador de molduras de perfil compradas com créditos conquistados; cosméticos não alteram atributos de gameplay.
+- Progresso e cosméticos persistidos localmente, com testes de restauração e prevenção de resgate duplicado.
+
+### Validação
+- `flutter analyze` e `flutter test` aprovados na PR de desenvolvimento.
+- Build Android de validação e teste físico no Realme C53 permanecem pendentes.
+
 ## [1.7.10] — 2026-11-05
 
 ### Direção visual e ambiente

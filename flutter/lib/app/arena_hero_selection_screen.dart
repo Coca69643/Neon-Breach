@@ -83,8 +83,8 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
             viewport.maxHeight < 440 ||
             viewport.maxWidth < 760;
         final panelWidth = math.min(
-          420.0,
-          math.max(286.0, viewport.maxWidth * 0.34),
+          372.0,
+          math.max(258.0, viewport.maxWidth * 0.30),
         ).toDouble();
 
         return Stack(
@@ -131,9 +131,9 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
               child: Stack(
                 children: [
                   Positioned(
-                    left: compact ? 16 : 26,
+                    left: panelWidth + (compact ? 24 : 42),
                     top: compact ? 10 : 18,
-                    right: panelWidth + (compact ? 30 : 42),
+                    right: compact ? 16 : 26,
                     child: _StageTopline(
                       index: selectedIndex,
                       total: total,
@@ -141,9 +141,9 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
                     ),
                   ),
                   Positioned(
-                    left: compact ? 18 : 30,
+                    left: panelWidth + (compact ? 24 : 42),
                     bottom: compact ? 16 : 24,
-                    right: panelWidth + (compact ? 34 : 52),
+                    right: compact ? 18 : 30,
                     child: _SelectedHeroIdentity(
                       hero: selectedHero,
                       compact: compact,
@@ -152,26 +152,47 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
                   Positioned(
                     top: compact ? 8 : 18,
                     bottom: compact ? 8 : 18,
-                    right: compact ? 8 : 22,
+                    left: compact ? 8 : 22,
                     width: panelWidth,
-                    child: _HeroRosterPanel(
-                      heroes: roster,
-                      selectedHeroId: selectedHero.id,
-                      speciesFilter: _speciesFilter,
-                      showSpeciesFilters: ArenaHeroCatalog.hasMultipleSpecies,
-                      compact: compact,
-                      onSelect: (heroId) {
-                        setState(() => _previewingSynthetic = false);
-                        widget.onSelect(heroId);
-                      },
-                      onFilter: _setSpeciesFilter,
-                      prototypeSelected: _previewingSynthetic,
-                      onPreviewPrototype: () =>
-                          setState(() => _previewingSynthetic = true),
-                      onOpenPrototypeLab: () =>
-                          setState(() => _showTraversalLab = true),
-                      onBack: widget.onBack,
-                      onConfirm: widget.onConfirm,
+                    child: DecoratedBox(
+                      decoration: BoxDecoration(
+                        color: const Color(0xD9101C25),
+                        borderRadius: BorderRadius.circular(15),
+                        border: Border.all(
+                          color: const Color(0x777C9DA2),
+                          width: 1,
+                        ),
+                        boxShadow: const [
+                          BoxShadow(
+                            color: Color(0x55000000),
+                            blurRadius: 22,
+                            offset: Offset(5, 7),
+                          ),
+                        ],
+                      ),
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(15),
+                        child: _HeroRosterPanel(
+                          heroes: roster,
+                          selectedHeroId: selectedHero.id,
+                          speciesFilter: _speciesFilter,
+                          showSpeciesFilters:
+                              ArenaHeroCatalog.hasMultipleSpecies,
+                          compact: compact,
+                          onSelect: (heroId) {
+                            setState(() => _previewingSynthetic = false);
+                            widget.onSelect(heroId);
+                          },
+                          onFilter: _setSpeciesFilter,
+                          prototypeSelected: _previewingSynthetic,
+                          onPreviewPrototype: () =>
+                              setState(() => _previewingSynthetic = true),
+                          onOpenPrototypeLab: () =>
+                              setState(() => _showTraversalLab = true),
+                          onBack: widget.onBack,
+                          onConfirm: widget.onConfirm,
+                        ),
+                      ),
                     ),
                   ),
                 ],
@@ -203,7 +224,7 @@ class _StageTopline extends StatelessWidget {
         const SizedBox(width: 8),
         Flexible(
           child: Text(
-            'PROJETO ARENA  /  SELEÇÃO',
+            'ESCOLHA SEU HERÓI  /  SELEÇÃO',
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
             style: TextStyle(
