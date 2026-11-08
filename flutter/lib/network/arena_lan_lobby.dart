@@ -75,7 +75,7 @@ class ArenaLanLobbyHost {
 
   void _accept(Socket socket) {
     final subscription = socket
-        .cast<List<int>>().transform(utf8.decoder)
+        .cast<List<int>>().cast<List<int>>().transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
       (line) => _handleMessage(socket, line),
@@ -226,7 +226,7 @@ class ArenaLanLobbyClient {
     final ready = Completer<void>();
 
     client._subscription = socket
-        .transform(utf8.decoder)
+        .cast<List<int>>().transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
       (line) {
