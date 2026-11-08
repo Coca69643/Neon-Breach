@@ -123,11 +123,11 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'DUCK DREAM STUDIOS  /  WORLD PREVIEW',
                         style: TextStyle(
                           color: Color(0xFF9BD9C7),
@@ -136,15 +136,25 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 7),
+                      const SizedBox(height: 7),
                       Text(
-                        'DISTRITO URBANO',
-                        style: TextStyle(
+                        ArenaWorldCatalog.mapName,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 27,
                           height: 1,
                           letterSpacing: 1.0,
                           fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        ArenaWorldCatalog.mapSubtitle,
+                        style: const TextStyle(
+                          color: Color(0xFFD5DFDE),
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -195,7 +205,7 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        '6 distritos • 3 rotas • 5 pontes • 6 interiores • Boulevard Sul',
+                        '6 distritos • 3 rotas • 5 pontes • 4 cais • 6 interiores • Boulevard Sul',
                         style: TextStyle(
                           color: Color(0xFFD5DFDE),
                           fontSize: 12,
