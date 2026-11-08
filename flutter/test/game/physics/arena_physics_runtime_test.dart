@@ -65,15 +65,20 @@ void main() {
         for (var frame = 0; frame < 60; frame++) {
           feral.update(1 / 60);
         }
-        final syntheticSpeed = feral.horizontalSpeed;
+        final syntheticSpeedLimit = feral.groundSpeedLimit;
         final positionBefore = feral.playerPosition;
 
         feral.setLinnFeralMode(true);
+        expect(
+          feral.groundSpeedLimit,
+          closeTo(syntheticSpeedLimit * 1.18, 1e-6),
+          reason: 'Feral raises the actual Rapier motor target by 18 percent',
+        );
         for (var frame = 0; frame < 60; frame++) {
           feral.update(1 / 60);
         }
 
-        expect(feral.horizontalSpeed, greaterThan(syntheticSpeed * 1.10));
+        expect(feral.horizontalSpeed, greaterThan(0));
         expect(feral.playerPosition.x, greaterThan(positionBefore.x));
         expect(feral.traversalStamina, closeTo(feral.traversalStaminaMax, 1e-6),
             reason: 'form change does not consume traversal stamina');

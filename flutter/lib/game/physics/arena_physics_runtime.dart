@@ -187,9 +187,15 @@ class ArenaPhysicsRuntime {
   bool get slidingDownSlope => _slidingDownSlope;
   double get verticalVelocity => _verticalVelocity;
   double get horizontalSpeed => _actualHorizontalSpeed;
+  double get groundSpeedLimit =>
+      _traversalProfile.groundSpeed *
+      (_linnFeralMode ? 1.18 : 1.0) *
+      ArenaWorldCatalog.movementSpeedMultiplierAt(
+        _playerPose.translation.x,
+        _playerPose.translation.z,
+      );
   double get movementSpeedRatio =>
-      (_actualHorizontalSpeed /
-              (_traversalProfile.groundSpeed * (_linnFeralMode ? 1.18 : 1.0)))
+      (_actualHorizontalSpeed / groundSpeedLimit)
           .clamp(0.0, 1.35)
           .toDouble();
   bool get dashing => _dashRemaining > 0;
@@ -679,14 +685,7 @@ class ArenaPhysicsRuntime {
   void _updateMotorVelocity(double dt) {
     final inputLength = math.sqrt(_moveX * _moveX + _moveZ * _moveZ);
     if (_active && inputLength > 0.06) {
-      final surfaceSpeed =
-          ArenaWorldCatalog.movementSpeedMultiplierAt(
-        _playerPose.translation.x,
-        _playerPose.translation.z,
-      );
-      final formSpeedMultiplier = _linnFeralMode ? 1.18 : 1.0;
-      final targetSpeed = _traversalProfile.groundSpeed *
-          formSpeedMultiplier * surfaceSpeed * math.min(1.0, inputLength);
+      final targetSpeed = groundSpeedLimit * math.min(1.0, inputLength);
       final targetX = _moveX / inputLength * targetSpeed;
       final targetZ = _moveZ / inputLength * targetSpeed;
       final deltaX = targetX - _velocityX;
