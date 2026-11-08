@@ -502,6 +502,18 @@ void main() {
           1.0,
         );
       }
+      for (final point in const [
+        (-48.0, -76.0),
+        (48.0, -76.0),
+        (-72.0, -78.0),
+        (72.0, -78.0),
+      ]) {
+        expect(
+          ArenaWorldCatalog.isWalkable(point.$1, point.$2),
+          isTrue,
+          reason: 'new harbor buildings must not block the existing southern boulevard',
+        );
+      }
     });
 
     test('surface profiles distinguish lanes, plazas, grass and interiors', () {

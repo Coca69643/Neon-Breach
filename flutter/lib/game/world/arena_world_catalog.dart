@@ -237,10 +237,10 @@ abstract final class ArenaWorldCatalog {
     // Port warehouses form a readable outer quay skyline.
     ('commercial_building_b.glb', -64.0, 74.0, 4.8),
     ('commercial_building_c.glb', 72.0, 78.0, 4.8),
-    ('commercial_building_d.glb', -72.0, -78.0, 4.5),
-    ('commercial_building_g.glb', 72.0, -78.0, 4.5),
-    ('commercial_building_h.glb', -48.0, -76.0, 5.5),
-    ('commercial_building_f.glb', 48.0, -76.0, 5.5),
+    ('commercial_building_d.glb', -24.0, 60.0, 4.5),
+    ('commercial_building_g.glb', 24.0, 60.0, 4.5),
+    ('commercial_building_h.glb', -24.0, 82.0, 5.5),
+    ('commercial_building_f.glb', 24.0, 82.0, 5.5),
     ('suburban_building_a.glb', -48.0, 76.0, 4.8),
     ('suburban_building_c.glb', 48.0, 76.0, 4.8),
   ];
