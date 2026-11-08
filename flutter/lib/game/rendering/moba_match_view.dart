@@ -623,7 +623,7 @@ class _MobaMatchViewState extends State<MobaMatchView> {
       SceneModel(
         _terrainAsset,
         key: const ValueKey('match-terrain'),
-        name: 'vale_das_coroas_match_terrain',
+        name: 'project_arena_urban_battlefield',
         onLoaded: (_) => _markWorldAssetReady('terrain'),
       ),
       for (var i = 0; i < ArenaWorldCatalog.trees.length; i++)
