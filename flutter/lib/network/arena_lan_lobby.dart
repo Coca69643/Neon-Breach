@@ -36,8 +36,10 @@ class ArenaLanLobbyHost {
 
   ServerSocket? _server;
   bool _closed = false;
+  List<String> _currentMembers = const <String>[];
 
   Stream<List<String>> get members => _members.stream;
+  List<String> get currentMembers => _currentMembers;
   int get currentMemberCount => 1 + _clients.length;
 
   Future<ArenaLanEndpoint> start() async {
@@ -259,7 +261,8 @@ class ArenaLanLobbyClient {
         final rawMembers = decoded['members'];
         if (decoded['type'] == 'roster' && rawMembers is List) {
           final names = rawMembers.whereType<String>().take(8).toList(growable: false);
-          if (!client._members.isClosed) client._members.add(names);
+          client._currentMembers = List<String>.unmodifiable(names);
+          if (!client._members.isClosed) client._members.add(client._currentMembers);
           if (!ready.isCompleted) ready.complete();
         }
       },
