@@ -89,10 +89,7 @@ class ArenaOnlineLobbyService {
       }
     }
 
-    channel.onPresence(
-      event: PresenceEvent.sync,
-      callback: (_) => emitMemberCount(),
-    );
+    channel.onPresenceSync((_) => emitMemberCount());
 
     channel.subscribe((status, [error]) async {
       if (status == RealtimeSubscribeStatus.subscribed) {
