@@ -407,15 +407,17 @@ class _ArenaSyntheticTraversalLabState
                     child: ValueListenableBuilder<String>(
                       valueListenable: _status,
                       builder: (context, status, _) => Text(
-                      status,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        color: Color(0xFFE6F2EF),
-                        fontSize: 10,
-                        fontWeight: FontWeight.w700,
-                        shadows: [Shadow(color: Colors.black87, blurRadius: 8)],
+                        status,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          color: Color(0xFFE6F2EF),
+                          fontSize: 10,
+                          fontWeight: FontWeight.w700,
+                          shadows: [
+                            Shadow(color: Colors.black87, blurRadius: 8),
+                          ],
+                        ),
                       ),
-                    ),
                   ),
                 ),
               ],
