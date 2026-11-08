@@ -39,12 +39,18 @@ class ArenaSyntheticHeroModel extends StatelessWidget {
   static final CuboidGeometry _backpack = CuboidGeometry(vm.Vector3(0.34, 0.46, 0.18));
   static final CuboidGeometry _antenna = CuboidGeometry(vm.Vector3(0.055, 0.17, 0.055));
 
-  static final UnlitMaterial _shell = UnlitMaterial()
-    ..baseColorFactor = vm.Vector4(0.66, 0.76, 0.78, 1);
-  static final UnlitMaterial _shellLight = UnlitMaterial()
-    ..baseColorFactor = vm.Vector4(0.83, 0.88, 0.88, 1);
-  static final UnlitMaterial _dark = UnlitMaterial()
-    ..baseColorFactor = vm.Vector4(0.075, 0.12, 0.15, 1);
+  static final PhysicallyBasedMaterial _shell = PhysicallyBasedMaterial()
+    ..baseColorFactor = vm.Vector4(0.66, 0.76, 0.78, 1)
+    ..metallicFactor = 0.78
+    ..roughnessFactor = 0.34;
+  static final PhysicallyBasedMaterial _shellLight = PhysicallyBasedMaterial()
+    ..baseColorFactor = vm.Vector4(0.83, 0.88, 0.88, 1)
+    ..metallicFactor = 0.56
+    ..roughnessFactor = 0.29;
+  static final PhysicallyBasedMaterial _dark = PhysicallyBasedMaterial()
+    ..baseColorFactor = vm.Vector4(0.075, 0.12, 0.15, 1)
+    ..metallicFactor = 0.62
+    ..roughnessFactor = 0.42;
   static final UnlitMaterial _cyan = UnlitMaterial()
     ..baseColorFactor = vm.Vector4(0.13, 0.86, 0.79, 1);
   static final UnlitMaterial _amber = UnlitMaterial()
