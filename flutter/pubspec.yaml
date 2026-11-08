@@ -27,6 +27,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
+    - assets/branding/
     - assets/data/arena_manifest.json
     - assets/heroes/
     - assets/weapons/

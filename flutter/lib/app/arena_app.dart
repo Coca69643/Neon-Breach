@@ -9,8 +9,11 @@ import '../game/rendering/arena_main_menu_scene.dart';
 import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
+import '../network/arena_network_preflight.dart';
+import '../network/arena_online_lobby_service.dart';
 import 'arena_hero_selection_screen.dart';
 import 'arena_network_lobby_screen.dart';
+import 'arena_startup_gate.dart';
 import 'arena_player_profile.dart';
 
 class ArenaApp extends StatefulWidget {
@@ -25,6 +28,13 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   MobaMatchSimulation? _matchSimulation;
   final ArenaPlayerProfileStore _profileStore = ArenaPlayerProfileStore();
   ArenaPlayerProfile _playerProfile = const ArenaPlayerProfile();
+  bool _startupFinished = false;
+  bool _showStudioSplash = true;
+  double _startupProgress = 0;
+  String _startupTitle = 'Preparando sua Arena';
+  String _startupDescription = 'Organizando os recursos principais.';
+  bool _localNetworkPrepared = false;
+  bool _onlineClientPrepared = false;
 
   @override
   void initState() {
@@ -32,15 +42,80 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     _machine = ArenaStateMachine();
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _bootstrap();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
   Future<void> _bootstrap() async {
     _machine.dispatch(const BootCompleted());
-    await Future.wait([
-      _initializeFoundation(),
-      _restorePlayerProfile(),
+
+    // Keep the studio splash short; initialization is shown in the loader.
+    await Future<void>.delayed(const Duration(milliseconds: 720));
+    if (!mounted) return;
+    setState(() => _showStudioSplash = false);
+    await Future<void>.delayed(const Duration(milliseconds: 260));
+
+    _setStartupProgress(
+      0.08,
+      'Restaurando seu perfil',
+      'Recuperando nome, avatar e preferências locais.',
+    );
+    await _restorePlayerProfile();
+
+    _setStartupProgress(
+      0.20,
+      'Conferindo o pacote do jogo',
+      'Verificando manifesto e grupos de conteúdo embarcados.',
+    );
+    final foundationReady = await _initializeFoundation(
+      onProgress: _setStartupProgress,
+    );
+    if (!mounted) return;
+    if (!foundationReady) {
+      setState(() => _startupFinished = true);
+      return;
+    }
+
+    _setStartupProgress(
+      0.78,
+      'Preparando os serviços de sessão',
+      'Verificando o TCP local e inicializando o cliente Online sem entrar em uma sala.',
+    );
+
+    final networkResults = await Future.wait<bool>([
+      ArenaNetworkPreflight.checkLoopbackTcp().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => false,
+      ),
+      ArenaOnlineLobbyService.prepareClient().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => false,
+      ),
     ]);
+    if (!mounted) return;
+
+    setState(() {
+      _localNetworkPrepared = networkResults[0];
+      _onlineClientPrepared = networkResults[1];
+    });
+
+    _setStartupProgress(
+      1,
+      'Arena pronta',
+      'Conteúdo validado. Partidas e salas serão abertas quando você escolher.',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    if (mounted) {
+      setState(() => _startupFinished = true);
+    }
+  }
+
+  void _setStartupProgress(double progress, String title, String description) {
+    if (!mounted) return;
+    setState(() {
+      _startupProgress = progress.clamp(0.0, 1.0).toDouble();
+      _startupTitle = title;
+      _startupDescription = description;
+    });
   }
 
   Future<void> _restorePlayerProfile() async {
@@ -199,32 +274,54 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     );
   }
 
-  Future<void> _initializeFoundation() async {
+  Future<bool> _initializeFoundation({
+    void Function(double, String, String)? onProgress,
+  }) async {
     try {
+      onProgress?.call(
+        0.28,
+        'Validando o conteúdo local',
+        'Checando manifesto, marca, heróis, NPCs, mundo e recursos 3D.',
+      );
+      final result = await ArenaManifestValidator.validate(rootBundle);
+      if (!mounted) return false;
+
+      if (!result.valid) {
+        _machine.dispatch(
+          ManifestValidationCompleted(
+            valid: false,
+            reason: result.issues.join('\n'),
+          ),
+        );
+        return false;
+      }
+
+      onProgress?.call(
+        0.54,
+        'Inicializando o runtime 3D',
+        'Preparando os recursos compartilhados de Flutter Scene / Impeller.',
+      );
       // GPU resources must be ready before the first declarative SceneView.
       await ArenaSceneRuntime.initialize();
-      await _validateManifest();
+      if (!mounted) return false;
+
+      _machine.dispatch(const ManifestValidationCompleted(valid: true));
+      onProgress?.call(
+        0.72,
+        'Runtime 3D pronto',
+        'A memória pesada do mapa será alocada na entrada da partida.',
+      );
+      return true;
     } catch (error) {
-      if (!mounted) return;
+      if (!mounted) return false;
       _machine.dispatch(
         ManifestValidationCompleted(
           valid: false,
-          reason: 'Falha ao inicializar o runtime 3D: $error',
+          reason: 'Falha ao preparar o conteúdo ou runtime 3D: $error',
         ),
       );
+      return false;
     }
-  }
-
-  Future<void> _validateManifest() async {
-    final result = await ArenaManifestValidator.validate(rootBundle);
-    if (!mounted) return;
-
-    _machine.dispatch(
-      ManifestValidationCompleted(
-        valid: result.valid,
-        reason: result.issues.join('\n'),
-      ),
-    );
   }
 
   @override
@@ -264,17 +361,35 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
         scaffoldBackgroundColor: background,
         fontFamily: 'Roboto',
       ),
-      home: AnimatedBuilder(
-        animation: _machine,
-        builder: (context, _) => _ArenaScreen(
-          snapshot: _machine.snapshot,
-          onEvent: _dispatch,
-          onRetry: _retry,
-          simulation: _matchSimulation,
-          playerProfile: _playerProfile,
-          onEditPlayerProfile: _editPlayerProfile,
-          onOpenNetworkLobby: _openNetworkLobby,
-        ),
+      home: Stack(
+        fit: StackFit.expand,
+        children: [
+          AnimatedBuilder(
+            animation: _machine,
+            builder: (context, _) => _ArenaScreen(
+              snapshot: _machine.snapshot,
+              onEvent: _dispatch,
+              onRetry: _retry,
+              simulation: _matchSimulation,
+              playerProfile: _playerProfile,
+              onEditPlayerProfile: _editPlayerProfile,
+              onOpenNetworkLobby: _openNetworkLobby,
+            ),
+          ),
+          if (!_startupFinished)
+            Positioned.fill(
+              child: ArenaStartupGate(
+                showStudioSplash: _showStudioSplash,
+                progress: _startupProgress,
+                stageTitle: _startupTitle,
+                stageDescription: _startupDescription,
+                playerName: _playerProfile.displayName,
+                playerAvatarPath: _playerProfile.avatarPath,
+                localNetworkPrepared: _localNetworkPrepared,
+                onlineClientPrepared: _onlineClientPrepared,
+              ),
+            ),
+        ],
       ),
     );
   }

@@ -29,6 +29,17 @@ class ArenaOnlineLobbyService {
     return Supabase.instance.client;
   }
 
+  /// Initializes only the client object; no auth, room or Realtime presence.
+  static Future<bool> prepareClient() async {
+    try {
+      await _client();
+      return true;
+    } on Object {
+      _initialized = false;
+      return false;
+    }
+  }
+
   static Future<void> _ensureGuest(SupabaseClient client) async {
     if (client.auth.currentUser != null) return;
     final response = await client.auth.signInAnonymously();
