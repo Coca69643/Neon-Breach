@@ -121,4 +121,4 @@ Todo novo modelo deve ter licença verificada, origem fixa, hash registrado, val
 
 ## Estado
 
-**S1 em implementação; aceite visual pendente.** A arquitetura 2D no menu / 3D na gameplay está confirmada. O CI passou para a etapa de footprints e colisões; o próximo passo é validar a composição do Mercado Central com screenshots e no aparelho antes de propagar o padrão aos demais distritos.
+**S1 e primeira expansão do S2 em implementação; aceite visual pendente.** A quarta fatia adiciona quatro fachadas ao Mercado Central e o Boulevard Sul ao bake de terreno, mantendo a arquitetura 2D no menu / 3D na gameplay. A nova geometria precisa passar pelo CI, captura da câmera real de partida e validação no aparelho antes de ser considerada aprovada.
