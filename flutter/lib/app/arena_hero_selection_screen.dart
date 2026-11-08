@@ -48,7 +48,10 @@ class _ArenaHeroSelectionScreenState extends State<ArenaHeroSelectionScreen> {
             .toList(growable: false);
     if (nextHeroes.isEmpty) return;
 
-    setState(() => _speciesFilter = species);
+    setState(() {
+      _speciesFilter = species;
+      _previewingSynthetic = false;
+    });
     if (!nextHeroes.any((hero) => hero.id == widget.selectedHeroId)) {
       widget.onSelect(nextHeroes.first.id);
     }
