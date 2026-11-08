@@ -103,6 +103,58 @@ void main() {
       expect(physics.consumeSlideCompletion(), isFalse);
     });
 
+    test('synthetic prototype owns a distinct movement profile', () {
+      final synthetic = ArenaTraversalProfile.syntheticPrototype();
+      final lyra = ArenaTraversalProfile.forHero(MobaHeroId.lyra);
+      final bastion = ArenaTraversalProfile.forHero(MobaHeroId.bastion);
+      final kairo = ArenaTraversalProfile.forHero(MobaHeroId.kairo);
+
+      expect(synthetic.groundSpeed, greaterThan(kairo.groundSpeed));
+      expect(synthetic.groundAcceleration, greaterThan(lyra.groundAcceleration));
+      expect(synthetic.jumpImpulse, greaterThan(kairo.jumpImpulse));
+      expect(synthetic.slideDuration, greaterThan(lyra.slideDuration));
+      expect(synthetic.airControlRatio, greaterThan(bastion.airControlRatio));
+    });
+
+    test('synthetic traversal jump is grounded, one-shot and gravity-resolved',
+        () async {
+      final synthetic = await ArenaPhysicsRuntime.create(
+        spawn: const MobaPoint(0, -60),
+        traversalProfile: ArenaTraversalProfile.syntheticPrototype(),
+      );
+      try {
+        for (var frame = 0; frame < 4; frame++) {
+          synthetic.update(1 / 60);
+        }
+
+        expect(synthetic.grounded, isTrue);
+        expect(synthetic.canTriggerJump, isTrue);
+        expect(synthetic.triggerTraversalJump(), isTrue);
+        expect(synthetic.jumping, isTrue);
+        expect(
+          synthetic.triggerTraversalJump(),
+          isFalse,
+          reason: 'the prototype cannot jump again before landing',
+        );
+
+        for (var frame = 0; frame < 12; frame++) {
+          synthetic.update(1 / 60);
+        }
+        expect(synthetic.verticalVelocity, greaterThan(0));
+        expect(synthetic.playerPosition.elevation, greaterThan(0.2));
+
+        for (var frame = 0; frame < 100; frame++) {
+          synthetic.update(1 / 60);
+        }
+        expect(synthetic.grounded, isTrue);
+        expect(synthetic.jumping, isFalse);
+        expect(synthetic.verticalVelocity.abs(), lessThan(0.05));
+        expect(synthetic.playerPosition.elevation.abs(), lessThan(0.20));
+      } finally {
+        synthetic.dispose();
+      }
+    });
+
     test('gravity settles the capsule on the terrain', () async {
       await advance(frames: 60);
 
