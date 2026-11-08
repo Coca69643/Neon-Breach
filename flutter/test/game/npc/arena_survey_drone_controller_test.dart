@@ -1,8 +1,8 @@
 import 'dart:math' as math;
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:project_arena/game/match/moba_match_simulation.dart';
-import 'package:project_arena/game/npc/arena_survey_drone_controller.dart';
+import 'package:project_arena_flutter/game/match/moba_match_simulation.dart';
+import 'package:project_arena_flutter/game/npc/arena_survey_drone_controller.dart';
 
 void main() {
   group('ArenaSurveyDroneController', () {
