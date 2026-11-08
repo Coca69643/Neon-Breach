@@ -714,6 +714,7 @@ class ArenaPhysicsRuntime {
           elevation: resolvedElevation,
         ) +
         footOffset;
+    _jumpActive = false;
     final translation = vm.Vector3(point.x, y, point.z);
     _playerPose.translation.setFrom(translation);
     _world.setBodyPose(
