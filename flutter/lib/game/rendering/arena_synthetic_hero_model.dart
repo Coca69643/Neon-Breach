@@ -265,6 +265,12 @@ class ArenaSurveyDroneModel extends StatelessWidget {
       CuboidGeometry(vm.Vector3(0.94, 0.055, 0.085));
   static final CuboidGeometry _rotor =
       CuboidGeometry(vm.Vector3(0.25, 0.035, 0.055));
+  static final List<vm.Vector3> _rotorPositions = [
+    vm.Vector3(-0.41, 0.08, -0.41),
+    vm.Vector3(0.41, 0.08, -0.41),
+    vm.Vector3(-0.41, 0.08, 0.41),
+    vm.Vector3(0.41, 0.08, 0.41),
+  ];
   static final PhysicallyBasedMaterial _frame = PhysicallyBasedMaterial()
     ..baseColorFactor = vm.Vector4(0.16, 0.22, 0.25, 1)
     ..metallicFactor = 0.72
@@ -280,12 +286,6 @@ class ArenaSurveyDroneModel extends StatelessWidget {
   Widget build(BuildContext context) {
     final hover = math.sin(phase * 3.2) * 0.035;
     final rotorAngle = phase * 7.5;
-    final rotorPositions = <vm.Vector3>[
-      vm.Vector3(-0.41, 0.08, -0.41),
-      vm.Vector3(0.41, 0.08, -0.41),
-      vm.Vector3(-0.41, 0.08, 0.41),
-      vm.Vector3(0.41, 0.08, 0.41),
-    ];
     return SceneNode(
       name: 'arena_survey_drone_root',
       position: vm.Vector3(position.x, position.y + hover, position.z),
@@ -327,12 +327,12 @@ class ArenaSurveyDroneModel extends StatelessWidget {
             math.pi / 2,
           ),
         ),
-        for (var index = 0; index < rotorPositions.length; index++)
+        for (var index = 0; index < _rotorPositions.length; index++)
           SceneMesh(
             name: 'arena_survey_drone_rotor_$index',
             geometry: _rotor,
             material: _signal,
-            position: rotorPositions[index],
+            position: _rotorPositions[index],
             rotation: vm.Quaternion.axisAngle(
               vm.Vector3(0, 1, 0),
               rotorAngle,
