@@ -21,6 +21,9 @@ class ArenaTraversalProfile {
     required this.slideDuration,
     required this.slideFrictionMultiplier,
     required this.slideSteeringRadiansPerSecond,
+    required this.groundSpeed,
+    required this.groundAcceleration,
+    required this.jumpImpulse,
   });
 
   final double maxCharges;
@@ -32,6 +35,25 @@ class ArenaTraversalProfile {
   final double slideDuration;
   final double slideFrictionMultiplier;
   final double slideSteeringRadiansPerSecond;
+  final double groundSpeed;
+  final double groundAcceleration;
+  final double jumpImpulse;
+
+  static ArenaTraversalProfile syntheticPrototype() =>
+      const ArenaTraversalProfile(
+        maxCharges: 3,
+        dashDistance: 5.0,
+        dashDuration: 0.21,
+        regenerationPerSecond: 0.82,
+        regenerationDelay: 0.48,
+        airControlRatio: 0.68,
+        slideDuration: 0.82,
+        slideFrictionMultiplier: 0.22,
+        slideSteeringRadiansPerSecond: 2.75,
+        groundSpeed: 6.15,
+        groundAcceleration: 24.0,
+        jumpImpulse: 8.1,
+      );
 
   static ArenaTraversalProfile forHero(MobaHeroId heroId) => switch (heroId) {
         MobaHeroId.lyra => const ArenaTraversalProfile(
@@ -44,6 +66,9 @@ class ArenaTraversalProfile {
             slideDuration: 0.64,
             slideFrictionMultiplier: 0.30,
             slideSteeringRadiansPerSecond: 2.0,
+            groundSpeed: 5.6,
+            groundAcceleration: 21.0,
+            jumpImpulse: 6.4,
           ),
         MobaHeroId.bastion => const ArenaTraversalProfile(
             maxCharges: 2,
@@ -55,6 +80,9 @@ class ArenaTraversalProfile {
             slideDuration: 0.50,
             slideFrictionMultiplier: 0.42,
             slideSteeringRadiansPerSecond: 1.45,
+            groundSpeed: 5.2,
+            groundAcceleration: 18.5,
+            jumpImpulse: 5.7,
           ),
         MobaHeroId.kairo => const ArenaTraversalProfile(
             maxCharges: 4,
@@ -66,6 +94,9 @@ class ArenaTraversalProfile {
             slideDuration: 0.70,
             slideFrictionMultiplier: 0.26,
             slideSteeringRadiansPerSecond: 2.4,
+            groundSpeed: 6.0,
+            groundAcceleration: 23.0,
+            jumpImpulse: 7.0,
           ),
       };
 }
@@ -131,6 +162,7 @@ class ArenaPhysicsRuntime {
   double _slideRemaining = 0;
   bool _slideActive = false;
   bool _slideCompletionPending = false;
+  bool _jumpActive = false;
   bool _active = true;
   bool _grounded = false;
   bool _disposed = false;
@@ -141,9 +173,15 @@ class ArenaPhysicsRuntime {
   double get verticalVelocity => _verticalVelocity;
   double get horizontalSpeed => _actualHorizontalSpeed;
   double get movementSpeedRatio =>
-      (_actualHorizontalSpeed / moveSpeed).clamp(0.0, 1.35).toDouble();
+      (_actualHorizontalSpeed / _traversalProfile.groundSpeed)
+          .clamp(0.0, 1.35)
+          .toDouble();
   bool get dashing => _dashRemaining > 0;
   bool get sliding => _slideActive;
+  bool get jumping => _jumpActive;
+  bool get canTriggerJump =>
+      !_disposed && _active && _grounded && !_slideActive &&
+      _dashRemaining <= 0 && !_jumpActive;
   bool get canTriggerSlide =>
       !_disposed &&
       _active &&
@@ -198,6 +236,7 @@ class ArenaPhysicsRuntime {
     MobaHeroId heroId = MobaHeroId.lyra,
     Iterable<MobaTowerSnapshot> towers = const [],
     Iterable<MobaCoverSnapshot> covers = const [],
+    ArenaTraversalProfile? traversalProfile,
   }) async {
     await RapierWorld.ensureInitialized();
     final world = RapierWorld(gravity: vm.Vector3(0, -gravity, 0));
@@ -236,7 +275,7 @@ class ArenaPhysicsRuntime {
         playerPose,
         playerColliders.first,
         staticBody,
-        ArenaTraversalProfile.forHero(heroId),
+        traversalProfile ?? ArenaTraversalProfile.forHero(heroId),
       );
 
       runtime._buildTerrain();
@@ -286,6 +325,7 @@ class ArenaPhysicsRuntime {
       _slideRemaining = 0;
       _slideActive = false;
       _slideCompletionPending = false;
+      _jumpActive = false;
       _actualHorizontalSpeed = 0;
     }
   }
@@ -358,6 +398,19 @@ class ArenaPhysicsRuntime {
     return true;
   }
 
+  /// A vertical traversal hop: it does not target, affect or collide with
+  /// other actors. The impulse is profile-specific and resolved by Rapier.
+  bool triggerTraversalJump({double impulseMultiplier = 1.0}) {
+    if (!canTriggerJump || !impulseMultiplier.isFinite ||
+        impulseMultiplier < 0.8 || impulseMultiplier > 1.8) {
+      return false;
+    }
+    _verticalVelocity = _traversalProfile.jumpImpulse * impulseMultiplier;
+    _grounded = false;
+    _jumpActive = true;
+    return true;
+  }
+
   /// Advances on Rapier's fixed clock, independently of render frame rate.
   void update(double frameDelta) {
     if (_disposed || !frameDelta.isFinite || frameDelta <= 0) return;
@@ -410,7 +463,7 @@ class ArenaPhysicsRuntime {
       slide: true,
       maxSlopeClimbAngle: 0.74,
       minSlopeSlideAngle: 0.86,
-      snapToGround: 0.34,
+      snapToGround: _verticalVelocity > 0 ? 0.0 : 0.34,
       autostep: true,
       autostepMaxHeight: 0.38,
       autostepMinWidth: 0.18,
@@ -462,7 +515,10 @@ class ArenaPhysicsRuntime {
     }
     _grounded = movement.grounded;
     _slidingDownSlope = movement.slidingDownSlope;
-    if (_grounded && _verticalVelocity < 0) _verticalVelocity = 0;
+    if (_grounded && _verticalVelocity < 0) {
+      _verticalVelocity = 0;
+      _jumpActive = false;
+    }
 
     _world.setBodyKinematicTargetPose(
       _playerBody,
@@ -605,7 +661,7 @@ class ArenaPhysicsRuntime {
         _playerPose.translation.x,
         _playerPose.translation.z,
       );
-      final targetSpeed = moveSpeed * surfaceSpeed *
+      final targetSpeed = _traversalProfile.groundSpeed * surfaceSpeed *
           math.min(1.0, inputLength);
       final targetX = _moveX / inputLength * targetSpeed;
       final targetZ = _moveZ / inputLength * targetSpeed;
@@ -617,7 +673,8 @@ class ArenaPhysicsRuntime {
       final groundedRatio =
           _grounded ? 1.0 : _traversalProfile.airControlRatio;
       final maximumChange =
-          acceleration * reversalBoost * groundedRatio * dt;
+          _traversalProfile.groundAcceleration *
+              reversalBoost * groundedRatio * dt;
       final blend = deltaLength <= maximumChange || deltaLength <= 1e-6
           ? 1.0
           : maximumChange / deltaLength;
