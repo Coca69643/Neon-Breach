@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Bake the irregular six-district Project Arena battlefield.
+"""Bake the fictional Porto de Vésper coastal-industrial environment.
 
-The offline GLB has a 224 × 188 navigable footprint, a curved canal with five
-crossings, three combat corridors, six enterable interiors and side routes.
+The offline GLB has a 224 × 188 navigable footprint, a widened harbor channel,
+four paved quay plazas, five existing crossings and six enterable interiors.
 """
 from __future__ import annotations
 
@@ -21,7 +21,7 @@ FLUTTER_ASSETS = ROOT / "flutter" / "assets" / "world"
 NATURE_SOURCE = ROOT / "app/src/main/assets/world/nature"
 TERRAIN_SOURCE = ROOT / "app/src/main/assets/world/terrain"
 WORLD_SCALE = 1.0
-# Expanded six-district combat footprint; polygon is mirrored in Dart.
+# Coastal harbor footprint; polygon is mirrored by ArenaWorldCatalog.
 HALF_X = 112.0
 HALF_Z = 94.0
 GRID_X = 224
@@ -819,12 +819,12 @@ def build_terrain_glb(output: Path) -> None:
     document = {
         "asset": {
             "version": "2.0",
-            "generator": "Duck Dream Studios - Vale das Coroas terrain bake",
+            "generator": "Duck Dream Studios - Porto de Vesper terrain bake",
         },
         "scene": 0,
         "scenes": [{"nodes": [0]}],
-        "nodes": [{"name": "Vale das Coroas - Organic Terrain", "mesh": 0}],
-        "meshes": [{"name": "Organic terrain and river", "primitives": primitives}],
+        "nodes": [{"name": "Porto de Vésper - Coastal Terrain", "mesh": 0}],
+        "meshes": [{"name": "Coastal harbor terrain and channel", "primitives": primitives}],
         "materials": materials,
         "samplers": [sampler],
         "textures": textures,
@@ -836,7 +836,7 @@ def build_terrain_glb(output: Path) -> None:
             "offline": True,
             "worldScale": WORLD_SCALE,
             "grid": [GRID_X, GRID_Z],
-            "layout": "224x188 irregular six-district city battlefield with one continuous height-following terrain mesh, baked asphalt corridors, concrete sidewalks, a meandering canal, five bridges, six enterable interiors and CC0 city/park dressing",
+            "layout": "224x188 fictional coastal industrial harbor with a continuous height-following terrain mesh, paved quay plazas, a widened meandering channel, five bridges, six enterable interiors and pinned CC0 city/park dressing",
             "roadSurface": "separate-raised-surface-mesh",
             "roadGeometry": "raised asphalt and concrete overlays over continuous ground, with raised curbs, lane dashes and bridge crossings; no independent scaled road tile slabs",
             "surfaceOffsets": {
@@ -844,7 +844,9 @@ def build_terrain_glb(output: Path) -> None:
                 "asphaltCrown": ASPHALT_CROWN_LIFT,
                 "concrete": CONCRETE_SURFACE_LIFT,
             },
-            "mapShape": "irregular-six-district-polygon",
+            "mapShape": "coastal-industrial-harbor",
+            "mapName": "PORTO DE VÉSPER",
+            "dockPlazaCount": len(DOCK_PLAZAS),
             "laneCount": 3,
             "southernBoulevard": True,
             "accessRouteCount": 17,
