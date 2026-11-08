@@ -113,7 +113,7 @@ class _ArenaSyntheticTraversalLabState
       canJump: false,
       dronePosition: MobaPoint(2.4, -55.6),
       droneFacing: 0,
-      droneState: ArenaSurveyDroneState.patrolling.label,
+      droneState: 'PATRULHANDO',
     );
   }
 
@@ -471,6 +471,7 @@ class _ArenaSyntheticTraversalLabState
                         ),
                       ),
                   ),
+                ),
                 ),
               ],
             ),
