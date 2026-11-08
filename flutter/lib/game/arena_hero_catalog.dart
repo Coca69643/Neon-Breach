@@ -66,8 +66,23 @@ class ArenaHeroDefinition {
 }
 
 abstract final class ArenaHeroCatalog {
-  /// Add new character metadata here. Gameplay integration is documented in
-  /// docs/PROJECT_ARENA_HERO_SELECTION.md.
+  /// Experimental metadata is kept outside [heroes], so the prototype can be
+  /// previewed without entering the production match roster.
+  static const ArenaHeroDefinition syntheticPrototype = ArenaHeroDefinition(
+    id: 'synthetic-prototype',
+    name: 'SYNTH-01',
+    species: ArenaHeroSpecies.synthetic,
+    role: 'MOBILIDADE EXPERIMENTAL',
+    summary: 'Plataforma humanoide modular com perfil de travessia exclusivo.',
+    modelAsset: 'procedural://synthetic-01',
+    idleAnimation: 'procedural-idle',
+    previewScale: 1,
+    previewOffsetX: 0,
+    matchScale: 0.8,
+  );
+
+  /// Add production-ready characters here after rig, clips and integration
+  /// have been completed and tested.
   static const List<ArenaHeroDefinition> heroes = [
     ArenaHeroDefinition(
       id: 'lyra',
