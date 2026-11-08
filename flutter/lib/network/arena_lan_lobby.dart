@@ -18,7 +18,7 @@ class ArenaLanEndpoint {
 
 class ArenaLanLobbyHost {
   ArenaLanLobbyHost({
-    required this.displayName,
+    required String displayName,
     required this.roomCode,
   }) : _displayName = ArenaLobbyCode.normalizeDisplayName(displayName) {
     if (!ArenaLobbyCode.isValid(roomCode)) {
@@ -75,7 +75,7 @@ class ArenaLanLobbyHost {
 
   void _accept(Socket socket) {
     final subscription = socket
-        .transform(utf8.decoder)
+        .cast<List<int>>().transform(utf8.decoder)
         .transform(const LineSplitter())
         .listen(
       (line) => _handleMessage(socket, line),
