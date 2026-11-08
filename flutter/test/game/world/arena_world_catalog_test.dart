@@ -222,12 +222,12 @@ void main() {
       expect(ArenaWorldCatalog.commercialLocalBounds, hasLength(12));
       final marketBuildings = ArenaWorldCatalog.commercialBlocks.where(
         (block) =>
-            block.$2 == 20.5 &&
+            block.$2.abs() == 20.5 &&
             (block.$3 == -68.0 || block.$3 == -40.0) &&
             (block.$1 == 'commercial_building_i.glb' ||
                 block.$1 == 'commercial_building_j.glb'),
       ).toList();
-      expect(marketBuildings, hasLength(2));
+      expect(marketBuildings, hasLength(4));
       expect(ArenaWorldCatalog.isWalkable(12.0, -54.0), isTrue,
           reason: 'Market Central capture plaza must remain open');
       for (final building in marketBuildings) {
