@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
@@ -7,7 +9,15 @@ import '../game/rendering/arena_main_menu_scene.dart';
 import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
+import '../network/arena_network_preflight.dart';
+import '../network/arena_online_lobby_service.dart';
 import 'arena_hero_selection_screen.dart';
+import 'arena_hub_progress.dart';
+import 'arena_hub_subscreen.dart';
+import 'arena_network_lobby_screen.dart';
+import 'arena_player_profile.dart';
+import 'arena_profile_screen.dart';
+import 'arena_startup_gate.dart';
 
 class ArenaApp extends StatefulWidget {
   const ArenaApp({super.key});
@@ -19,6 +29,16 @@ class ArenaApp extends StatefulWidget {
 class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   late final ArenaStateMachine _machine;
   MobaMatchSimulation? _matchSimulation;
+  final ArenaPlayerProfileStore _profileStore = ArenaPlayerProfileStore();
+  final ArenaHubProgressStore _hubProgress = ArenaHubProgressStore();
+  ArenaPlayerProfile _playerProfile = const ArenaPlayerProfile();
+  bool _startupFinished = false;
+  bool _showStudioSplash = true;
+  double _startupProgress = 0;
+  String _startupTitle = 'Preparando sua Arena';
+  String _startupDescription = 'Organizando os recursos principais.';
+  bool _localNetworkPrepared = false;
+  bool _onlineClientPrepared = false;
 
   @override
   void initState() {
@@ -26,40 +46,199 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     _machine = ArenaStateMachine();
     WidgetsBinding.instance.addObserver(this);
     SystemChrome.setEnabledSystemUIMode(SystemUiMode.immersiveSticky);
-    _bootstrap();
+    WidgetsBinding.instance.addPostFrameCallback((_) => _bootstrap());
   }
 
   Future<void> _bootstrap() async {
     _machine.dispatch(const BootCompleted());
-    await _initializeFoundation();
-  }
 
-  Future<void> _initializeFoundation() async {
-    try {
-      // GPU resources must be ready before the first declarative SceneView.
-      await ArenaSceneRuntime.initialize();
-      await _validateManifest();
-    } catch (error) {
-      if (!mounted) return;
-      _machine.dispatch(
-        ManifestValidationCompleted(
-          valid: false,
-          reason: 'Falha ao inicializar o runtime 3D: $error',
-        ),
-      );
+    // Keep the studio splash short; initialization is shown in the loader.
+    await Future<void>.delayed(const Duration(milliseconds: 720));
+    if (!mounted) return;
+    setState(() => _showStudioSplash = false);
+    await Future<void>.delayed(const Duration(milliseconds: 260));
+
+    _setStartupProgress(
+      0.08,
+      'Restaurando seu perfil',
+      'Recuperando nome, avatar e preferências locais.',
+    );
+    await _restorePlayerProfile();
+
+    _setStartupProgress(
+      0.20,
+      'Conferindo o pacote do jogo',
+      'Verificando manifesto e grupos de conteúdo embarcados.',
+    );
+    final foundationReady = await _initializeFoundation(
+      onProgress: _setStartupProgress,
+    );
+    if (!mounted) return;
+    if (!foundationReady) {
+      setState(() => _startupFinished = true);
+      return;
+    }
+
+    _setStartupProgress(
+      0.78,
+      'Preparando os serviços de sessão',
+      'Verificando o TCP local e inicializando o cliente Online sem entrar em uma sala.',
+    );
+
+    final networkResults = await Future.wait<bool>([
+      ArenaNetworkPreflight.checkLoopbackTcp().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => false,
+      ),
+      ArenaOnlineLobbyService.prepareClient().timeout(
+        const Duration(seconds: 3),
+        onTimeout: () => false,
+      ),
+    ]);
+    if (!mounted) return;
+
+    setState(() {
+      _localNetworkPrepared = networkResults[0];
+      _onlineClientPrepared = networkResults[1];
+    });
+
+    _setStartupProgress(
+      1,
+      'Arena pronta',
+      'Conteúdo validado. Partidas e salas serão abertas quando você escolher.',
+    );
+    await Future<void>.delayed(const Duration(milliseconds: 180));
+    if (mounted) {
+      setState(() => _startupFinished = true);
     }
   }
 
-  Future<void> _validateManifest() async {
-    final result = await ArenaManifestValidator.validate(rootBundle);
+  void _setStartupProgress(double progress, String title, String description) {
     if (!mounted) return;
+    setState(() {
+      _startupProgress = progress.clamp(0.0, 1.0).toDouble();
+      _startupTitle = title;
+      _startupDescription = description;
+    });
+  }
 
-    _machine.dispatch(
-      ManifestValidationCompleted(
-        valid: result.valid,
-        reason: result.issues.join('\n'),
+  Future<void> _restorePlayerProfile() async {
+    try {
+      var profile = await _profileStore.load();
+      try {
+        final recovered = await _profileStore.recoverLostAvatar();
+        if (recovered != null) profile = recovered;
+      } catch (_) {
+        // A failed gallery recovery must not block the game from opening.
+      }
+      try {
+        await _hubProgress.load();
+      } catch (_) {
+        // Optional hub progression must not prevent entering the game.
+      }
+      if (!mounted) return;
+      setState(() => _playerProfile = profile);
+    } catch (_) {
+      // Keep the safe in-memory default when local preferences are unavailable.
+    }
+  }
+
+  Future<ArenaPlayerProfile?> _pickPlayerAvatar() async {
+    try {
+      final updated = await _profileStore.pickAndSaveAvatar();
+      if (updated != null && mounted) {
+        setState(() => _playerProfile = updated);
+      }
+      return updated;
+    } catch (_) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Não foi possível abrir ou salvar a foto.'),
+          ),
+        );
+      }
+      return null;
+    }
+  }
+
+  Future<ArenaPlayerProfile> _savePlayerName(String name) async {
+    final updated = await _profileStore.saveDisplayName(name);
+    if (mounted) setState(() => _playerProfile = updated);
+    return updated;
+  }
+
+  Future<void> _editPlayerProfile() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ArenaPlayerProfileScreen(
+          profile: _playerProfile,
+          progression: _hubProgress,
+          onSaveName: _savePlayerName,
+          onPickAvatar: _pickPlayerAvatar,
+        ),
       ),
     );
+  }
+
+  Future<void> _openNetworkLobby() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ArenaNetworkLobbyScreen(
+          displayName: _playerProfile.displayName,
+        ),
+      ),
+    );
+  }
+
+  Future<bool> _initializeFoundation({
+    void Function(double, String, String)? onProgress,
+  }) async {
+    try {
+      onProgress?.call(
+        0.28,
+        'Validando o conteúdo local',
+        'Checando manifesto, marca, heróis, NPCs, mundo e recursos 3D.',
+      );
+      final result = await ArenaManifestValidator.validate(rootBundle);
+      if (!mounted) return false;
+
+      if (!result.valid) {
+        _machine.dispatch(
+          ManifestValidationCompleted(
+            valid: false,
+            reason: result.issues.join('\n'),
+          ),
+        );
+        return false;
+      }
+
+      onProgress?.call(
+        0.54,
+        'Inicializando o runtime 3D',
+        'Preparando os recursos compartilhados de Flutter Scene / Impeller.',
+      );
+      // GPU resources must be ready before the first declarative SceneView.
+      await ArenaSceneRuntime.initialize();
+      if (!mounted) return false;
+
+      _machine.dispatch(const ManifestValidationCompleted(valid: true));
+      onProgress?.call(
+        0.72,
+        'Runtime 3D pronto',
+        'A memória pesada do mapa será alocada na entrada da partida.',
+      );
+      return true;
+    } catch (error) {
+      if (!mounted) return false;
+      _machine.dispatch(
+        ManifestValidationCompleted(
+          valid: false,
+          reason: 'Falha ao preparar o conteúdo ou runtime 3D: $error',
+        ),
+      );
+      return false;
+    }
   }
 
   @override
@@ -78,6 +257,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _hubProgress.dispose();
     _machine.dispose();
     super.dispose();
   }
@@ -99,14 +279,36 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
         scaffoldBackgroundColor: background,
         fontFamily: 'Roboto',
       ),
-      home: AnimatedBuilder(
-        animation: _machine,
-        builder: (context, _) => _ArenaScreen(
-          snapshot: _machine.snapshot,
-          onEvent: _dispatch,
-          onRetry: _retry,
-          simulation: _matchSimulation,
-        ),
+      home: Stack(
+        fit: StackFit.expand,
+        children: [
+          AnimatedBuilder(
+            animation: _machine,
+            builder: (context, _) => _ArenaScreen(
+              snapshot: _machine.snapshot,
+              onEvent: _dispatch,
+              onRetry: _retry,
+              simulation: _matchSimulation,
+              playerProfile: _playerProfile,
+              progression: _hubProgress,
+              onEditPlayerProfile: _editPlayerProfile,
+              onOpenNetworkLobby: _openNetworkLobby,
+            ),
+          ),
+          if (!_startupFinished)
+            Positioned.fill(
+              child: ArenaStartupGate(
+                showStudioSplash: _showStudioSplash,
+                progress: _startupProgress,
+                stageTitle: _startupTitle,
+                stageDescription: _startupDescription,
+                playerName: _playerProfile.displayName,
+                playerAvatarPath: _playerProfile.avatarPath,
+                localNetworkPrepared: _localNetworkPrepared,
+                onlineClientPrepared: _onlineClientPrepared,
+              ),
+            ),
+        ],
       ),
     );
   }
@@ -114,6 +316,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
   MobaHeroId _mapHero(String? id) => switch (id) {
         'bastion' => MobaHeroId.bastion,
         'kairo' => MobaHeroId.kairo,
+        'linn' => MobaHeroId.linn,
         _ => MobaHeroId.lyra,
       };
 
@@ -126,6 +329,16 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     if (startsMatch) {
       _matchSimulation = MobaMatchSimulation(
         heroId: _mapHero(selectedHero),
+      );
+    } else if (event is MatchFinished) {
+      unawaited(
+        _hubProgress
+            .recordMatchFinished(
+              victory: event.outcome == MatchOutcome.victory,
+            )
+            .catchError((Object error) {
+          debugPrint('Could not save hub match progression: $error');
+        }),
       );
     } else if (event is ReturnToMenu) {
       _matchSimulation = null;
@@ -147,18 +360,29 @@ class _ArenaScreen extends StatelessWidget {
     required this.onEvent,
     required this.onRetry,
     required this.simulation,
+    required this.playerProfile,
+    required this.progression,
+    required this.onEditPlayerProfile,
+    required this.onOpenNetworkLobby,
   });
 
   final ArenaSnapshot snapshot;
   final TransitionDecision Function(ArenaEvent) onEvent;
   final VoidCallback onRetry;
   final MobaMatchSimulation? simulation;
+  final ArenaPlayerProfile playerProfile;
+  final ArenaHubProgressStore progression;
+  final VoidCallback onEditPlayerProfile;
+  final VoidCallback onOpenNetworkLobby;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: snapshot.phase == ArenaPhase.mainMenu
-          ? _immersiveMainMenu()
+          ? AnimatedBuilder(
+              animation: progression,
+              builder: (context, _) => _immersiveMainMenu(context),
+            )
           : snapshot.phase == ArenaPhase.heroSelection
               ? _heroSelectionFullScreen(context)
               : DecoratedBox(
@@ -199,7 +423,22 @@ class _ArenaScreen extends StatelessWidget {
     );
   }
 
-  Widget _immersiveMainMenu() {
+  void _openHubSection(BuildContext context, ArenaHubSection section) {
+    Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ArenaHubSubscreen(
+          section: section,
+          progression: progression,
+          onOpenHeroes: () {
+            Navigator.of(context).pop();
+            onEvent(const OpenHeroSelection());
+          },
+        ),
+      ),
+    );
+  }
+
+  Widget _immersiveMainMenu(BuildContext context) {
     return Stack(
       fit: StackFit.expand,
       children: [
@@ -225,99 +464,85 @@ class _ArenaScreen extends StatelessWidget {
           child: LayoutBuilder(
             builder: (context, viewport) {
               final compact = viewport.maxHeight < 440;
-              final scale = compact ? 0.86 : 1.0;
-              final edgeX = compact ? 12.0 : 22.0;
-              final edgeY = compact ? 10.0 : 18.0;
+              final scale = (viewport.maxWidth / 900)
+                  .clamp(0.68, 1.0)
+                  .toDouble();
+              final edgeX = compact ? 10.0 : 22.0;
+              final edgeY = compact ? 9.0 : 18.0;
 
               return Stack(
                 children: [
                   Positioned(
                     left: edgeX,
                     top: edgeY,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Container(
-                          width: compact ? 30 : 34,
-                          height: compact ? 30 : 34,
-                          decoration: BoxDecoration(
-                            color: const Color(0xC91B3442),
-                            border: Border.all(
-                              color: const Color(0xAAE2C58A),
-                              width: 1.2,
-                            ),
-                            borderRadius: BorderRadius.circular(7),
-                          ),
-                          child: const Icon(
-                            Icons.shield_moon_outlined,
-                            color: Color(0xFFE8D3A2),
-                            size: 19,
-                          ),
-                        ),
-                        const SizedBox(width: 9),
-                        const Text(
-                          'PROJETO ARENA',
-                          style: TextStyle(
-                            color: Color(0xFFF4F0E5),
-                            fontSize: 13,
-                            letterSpacing: 1.4,
-                            fontWeight: FontWeight.w900,
-                            shadows: [
-                              Shadow(
-                                color: Color(0x99000000),
-                                blurRadius: 9,
-                                offset: Offset(0, 2),
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  Positioned(
-                    left: edgeX,
-                    bottom: edgeY,
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        _HubShortcut(
-                          label: 'HERÓIS',
-                          icon: Icons.groups_rounded,
-                          width: 126 * scale,
-                          height: 50 * scale,
-                          active: true,
-                          onTap: () => onEvent(const OpenHeroSelection()),
-                        ),
-                        SizedBox(width: 7 * scale),
-                        _HubShortcut(
-                          label: 'BAÚS',
-                          icon: Icons.inventory_2_outlined,
-                          width: 96 * scale,
-                          height: 46 * scale,
-                          locked: true,
-                        ),
-                        SizedBox(width: 7 * scale),
-                        _HubShortcut(
-                          label: 'DESAFIOS',
-                          icon: Icons.flag_outlined,
-                          width: 132 * scale,
-                          height: 46 * scale,
-                          locked: true,
-                        ),
-                      ],
+                    child: _PlayerProfileBadge(
+                      profile: playerProfile,
+                      frame: progression.equippedFrame,
+                      compact: compact,
+                      onTap: onEditPlayerProfile,
                     ),
                   ),
                   Positioned(
                     right: edgeX,
-                    top: viewport.maxHeight * 0.40,
+                    top: edgeY,
                     child: _HubShortcut(
-                      label: 'MERCADOR',
-                      icon: Icons.storefront_outlined,
-                      width: 142 * scale,
-                      height: 49 * scale,
-                      locked: true,
+                      label: 'REDE',
+                      icon: Icons.wifi_tethering_rounded,
+                      width: 112 * scale,
+                      height: 46 * scale,
+                      onTap: onOpenNetworkLobby,
                     ),
                   ),
+                  Positioned(
+                    left: edgeX,
+                    right: edgeX + (166 * scale) + (compact ? 8 : 14),
+                    bottom: edgeY,
+                    child: Wrap(
+                      spacing: 7 * scale,
+                      runSpacing: 7 * scale,
+                      children: [
+                        _HubShortcut(
+                          label: 'HERÓIS',
+                          icon: Icons.groups_rounded,
+                          width: 122 * scale,
+                          height: 50 * scale,
+                          active: true,
+                          onTap: () => onEvent(const OpenHeroSelection()),
+                        ),
+                        _HubShortcut(
+                          label: 'BAÚS',
+                          icon: Icons.inventory_2_outlined,
+                          width: 112 * scale,
+                          height: 50 * scale,
+                          onTap: () => _openHubSection(
+                            context,
+                            ArenaHubSection.chests,
+                          ),
+                        ),
+                        _HubShortcut(
+                          label: 'DESAFIOS',
+                          icon: Icons.flag_outlined,
+                          width: 126 * scale,
+                          height: 50 * scale,
+                          onTap: () => _openHubSection(
+                            context,
+                            ArenaHubSection.challenges,
+                          ),
+                        ),
+                        _HubShortcut(
+                          label: 'MERCADOR',
+                          icon: Icons.storefront_outlined,
+                          width: 132 * scale,
+                          height: 50 * scale,
+                          onTap: () => _openHubSection(
+                            context,
+                            ArenaHubSection.merchant,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
                   Positioned(
                     right: edgeX,
                     bottom: edgeY,
@@ -460,6 +685,101 @@ class _ArenaScreen extends StatelessWidget {
   }
 }
 
+class _PlayerProfileBadge extends StatelessWidget {
+  const _PlayerProfileBadge({
+    required this.profile,
+    required this.frame,
+    required this.compact,
+    required this.onTap,
+  });
+
+  final ArenaPlayerProfile profile;
+  final ArenaProfileFrameStyle frame;
+  final bool compact;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconSize = compact ? 34.0 : 42.0;
+    return Material(
+      color: const Color(0xC91B3442),
+      borderRadius: BorderRadius.circular(28),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: EdgeInsets.fromLTRB(
+            compact ? 6 : 8,
+            compact ? 4 : 6,
+            compact ? 12 : 16,
+            compact ? 4 : 6,
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: iconSize,
+                height: iconSize,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: const Color(0xFF243E49),
+                  border: Border.all(color: frame.color, width: 2),
+                ),
+                child: Icon(
+                  Icons.person_rounded,
+                  color: frame.highlight,
+                  size: compact ? 20 : 24,
+                ),
+              ),
+              SizedBox(width: compact ? 8 : 11),
+              Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    profile.displayName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: const Color(0xFFF4F0E5),
+                      fontSize: compact ? 11 : 13,
+                      letterSpacing: 0.8,
+                      fontWeight: FontWeight.w900,
+                      shadows: const [
+                        Shadow(
+                          color: Color(0x99000000),
+                          blurRadius: 8,
+                          offset: Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'PERFIL DO JOGADOR',
+                    style: TextStyle(
+                      color: const Color(0xFFB8D6D1),
+                      fontSize: compact ? 7 : 8,
+                      letterSpacing: 1.0,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
+              SizedBox(width: compact ? 7 : 9),
+              Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: compact ? 16 : 18,
+                color: const Color(0xFFE2C58A),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _HubShortcut extends StatelessWidget {
   const _HubShortcut({
     required this.label,
@@ -467,7 +787,6 @@ class _HubShortcut extends StatelessWidget {
     required this.width,
     required this.height,
     this.active = false,
-    this.locked = false,
     this.onTap,
   });
 
@@ -476,7 +795,6 @@ class _HubShortcut extends StatelessWidget {
   final double width;
   final double height;
   final bool active;
-  final bool locked;
   final VoidCallback? onTap;
 
   @override
@@ -497,7 +815,7 @@ class _HubShortcut extends StatelessWidget {
       shape: shape,
       clipBehavior: Clip.antiAlias,
       child: InkWell(
-        onTap: locked ? null : onTap,
+        onTap: onTap,
         customBorder: shape,
         child: SizedBox(
           width: width,
@@ -529,12 +847,6 @@ class _HubShortcut extends StatelessWidget {
                     ),
                   ),
                 ),
-                if (locked)
-                  const Icon(
-                    Icons.lock_outline_rounded,
-                    size: 13,
-                    color: Color(0xFFB6C7C9),
-                  ),
               ],
             ),
           ),

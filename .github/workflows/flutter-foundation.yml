@@ -5,25 +5,33 @@ on:
     branches:
       - migration/flutter-scene-mobile-v0.1
       - main
+      - release/project-arena-1.8.3-consolidated
+      - feat/1.8.3-session-lobby-foundation
+      - feat/1.8.4-five-gate-startup-humanized
     paths:
       - "flutter/**"
       - "app/src/main/assets/world/nature/**"
       - "app/src/main/assets/world/kaykit/**"
       - "app/src/main/assets/characters/quaternius-character.glb.b64"
       - "ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt"
-      - "app/src/main/res/drawable/ic_launcher.xml"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/res/drawable/ic_launcher_*.xml"
+      - "app/src/main/res/mipmap-*/ic_launcher*"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   pull_request:
     branches:
       - main
+      - feat/1.8.4-five-gate-startup-humanized
     paths:
       - "flutter/**"
       - "app/src/main/assets/world/nature/**"
       - "app/src/main/assets/world/kaykit/**"
       - "app/src/main/assets/characters/quaternius-character.glb.b64"
       - "ASSETS/KayKit-Medieval-Hexagon-LICENSE.txt"
-      - "app/src/main/res/drawable/ic_launcher.xml"
+      - "app/src/main/AndroidManifest.xml"
+      - "app/src/main/res/drawable/ic_launcher_*.xml"
+      - "app/src/main/res/mipmap-*/ic_launcher*"
       - "tools/generate_terrain_materials.py"
       - ".github/workflows/flutter-foundation.yml"
   workflow_dispatch:
@@ -97,12 +105,45 @@ jobs:
           echo "Persistent signing key loaded."
       - name: Generate Android host, identity and Flutter GPU setup
         run: python3 tool/prepare_android.py
+      - name: Isolate PR profile application identity
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
+        run: python3 tool/prepare_profile_qa_identity.py
       - name: Resolve dependencies
         run: flutter pub get
       - name: Static analysis
         run: flutter analyze
       - name: Unit tests
         run: flutter test --reporter expanded
+      - name: Build ARM64 profile APK for PR runtime validation
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
+        run: flutter build apk --profile --target-platform android-arm64
+      - name: Inspect profile APK identity, runtime assets and ABI
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
+        run: python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-profile.apk --qa-profile
+      - name: Verify profile APK signature
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
+        run: |
+          set -euo pipefail
+          SDK_ROOT="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-}}"
+          test -n "$SDK_ROOT" && test -d "$SDK_ROOT/build-tools"
+          APKSIGNER="$(find "$SDK_ROOT/build-tools" -type f -name apksigner -print | sort -V | tail -n 1)"
+          test -n "$APKSIGNER"
+          "$APKSIGNER" verify --verbose --print-certs build/app/outputs/flutter-apk/app-profile.apk
+      - name: Prepare profile QA artifact
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
+        run: |
+          cp build/app/outputs/flutter-apk/app-profile.apk Project-Arena-1.8.3-arm64-profile-qa.apk
+          sha256sum Project-Arena-1.8.3-arm64-profile-qa.apk > Project-Arena-1.8.3-arm64-profile-qa.apk.sha256
+      - name: Upload profile QA artifact
+        if: github.event_name == 'pull_request' && vars.ARENA_BUILD_PROFILE_QA == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: project-arena-1.8.3-arm64-profile-qa
+          path: |
+            flutter/Project-Arena-1.8.3-arm64-profile-qa.apk
+            flutter/Project-Arena-1.8.3-arm64-profile-qa.apk.sha256
+          if-no-files-found: error
+          retention-days: 7
       - name: Build ARM64 Android release
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: flutter build apk --release --target-platform android-arm64
@@ -121,17 +162,17 @@ jobs:
       - name: Prepare versioned APK and checksum
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         run: |
-          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.8.0-arm64.apk
-          sha256sum Project-Arena-1.8.0-arm64.apk > Project-Arena-1.8.0-arm64.apk.sha256
+          cp build/app/outputs/flutter-apk/app-release.apk Project-Arena-1.8.3-arm64.apk
+          sha256sum Project-Arena-1.8.3-arm64.apk > Project-Arena-1.8.3-arm64.apk.sha256
       - name: Upload trusted ARM64 update artifact
         if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
         uses: actions/upload-artifact@v4
         with:
-          name: project-arena-1.8.0-arm64
+          name: project-arena-1.8.3-arm64
           path: |
-            flutter/Project-Arena-1.8.0-arm64.apk
-            flutter/Project-Arena-1.8.0-arm64.apk.sha256
-            flutter/Project-Arena-1.8.0-Changelog.txt
+            flutter/Project-Arena-1.8.3-arm64.apk
+            flutter/Project-Arena-1.8.3-arm64.apk.sha256
+            flutter/Project-Arena-1.8.3-Changelog.txt
           if-no-files-found: error
           retention-days: 30
 
@@ -147,37 +188,37 @@ jobs:
       - name: Download verified ARM64 build
         uses: actions/download-artifact@v4
         with:
-          name: project-arena-1.8.0-arm64
+          name: project-arena-1.8.3-arm64
           path: release
       - name: Refuse to overwrite an existing version tag
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/project-arena-1.8.0" >/dev/null 2>&1; then
-            echo "::error::Tag project-arena-1.8.0 already exists; refusing to replace a published build."
+          if gh api "repos/${GITHUB_REPOSITORY}/git/ref/tags/project-arena-1.8.3" >/dev/null 2>&1; then
+            echo "::error::Tag project-arena-1.8.3 already exists; refusing to replace a published build."
             exit 1
           fi
-      - name: Publish Projeto Arena 1.8.0 stable tester release
+      - name: Publish Projeto Arena 1.8.3 stable tester release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: project-arena-1.8.0
+          tag_name: project-arena-1.8.3
           target_commitish: ${{ github.sha }}
-          name: Projeto Arena 1.8.0 — build de teste
+          name: Projeto Arena 1.8.3 — build de teste
           body: |
-            Projeto Arena 1.8.0 para Android ARM64.
-            - Aplicativo offline em landscape, compilado para Android ARM64.
-            - Seis aparências CC0 independentes dos heróis jogáveis para bots, tropas e NPCs.
-            - Animações de locomoção e interação social incluídas nos modelos de NPC.
-            - Entradas dos interiores alinhadas com a abertura de colisão.
-            - NPCs do distrito incluídos no pacote offline.
-            - versionName 1.8.0 / versionCode 73.
-            - APK compilado, assets conferidos e assinatura verificada pelo GitHub Actions.
-            - Orientação visual, exploração e desempenho sustentado ainda precisam de validação no Realme C53.
+            Projeto Arena 1.8.3 para Android ARM64.
+            - Recuperações de movimento, colisão, footprints e loja de campo.
+            - Lobby Online/LAN com presença; a partida 3D permanece offline nesta versão.
+            - Splash Duck Dream Studios, startup humanizado, hub 2D, perfil e seleção de heróis.
+            - Baú diário, desafios e mercador cosmético.
+            - Novo mapa costeiro Porto de Vésper com quatro cais pavimentados.
+            - versionName 1.8.3 / versionCode 74.
+            - Assets offline e identidade Android serão verificados pelo CI de release.
+            - Testes físicos de rede, visual e desempenho sustentado no Realme C53 continuam necessários.
           draft: false
           prerelease: false
           make_latest: true
           overwrite_files: false
           files: |
-            release/Project-Arena-1.8.0-arm64.apk
-            release/Project-Arena-1.8.0-arm64.apk.sha256
+            release/Project-Arena-1.8.3-arm64.apk
+            release/Project-Arena-1.8.3-arm64.apk.sha256

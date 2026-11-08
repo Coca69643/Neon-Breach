@@ -48,17 +48,29 @@ A base técnica está pronta para receber composição visual. O problema restan
 | Estação Intermodal | Terminal reconhecível, cobertura de plataforma, sinalização e elementos de transporte. |
 | Orla do Canal | Passeio marginal, contenções, guarda-corpos, bancos, iluminação e cinco pontes distintas. |
 
+## Nova diretriz — reconstrução integral CC0
+
+A composição atual de dez fachadas isoladas e interiores separados não pode ser apresentada como mapa urbano concluído. A reconstrução integral deve seguir `docs/PROJECT_ARENA_MAP_REBUILD.md`.
+
+O kit candidato é o Quaternius Downtown City MegaKit: mais de 300 módulos para quarteirões completos, sete edifícios exemplo, glTF e CC0; o pacote padrão gratuito tem 223 MB. A aquisição e inspeção do ZIP ainda não ocorreram.
+
+**Não aceito como mudança de mapa:** colocar miniaturas de edifícios, alinhar tiles de rua sem continuidade ou ampliar modelos pequenos e declarar o mapa reconstruído. Primeiro será aprovado um quarteirão jogável em escala humana, com edifícios conectados, ruas contínuas, interiores realmente transitáveis e colisões alinhadas. Depois, os seis distritos serão expandidos.
+
+A página do kit menciona janelas com interior falso. Esse efeito não satisfaz a navegação interna; interiores reais continuam sendo responsabilidade da geometria de gameplay.
+
 ## Gate S1 — Vertical slice do Mercado Central
 
 **Primeira implementação submetida no catálogo de mundo:**
 
-- Duas fachadas comerciais diferentes: `commercial_building_i.glb` e `commercial_building_j.glb`.
-- As duas fachadas enquadram o núcleo do distrito sem ocupar o ponto de captura.
+- Quatro fachadas comerciais CC0: duas combinações de `commercial_building_i.glb` e `commercial_building_j.glb`, em lados opostos da praça.
+- As quatro fachadas enquadram o núcleo do distrito sem ocupar o ponto de captura.
 - Marquises, dois pontos de convivência com guarda-sol, quatro floreiras e dois postes de iluminação formam a primeira composição de rua.
 - As footprints dos dois edifícios entram em `commercialBlocks`; o mesmo catálogo alimenta o renderizador, `isWalkable` e os colliders estáticos do Rapier.
 - Os modelos já estão na lista de assets Kenney fixados e validados pelo script `prepare_city_assets.py`; não foi introduzida dependência de download em runtime.
 
-**Validação ainda pendente:** análise/testes do CI, inspeção visual da escala pela câmera real de gameplay e teste no dispositivo. A inclusão no catálogo não significa aceite visual.
+**Validação automatizada mais recente:** CI run 42383763525 passou em `flutter analyze` e 89 testes. As dez fachadas comerciais agora possuem footprints retangulares derivados dos bounds locais dos GLBs; o bake offline valida largura, profundidade, altura e origem centralizada dos modelos, e o Rapier usa essas mesmas dimensões.
+
+**Validação visual ainda pendente:** screenshots da câmera real de gameplay precisam confirmar escala, afastamento das vias, ausência de clipping e acessos. A validação física no Realme C53 continua pendente. A inclusão no catálogo e o CI não equivalem a aceite visual.
 
 Critérios de aceite do S1:
 1. Fachadas distintas e proporção coerente com os personagens.
@@ -109,4 +121,4 @@ Todo novo modelo deve ter licença verificada, origem fixa, hash registrado, val
 
 ## Estado
 
-**S1 em implementação; aceite visual pendente.** A arquitetura 2D no menu / 3D na gameplay está confirmada. O próximo passo é analisar o resultado do CI e validar a composição no aparelho antes de propagar o padrão aos demais distritos.
+**S1 e primeira expansão do S2 em implementação; aceite visual pendente.** A quarta fatia adiciona quatro fachadas ao Mercado Central e o Boulevard Sul ao bake de terreno, mantendo a arquitetura 2D no menu / 3D na gameplay. A nova geometria precisa passar pelo CI, captura da câmera real de partida e validação no aparelho antes de ser considerada aprovada.

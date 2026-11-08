@@ -130,9 +130,17 @@ def require(condition: bool, message: str) -> None:
 
 
 def main() -> None:
-    apk = Path(sys.argv[1]) if len(sys.argv) > 1 else (
+    arguments = sys.argv[1:]
+    qa_profile = "--qa-profile" in arguments
+    apk_argument = next((item for item in arguments if not item.startswith("--")), None)
+    apk = Path(apk_argument) if apk_argument else (
         Path("build/app/outputs/flutter-apk/app-release.apk")
     )
+    expected_app_id = (
+        "com.duckdream.projectarena.qa" if qa_profile
+        else "com.duckdream.projectarena"
+    )
+    expected_label = "Projeto Arena QA" if qa_profile else "Projeto Arena"
     require(apk.is_file() and apk.stat().st_size > 0, f"APK not found: {apk}")
 
     try:
@@ -159,15 +167,15 @@ def main() -> None:
     activities = [attrs for tag, attrs in elements if tag == "activity"]
     metadata = [attrs for tag, attrs in elements if tag == "meta-data"]
 
-    require(manifest.get("package") == "com.duckdream.projectarena",
-            f"unexpected applicationId: {manifest.get('package')!r}")
-    require(manifest.get("versionName") == "1.8.0",
+    require(manifest.get("package") == expected_app_id,
+            f"unexpected applicationId: {manifest.get('package')!r}; expected {expected_app_id!r}")
+    require(manifest.get("versionName") == "1.8.3",
             f"unexpected versionName: {manifest.get('versionName')!r}")
     version_code = manifest.get("versionCode")
-    require(version_code == 73,
-            f"expected versionCode 73 for Projeto Arena 1.8.0, got {version_code!r}")
-    require(application.get("label") == "Projeto Arena",
-            f"unexpected launcher label: {application.get('label')!r}")
+    require(version_code == 74,
+            f"expected versionCode 74 for Projeto Arena 1.8.3, got {version_code!r}")
+    require(application.get("label") == expected_label,
+            f"unexpected launcher label: {application.get('label')!r}; expected {expected_label!r}")
 
     min_sdk = uses_sdk.get("minSdkVersion")
     require(isinstance(min_sdk, int) and min_sdk >= 24,
@@ -399,7 +407,7 @@ def main() -> None:
     print(
         "APK verified: "
         f"package=com.duckdream.projectarena, "
-        f"version=1.8.0+{version_code}, minSdk={min_sdk}, "
+        f"version=1.8.3+{version_code}, minSdk={min_sdk}, "
         f"orientation=landscape, ABI=arm64-v8a, "
         f"size={size_mib:.2f} MiB, sha256={digest}"
     )

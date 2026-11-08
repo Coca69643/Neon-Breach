@@ -86,3 +86,18 @@ Preservar o applicationId `com.duckdream.projectarena`. A release 1.8.0 usa `ver
 - GLB de personagem com rig e animações validado em runtime.
 - FPS, memória e temperatura medidos no Realme C53.
 - APK instalada e executada no dispositivo; compilação isolada não é aceite final.
+
+
+## Fundação de sessões Online e Rede Local (v1.8.3, em validação)
+
+A camada de rede está isolada em lib/network/ e acessada por uma tela independente em lib/app/arena_network_lobby_screen.dart.
+
+- Online: supabase_flutter 2.18.x, autenticação anônima e Supabase Realtime Presence em canais privados.
+- LAN: ServerSocket/Socket TCP, host no aparelho, conexão manual por IPv4 + porta e token aleatório de 128 bits.
+- Escopo de presença: nome exibido e roster de sala. Nenhum estado de combate é transmitido.
+- Credenciais: URL e publishable key do projeto são configuração de cliente; service_role e credenciais administrativas nunca entram no APK.
+- RLS: políticas dedicadas a tópicos arena:lobby:% em realtime.messages; canais são criados como privados.
+- Android: INTERNET é incluída pelo gerador de host. targetSdk=36 evita antecipar a permissão específica de API 37. Qualquer subida futura para target 37 precisa implementar o fluxo runtime de ACCESS_LOCAL_NETWORK documentado pelo Flutter/Android.
+- Offline-first: inicialização Supabase é lazy e só ocorre quando o usuário abre/cria/entra numa sala. Falhas de autenticação/rede não impedem a inicialização do jogo offline.
+
+Esta entrega é uma fundação de lobby e presença, não multiplayer de partida. O runtime 3D, movimento, objetivos e toda a simulação permanecem locais até uma revisão separada com critérios próprios. Antes de avançar: testar duas instalações reais na mesma LAN, reconexão, host encerrado, redes diferentes e políticas RLS com sessões convidadas.

@@ -27,16 +27,38 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
 
   @override
   Widget build(BuildContext context) {
-    final totalAssets =
-        1 + ArenaWorldCatalog.trees.length + ArenaWorldCatalog.bushes.length;
+    final totalAssets = 1 +
+        ArenaWorldCatalog.trees.length +
+        ArenaWorldCatalog.bushes.length +
+        ArenaWorldCatalog.commercialBlocks.length;
 
     final sceneChildren = <Widget>[
       SceneModel(
         _terrainAsset,
-        key: const ValueKey('vale-terrain'),
-        name: 'vale_das_coroas_organic_terrain',
+        key: const ValueKey('urban-terrain'),
+        name: 'project_arena_urban_terrain',
         onLoaded: (_) => _markLoaded('terrain'),
       ),
+      for (var index = 0;
+          index < ArenaWorldCatalog.commercialBlocks.length;
+          index++)
+        SceneModel(
+          'assets/world/city/${ArenaWorldCatalog.commercialBlocks[index].$1}',
+          key: ValueKey('preview-building-$index'),
+          name: 'preview_building_$index',
+          position: vm.Vector3(
+            ArenaWorldCatalog.commercialBlocks[index].$2,
+            ArenaWorldCatalog.navigationHeightAt(
+              ArenaWorldCatalog.commercialBlocks[index].$2,
+              ArenaWorldCatalog.commercialBlocks[index].$3,
+            ),
+            ArenaWorldCatalog.commercialBlocks[index].$3,
+          ),
+          scale: vm.Vector3.all(
+            ArenaWorldCatalog.commercialBlocks[index].$4,
+          ),
+          onLoaded: (_) => _markLoaded('building-$index'),
+        ),
       for (var index = 0; index < ArenaWorldCatalog.trees.length; index++)
         _buildProp(ArenaWorldCatalog.trees[index], 'tree-$index'),
       for (var index = 0; index < ArenaWorldCatalog.bushes.length; index++)
@@ -68,11 +90,11 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
               final seconds = elapsed.inMicroseconds / 1000000.0;
               final drift = math.sin(seconds * 0.055) * 0.72;
               return PerspectiveCamera(
-                fovRadiansY: 49 * math.pi / 180,
-                position: vm.Vector3(drift, 73, 39),
+                fovRadiansY: 55 * math.pi / 180,
+                position: vm.Vector3(drift, 168, 142),
                 target: vm.Vector3(0, 0.0, 0),
                 fovNear: 0.1,
-                fovFar: 220,
+                fovFar: 360,
               );
             },
             children: sceneChildren,
@@ -101,11 +123,11 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                const Expanded(
+                Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
+                      const Text(
                         'DUCK DREAM STUDIOS  /  WORLD PREVIEW',
                         style: TextStyle(
                           color: Color(0xFF9BD9C7),
@@ -114,15 +136,25 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                           fontWeight: FontWeight.w700,
                         ),
                       ),
-                      SizedBox(height: 7),
+                      const SizedBox(height: 7),
                       Text(
-                        'VALE DAS COROAS',
-                        style: TextStyle(
+                        ArenaWorldCatalog.mapName,
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 27,
                           height: 1,
                           letterSpacing: 1.0,
                           fontWeight: FontWeight.w900,
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+                      Text(
+                        ArenaWorldCatalog.mapSubtitle,
+                        style: const TextStyle(
+                          color: Color(0xFFD5DFDE),
+                          fontSize: 10,
+                          letterSpacing: 1.2,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ],
@@ -173,7 +205,7 @@ class _ArenaWorldPreviewState extends State<ArenaWorldPreview> {
                       ),
                       SizedBox(height: 5),
                       Text(
-                        '3 rotas • Rio em S • Pontes • Bases • Selva',
+                        '6 distritos • 3 rotas • 5 pontes • 4 cais • 6 interiores • Boulevard Sul',
                         style: TextStyle(
                           color: Color(0xFFD5DFDE),
                           fontSize: 12,

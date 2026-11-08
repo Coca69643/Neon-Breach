@@ -2,11 +2,70 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:project_arena_flutter/game/world/arena_world_catalog.dart';
 
 void main() {
-  group('ArenaWorldCatalog — urban battlefield', () {
+  group('ArenaWorldCatalog — Porto de Vésper', () {
+    test('defines a distinct harbor identity, quays and contained architecture', () {
+      expect(ArenaWorldCatalog.mapName, 'PORTO DE VÉSPER');
+      expect(ArenaWorldCatalog.mapSubtitle, 'TERMINAL INDUSTRIAL COSTEIRO');
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(23));
+      expect(ArenaWorldCatalog.dockPlazaAnchors, hasLength(4));
+
+      for (final district in ArenaWorldCatalog.districtSites) {
+        expect(
+          ArenaWorldCatalog.isWalkable(district.$3, district.$4),
+          isTrue,
+          reason: '${district.$2} must remain a walkable district landmark',
+        );
+      }
+      for (final plaza in ArenaWorldCatalog.dockPlazaAnchors) {
+        expect(ArenaWorldCatalog.contains(plaza.$1, plaza.$2), isTrue);
+        expect(ArenaWorldCatalog.isWalkable(plaza.$1, plaza.$2), isTrue);
+        expect(ArenaWorldCatalog.surfaceAt(plaza.$1, plaza.$2),
+            ArenaSurfaceType.concrete);
+      }
+      for (final block in ArenaWorldCatalog.commercialBlocks) {
+        final footprint = ArenaWorldCatalog.commercialFootprint(block);
+        for (final corner in [
+          (block.$2 - footprint.$1, block.$3 - footprint.$2),
+          (block.$2 - footprint.$1, block.$3 + footprint.$2),
+          (block.$2 + footprint.$1, block.$3 - footprint.$2),
+          (block.$2 + footprint.$1, block.$3 + footprint.$2),
+        ]) {
+          expect(
+            ArenaWorldCatalog.contains(corner.$1, corner.$2),
+            isTrue,
+            reason: '${block.$1} footprint must stay inside the new coastline',
+          );
+        }
+      }
+      expect(ArenaWorldCatalog.surfaceAt(18, 7.5), ArenaSurfaceType.concrete);
+    });
+
+    test('neutral camp anchors are walkable and outside the canal', () {
+      expect(ArenaWorldCatalog.neutralCampSites, hasLength(3));
+      for (final site in ArenaWorldCatalog.neutralCampSites) {
+        expect(ArenaWorldCatalog.isWalkable(site.$3, site.$4), isTrue,
+            reason: '${site.$1} camp anchor must be reachable');
+        expect(ArenaWorldCatalog.isCanalAt(site.$3, site.$4), isFalse);
+        expect(
+          ArenaWorldCatalog.isWalkable(site.$3 - 1.15, site.$4),
+          isTrue,
+          reason: '${site.$1} guardian spawn must be walkable',
+        );
+        expect(
+          ArenaWorldCatalog.isWalkable(site.$3 + 1.15, site.$4 + 0.65),
+          isTrue,
+          reason: '${site.$1} protector spawn must be walkable',
+        );
+      }
+    });
     test('uses the same irregular 224 × 188 boundary as the terrain baker', () {
       expect(ArenaWorldCatalog.halfWidth, 112);
       expect(ArenaWorldCatalog.halfDepth, 94);
-      expect(ArenaWorldCatalog.worldScale, 1.35);
+      expect(
+        ArenaWorldCatalog.worldScale,
+        1.0,
+        reason: 'render geometry must stay in Rapier logical world units',
+      );
       expect(ArenaWorldCatalog.contains(100, 0), isTrue);
       expect(ArenaWorldCatalog.contains(-100, 0), isTrue);
       expect(ArenaWorldCatalog.contains(0, 80), isTrue);
@@ -69,6 +128,67 @@ void main() {
       }
     });
 
+    test('interior GLB wall origins align rendered openings with collision', () {
+      expect(
+        ArenaWorldCatalog.interiorFrontWallSegmentLength,
+        closeTo(8.8, 1e-9),
+      );
+      for (final building in ArenaWorldCatalog.cityInteriors) {
+        final id = building.$1;
+        final x = building.$2;
+        final z = building.$3;
+        final leftStart = ArenaWorldCatalog.interiorFrontWallStartX(
+          x,
+          rightSegment: false,
+        );
+        final rightStart = ArenaWorldCatalog.interiorFrontWallStartX(
+          x,
+          rightSegment: true,
+        );
+        final doorStart = ArenaWorldCatalog.interiorDoorwayStartX(x);
+
+        // The source wall GLB uses local X bounds [0, 1], so these are
+        // segment starts, not centers. Both ends must meet the doorway frame.
+        expect(leftStart, closeTo(x - ArenaWorldCatalog.roomHalfWidth, 1e-9));
+        expect(
+          leftStart + ArenaWorldCatalog.interiorFrontWallSegmentLength,
+          closeTo(x - ArenaWorldCatalog.roomDoorHalfWidth, 1e-9),
+        );
+        expect(
+          rightStart,
+          closeTo(x + ArenaWorldCatalog.roomDoorHalfWidth, 1e-9),
+        );
+        expect(
+          rightStart + ArenaWorldCatalog.interiorFrontWallSegmentLength,
+          closeTo(x + ArenaWorldCatalog.roomHalfWidth, 1e-9),
+        );
+        expect(doorStart, closeTo(x - ArenaWorldCatalog.roomDoorHalfWidth, 1e-9));
+        expect(
+          doorStart + 2 * ArenaWorldCatalog.roomDoorHalfWidth,
+          closeTo(x + ArenaWorldCatalog.roomDoorHalfWidth, 1e-9),
+        );
+
+        // Side walls start at opposite ends because the mesh is rotated.
+        expect(
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: false),
+          closeTo(z + ArenaWorldCatalog.roomHalfDepth, 1e-9),
+        );
+        expect(
+          ArenaWorldCatalog.interiorSideWallStartZ(z, eastSide: true),
+          closeTo(z - ArenaWorldCatalog.roomHalfDepth, 1e-9),
+        );
+
+        // Match the visible wall spans: the central doorway stays open,
+        // while both front segments and both side walls remain blocked.
+        expect(ArenaWorldCatalog.isWalkable(x, z - ArenaWorldCatalog.roomHalfDepth), isTrue);
+        expect(ArenaWorldCatalog.isWalkable(x - 7.6, z - ArenaWorldCatalog.roomHalfDepth), isFalse);
+        expect(ArenaWorldCatalog.isWalkable(x + 7.6, z - ArenaWorldCatalog.roomHalfDepth), isFalse);
+        expect(ArenaWorldCatalog.isWalkable(x - ArenaWorldCatalog.roomHalfWidth, z), isFalse);
+        expect(ArenaWorldCatalog.isWalkable(x + ArenaWorldCatalog.roomHalfWidth, z), isFalse,
+            reason: '$id side walls must remain solid');
+      }
+    });
+
     test('tower footprints can be ignored by lane units without weakening player collision', () {
       expect(
         ArenaWorldCatalog.isWalkable(-36, -52),
@@ -94,8 +214,21 @@ void main() {
         expect(ArenaWorldCatalog.isBridgeAt(crossing.$1, crossing.$2), isTrue);
       }
       expect(ArenaWorldCatalog.isWalkable(18, 0), isFalse);
-      expect(ArenaWorldCatalog.isWalkable(18, 2.5), isTrue);
+      expect(ArenaWorldCatalog.isWalkable(18, 7.5), isTrue);
       expect(ArenaWorldCatalog.isCanalAt(100, 0), isFalse);
+    });
+
+    test('quartermaster market anchor is on accessible public ground', () {
+      expect(
+        ArenaWorldCatalog.isWalkable(
+          ArenaWorldCatalog.shopkeeperX,
+          ArenaWorldCatalog.shopkeeperZ,
+        ),
+        isTrue,
+        reason: 'the in-world merchant must not spawn inside a road blocker or building',
+      );
+      expect(ArenaWorldCatalog.shopkeeperInteractionRadius, greaterThan(7));
+      expect(ArenaWorldCatalog.shopkeeperInteractionRadius, lessThanOrEqualTo(10));
     });
 
     test('side alleys connect the avenues to the city blocks', () {
@@ -106,32 +239,50 @@ void main() {
     });
 
     test('commercial blocks and park dressing are deterministic', () {
-      expect(ArenaWorldCatalog.commercialBlocks, hasLength(10));
+      expect(ArenaWorldCatalog.commercialBlocks, hasLength(23));
       for (final block in ArenaWorldCatalog.commercialBlocks) {
+        final footprint = ArenaWorldCatalog.commercialFootprint(block);
+        expect(footprint.$1, greaterThan(0));
+        expect(footprint.$2, greaterThan(0));
+        expect(footprint.$3, greaterThan(0));
         expect(ArenaWorldCatalog.isWalkable(block.$2, block.$3), isFalse,
-            reason: 'commercial block must have a collision footprint');
+            reason: 'commercial block must have a GLB-sized collision footprint');
       }
+
+      final wideMarketBuilding = ArenaWorldCatalog.commercialBlocks.firstWhere(
+        (block) => block.$1 == 'commercial_building_j.glb',
+      );
+      final wideFootprint =
+          ArenaWorldCatalog.commercialFootprint(wideMarketBuilding);
+      expect(wideFootprint.$1, greaterThan(wideFootprint.$2 * 1.4),
+          reason: 'the long facade must not be approximated by a square collider');
+      expect(ArenaWorldCatalog.commercialLocalBounds, hasLength(12));
       final marketBuildings = ArenaWorldCatalog.commercialBlocks.where(
-        (block) => block.$1 == 'commercial_building_i.glb' ||
-            block.$1 == 'commercial_building_j.glb',
+        (block) =>
+            block.$2.abs() == 20.5 &&
+            (block.$3 == -68.0 || block.$3 == -40.0) &&
+            (block.$1 == 'commercial_building_i.glb' ||
+                block.$1 == 'commercial_building_j.glb'),
       ).toList();
-      expect(marketBuildings, hasLength(2));
+      expect(marketBuildings, hasLength(4));
       expect(ArenaWorldCatalog.isWalkable(12.0, -54.0), isTrue,
           reason: 'Market Central capture plaza must remain open');
       for (final building in marketBuildings) {
+        final halfWidth =
+            ArenaWorldCatalog.commercialFootprint(building).$1;
         expect(
           ArenaWorldCatalog.isWalkable(
-            building.$2 - building.$4 - 0.75, building.$3,
+            building.$2 - halfWidth - 0.75, building.$3,
           ),
           isTrue,
-          reason: 'west-side walk-around must remain open',
+          reason: 'west-side walk-around must remain open at the actual facade edge',
         );
         expect(
           ArenaWorldCatalog.isWalkable(
-            building.$2 + building.$4 + 0.75, building.$3,
+            building.$2 + halfWidth + 0.75, building.$3,
           ),
           isTrue,
-          reason: 'east-side walk-around must remain open',
+          reason: 'east-side walk-around must remain open at the actual facade edge',
         );
       }
       expect(ArenaWorldCatalog.trees, hasLength(16));
@@ -148,11 +299,89 @@ void main() {
       }
     });
 
+    test('west-north block frames its enterable interior with four full-scale CC0 buildings', () {
+      const authoredBlock = <(String, double, double, double)>[
+        ('commercial_building_f.glb', -77.0, 48.0, 12.0),
+        ('commercial_building_i.glb', -51.0, 60.0, 10.0),
+        ('suburban_building_e.glb', -97.0, 10.0, 9.0),
+        ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
+      ];
+      expect(authoredBlock, hasLength(4));
+
+      for (final expected in authoredBlock) {
+        final placement = ArenaWorldCatalog.commercialBlocks.firstWhere(
+          (entry) =>
+              entry.$1 == expected.$1 &&
+              entry.$2 == expected.$2 &&
+              entry.$3 == expected.$3 &&
+              entry.$4 == expected.$4,
+        );
+        final footprint = ArenaWorldCatalog.commercialFootprint(placement);
+        expect(footprint.$1, greaterThan(5.0));
+        // The suburban module is 9.252 units deep at the authored 9× scale.
+        // Validate the exact measured footprint rather than imposing a wider
+        // half-depth than the source model actually provides.
+        expect(footprint.$2, greaterThan(4.5));
+        expect(footprint.$3, greaterThan(10.0));
+        expect(
+          ArenaWorldCatalog.isWalkable(placement.$2, placement.$3),
+          isFalse,
+          reason: '${placement.$1} must have a matching full-size collider',
+        );
+      }
+
+      // Building footprints must not intersect each other.
+      for (var i = 0; i < authoredBlock.length; i++) {
+        for (var j = i + 1; j < authoredBlock.length; j++) {
+          final a = ArenaWorldCatalog.commercialFootprint(authoredBlock[i]);
+          final b = ArenaWorldCatalog.commercialFootprint(authoredBlock[j]);
+          final overlapsX =
+              (authoredBlock[i].$2 - authoredBlock[j].$2).abs() < a.$1 + b.$1;
+          final overlapsZ =
+              (authoredBlock[i].$3 - authoredBlock[j].$3).abs() < a.$2 + b.$2;
+          expect(overlapsX && overlapsZ, isFalse,
+              reason: 'CC0 building volumes must not overlap');
+        }
+      }
+
+      // Every GLB footprint must remain inside the island, not merely have
+      // its center inside the polygon.
+      for (final placement in authoredBlock) {
+        final footprint = ArenaWorldCatalog.commercialFootprint(placement);
+        for (final corner in [
+          (placement.$2 - footprint.$1, placement.$3 - footprint.$2),
+          (placement.$2 - footprint.$1, placement.$3 + footprint.$2),
+          (placement.$2 + footprint.$1, placement.$3 - footprint.$2),
+          (placement.$2 + footprint.$1, placement.$3 + footprint.$2),
+        ]) {
+          expect(
+            ArenaWorldCatalog.contains(corner.$1, corner.$2),
+            isTrue,
+            reason: '${placement.$1} must remain inside the island perimeter',
+          );
+        }
+      }
+
+      expect(ArenaWorldCatalog.isWalkable(-86.0, 14.0), isTrue,
+          reason: 'Reserva Verde capture point must stay free of new buildings');
+
+      // The 24 × 18 m west-north interior remains accessible from the south
+      // approach and keeps the main lane/sidewalk corridor open.
+      for (final point in const [
+        (-63.0, 26.0), (-63.0, 29.0), (-63.0, 33.0), (-63.0, 38.0),
+      ]) {
+        expect(ArenaWorldCatalog.isWalkable(point.$1, point.$2), isTrue,
+            reason: 'the west-north entrance route must remain traversable');
+      }
+      expect(ArenaWorldCatalog.isWalkable(-43.0, 60.0), isTrue,
+          reason: 'the west-side avenue sidewalk must remain clear');
+    });
+
     test('city districts use distinct architecture and authored street dressing', () {
       final buildingNames = ArenaWorldCatalog.commercialBlocks
           .map((block) => block.$1)
           .toSet();
-      expect(buildingNames, hasLength(10));
+      expect(buildingNames, hasLength(12));
       expect(ArenaWorldCatalog.largeTrees, hasLength(8));
       expect(ArenaWorldCatalog.cityProps.length, greaterThanOrEqualTo(50));
       final marketProps = ArenaWorldCatalog.cityProps.where(
@@ -253,6 +482,40 @@ void main() {
       }
     });
 
+    test('southern boulevard adds a continuous paved rotation route', () {
+      expect(ArenaWorldCatalog.accessPathCount, 17);
+      const routePoints = <(double, double)>[
+        (-54.0, -77.0),
+        (-20.0, -81.0),
+        (20.0, -81.0),
+        (54.0, -77.0),
+      ];
+      for (final point in routePoints) {
+        expect(ArenaWorldCatalog.contains(point.$1, point.$2), isTrue);
+        expect(
+          ArenaWorldCatalog.surfaceAt(point.$1, point.$2),
+          ArenaSurfaceType.asphalt,
+        );
+        expect(ArenaWorldCatalog.isWalkable(point.$1, point.$2), isTrue);
+        expect(
+          ArenaWorldCatalog.movementSpeedMultiplierAt(point.$1, point.$2),
+          1.0,
+        );
+      }
+      for (final point in const [
+        (-48.0, -76.0),
+        (48.0, -76.0),
+        (-72.0, -78.0),
+        (72.0, -78.0),
+      ]) {
+        expect(
+          ArenaWorldCatalog.isWalkable(point.$1, point.$2),
+          isTrue,
+          reason: 'new harbor buildings must not block the existing southern boulevard',
+        );
+      }
+    });
+
     test('surface profiles distinguish lanes, plazas, grass and interiors', () {
       expect(
         ArenaWorldCatalog.surfaceAt(-36, -60),
@@ -269,7 +532,7 @@ void main() {
         reason: 'the side access road should share the continuous asphalt mesh',
       );
       expect(
-        ArenaWorldCatalog.surfaceAt(-86, 14),
+        ArenaWorldCatalog.surfaceAt(-104, 70),
         ArenaSurfaceType.grass,
       );
       expect(
@@ -278,7 +541,7 @@ void main() {
       );
       expect(
         ArenaWorldCatalog.movementSpeedMultiplierAt(-36, -60),
-        greaterThan(ArenaWorldCatalog.movementSpeedMultiplierAt(-86, 14)),
+        greaterThan(ArenaWorldCatalog.movementSpeedMultiplierAt(-104, 70)),
       );
     });
 
@@ -305,8 +568,8 @@ void main() {
         closeTo(sidewalkBase + sidewalkLift, 0.00001),
       );
 
-      const parkX = -86.0;
-      const parkZ = 14.0;
+      const parkX = -104.0;
+      const parkZ = 70.0;
       final parkBase = ArenaWorldCatalog.heightAt(parkX, parkZ);
       expect(ArenaWorldCatalog.surfaceElevationOffsetAt(parkX, parkZ), 0);
       expect(

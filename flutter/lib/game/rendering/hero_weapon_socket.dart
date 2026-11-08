@@ -13,15 +13,18 @@ abstract final class HeroWeaponSocket {
         MobaHeroId.lyra => 'assets/weapons/lyra_sword.glb',
         MobaHeroId.bastion => 'assets/weapons/bastion_sword.glb',
         MobaHeroId.kairo => 'assets/weapons/kairo_sword.glb',
+        MobaHeroId.linn => 'procedural://linn-forearm-emitter',
       };
 
   static double _scaleFor(MobaHeroId hero) => switch (hero) {
         MobaHeroId.lyra => 0.020,
         MobaHeroId.bastion => 0.020,
         MobaHeroId.kairo => 0.027,
+        MobaHeroId.linn => 0.0,
       };
 
   static Future<void> attach(Node modelRoot, MobaHeroId hero) async {
+    if (hero == MobaHeroId.linn) return; // Linn's emitter is built into its procedural rig.
     final palm = modelRoot.getChildByName('Palm.R');
     if (palm == null) {
       debugPrint('[Arena] ${hero.name}: Palm.R was not found; weapon skipped.');

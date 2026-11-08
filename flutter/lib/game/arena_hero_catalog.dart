@@ -66,8 +66,23 @@ class ArenaHeroDefinition {
 }
 
 abstract final class ArenaHeroCatalog {
-  /// Add new character metadata here. Gameplay integration is documented in
-  /// docs/PROJECT_ARENA_HERO_SELECTION.md.
+  /// Experimental metadata is kept outside [heroes], so the prototype can be
+  /// previewed without entering the production match roster.
+  static const ArenaHeroDefinition syntheticPrototype = ArenaHeroDefinition(
+    id: 'synthetic-prototype',
+    name: 'SYNTH-01',
+    species: ArenaHeroSpecies.synthetic,
+    role: 'MOBILIDADE EXPERIMENTAL',
+    summary: 'Plataforma humanoide modular com perfil de travessia exclusivo.',
+    modelAsset: 'procedural://synthetic-01',
+    idleAnimation: 'procedural-idle',
+    previewScale: 1,
+    previewOffsetX: 0,
+    matchScale: 0.8,
+  );
+
+  /// Add production-ready characters here after rig, clips and integration
+  /// have been completed and tested.
   static const List<ArenaHeroDefinition> heroes = [
     ArenaHeroDefinition(
       id: 'lyra',
@@ -78,7 +93,7 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/lyra.glb',
       idleAnimation: 'HumanArmature|Female_Idle',
       previewYawRadians: 0,
-      previewOffsetX: -0.9,
+      previewOffsetX: 0.9,
       matchScale: 0.76,
     ),
     ArenaHeroDefinition(
@@ -90,8 +105,25 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/bastion.glb',
       idleAnimation: 'HumanArmature|Man_Idle',
       previewYawRadians: 0,
-      previewOffsetX: -0.9,
+      previewOffsetX: 0.9,
       matchScale: 0.76,
+    ),
+    ArenaHeroDefinition(
+      id: 'linn',
+      name: 'LINN',
+      species: ArenaHeroSpecies.synthetic,
+      role: 'METAMORFO / ASSALTO',
+      summary: 'Unidade sintética que alterna entre um emissor de pulso e uma forma quadrúpede de caça.',
+      modelAsset: 'procedural://linn',
+      idleAnimation: 'procedural://linn-idle',
+      previewScale: 1,
+      previewOffsetX: 0,
+      matchScale: 0.84,
+      previewCameraHeight: 1.45,
+      previewCameraDistance: 5.8,
+      previewTargetHeight: 0.98,
+      previewYawRadians: 3.141592653589793,
+      previewFovDegrees: 38,
     ),
     ArenaHeroDefinition(
       id: 'kairo',
@@ -102,7 +134,7 @@ abstract final class ArenaHeroCatalog {
       modelAsset: 'assets/heroes/kairo.glb',
       idleAnimation: 'HumanArmature|Man_Idle',
       previewYawRadians: 0,
-      previewOffsetX: -0.9,
+      previewOffsetX: 0.9,
       matchScale: 0.76,
     ),
   ];

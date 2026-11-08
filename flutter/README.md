@@ -10,15 +10,16 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 - Android landscape, offline-first
 - applicationId: com.duckdream.projectarena
 - Nome instalado: Projeto Arena
+- Launcher icons: bitmap WebP `mipmap-xxxhdpi` para Android 7.0–7.1; adaptive foreground/background vetoriais no Android 8+ e camada monochrome no Android 13+.
 - minSdk: 24 (Android 7.0 ou superior)
-- versionName/versionCode: 1.8.0 / 73
+- versionName/versionCode: 1.8.3 / 74
 - APK de CI: ARM64 para aparelhos Android atuais, incluindo o Realme C53
 
 ## Política visual e desempenho
 
 - Sem sombras dinâmicas.
 - PBR com iluminação de ambiente controlada e materiais bem trabalhados.
-- Assets orgânicos com rigs e animações; geometria primitiva só em testes técnicos.
+- Assets orgânicos com rigs/animações; Linn usa dois rigs procedurais cacheados na primeira integração de metamorfose, com arte e rig exportados ainda pendentes.
 - Meta inicial: 30 FPS sustentados no Realme C53.
 - Arena urbana 224 × 188, com seis distritos, três avenidas de siege, seis edifícios acessíveis, ruas secundárias e cinco travessias do canal.
 - Distritos com silhuetas comerciais distintas, sinalização/iluminação de rua, praças laterais, árvores grandes e mobiliário urbano CC0.
@@ -30,7 +31,7 @@ Migração do runtime 3D para Flutter Scene. Flutter/Dart controla a aplicação
 
 ## Identidade e assinatura Android
 
-O host Android gerado reutiliza o ícone vetorial e a identidade "Projeto Arena" já existentes no repositório. O applicationId permanece idêntico ao APK 0.16.0, e o versionCode é maior que 59.
+O host Android gerado reutiliza o launcher icon Project Arena: mipmap WebP de alta densidade, adaptive foreground/background e monochrome layer por versão do Android. O applicationId permanece idêntico ao APK 0.16.0, e o versionCode é maior que 59.
 
 A chave persistente de atualização (variáveis NEON_BREACH_KEYSTORE_*) só é carregada em execuções confiáveis da branch `main`. Builds de branches de desenvolvimento executam análise, testes, build ARM64 e verificação da assinatura, mas não recebem essa chave e não publicam APK de atualização. Builds locais sem essas variáveis usam a assinatura de debug do Flutter e não devem ser instalados como substituição de uma versão assinada.
 
@@ -43,11 +44,14 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Dependência Flutter Scene: fixada em 0.24.3.
 - Build hook e pré-processamento de modelos/materiais: implementados.
 - Menu principal com fundo ilustrado 2D em `CustomPainter`; leve, estático e sem instanciar a cena 3D de gameplay.
-- `HERÓIS` abre o seletor independente; `ASCENDER` abre a prévia atual; Baús, Desafios e Mercador aparecem bloqueados até seus sistemas existirem.
+- O perfil do jogador abre uma sub-tela própria para nome, foto, estatísticas e moldura equipada.
+- `HERÓIS` abre a seleção em tela cheia; `ASCENDER` mantém a entrada da partida.
+- Baús, Desafios e Mercador são sub-telas funcionais, com recompensas locais persistentes e cosméticos sem atributos competitivos.
 - A ilustração de combate é referência para uma futura tela de carregamento, não para o menu.
 - Partida 3D com câmera de ação baixa, traseira e suavizada; personagem em primeiro plano; aguarda validação visual no aparelho.
-- Preview 3D dos três heróis CC0 com clips Idle via SceneModel: integrado; renderização ainda não validada em aparelho.
+- Preview 3D dos heróis Lyra, Bastion e Kairo via SceneModel; Linn usa preview procedural próprio e entra no catálogo jogável com forma robótica e forma Feral temporária.
 - A ilustração 2D do menu mantém a identidade da torre; modelos 3D urbanos são carregados exclusivamente na gameplay.
+- Identidade do launcher atualizada: emblema robótico teal/âmbar, sem texto, em WebP otimizado e referenciado por `@drawable/ic_launcher`.
 - Mapa District Control: 224 × 188, seis distritos capturáveis, cinco pontes, ruas secundárias pavimentadas e seis interiores ampliados.
 - Pipeline offline do terreno GLB com concreto/asfalto, assets urbanos CC0 e bolsões de parque.
 - Colisões de paredes, móveis, obstáculos, torres e limites do mapa; unidades de rota podem atravessar a pegada das torres sem ocupar o centro de uma estrutura inimiga.
@@ -60,8 +64,8 @@ O minSdk é 24 porque as versões atuais do Flutter elevaram o mínimo Android s
 - Locomoção com aceleração, frenagem, tração por superfície, colisão de cápsula e passo fixo Rapier a 60 Hz. Bastion usa golpe pesado próprio; Lyra e Kairo mantêm cortes de espada distintos.
 - Rigs humanoides usam eixo frontal local +Z; caminhada/corrida muda pela velocidade real, e ataques orientam o herói para o alvo.
 - Verificador de release: checa package id, versionamento, orientação, Flutter GPU, minSdk, ABI e assets pré-processados.
-- CI: análise estática, testes, geração e verificação dos assets offline, build ARM64 e verificação de assinatura. A chave persistente só é carregada em builds confiáveis da branch principal.
-- Build 1.8.0+73: mapa District Control com seis setores, captura territorial, recompensas e bots roamers; validação CI desta revisão em andamento. Teste visual e desempenho sustentado no Realme C53 continuam pendentes.
+- CI: análise estática, testes e preparação/verificação dos assets offline. Profile APK QA em PR é opt-in pela variável `ARENA_BUILD_PROFILE_QA=true`; sem a variável, nenhum APK é gerado. Builds confiáveis de `main` mantêm a política de assinatura de release.
+- Build candidato 1.8.3+74: recuperações de gameplay e loja de campo; lobby Online/LAN de presença; splash e startup humanizados; hub, perfil, seleção, baú diário, desafios e mercador; novo mapa Porto de Vésper. O transporte online não sincroniza a partida. Teste visual, rede física e desempenho sustentado no Realme C53 continuam pendentes.
 
 ## Comandos
 
@@ -83,3 +87,18 @@ python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-release.apk
 ~~~
 
 Para assinar uma atualização compatível com instalações existentes, configure as quatro variáveis NEON_BREACH_KEYSTORE_* antes de executar prepare_android.py e o build. Consulte https://fscene.dev/getting-started/installation/.
+
+
+## Fundação de salas Online e Rede Local — integrada à candidata 1.8.3
+
+- Tela própria de salas acessível pelo atalho REDE no menu.
+- Online: Supabase Realtime em canal privado arena:lobby:<código>, com autenticação de convidado e presença.
+- Rede local: host TCP no aparelho, conexão manual por IP/porta e código de convite de 128 bits.
+- Lista de presença, criação/entrada/saída e encerramento de sessão.
+- supabase_flutter fixado na linha estável 2.18.x; não usar pré-release 3.x nesta entrega.
+- O manifesto gerado inclui INTERNET; targetSdk está fixado em 36. Se futuramente subir para 37, implementar ACCESS_LOCAL_NETWORK runtime antes de habilitar sockets LAN no Android 17.
+- O Supabase precisa ter Anonymous Sign-Ins habilitado. A chave incluída no app é apenas publishable; nunca incluir service_role.
+- Limite desta fatia: o transporte sincroniza somente presença no lobby. A partida 3D e a simulação seguem offline; não existe ainda sincronização de movimento, objetivos ou eventos da partida.
+- LAN usa TCP local e código temporário. Não enviar dados privados por esse canal.
+
+Critérios pendentes: testar duas instalações em Wi-Fi real, alternância de rede, reconexão, encerramento inesperado do host e autorização dos canais privados. A fundação não deve bloquear o boot nem o modo offline.

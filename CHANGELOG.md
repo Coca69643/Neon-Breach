@@ -1,5 +1,50 @@
 # Changelog — Projeto Arena
 
+## [1.8.3] — candidata consolidada
+
+### Recuperação de gameplay e estabilidade
+- Correções de movimento, colisões e alinhamento de footprints de edifícios, interiores, portas e mobiliário.
+- Loja de campo e Quartermaster com compra por proximidade, custos em ouro e upgrades de partida.
+- Ajustes de orientação e escala visual de NPCs, bots e minions; melhorias de navegação e rotas.
+
+### Salas Online e Rede Local
+- Lobby Online com Supabase Realtime em canal privado e presença de convidados.
+- Salas LAN por TCP local, convite temporário, código/IP/porta e roster.
+- O transporte atual sincroniza somente a presença no lobby; partida, movimento e objetivos continuam locais/offline.
+- Anonymous Sign-Ins precisa ser habilitado no projeto Supabase antes dos testes online com convidados.
+
+### Identidade visual do launcher
+- Ícone do Projeto Arena redesenhado como emblema robótico sci-fi teal/ciano e âmbar, sem texto. Launcher usa WebP mipmap xxxhdpi em Android 7.0–7.1, adaptive foreground/background vetoriais em Android 8+ e camada monochrome em Android 13+.
+
+### Herói metamórfico — Linn (integração inicial)
+- Linn adicionado ao elenco jogável e à seleção por espécie, com apresentação robótica humanoide.
+- Ultimate Protocolo Feral: forma quadrúpede temporária por 8 s, transição de 0,55 s, cooldown de 22 s e bônus de movimento de 18%.
+- Forma robótica utiliza emissor integrado ao antebraço; forma Feral tem alcance, dano e cadência de ataque próprios.
+- As duas formas usam geometria procedural offline e recursos 3D cacheados. Rig/arte final e teste visual/performance no Realme C53 continuam pendentes; não é ainda um clip glTF de morph targets.
+
+### Inicialização e identidade
+- Splash Duck Dream Studios com logo transparente e transição curta.
+- Inicialização em etapas, validação do manifesto, recuperação e fallback offline.
+- Hub 2D mobile, perfil local com nome/foto/estatísticas/molduras e seleção de heróis reorganizada.
+- Baú diário de créditos, desafios de marcos e mercador de molduras cosméticas.
+
+### Novo mapa — Porto de Vésper
+- Costa irregular remodelada e canal de navegação ampliado.
+- Quatro praças de cais pavimentadas e 23 volumes comerciais/industriais com footprints medidos.
+- Seis distritos, três rotas principais, cinco pontes, seis interiores e acessos elevados preservados.
+- Identidade do mapa na prévia e na HUD; terreno e navegação usam a mesma escala lógica.
+
+### Identidade Android
+- versionName: 1.8.3.
+- versionCode: 74 (o release anterior publicado é 1.8.0+73).
+- applicationId preservado: `com.duckdream.projectarena`.
+
+### Validação e limites conhecidos
+- CI anterior do candidato passou em análise, 132 testes e preparação dos assets. A integração de Linn precisa de uma nova execução CI e de inspeção física no Realme C53.
+- Builds QA Profile anteriores usam identidade isolada `com.duckdream.projectarena.qa`; não substituem a instalação de produção.
+- Release assinado, comparação do certificado de produção e validação visual/performance no Realme C53 continuam pendentes.
+- A camada Online exige habilitar Anonymous Sign-Ins; o modo offline não depende dela.
+
 ## [1.7.10] — 2026-11-05
 
 ### Direção visual e ambiente

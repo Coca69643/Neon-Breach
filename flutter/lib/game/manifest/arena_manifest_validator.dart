@@ -14,6 +14,28 @@ class ManifestValidationResult {
 
 abstract final class ArenaManifestValidator {
   static const String manifestPath = 'assets/data/arena_manifest.json';
+  static const List<String> studioLogoPaths = [
+    'assets/branding/duck_dream_studios.0.b64',
+    'assets/branding/duck_dream_studios.1.b64',
+    'assets/branding/duck_dream_studios.2.b64',
+  ];
+
+  static const Map<String, String> requiredAssetGroups = {
+    'assets/heroes/': 'modelos de heróis',
+    'assets/weapons/': 'conteúdo de equipamento',
+    'assets/match/': 'recursos de partida',
+    'assets/npcs/': 'personagens de apoio e unidades',
+    'assets/world/': 'mundo e distritos',
+    'flutter_scene_generated/': 'recursos 3D pré-processados',
+  };
+
+  static List<String> missingAssetGroups(Iterable<String> assetPaths) {
+    final paths = assetPaths.toSet();
+    return requiredAssetGroups.entries
+        .where((entry) => !paths.any((path) => path.startsWith(entry.key)))
+        .map((entry) => entry.value)
+        .toList(growable: false);
+  }
 
   static Future<ManifestValidationResult> validate(
     AssetBundle bundle,
@@ -30,6 +52,15 @@ abstract final class ArenaManifestValidator {
       }
 
       final issues = <String>[];
+      final assetManifest = await AssetManifest.loadFromAssetBundle(bundle);
+      final assetPaths = assetManifest.listAssets();
+
+      if (!assetPaths.toSet().containsAll(studioLogoPaths)) {
+        issues.add('Partes do logo de inicialização ausentes do pacote.');
+      }
+      for (final group in missingAssetGroups(assetPaths)) {
+        issues.add('Grupo de conteúdo obrigatório ausente: $group.');
+      }
 
       if (decoded['schemaVersion'] != 1) {
         issues.add('Versão de schema não suportada.');

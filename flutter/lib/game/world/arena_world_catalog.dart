@@ -56,10 +56,12 @@ class ArenaWorldPlacement {
 }
 
 /// Logical 224 × 188 battlefield assembled from six connected districts.
-/// Rendering applies one 1.35× transform; navigation and Rapier share the same
-/// logical coordinates so visual ground and collision remain aligned.
+/// Rendering and Rapier use the same logical world units; do not scale the scene
+/// root independently of physics or collision geometry.
 abstract final class ArenaWorldCatalog {
-  static const double worldScale = 1.35;
+  static const String mapName = 'PORTO DE VÉSPER';
+  static const String mapSubtitle = 'TERMINAL INDUSTRIAL COSTEIRO';
+  static const double worldScale = 1.0;
   static const double halfWidth = 112.0;
   static const double halfDepth = 94.0;
   static const double roomHalfWidth = 12.0;
@@ -67,6 +69,37 @@ abstract final class ArenaWorldCatalog {
   static const double roomDoorHalfWidth = 3.2;
   static const double roomWallHalfThickness = 0.42;
   static const double roomWallHalfHeight = 1.8;
+
+  // The quartermaster remains near the central market so every lane can reach
+  // the first in-world shop rotation without crossing the whole map.
+  static const double shopkeeperX = -8.0;
+  static const double shopkeeperZ = -44.0;
+  static const double shopkeeperInteractionRadius = 9.0;
+
+  // The pinned Kenney furniture wall meshes have local X bounds [0, 1].
+  // These starts keep the rendered segments aligned with the logical wall
+  // lines and the doorway opening used by navigation/collision.
+  static const double interiorFrontWallSegmentLength =
+      roomHalfWidth - roomDoorHalfWidth;
+
+  static double interiorFrontWallStartX(
+    double centerX, {
+    required bool rightSegment,
+  }) =>
+      rightSegment
+          ? centerX + roomDoorHalfWidth
+          : centerX - roomHalfWidth;
+
+  static double interiorSideWallStartZ(
+    double centerZ, {
+    required bool eastSide,
+  }) =>
+      eastSide
+          ? centerZ - roomHalfDepth
+          : centerZ + roomHalfDepth;
+
+  static double interiorDoorwayStartX(double centerX) =>
+      centerX - roomDoorHalfWidth;
   static const double riverBankMargin = 0.55;
   static const double treeCollisionRadius = 1.55;
   static const double canalStartX = -90.0;
@@ -74,12 +107,12 @@ abstract final class ArenaWorldCatalog {
   static const double bridgeHalfWidth = 4.2;
 
   static const worldBoundary = <(double, double)>[
-    (-72.0, -86.0), (-40.0, -92.0), (8.0, -89.0), (48.0, -93.0),
-    (82.0, -84.0), (101.0, -69.0), (109.0, -44.0), (104.0, -17.0),
-    (111.0, 10.0), (104.0, 37.0), (91.0, 60.0), (71.0, 82.0),
-    (42.0, 87.0), (8.0, 82.0), (-24.0, 88.0), (-56.0, 82.0),
-    (-82.0, 70.0), (-101.0, 48.0), (-108.0, 22.0), (-103.0, -6.0),
-    (-109.0, -34.0), (-97.0, -62.0), (-84.0, -78.0),
+    (-82.0, -88.0), (-45.0, -94.0), (-2.0, -90.0), (40.0, -93.0),
+    (78.0, -82.0), (102.0, -60.0), (110.0, -28.0), (104.0, 4.0),
+    (111.0, 34.0), (96.0, 62.0), (73.0, 82.0), (42.0, 90.0),
+    (7.0, 85.0), (-28.0, 92.0), (-60.0, 82.0), (-86.0, 64.0),
+    (-104.0, 42.0), (-111.0, 14.0), (-106.0, -18.0), (-109.0, -48.0),
+    (-96.0, -72.0),
   ];
 
   static const cityInteriors = <(String, double, double)>[
@@ -120,16 +153,23 @@ abstract final class ArenaWorldCatalog {
   }
 
   static const districts = <(String, String, double, double)>[
-    ('civic', 'Distrito Cívico', -72.0, 56.0),
-    ('park', 'Reserva Verde', -86.0, 14.0),
-    ('market', 'Mercado Central', 12.0, -54.0),
-    ('industrial', 'Pátio Industrial', 82.0, -48.0),
-    ('transit', 'Estação Intermodal', 76.0, 53.0),
-    ('riverside', 'Orla do Canal', 0.0, 17.0),
+    ('civic', 'ESTALEIRO NORTE', -72.0, 56.0),
+    ('park', 'PÁTIO DE CONTÊINERES', -86.0, 14.0),
+    ('market', 'MERCADO DOS CAIS', 12.0, -54.0),
+    ('industrial', 'FUNDIÇÃO LESTE', 82.0, -48.0),
+    ('transit', 'TERMINAL DE MARÉ', 76.0, 53.0),
+    ('riverside', 'NÓ DE TRANSBORDO', 0.0, 17.0),
   ];
 
   /// District capture points share the six authored district anchors.
   static const districtSites = districts;
+
+  /// Three neutral camp anchors on open, non-canal ground.
+  static const neutralCampSites = <(String, String, double, double)>[
+    ('verdant', 'DEPÓSITO DE SUCATA', -78.0, 14.0),
+    ('industrial', 'USINA DE LASTRO', 78.0, 14.0),
+    ('riverside', 'GUARDA DA ECLUSA', 20.0, 30.0),
+  ];
 
   /// Two opposing mezzanine routes create a real height layer without
   /// introducing a second navigation grid or increasing entity budgets.
@@ -138,11 +178,49 @@ abstract final class ArenaWorldCatalog {
     ArenaVerticalAccess(id: 'east_north', x: 63.0, z: 38.0),
   ];
 
-  // Ten CC0 silhouettes: the original district edges plus the Market Central slice.
+  // Half-width X, half-depth Z, and full height measured from the pinned
+  // CC0 GLB POSITION accessor bounds. prepare_city_assets.py validates these
+  // values against the actual files before they enter the offline bundle.
+  static const commercialLocalBounds =
+      <String, (double, double, double)>{
+    'commercial_building_b.glb': (0.48500001, 0.47000000, 1.29300000),
+    'commercial_building_c.glb': (0.44179396, 0.54500005, 0.89300001),
+    'commercial_building_f.glb': (0.42000002, 0.51500010, 1.69300008),
+    'commercial_building_h.glb': (0.44179392, 0.50394556, 1.29299998),
+    'commercial_building_d.glb': (0.42000002, 0.45000000, 1.29299998),
+    'commercial_building_g.glb': (0.48500001, 0.46100010, 1.69300008),
+    'suburban_building_a.glb': (0.64999998, 0.51406890, 0.83354098),
+    'suburban_building_c.glb': (0.64319015, 0.51406890, 1.03354096),
+    'commercial_building_i.glb': (0.62000003, 0.65100002, 1.68000007),
+    'commercial_building_j.glb': (1.04179400, 0.67000002, 1.69300008),
+    'suburban_building_e.glb': (0.64999998, 0.51400000, 1.13750005),
+    'commercial_skyscraper_a.glb': (0.68000000, 0.68000000, 2.87999988),
+  };
+
+  /// Returns exact logical half-extents for one rendered commercial facade.
+  /// All facades are centered on their GLB origin; collision must not use one
+  /// generic square radius for models with different proportions.
+  static (double, double, double) commercialFootprint(
+    (String, double, double, double) block,
+  ) {
+    final local = commercialLocalBounds[block.$1];
+    if (local == null) {
+      throw ArgumentError.value(block.$1, 'asset', 'No pinned GLB bounds.');
+    }
+    return (
+      local.$1 * block.$4,
+      local.$2 * block.$4,
+      local.$3 * block.$4,
+    );
+  }
+
+  // Twenty-three authored building placements. Four full-scale CC0 volumes now
+  // frame the west-north service interior as one readable urban block.
+  // Each placement shares the same measured GLB bounds with Rapier/nav.
   static const commercialBlocks = <(String, double, double, double)>[
     ('commercial_building_b.glb', -82.0, -60.0, 5.8),
     ('commercial_building_c.glb', 82.0, -60.0, 5.8),
-    ('commercial_building_f.glb', -82.0, 60.0, 5.8),
+    ('commercial_building_f.glb', -77.0, 48.0, 12.0),
     ('commercial_building_h.glb', 82.0, 60.0, 5.8),
     ('commercial_building_d.glb', -98.0, -42.0, 5.0),
     ('commercial_building_g.glb', 98.0, 42.0, 5.0),
@@ -150,6 +228,21 @@ abstract final class ArenaWorldCatalog {
     ('suburban_building_c.glb', 98.0, -42.0, 4.8),
     ('commercial_building_i.glb', 20.5, -68.0, 5.0),
     ('commercial_building_j.glb', 20.5, -40.0, 5.0),
+    // West frontage closes the market into a four-volume urban block.
+    ('commercial_building_j.glb', -20.5, -68.0, 5.0),
+    ('commercial_building_i.glb', -20.5, -40.0, 5.0),
+    ('commercial_building_i.glb', -51.0, 60.0, 10.0),
+    ('suburban_building_e.glb', -97.0, 10.0, 9.0),
+    ('commercial_skyscraper_a.glb', -51.0, 10.0, 8.0),
+    // Port warehouses form a readable outer quay skyline.
+    ('commercial_building_b.glb', -64.0, 74.0, 4.8),
+    ('commercial_building_c.glb', 72.0, 78.0, 4.8),
+    ('commercial_building_d.glb', -24.0, 60.0, 4.5),
+    ('commercial_building_g.glb', 24.0, 60.0, 4.5),
+    ('commercial_building_h.glb', -24.0, 82.0, 5.5),
+    ('commercial_building_f.glb', 24.0, 82.0, 5.5),
+    ('suburban_building_a.glb', -48.0, 76.0, 4.8),
+    ('suburban_building_c.glb', 48.0, 76.0, 4.8),
   ];
 
   static const sideApproachAnchors = <(double, double)>[
@@ -163,11 +256,17 @@ abstract final class ArenaWorldCatalog {
     (-42.0, 76.0), (42.0, -76.0),
   ];
 
+  static const dockPlazaAnchors = <(double, double)>[
+    (-92.0, -8.0), (92.0, 8.0),
+    (-86.0, 50.0), (90.0, -54.0),
+  ];
+  static const double dockPlazaRadius = 8.8;
+
   static const _river = <(double, double, double)>[
-    (-90.0, -4.0, 1.55), (-60.0, -2.0, 1.85),
-    (-30.0, 1.5, 2.05), (0.0, 0.5, 2.15),
-    (30.0, -1.5, 2.05), (60.0, 1.8, 1.85),
-    (90.0, 3.0, 1.55),
+    (-90.0, -4.0, 2.8), (-60.0, -2.0, 3.4),
+    (-30.0, 1.5, 4.1), (0.0, 0.5, 4.5),
+    (30.0, -1.5, 4.25), (60.0, 1.8, 3.6),
+    (90.0, 3.0, 2.9),
   ];
 
   static const _lanes = <List<(double, double)>>[
@@ -188,7 +287,20 @@ abstract final class ArenaWorldCatalog {
     [(64, -36), (70, -26), (70, -12), (56, -8), (36, -8)],
     [(-64, 36), (-70, 26), (-70, 12), (-56, 8), (-36, 8)],
     [(64, 36), (70, 26), (70, 12), (56, 8), (36, 8)],
+    [(-36, -18), (-52, -18), (-70, -18), (-88, -18)],
+    [(36, 18), (52, 18), (70, 18), (88, 18)],
+    [(-92, -40), (-92, -24), (-88, -18)],
+    [(92, 40), (92, 24), (88, 18)],
+    [(-88, -18), (-92, -4), (-92, 12), (-76, 24), (-64, 36)],
+    [(88, 18), (92, 4), (92, -12), (76, -24), (64, -36)],
+    // Southern boulevard: bypass route behind the southern base compound.
+    [(-36, -70), (-44, -74), (-54, -77), (-68, -77)],
+    [(36, -70), (44, -74), (54, -77), (68, -77)],
+    [(-68, -77), (-44, -80), (-20, -81), (0, -80),
+      (20, -81), (44, -80), (68, -77)],
   ];
+
+  static int get accessPathCount => _accessPaths.length;
 
   static const bridgePositions = <double>[-72.0, -36.0, 0.0, 36.0, 72.0];
   static const _bridges = bridgePositions;
@@ -196,14 +308,14 @@ abstract final class ArenaWorldCatalog {
   static const _towerRows = <double>[-52.0, -36.0, -20.0, 20.0, 36.0, 52.0];
 
   static const treeBlockerPoints = <(double, double)>[
-    (-100, -4), (-100, 20), (-90, 44), (-72, 74),
+    (-100, -4), (-100, 20), (-90, 44), (-56, 82),
     (-91, -34), (-78, -54), (-64, 68), (-46, 72),
     (104, -4), (100, 20), (82, 60), (72, 74),
     (91, -34), (78, -54), (64, 68), (46, 72),
   ];
 
   static const largeTreePoints = <(double, double)>[
-    (-96, -52), (-96, 52), (-58, 76), (-28, 76),
+    (-96, -52), (-84, 60), (-58, 76), (-28, 76),
     (96, -52), (90, 52), (58, 76), (28, 76),
   ];
 
@@ -408,8 +520,10 @@ abstract final class ArenaWorldCatalog {
     for (final block in commercialBlocks) {
       final dx = (x - block.$2).abs();
       final dz = (z - block.$3).abs();
-      final half = block.$4;
-      if (dx < half + 0.3 && dz < half + 0.3) return false;
+      final footprint = commercialFootprint(block);
+      if (dx < footprint.$1 + 0.3 && dz < footprint.$2 + 0.3) {
+        return false;
+      }
     }
     if (includeTreeCollision) {
       final radiusSquared = treeCollisionRadius * treeCollisionRadius;
@@ -447,16 +561,26 @@ abstract final class ArenaWorldCatalog {
 
     final laneGap = laneDistance(x, z);
     final accessGap = flankPathDistance(x, z);
-    if (isBridgeAt(x, z) ||
-        laneGap <= asphaltHalfWidth ||
+    if (isBridgeAt(x, z)) return ArenaSurfaceType.asphalt;
+
+    // A quay plaza is its own concrete apron, even where a service path
+    // connects to it. Keep this priority mirrored by the offline terrain bake.
+    final onDockPlaza = dockPlazaAnchors.any((point) =>
+        math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
+        dockPlazaRadius * dockPlazaRadius);
+    if (onDockPlaza) return ArenaSurfaceType.concrete;
+
+    if (laneGap <= asphaltHalfWidth ||
         accessGap <= asphaltAccessHalfWidth) {
       return ArenaSurfaceType.asphalt;
     }
+    final channelDistance = (z - _riverCenterZ(x)).abs();
     if (laneGap <= sidewalkHalfWidth ||
         accessGap <= sidewalkAccessHalfWidth ||
         sideApproachAnchors.any((point) =>
             math.pow(x - point.$1, 2) + math.pow(z - point.$2, 2) <=
-            3.2 * 3.2)) {
+            3.2 * 3.2) ||
+        channelDistance <= _riverHalfWidth(x) + 4.0) {
       return ArenaSurfaceType.concrete;
     }
     return ArenaSurfaceType.grass;
@@ -526,10 +650,10 @@ abstract final class ArenaWorldCatalog {
         0.018 * math.cos((x - z) * 0.16);
     final riverDistance = (z - _riverCenterZ(x)).abs();
     final riverWidth = _riverHalfWidth(x);
-    final canalBed = -0.42 *
-        math.exp(-math.pow(riverDistance, 2) / (riverWidth * riverWidth * 1.8));
-    final curbBank = 0.12 *
-        math.exp(-math.pow(riverDistance - riverWidth - 0.75, 2) / 2.8);
+    final canalBed = -0.66 *
+        math.exp(-math.pow(riverDistance, 2) / (riverWidth * riverWidth * 1.4));
+    final curbBank = 0.17 *
+        math.exp(-math.pow(riverDistance - riverWidth - 0.85, 2) / 3.0);
     return rolling + canalBed + curbBank;
   }
 
@@ -627,6 +751,10 @@ abstract final class ArenaWorldCatalog {
         scale: 1.65, yaw: math.pi, y: 1.25);
     add('detail_awning_wide.glb', 20.5, -34.0,
         scale: 1.65, yaw: math.pi, y: 1.25);
+    add('detail_awning_wide.glb', -20.5, -74.0,
+        scale: 1.65, yaw: math.pi, y: 1.25);
+    add('detail_awning_wide.glb', -20.5, -34.0,
+        scale: 1.65, yaw: math.pi, y: 1.25);
     add('detail_parasol_a.glb', 11.0, -47.0, scale: 1.15);
     add('detail_parasol_a.glb', 11.0, -61.0, scale: 1.15);
     for (final point in const [
@@ -636,12 +764,39 @@ abstract final class ArenaWorldCatalog {
       add('city_planter.glb', point.$1, point.$2, scale: 0.95);
     }
 
-    // Each of the five crossings is signalled from both approaches.
+    // Southern boulevard lighting makes the alternate rotation route readable.
+    for (final point in const [
+      (-60.0, -76.0), (-20.0, -80.5),
+      (20.0, -80.5), (60.0, -76.0),
+    ]) {
+      add('street_light_square.glb', point.$1, point.$2, scale: 1.05);
+    }
+    add('road_sign_warning.glb', -48.0, -74.5,
+        scale: 1.0, yaw: math.pi / 2);
+    add('road_sign_warning.glb', 48.0, -74.5,
+        scale: 1.0, yaw: -math.pi / 2);
+
+    // Four paved quays mark the harbor edge without narrowing the channel.
+    for (final point in dockPlazaAnchors) {
+      add('street_light_square.glb', point.$1, point.$2, scale: 1.1);
+    }
+
+    // Each crossing is signalled from the dry quays on both approaches.
     for (final bridgeX in bridgePositions) {
-      add('traffic_light.glb', bridgeX - 6.0,
-          _riverCenterZ(bridgeX) - 5.0, scale: 1.2);
-      add('traffic_light.glb', bridgeX + 6.0,
-          _riverCenterZ(bridgeX) + 5.0, scale: 1.5);
+      final westX = bridgeX - 8.0;
+      final eastX = bridgeX + 8.0;
+      add(
+        'traffic_light.glb',
+        westX,
+        _riverCenterZ(westX) - (_riverHalfWidth(westX) + 2.2),
+        scale: 1.2,
+      );
+      add(
+        'traffic_light.glb',
+        eastX,
+        _riverCenterZ(eastX) + (_riverHalfWidth(eastX) + 2.2),
+        scale: 1.5,
+      );
     }
 
     // Street signs sit on the outer sidewalks, not in the travel corridor.
@@ -677,16 +832,16 @@ abstract final class ArenaWorldCatalog {
     // Side plazas use parasols and planters as visual anchors.
     for (final point in const [
       (-54.0, -14.0), (54.0, -14.0),
-      (-54.0, 14.0), (54.0, 14.0),
+      (-69.0, 14.0), (54.0, 14.0),
     ]) {
       add('detail_parasol_a.glb', point.$1, point.$2, scale: 1.25);
       add('city_planter.glb', point.$1 + (point.$1 < 0 ? 2.6 : -2.6),
           point.$2 + 1.6, scale: 1.1);
     }
 
-    // Planted edges soften the hard canal geometry without filling the lanes.
+    // Low plants sit on the quay side of the widened shipping channel.
     for (final point in const [
-      (-15.0, -5.4), (15.0, -5.4), (-15.0, 5.4), (15.0, 5.4),
+      (-15.0, -7.0), (15.0, -7.0), (-15.0, 7.0), (15.0, 7.0),
     ]) {
       add('interior_plant.glb', point.$1, point.$2, scale: 1.0);
     }
