@@ -72,6 +72,7 @@ class _ArenaSyntheticTraversalLabState
   ArenaPhysicsRuntime? _physics;
   double _moveX = 0;
   double _moveZ = 0;
+  double _facingRadians = 0;
   double _elapsed = 0;
   bool _padTriggered = false;
   late final ValueNotifier<String> _status =
@@ -128,12 +129,13 @@ class _ArenaSyntheticTraversalLabState
 
   _SyntheticLabFrame _snapshotFrame(ArenaPhysicsRuntime physics) {
     final point = physics.playerPosition;
+    if (_moveX.abs() + _moveZ.abs() > 0.08) {
+      _facingRadians = math.atan2(_moveX, _moveZ);
+    }
     return _SyntheticLabFrame(
       position: point,
       elapsed: _elapsed,
-      facing: _moveX.abs() + _moveZ.abs() > 0.08
-          ? math.atan2(_moveX, _moveZ)
-          : 0,
+      facing: _facingRadians,
       speedRatio: physics.movementSpeedRatio,
       grounded: physics.grounded,
       sliding: physics.sliding,
@@ -161,7 +163,7 @@ class _ArenaSyntheticTraversalLabState
 
     // The floor pad is an actual traversal interaction, not a decorative
     // trigger: contact while grounded applies one boosted vertical impulse.
-    if (onSpringPad && ! _padTriggered && physics.grounded) {
+    if (onSpringPad && !_padTriggered && physics.grounded) {
       if (physics.triggerTraversalJump(impulseMultiplier: 1.55)) {
         _padTriggered = true;
         _status.value = 'Plataforma de impulso ativada.';
