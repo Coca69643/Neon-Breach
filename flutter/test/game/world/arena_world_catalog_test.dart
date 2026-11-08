@@ -445,6 +445,28 @@ void main() {
       }
     });
 
+    test('southern boulevard adds a continuous paved rotation route', () {
+      expect(ArenaWorldCatalog.accessPathCount, 18);
+      const routePoints = <(double, double)>[
+        (-54.0, -77.0),
+        (-20.0, -81.0),
+        (20.0, -81.0),
+        (54.0, -77.0),
+      ];
+      for (final point in routePoints) {
+        expect(ArenaWorldCatalog.contains(point.$1, point.$2), isTrue);
+        expect(
+          ArenaWorldCatalog.surfaceAt(point.$1, point.$2),
+          ArenaSurfaceType.asphalt,
+        );
+        expect(ArenaWorldCatalog.isWalkable(point.$1, point.$2), isTrue);
+        expect(
+          ArenaWorldCatalog.movementSpeedMultiplierAt(point.$1, point.$2),
+          1.0,
+        );
+      }
+    });
+
     test('surface profiles distinguish lanes, plazas, grass and interiors', () {
       expect(
         ArenaWorldCatalog.surfaceAt(-36, -60),
