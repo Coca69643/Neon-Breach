@@ -1,6 +1,6 @@
 # Project Arena — Supabase environment
 
-Status: **security baseline applied; gameplay integration not started**  
+Status: security baseline and lobby Realtime policies applied; guest authentication setting and two-device acceptance remain pending.
 Project display name: **Projeto Arena** (the game's final name is still undecided)
 
 ## Project identity
@@ -16,57 +16,52 @@ This is the dedicated Project Arena project. The older unrelated project `qttjtv
 
 ## Applied database migrations
 
-The remote migration history contains these successful versions:
+The live remote migration history contains these successful versions:
 
 1. `20261107224227_project_arena_api_security_defaults`
 2. `20261107224259_project_arena_revoke_residual_default_grants`
+3. `20261108013340_arena_lobby_private_channels`
 
-The security baseline is:
+The third migration creates two policies on `realtime.messages` for authenticated users and topics beginning with `arena:lobby:`:
+- SELECT / receive policy: `arena_lobby_channels_receive`
+- INSERT / send policy: `arena_lobby_channels_send`
 
-```sql
--- Internal-only RLS event-trigger function.
-REVOKE EXECUTE ON FUNCTION public.rls_auto_enable()
-  FROM PUBLIC, anon, authenticated, service_role;
+The repository migration file is synchronized to the already-applied remote version:
+`supabase/migrations/20261108013340_arena_lobby_private_channels.sql`.
+Do not apply it again as a new migration.
 
--- Functions created by postgres do not become public RPC endpoints by default.
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres
-  REVOKE EXECUTE ON FUNCTIONS
-  FROM PUBLIC, anon, authenticated, service_role;
+## Security and database verification
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE EXECUTE ON FUNCTIONS
-  FROM anon, authenticated, service_role;
+At the last live check:
+- `public` contains no application tables.
+- The `ensure_rls` event trigger and its internal function privileges remain restricted.
+- The two lobby policies exist on `realtime.messages` with the expected role, command and topic predicate.
+- Security, performance and health Advisors returned no findings.
 
--- Public API roles receive no implicit access to future tables/sequences.
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE ALL PRIVILEGES ON TABLES
-  FROM anon, authenticated, service_role;
+## Flutter integration in the 1.8.3 candidate
 
-ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public
-  REVOKE ALL PRIVILEGES ON SEQUENCES
-  FROM anon, authenticated, service_role;
-```
+- `ArenaOnlineLobbyService` initializes the Supabase client lazily.
+- Guest sign-in and private Realtime subscription start only after the player chooses to create or join an online room.
+- Presence carries lobby display name, join timestamp and client kind.
+- The lobby channel does not transmit combat, movement, damage, weapon or objective state.
+- The match simulation remains local/offline. Lobby presence is not full multiplayer synchronization.
+- The client uses only the project publishable key. Never embed `service_role` or a secret key in the Android client.
+- Offline and LAN modes must remain usable without a Supabase session.
 
-The first migration initially revoked the CRUD and sequence permissions, then the second removed the remaining low-level table/sequence grants as well. Both migrations include transient assertions executed in the migration transaction; the probes were dropped before completion.
+## Blocker: Anonymous Sign-Ins
 
-## Verification
+The Supabase Auth **Anonymous Sign-Ins** provider still needs to be enabled in the Dashboard before two-device online lobby tests can succeed:
+https://supabase.com/dashboard/project/yduxkvscdahzmmfamvmr/auth/providers
 
-Verified after both migrations:
+Official instructions: https://supabase.com/docs/guides/auth/auth-anonymous
 
-- `public.rls_auto_enable()` remains owned by `postgres` and is still bound to the `ensure_rls` DDL event trigger.
-- `anon`, `authenticated`, and `service_role` cannot execute that internal function.
-- Temporary table probe confirmed the event trigger still enables RLS on newly created `public` tables.
-- Temporary table/identity-sequence probe confirmed no implicit table or sequence privileges for the three API roles, including `TRUNCATE`, `REFERENCES`, `TRIGGER`, and `MAINTAIN`.
-- Temporary RPC probe confirmed no implicit `EXECUTE` for the API roles.
-- Security, performance, and health Advisors returned no findings.
-- The `public` schema currently has no application tables.
+Anonymous users use the PostgreSQL `authenticated` role, so policies must be designed with that behavior in mind. The current Realtime topic policies intentionally grant only the private lobby topic prefix.
 
-## Integration boundary
+## Acceptance still pending
 
-Supabase is not yet connected to the Flutter client. No API keys were copied into the repository, and no Auth, Storage, Realtime, Edge Function, leaderboard, cloud-save, or remote-profile feature was invented.
+- Enable Anonymous Sign-Ins in Auth providers.
+- Test guest create/join on two physical installations.
+- Verify presence updates, leave/cleanup, reconnect and switching networks.
+- Confirm a Supabase outage or auth failure does not block local gameplay.
+- Keep the LAN transport and online lobby limited to non-sensitive presence metadata.
 
-The current player profile remains local/offline. Keep gameplay usable without a network connection. A future online feature must define its data model, ownership model, RLS policies, and minimum explicit grants before adding tables or client code. Never embed a `service_role` or secret key in the Android client.
-
-## Repository synchronization
-
-The successful migrations are present in the remote Supabase migration history. Their local CLI-generated migration files still need to be synchronized into `supabase/migrations/` before this repository can reproduce the database from scratch. Do not assume the remote migration history alone is a committed local migration source.

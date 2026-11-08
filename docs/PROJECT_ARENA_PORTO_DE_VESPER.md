@@ -1,6 +1,6 @@
 # Project Arena — Porto de Vésper
 
-Status: candidate implementation for the fourth 1.8.1 slice. Visual and physical acceptance remain pending.
+Status: consolidated 1.8.3 map slice. Static geometry is checked; visual and physical acceptance remain pending.
 
 ## Design intent
 

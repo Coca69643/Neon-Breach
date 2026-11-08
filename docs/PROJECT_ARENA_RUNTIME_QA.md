@@ -1,6 +1,6 @@
 # Project Arena — runtime QA gate
 
-Status: Profile ARM64 QA pipeline added to pull-request CI. Physical-device acceptance is pending.
+Status: 1.8.3 consolidation candidate; Profile ARM64 QA pipeline is retained for pull-request CI. Physical-device acceptance is pending.
 
 ## QA artifact identity
 
@@ -9,7 +9,7 @@ Status: Profile ARM64 QA pipeline added to pull-request CI. Physical-device acce
 - Build mode: Flutter `profile`
 - Target ABI: `arm64-v8a`
 - Signing: ephemeral Flutter/Android debug signing from the PR runner
-- Artifact: `project-arena-1.8.0-arm64-profile-qa`
+- Artifact: `project-arena-1.8.3-arm64-profile-qa`
 - Retention: 7 days
 
 The package suffix allows the QA build to coexist with the stable `com.duckdream.projectarena` installation. Its app data is isolated. It is not an update package and must never be uploaded as a release.
