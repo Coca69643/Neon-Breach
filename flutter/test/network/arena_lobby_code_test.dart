@@ -18,7 +18,7 @@ void main() {
     test('rejects malformed invitation codes', () {
       expect(ArenaLobbyCode.isValid(''), isFalse);
       expect(ArenaLobbyCode.isValid('abc123'), isFalse);
-      expect(ArenaLobbyCode.isValid('g' * 32), isFalse);
+      expect(ArenaLobbyCode.isValid(List.filled(32, 'g').join()), isFalse);
     });
 
     test('normalizes player names and enforces the 18 code point limit', () {
