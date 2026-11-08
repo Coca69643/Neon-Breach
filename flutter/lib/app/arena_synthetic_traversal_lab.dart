@@ -6,6 +6,7 @@ import 'package:flutter_scene/scene.dart' hide Material;
 import 'package:vector_math/vector_math.dart' as vm;
 
 import '../game/match/moba_match_simulation.dart';
+import '../game/npc/arena_survey_drone_controller.dart';
 import '../game/physics/arena_physics_runtime.dart';
 import '../game/rendering/arena_synthetic_hero_model.dart';
 import '../game/world/arena_world_catalog.dart';
@@ -80,17 +81,9 @@ class _ArenaSyntheticTraversalLabState
   double _moveZ = 0;
   double _facingRadians = 0;
   double _elapsed = 0;
-  double _droneX = 2.4;
-  double _droneZ = -55.6;
-  double _droneFacing = 0;
-  int _droneWaypoint = 0;
-  String _droneState = 'PATRULHANDO';
+  final ArenaSurveyDroneController _surveyDrone =
+      ArenaSurveyDroneController();
   bool _padTriggered = false;
-
-  static const List<MobaPoint> _dronePatrolRoute = [
-    MobaPoint(2.4, -55.6),
-    MobaPoint(10.5, -55.6),
-  ];
   late final ValueNotifier<String> _status =
       ValueNotifier<String>('Explore a arena e teste a mobilidade do sintético.');
   bool _loading = true;
@@ -120,7 +113,7 @@ class _ArenaSyntheticTraversalLabState
       canJump: false,
       dronePosition: MobaPoint(2.4, -55.6),
       droneFacing: 0,
-      droneState: 'PATRULHANDO',
+      droneState: ArenaSurveyDroneState.patrolling.label,
     );
   }
 
@@ -163,60 +156,10 @@ class _ArenaSyntheticTraversalLabState
       canDash: physics.canTriggerTraversalDash,
       canSlide: physics.canTriggerSlide,
       canJump: physics.canTriggerJump,
-      dronePosition: MobaPoint(_droneX, _droneZ),
-      droneFacing: _droneFacing,
-      droneState: _droneState,
+      dronePosition: _surveyDrone.position,
+      droneFacing: _surveyDrone.facingRadians,
+      droneState: _surveyDrone.stateLabel,
     );
-  }
-
-  void _stepSurveyDrone(
-    double dt,
-    MobaPoint player, {
-    required bool playerOnSpringPad,
-  }) {
-    final toPlayerX = player.x - _droneX;
-    final toPlayerZ = player.z - _droneZ;
-    final playerDistance = math.sqrt(
-      toPlayerX * toPlayerX + toPlayerZ * toPlayerZ,
-    );
-
-    if (playerOnSpringPad) {
-      _droneState = 'INSPECIONANDO PLATAFORMA';
-      _moveSurveyDroneToward(const MobaPoint(8.2, -57.4), dt, 1.35);
-      return;
-    }
-
-    if (playerDistance < 2.7) {
-      _droneFacing = math.atan2(toPlayerX, toPlayerZ);
-      if (playerDistance < 1.35) {
-        _droneState = 'REPOSICIONANDO';
-        final inverseDistance = 1 / math.max(0.001, playerDistance);
-        _droneX -= toPlayerX * inverseDistance * 1.5 * dt;
-        _droneZ -= toPlayerZ * inverseDistance * 1.5 * dt;
-      } else {
-        _droneState = 'OBSERVANDO JOGADOR';
-      }
-      return;
-    }
-
-    _droneState = 'PATRULHANDO';
-    final target = _dronePatrolRoute[_droneWaypoint];
-    final distance = _moveSurveyDroneToward(target, dt, 1.15);
-    if (distance < 0.38) {
-      _droneWaypoint = (_droneWaypoint + 1) % _dronePatrolRoute.length;
-    }
-  }
-
-  double _moveSurveyDroneToward(MobaPoint target, double dt, double speed) {
-    final dx = target.x - _droneX;
-    final dz = target.z - _droneZ;
-    final distance = math.sqrt(dx * dx + dz * dz);
-    if (distance < 1e-4) return 0;
-    _droneFacing = math.atan2(dx, dz);
-    final step = math.min(distance, speed * dt);
-    _droneX += dx / distance * step;
-    _droneZ += dz / distance * step;
-    return distance;
   }
 
   void _onSceneTick(Duration elapsed, double deltaSeconds) {
@@ -244,9 +187,9 @@ class _ArenaSyntheticTraversalLabState
       _padTriggered = false;
     }
 
-    _stepSurveyDrone(
+    _surveyDrone.update(
       dt,
-      point,
+      playerPosition: point,
       playerOnSpringPad: onSpringPad,
     );
     _frame.value = _snapshotFrame(physics);
@@ -341,8 +284,8 @@ class _ArenaSyntheticTraversalLabState
                   _springPad.z,
                 );
                 final droneGround = ArenaWorldCatalog.navigationHeightAt(
-                  _droneX,
-                  _droneZ,
+                  frame.dronePosition.x,
+                  frame.dronePosition.z,
                 );
                 return SceneView.declarative(
                   key: const ValueKey('synthetic-traversal-lab-scene'),
