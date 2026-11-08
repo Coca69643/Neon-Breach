@@ -10,6 +10,7 @@ import '../game/rendering/arena_scene_runtime.dart';
 import '../game/rendering/moba_match_view.dart';
 import '../game/state/arena_state_machine.dart';
 import 'arena_hero_selection_screen.dart';
+import 'arena_network_lobby_screen.dart';
 import 'arena_player_profile.dart';
 
 class ArenaApp extends StatefulWidget {
@@ -188,6 +189,16 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
     nameController.dispose();
   }
 
+  Future<void> _openNetworkLobby() async {
+    await Navigator.of(context).push<void>(
+      MaterialPageRoute<void>(
+        builder: (_) => ArenaNetworkLobbyScreen(
+          displayName: _playerProfile.displayName,
+        ),
+      ),
+    );
+  }
+
   Future<void> _initializeFoundation() async {
     try {
       // GPU resources must be ready before the first declarative SceneView.
@@ -262,6 +273,7 @@ class _ArenaAppState extends State<ArenaApp> with WidgetsBindingObserver {
           simulation: _matchSimulation,
           playerProfile: _playerProfile,
           onEditPlayerProfile: _editPlayerProfile,
+          onOpenNetworkLobby: _openNetworkLobby,
         ),
       ),
     );
@@ -305,6 +317,7 @@ class _ArenaScreen extends StatelessWidget {
     required this.simulation,
     required this.playerProfile,
     required this.onEditPlayerProfile,
+    required this.onOpenNetworkLobby,
   });
 
   final ArenaSnapshot snapshot;
@@ -313,6 +326,7 @@ class _ArenaScreen extends StatelessWidget {
   final MobaMatchSimulation? simulation;
   final ArenaPlayerProfile playerProfile;
   final VoidCallback onEditPlayerProfile;
+  final VoidCallback onOpenNetworkLobby;
 
   @override
   Widget build(BuildContext context) {
@@ -398,6 +412,17 @@ class _ArenaScreen extends StatelessWidget {
                       profile: playerProfile,
                       compact: compact,
                       onTap: onEditPlayerProfile,
+                    ),
+                  ),
+                  Positioned(
+                    right: edgeX,
+                    top: edgeY,
+                    child: _HubShortcut(
+                      label: 'REDE',
+                      icon: Icons.wifi_tethering_rounded,
+                      width: 112 * scale,
+                      height: 46 * scale,
+                      onTap: onOpenNetworkLobby,
                     ),
                   ),
                   Positioned(

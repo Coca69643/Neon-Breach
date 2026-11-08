@@ -83,3 +83,18 @@ python3 tool/verify_release_apk.py build/app/outputs/flutter-apk/app-release.apk
 ~~~
 
 Para assinar uma atualização compatível com instalações existentes, configure as quatro variáveis NEON_BREACH_KEYSTORE_* antes de executar prepare_android.py e o build. Consulte https://fscene.dev/getting-started/installation/.
+
+
+## Fundação de salas Online e Rede Local — em validação
+
+- Tela própria de salas acessível pelo atalho REDE no menu.
+- Online: Supabase Realtime em canal privado arena:lobby:<código>, com autenticação de convidado e presença.
+- Rede local: host TCP no aparelho, conexão manual por IP/porta e código de convite de 128 bits.
+- Lista de presença, criação/entrada/saída e encerramento de sessão.
+- supabase_flutter fixado na linha estável 2.18.x; não usar pré-release 3.x nesta entrega.
+- O manifesto gerado inclui INTERNET; targetSdk está fixado em 36. Se futuramente subir para 37, implementar ACCESS_LOCAL_NETWORK runtime antes de habilitar sockets LAN no Android 17.
+- O Supabase precisa ter Anonymous Sign-Ins habilitado. A chave incluída no app é apenas publishable; nunca incluir service_role.
+- Limite desta fatia: o transporte sincroniza somente presença no lobby. A partida 3D e a simulação seguem offline; não existe ainda sincronização de movimento, objetivos ou eventos da partida.
+- LAN usa TCP local e código temporário. Não enviar dados privados por esse canal.
+
+Critérios pendentes: testar duas instalações em Wi-Fi real, alternância de rede, reconexão, encerramento inesperado do host e autorização dos canais privados. A fundação não deve bloquear o boot nem o modo offline.
